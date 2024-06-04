@@ -22,6 +22,7 @@ ${MH_BASHLIB:-false} && return 0 || {
     declare leftstring_test
     declare leftstring_notest
     declare testing=false
+    declare ext_inf=false
     leftstring_test="nc-apps nc-shares nc-who php-module-builder php-module-builder-test php-updater php-updater-test"
     leftstring_notest="nc-apps nc-shares nc-who php-module-builder php-updater"
 
@@ -212,8 +213,11 @@ ${MH_BASHLIB:-false} && return 0 || {
 ## machine-id
         mh "machine-id: $machineid"
 
+## prompt
+$ext_inf && {
         . <(require prompt)
         mh "prompt: $(prompt 2>&1)"
+}
 
 ## os-release
         # /etc/os-release
@@ -238,6 +242,7 @@ ${MH_BASHLIB:-false} && return 0 || {
             for i in ${!localestatus[@]}; do mh "localectl status - $((i+1)): ${localestatus[i]}"; done
         fi
 
+$ext_inf && {
 ## hostname
         # /etc/hostname
         if [ -f /etc/hostname ]; then
@@ -288,9 +293,11 @@ ${MH_BASHLIB:-false} && return 0 || {
                 mh "free - $(printf '%02d' $((i+1))): ${free_hwt[i]}"
             done
         fi
+}
 
 ## root stuff
         if (( $(id -u) == 0 )); then
+$ext_inf && {
 ## SELinux
             if which sestatus >/dev/null; then
                 if [ "$(sestatus | awk '{print $NF}')" != "disabled" ]; then
@@ -318,6 +325,7 @@ ${MH_BASHLIB:-false} && return 0 || {
                     mh "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
                 done
             fi
+}
 
 ## Hypervisor
             local hypervisor
@@ -403,15 +411,15 @@ ${MH_BASHLIB:-false} && return 0 || {
             done
 
         # pecl
-        if which pecl >/dev/null; then
-            local -a pecl_list
-            mapfile -t pecl_list< <(pecl list 2>&1|sort -u)
-            for i in ${!pecl_list[@]}; do
-                if [[ "$(trim "${pecl_list[i]}")" ]]; then
-                    mh "pecl list $(printf '%02d' $((i+1))): ${pecl_list[i]}"
-                fi
-            done
-        fi
+            if which pecl >/dev/null; then
+                local -a pecl_list
+                mapfile -t pecl_list< <(pecl list 2>&1|sort -u)
+                for i in ${!pecl_list[@]}; do
+                    if [[ "$(trim "${pecl_list[i]}")" ]]; then
+                        mh "pecl list $(printf '%02d' $((i+1))): ${pecl_list[i]}"
+                    fi
+                done
+            fi
 
         fi # End " php-module-builder php-updater "
 
