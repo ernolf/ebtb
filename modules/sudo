@@ -1,0 +1,79 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SUDO_BASHLIB:-false} && return 0 || {
+    SUDO_BASHLIB=:
+
+    . <(require ansi)
+    . <(require exit)
+
+    su_do(){
+        nosudo(){
+            o2;R;echo "you have no sudo rights.";N
+        }
+        local prompt var
+        for var in "$@"; do local "$var"; done
+        case $u in
+            root)
+                local -a args
+                if [ "$run" = "$me" ]; then
+                    args=(
+                        "json=$my_json"
+                        "$arg"
+                        "$my_args"
+                    )
+                else
+                    args=("$arg")
+                fi
+                if (( $(id -u) )); then
+                    prompt="$(Pbg)[sudo]$(N) - $(P)You have to be '$(C)root$(P)' $p. Password of user$(C) %p$(P):$(N) "
+                    if sudo -lp "$prompt" "$run">/dev/null 2>&1; then
+                        sudo "$run" ${args[@]}
+                        $r && return 0 || exit 0
+                    else
+                        nosudo
+                        $r && return 1 || exit1
+                    fi
+                else
+                    return 0
+                fi
+                ;;
+
+            # su_do "u=NC_USER"
+            NC_USER)
+                f 2
+                o2;B;echo "This script has to be run as user$(N) '$(C)$NC_USER$(N)' $(B)or as$(N) '$(C)root$(N)'$(B)!$(N)"
+                o4;GRAY;echo "sudo -u $NC_USER $me $my_args$(N)"
+                prompt="$(Pbg)[sudo]$(N;pf;P)Enter password of user$(C) %p $(P)to substitute user to$(C) $NC_USER$(P):$(N) "
+                o2;if sudo -lu $NC_USER -p "$prompt" $me >/dev/null 2>&1; then
+                    sudo -u $NC_USER $me "json=$my_json" $my_args
+                    exit 0
+                else
+                    nosudo
+                    exit1
+                fi
+        esac
+    }
+
+# for backwards compatibility
+    su_root(){
+        local p="$1"
+        shift
+        su_do "u=root" "r=false" "p=$p" "run=$me" "arg=$@"
+        return $?
+    }
+
+    su_root_(){
+        local p="$1" run="$2"
+        shift 2
+        su_do "u=root" "r=true" "p=$p" "run=$run" "arg=$@"
+        return $?
+    }
+
+}

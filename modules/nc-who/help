@@ -1,0 +1,86 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${HELP_BASHLIB:-false} && return 0 || {
+    HELP_BASHLIB=:
+
+    . <(require ansi)
+    . <(require nc/nextcloud_logo)
+
+    print_help(){
+        # for backwards compatibilty
+        if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+            declare upinf="$updateinfo"
+        fi
+
+        local bak=false s
+        if (($(backups|wc -l)));then bak=true
+            r_b(){ echo "$(f)    $me restore_backup";}
+            [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
+        else r_b(){ :;}
+        fi
+        cat <<HELP
+$(nextcloud_logo)
+
+ $(line = P 81)
+  $(Bi)This is the help page of $me
+ $(line = dP 81)
+
+  $(GRAY)Feedback and suggestions for improvements/additions are always welcome!
+  $(GRAY)You can write me here:
+  $(W)https://help.nextcloud.com/t/script-nc-who-similar-to-unix-who-follow-live-who-is-logged-in/164972
+
+  $(W)Future versions of this script may offer to complete much more steps for you.
+  $(W)This script will update itself automatically, so no need to reinstall it.
+
+  $(W)Good luck!
+  $(W)ernolf
+
+  $(GRAY)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
+
+ $(line = P 81)
+
+  $me - Version $version $upinf
+
+  This utility is similar to the Unix \`who\` command, allowing you to monitor
+  live user logins and activities on your nextcloud server-instance.
+
+  Usage:
+    $me -h|--help
+    $me monitor
+    $me last
+    $me integrity_check$(r_b)
+
+  Options:
+
+    -h|--help       Display this help message.
+
+    monitor     Monitor live user logins, ordered by last activity at an
+                adjustable refresh rate.
+                * Login status is only available for cookie-based sessions
+                  on a web frontend.
+                * Last activity is shown for all clients.
+
+    last        List users sorted by their last login time. This is equivalent
+                to the output of \`occ user:lastseen --all\`
+                * \`--all\` is actually not available for that occ command.
+
+    integrity_check
+                verify the integrity of this script with signature
+
+HELP
+        $bak&&cat<<BACKUP;exit 0
+    restore_backup
+                restore an older version of this script from backup
+                ($(backups|wc -l) backup$s available, you must be root)
+
+BACKUP
+    }
+
+}

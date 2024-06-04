@@ -1,0 +1,6 @@
+## nextcloud updater ->
+# Update can be done by all but $NC_USER, since NC_USER normaly has no sudo rights.
+if [ "$(id -un)" = "$NC_USER" ];then
+    ((my_epoch>epoch))&&upinf="(update available)";((my_epoch==epoch))&&upinf="(latest version)"
+else my_update_check;fi
+## <- nextcloud updater end #

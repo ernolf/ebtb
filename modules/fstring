@@ -1,0 +1,69 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${FSTRING_BASHLIB:-false} && return 0 || {
+    FSTRING_BASHLIB=:
+
+    . <(require sed)
+    . <(require ansi)
+
+    # format a long string in lines with a maximum length
+    format_string() {
+        local input output word noansi_word basic_color
+        local -i indent max_length current_length marg
+        input="$1" indent="$2" output=''
+        if [[ "$3" ]]; then
+            basic_color="$($3)"
+        else
+            basic_color=''
+        fi
+
+        if (( $(tput cols) > 90 )); then
+            marg=10
+        elif (( 90 > $(tput cols) && $(tput cols) > 80  )); then
+            marg=$(( $(tput cols) - 80 ))
+        else
+            marg=0
+        fi
+
+        if (( $(tput cols) < 80 )); then
+            max_length=$(( 80 - indent ))
+        else
+            max_length=$(( $(tput cols) - $(( marg + indent )) ))
+        fi
+
+        for word in $input; do
+            noansi_word="$(noansi $word)"
+            if (( $(( current_length + ${#noansi_word} )) > $(( max_length + 1 )) )); then
+                output+="\n$(es $indent)$basic_color$word"
+                current_length=${#noansi_word}
+            else
+                output+=" $word"
+                current_length=$(( current_length + ${#noansi_word} + 1 ))
+            fi
+        done
+        echo -en "$output"
+    }
+
+    listify(){
+        local color
+        color=$1
+        shift
+        echo -en "$($color;echo -n "$@"|sed "s/ /, /g;s/\(.*\), /\1 $(N)and$($color) /";N)"
+    }
+
+    listify_(){
+        local color_fg color_bg
+        color_fg=$1 color_bg=$2
+        shift 2
+        echo -en "$($color_fg;echo -n "$@"|sed "s/ /, /g;s/\(.*\), /\1 $($color_bg)and$($color_fg) /";$color_bg)"
+    }
+
+
+}

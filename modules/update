@@ -1,0 +1,204 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${UPDATE_BASHLIB:-false} && return 0 || {
+    UPDATE_BASHLIB=:
+
+    . <(require tempfile)
+    . <(require ansi)
+    . <(require exit)
+    . <(require button)
+    . <(require line)
+    . <(require sudo)
+    . <(require vdir)
+    . <(require integrity)
+    . <(require mh)
+
+#    eval "$(echo "$my_json"|jq -r 'keys[] as $key|"my_\($key)=\(.[$key]|@sh)"')"
+
+    # for backwards compatibilty
+    if [ -n "$basename_me" ]&&[ -z "$bm" ]; then
+        declare bm="$basename_me"
+    fi
+    if [ -n "$canonical_dir" ]&&[ -z "$ca_dir" ]; then
+        declare ca_dir="$canonical_dir"
+    fi
+    if [ -n "$canonical_me" ]&&[ -z "$ca_me" ]; then
+        declare ca_me="$canonical_me"
+    fi
+    if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+        declare upinf="$updateinfo"
+    fi
+
+    version_(){ awk '/^# version 20/ {print $3, $4}' "$1";}
+
+    backup_and_replace_me_with_(){
+        local new="$1" bkp="$ca_me~$epoch"
+        mv -u "$ca_me" "$bkp" &&\
+        mv -u "$new" "$ca_me" &&\
+        chmod +x "$ca_me" &&\
+        chmod -x "$bkp"
+    }
+
+    replace_me_with_(){
+        local new="$1"
+        mv -fu "$new" "$ca_me" &&\
+        chmod +x "$ca_me"
+    }
+
+    backups(){
+        find "$ca_dir" -type f -name "$bm~[0-9]*" -not -executable | sort $1
+    }
+
+    my_update(){
+        local -i max_backups=0 num_bkps=0 num2del=0 i=0
+        local -a bkp_list
+        local -l key
+        local my_tmp="$(tf u)" shash
+        su_root "to update" my_update
+        while :; do
+            curl -o "$my_tmp" -A "$A" $cargs/$scriptname
+            shash="$(sha256sum "$my_tmp" | awk '{print $1}')"
+            if [ "$shash" = "$my_hash" ]; then
+                echo
+                line '=' P 5/75
+                o5;lG;echo "Hash OK, download verified!"
+                line '-' P 5/75
+                break
+            else
+                f;o5;R;echo "Wrong hash - file corrupted - download failed!";N
+                o5;echo "- script_hash$(o 22)= $shash"
+                o5;echo "- expected_hash$(o 22)= $my_hash"
+                o5;echo "Press - [r] retry update - [a] abort"
+                read -rsn 1 key
+                case "$key" in
+                    a)  o5;echo "abort update atempt. You can retry later."
+                        exit1
+                        ;;
+                    r)  rm -f "$my_tmp"
+                esac
+            fi
+        done
+        [ -z "$vdirname" ] || {
+            local vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
+            [ "$vdir" = "$ddir" ] || setvdir d v "$my_tmp"
+        }
+        ((max_backups))&&backup_and_replace_me_with_ "$my_tmp"||replace_me_with_ "$my_tmp"
+        # cleanup old backupfiles
+        mapfile -t bkp_list< <(backups)
+        num_bkps=${#bkp_list[@]}
+        if (( num_bkps > max_backups )); then
+            num2del="$((num_bkps-max_backups))"
+            o5;echo "cleaning up old backups"
+            for (( i=0; i<num2del; i++ )); do
+                o5;echo "- deleting: ${bkp_list[i]}"
+                rm "${bkp_list[i]}"
+            done
+        fi
+        integrity_check && {
+            # for backwards compatibilty
+            if [ -n "$includedir" ]&&[ -z "$lincld" ]; then
+                declare lincld="$includedir"
+            fi
+            # set "$lincld/$sin/.checked" to 0 if exists to build up with newest modules
+            [ -f "$lincld/$sin/.checked" ] && echo "0" >"$lincld/$sin/.checked"
+            "$me" "json=$my_json" $my_args
+            exit 0
+        }
+    }
+#    "$do_update" && my_update
+
+    my_update_check(){
+        local -l key
+        if (( my_epoch > epoch )); then
+#            echo "my_epoch=$my_epoch - epoch=$epoch"
+            f;o5;echo "A new version of this script is available."
+            while :; do
+                o5;echo "Press - [$(lG)u$(N)] for update - [$(Y)i$(N)] to ignore"
+                read -rsn 1 key
+                case "$key" in
+                    u)  my_update
+                        ;;
+                    i)  upinf="(update available)"
+                        break
+                esac
+            done
+        elif (( my_epoch == epoch )); then
+            upinf="(latest version)"
+        fi
+    }
+#    [ "$1" = "my_update_check" ] && my_update_check
+
+    restore_backup(){
+        local -i n=1 i c2=9 c3=29
+        local -a bkp_list
+        local -l num key
+        local bkp from ver
+        su_root "to restore from backup" restore_backup
+        mapfile -t bkp_list< <(backups -r)
+        (( ${#bkp_list[@]} )) || {
+            o2;echo "no backups available."
+            anykey
+            return
+        }
+        line '=' P 2/78 b1
+        o3;B;echo "These backups of \"$(C)$bm$(B)\" are available:";N
+        o4;Y;echo "Num$(o $c2)Version$(o $c3)Backup from"
+        line '-' dP 2/78
+        for i in "${!bkp_list[@]}"; do
+            bkp="${bkp_list[i]}"
+            from="$(stat -c "%y" "$bkp")"
+            ver="$(version_ "$bkp")"
+            o3;echo "- $((n+i))$(o $c2)\"$ver\"$(o $c3)\"$from\""
+        done
+        line '-' dP 2/78 a2
+        o3;echo "Enter the number of the backup you want to restore or $(q2q)"
+        while :; do
+            read -rsn 1 num
+            [ "$num" = "q" ] && exit1
+            [[ "$num" =~ ^[1-9]$ ]] || {
+                o3;echo "$invi Please enter a valid number or $(q2q)"
+                continue
+            }
+            (( num<n || num>=(n+${#bkp_list[@]}) )) && {
+                o3;echo "Invalid backup number. Please choose a number from the list or $(q2q)"
+                continue
+            }
+            i="$((num-n))"
+            bkp="${bkp_list[i]}"
+            ver="$(version_ "$bkp")"
+            o3;echo "Your choice: version \"$ver\""
+            o3;echo "do you want to restore this backup?"
+            o3;echo "Press $(box y) to proceed - $(box c) to cancel - $(q2q): "
+            while :; do
+                read -rsn 1 key
+                case "$key" in
+                    y)  break 2
+                        ;;
+                    c)  return
+                        ;;
+                    q)  exit1
+                esac
+            done
+        done
+        backup_and_replace_me_with_ "$bkp"
+        integrity_check &&  {
+            # for backwards compatibilty
+            if [ -n "$includedir" ]&&[ -z "$lincld" ]; then
+                declare lincld="$includedir"
+            fi
+            # set "$lincld/$sin/.checked" to 0 if exists to build up with newest modules
+            [ -f "$lincld/$sin/.checked" ] && echo "0" >"$lincld/$sin/.checked"
+            "$me" "json=$my_json" $my_args
+            exit 0
+        }
+    }
+#    distinf &
+#    "$do_restore_backup" && restore_backup ## - lib: auto-update and backup - end #
+}

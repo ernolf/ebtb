@@ -1,0 +1,209 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${HELP_BASHLIB:-false} && return 0 || {
+    HELP_BASHLIB=:
+
+    . <(require ansi)
+    . <(require php/version)
+    . <(require nc/nextcloud_logo)
+
+    print_help(){
+        # for backwards compatibilty
+        if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+            declare upinf="$updateinfo"
+        fi
+
+        local bak=false s htf=$(tf) cat_or_pager
+        case "${1:---pager}" in
+            --cat)  cat_or_pager='cat' ;;
+          --pager)  cat_or_pager='less -R'
+                    nextcloud_logo
+        esac
+        if (($(backups|wc -l)));then bak=true
+            r_b(){ echo -e "\n    $me restore_backup";}
+            [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
+        else r_b(){ :;}
+        fi
+        local phpversionoption=""
+        local -a alternative_php_versions=($(php_ver alternatives))
+        if ((${#alternative_php_versions[@]})); then
+            phpversionoption=" [ --php=PHP-VERSION ]"
+        fi
+
+        cat<<HELP >>$htf
+$(nextcloud_logo)
+
+
+ $(line = P 81)
+  $(Bi)This is the help page of $me
+ $(line = dP 81)
+
+  $(W)You can call this help with:
+
+    $(G)user@box:~# $(B)$me -h
+  $(W)or:
+    $(G)user@box:~# $(B)$me --help
+
+  $(W)and if you don't want the help to be piped into a pager:
+
+    $(G)user@box:~# $(B)$me -h --nopager
+  $(W)or:
+    $(G)user@box:~# $(B)$me --help --nopager
+
+ $(line = P 81)
+
+  $(GRAY)Feedback and suggestions for improvements/additions are always welcome!
+  $(GRAY)You can write me here:
+  $(W)https://help.nextcloud.com/t/script-nc-apps-a-helpful-and-more-verbose-complement-to-occ-app-list/164389
+
+  $(W)Future versions of this script may offer to complete much more steps for you.
+  $(W)This script will update itself automatically, so no need to reinstall it.
+
+  $(W)Good luck!
+  $(W)ernolf
+
+  $(GRAY)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
+
+ $(line = P 81)
+
+  $me - version $version $upinf
+  command line nextcloud-appstore browser with enhanced search functions and more
+
+  Usage:
+    $me -h|--help [ --nopager ]
+    $me -H|--filters
+    $me install_overwrite [ -u [ --allow-unstable ]]
+    $me shipped [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --nopager ]
+    $me not_shipped [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ] [ --nopager ]
+    $me all_apps [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ] [ --nopager ]
+    $me id=[pattern] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ]
+    $me name=[pattern] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ]
+    $me lang=[ISO 639-1]
+    $me updatable [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption
+    $me update [ *'section' ] [ --allow-unstable ]$phpversionoption
+    $me rebuild_db
+    $me integrity_check$(r_b)
+
+  Options:
+
+    *) 'section' can be eather one of:
+                            enabled  - installed and enabled apps (default)
+                            disabled - installed but disabled apps
+                            local    - enabled and disabled combined
+                            store    - not installed, available in appstore
+                            all      - all sections
+
+   -h | --help              this page
+
+   -H | --filters           examples of JSON filters (for experts)
+
+   install_overwrite [ -u [ --allow-unstable ]]
+                            write actual 'app_install_overwrite' array in config/*config.php file.
+                            If invoked with -u, it will first perform an update of al installed apps.
+                            This script supports multiple *.config.php files.
+
+   shipped [section*)]      list shipped apps (no 'store' section)
+
+   not_shipped [section*)]  list not shipped apps
+
+   all_apps [section*)]     list all apps
+
+   name=[pattern]           list apps where name matches "pattern"
+
+   id=[pattern]             list apps where id matches "pattern"
+
+   lang=[ISO 639-1]         language to be used for translations instead of the detected locale on your computer, which is "$(echo "$LANG"|cut -d'_' -f1)"
+
+   updatable [section*)]    list updatable apps (no store section)
+
+   update [section*)]       update enabled, disabled or local apps
+
+   --allow-unstable         allow updating to unstable releases (only for update and install_overwrite with option -u)
+
+   --supported              only list apps supported by version
+
+   --unsupported            only list apps not supported by version
+
+   --nopager                don't use pager (only for long listing functions and -h|--help)
+
+   --markdown               list as markdown table code
+
+HELP
+        if ((${#alternative_php_versions[@]})); then
+            local plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
+            cat << --PHP >>$htf
+   --php=PHP-VERSION        use another installed php version for updates. Possible (installed) PHP-VERSION$plural: $(echo "${alternative_php_versions[@]}")
+                            example: --php=${alternative_php_versions[0]}
+
+--PHP
+        fi
+        cat <<HELP >>$htf
+    *) NC-VER = only 2 digits
+
+   --version=NC-VER*)       simulates an assumed nextcloud version instead of actual installed real nextcloud version.
+   --min_version=NC-VER*)   simulates an assumed minimum nextcloud version. Defaults to ${nc_lowest%%.*}
+                            example: --version=26 and/or --min_version=25
+                            '--(min_)version=' has no effect on install_overwrite, shipped and update
+
+   rebuild_db               Delete database and create new from scratch.
+                            Use this after updates, (de)installation of packages or simply when results start to get weird.
+
+   integrity_check          Verify the integrity of this script with signature
+
+HELP
+        if $bak;then
+            cat <<BACKUP >>$htf
+   restore_backup           restore an older version of this script from backup
+                            ($(backups|wc -l) backup$s available, you must be root)
+
+BACKUP
+    fi
+    cat<<EXAMPLES >>$htf
+
+ $(line = P 81)
+  $(Bi)Here some examples
+ $(line = dP 81)
+
+   $(W)List all installed and enabled apps:
+    $(G)user@box:~# $(B)$me all_apps enabled
+
+   $(W)List not shipped, installed and enabled apps, not supported by your nextcloud version,
+   $(W)not piped through pager:
+    $(G)user@box:~# $(B)$me not_shipped enabled --unsupported --nopager
+
+   $(W)List updatable apps only for enabled apps:
+    $(G)user@box:~# $(B)$me updatable
+
+   $(W)List all updatable apps:
+    $(G)user@box:~# $(B)$me updatable local
+
+   $(W)Update all updatable apps, allow to update to unstable (beta) app-versions:
+    $(G)user@box:~# $(B)$me update local --allow-unstable
+
+   $(W)Update all apps, allowing unstable versions and re-create the "apps_install_overwrite'
+   $(W)array in config/config.php:
+    $(G)user@box:~# $(B)$me install_overwrite -u --allow-unstable
+
+   $(W)List all apps with the pattern “text” in App-Id:
+    $(G)user@box:~# $(B)$me id=text
+
+   $(W)Show, which of your installed, not shipped apps are NOT (yet) supported by Nextcloud 29,
+   $(W)taking into account all installed and enabled apps supported by minimum Nextcloud 26,
+   $(W)not piped through pager:
+    $(G)user@box:~# $(B)$me --version=29 --min_version=26 --unsupported not_shipped enabled --nopager
+
+   $(W)... many many more (hidden) features....$(N)
+
+EXAMPLES
+        $cat_or_pager $htf
+        exit 0
+    }
+
+}

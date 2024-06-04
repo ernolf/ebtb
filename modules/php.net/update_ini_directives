@@ -1,0 +1,139 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${UPDATE_INI_DIRECTIVES_BASHLIB:-false} && return 0 || {
+    UPDATE_INI_DIRECTIVES_BASHLIB=:
+
+    . <(require sed)
+    . <(require php.net/ini_directives)
+
+    update_ini_directives(){
+        [ -z "$1" ]&&local dryrun=:||local "$1"
+        $dryrun&&set -x
+        local phpneturl='https://www.php.net/manual/en' url
+        local ini_list_php='ini.list.php' ini_core_php='ini.core.php#ini.extension'
+        local -a extensions=($(curl -s $phpneturl/extensions.alphabetical.php|grep -vE "book\.(com|wincache|wkhtmltox)\."|grep -o 'book\.[^.]*'|sed 's/book\.//g'))
+        local -a urls=("$phpneturl/$ini_list_php" "$phpneturl/$ini_core_php" $(for extension in ${extensions[@]};do echo "$phpneturl/$extension.configuration.php";done))
+
+    #    local github_raw_url="https://raw.githubusercontent.com/php/doc-en/master/appendices/ini.list.xml"
+        local canonical_lib="$includedir/php.net/ini_directives"
+        $dryrun&&{ local htmlfile="/tmp/htmlfile" awkoutfile="/tmp/awkout" awkoutfile_sorted="/tmp/awkout_sorted" working_copy="/tmp/working_copy" myoutfile="/tmp/outfile";}
+        $dryrun||{ local htmlfile="$(tf)" awkoutfile="$(tf)" awkoutfile_sorted="$(tf)" working_copy="$(tf)" myoutfile="$canonical_lib";}
+        local start_marker="^### START INI DIRECTIVES ###"
+        local end_marker="^### END INI DIRECTIVES ###"
+        cat "$canonical_lib" > "$working_copy"
+        # delete the old data from backup file
+        delx2y "$start_marker" "$end_marker" "$working_copy"
+        $dryrun&&set +x
+        # fill and process $htmlfile for all urls
+        for url in "${urls[@]}"; do echo > $htmlfile # empty htmlfile
+            $dryrun||curl -sLo "$htmlfile" "$url"
+            $dryrun&&echo "url $url"
+            $dryrun&&curl -Lo "$htmlfile" "$url"
+            $dryrun&&curl "$url" | grep -A45 -B5 '<th>Name</th>' && anykey
+            # parse $htmlfile with awk script, write result at the end of $awkoutfile
+            awk -f - <<'PARSE_DIRECTIVES_AWK' "$htmlfile" >> "$awkoutfile"
+            function print_line(directive, defaultval, changelog) {
+                printf "        %-38s %-38s %s\n", directive, defaultval, changelog;
+            }
+            BEGIN {
+                FS="(<td[^>]*>|</td>)";
+                RS="</tr>";
+                OFS="\t";
+            }
+            {
+                if (NR > 1) {
+                    for (i=1; i<=NF; i++) {
+                        gsub(/<[^>]*>/, "", $i);
+                        gsub(/&quot;/, "", $i);
+                        gsub(/&amp;/, "\\&", $i);
+                        gsub(/&lt;/, "<", $i);
+                        gsub(/&gt;/, ">", $i);
+                        gsub(/&#39;/, "'", $i);
+                        gsub(/&#039;/, "'", $i);
+                        gsub(/&nbsp;/, "", $i);
+                        gsub(/ \*/, "", $i);
+                        gsub(/null/, "NULL", $i);
+                        gsub(/\$_/, "\\$_", $i);
+                        gsub(/[\r\n]+/, " ", $i);
+                        gsub(/[ \t]+/, " ", $i);
+                        gsub(/^ +| +$/, "", $i);
+                        gsub(/ is used as default\./, "", $i);
+                        gsub(/\.$/, "", $i);
+                        gsub(/\.;\/path/, ".:/path", $i);
+                    }
+                    directive = $2;
+                    defaultval = $4;
+                    changeable = $6;
+                    changelog = $8;
+                    if (defaultval ~ /<code class="literal">/) {
+                        match(defaultval, /<code class="literal">([^<]*)<\/code>/, arr);
+                        defaultval = arr[1];
+                    }
+                    if (match(directive, /^[a-zA-Z]/)) {
+                        print_line(directive ")", "def=\"" defaultval "\"", "chlog=\"" changelog "\";;");
+                    }
+                }
+            }
+PARSE_DIRECTIVES_AWK
+            #END {
+            #    print_line("*)", "def=\"NOT\"", "scope=\"NOT\"", "chlog=\"NOT\"");
+            #    print_line("*)", "def=\"NOT\"", "chlog=\"NOT\"");
+            #}
+#PARSE_DIRECTIVES_AWK
+        done
+
+        # sort directives and remove duplicates
+        p_sort "$(< "$awkoutfile")" >> "$awkoutfile_sorted"
+        for token in $(awk '{
+                if (seen[$1]) {
+                    duplicate[$1] = 1
+                }
+                seen[$1] = 1
+            }
+            END {
+                for (key in duplicate) {
+                    if (duplicate[key]) {
+                        print key
+                    }
+                }
+            }' $awkoutfile_sorted|sort); do
+        #    declare -a lines def chlog
+            local -a lines
+            mapfile -t lines< <(grep "^\s*$token" $awkoutfile|sed "s/^\s*//;s/;;$//")
+            sed -i "/^\s*${lines[0]}/d" $awkoutfile_sorted
+        #TODO If this is needed in the future. Code draft, far from perfect:
+        #    for i in "${!lines[@]}"; do
+        #        def[$i]=$(echo "${lines[i]}" | awk -F'def=' '{print $2}' | awk '{print $1}')
+        #        chlog[$i]=$(echo "${lines[i]}" | awk -F'chlog=' '{print $2}')
+        #        echo -e "$i: ${lines[i]}\n - ${def[i]}\n - ${chlog[i]}"
+        #        if [ ${def[0]} = ${def[1]} ]; then
+        #            if [ -z ${chlog[0]} -a -n ${chlog[1]} ]; then
+        #                sed -i "/^\s*${lines[0]}/d" $awkoutfile_sorted
+        #            elif [ -z ${chlog[1]} -a -n ${chlog[0]} ]; then
+        #                sed -i "/^\s*${lines[1]}/d" $awkoutfile_sorted
+        #            fi
+        #        else
+        #
+        #        fi
+        #    done
+        done
+
+        # Put the contents of $awkoutfile between the markers in $canonical_lib
+        awk -v start="$start_marker" -v end="$end_marker" -v file="$awkoutfile_sorted" '
+        BEGIN { print_it = 1 }
+        $0 ~ start { print $0; while (getline < file > 0) { print }; print_it = 0 }
+        $0 ~ end { print_it = 1 }
+        print_it { print $0 }
+        ' "$working_copy" > "$myoutfile"
+        exit 0
+    }
+    [ "$1" = "--update_ini_directives" ]&&update_ini_directives $2
+
+}

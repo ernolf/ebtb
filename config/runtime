@@ -1,0 +1,5 @@
+declare -i epoch # =$(date +%s)
+declare runtime # ="$(date -d @$epoch "+%F %R %Z")"
+printf -v epoch "%(%s)T" -2
+printf -v runtime "%(%F %R %Z)T" -2
+

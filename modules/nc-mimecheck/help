@@ -1,0 +1,137 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${HELP_BASHLIB:-false} && return 0 || {
+    HELP_BASHLIB=:
+
+    . <(require ansi)
+
+    # help information
+    try_help(){
+        echo "try $(B)$me -h$(N) for help";f
+        exit 1
+    }
+
+    print_help(){
+        # for backwards compatibilty
+        if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+            declare upinf="$updateinfo"
+        fi
+
+        local opts
+        opts="[ -r ] [ --detector=detector ] [ -d | --dryrun ] [ -v | --verbose ]"
+        if (( $(backups | wc -l) )); then bak=true
+            r_b(){
+                f
+                echo "    $me restore_backup"
+            }
+            if (( $(backups | wc -l) > 1 )); then
+                s=s
+            else
+                s=""
+            fi
+        else
+            r_b(){
+                :
+            }
+        fi
+
+        cat <<HELP
+
+  $me - version $version $upinf
+
+  Usage:
+    $me $opts [ -vv | --debug ] [--] <user_id or path/to/dir/or/file>
+    $me [ -h | --help ]
+    $me [ -l | --listmimes=(i|v|a|t) ]
+    $me integrity_check$(r_b)
+
+       The "path/to/dir/or/file" argument can be either an absolute or
+       relative path within the Nextcloud data directory. This script
+       only checks files of enabled users and does not yet support group
+       folders.
+
+  -> ! Please note: when the path is preceded by other arguments, -- is
+  -> ! absolutely necessary to mark the end of the options!
+
+Options:
+  -r                         Recursive.
+
+      --detector=detector    Either "mimetype" (default) or "file"
+                             \`mimetype\` uses\`mimetype -b \$file\`
+                             \`file\` uses\`file -b --mime-type \$file\`
+
+  -h, --help                 Prints this help information and exits.
+                             All other arguments are ignored when using
+                             this option.
+
+  -l, --listmimes="type"     Lists supported MIME types, where
+                             "type" can either be "all" or one (or a
+                             combination) off: i (image), v (video),
+                             a (audio) or t (text)
+                             Defaults to all
+                             All other arguments are ignored when using
+                             this option.
+
+  -d, --dryrun               Shows what the script would do without
+                             making any actual changes.
+
+  -q, --quiet                Runs the script in quiet mode with no
+                             echoes.
+
+  -v, --verbose              Provides verbose output.
+
+  -vv, --debug               Provides debug output.
+
+  integrity_check            verify the integrity of this script with signature
+
+Examples:
+  Process a single file "user/files/path/to/file" in quiet mode:
+  $me -q -- "user/files/path/to/file"
+  (this is the behaviour if invoked by "Flow external script")
+
+  Process an absolute path "/path2/nextcloud/data/user/files/path":
+  $me "/path2/nextcloud/data/user/files/path"
+
+  Process a relative path "user/files/path/to/dir" recursively:
+  $me -rd -- "user/files/path/to/dir"
+
+  Analyze a directory recursively with dry run and verbose output:
+  $me -vrd -- "/path2/nextcloud/data/user/files/path/to/dir"
+
+
+  This script checks the MIME types of files within Nextcloud's data
+  directory and verifies their file extensions. If the extensions are
+  incorrect, it will make the necessary changes or append them. It
+  integrates with Nextcloud's Command Line API, \`occ\`, and is intended
+  to be used with the "Flow external script" feature.
+
+  To use this script with "Flow external script," create rules in the
+  Nextcloud admin settings:
+          http[s]://%your-nextcloud%/settings/admin/workflow
+
+  Example rule for jpeg-Files:
+    When [File created]
+      and [File MIME type] [is] [Custom mimetype] [image/jpeg]
+      and [File name] [does not match] [/^.*\.(jpe?g)$/i]
+   >_ Pass files to external scripts for processing outside of Nextcloud
+            [$canonical_me -q %n]
+
+HELP
+    if $bak;then
+        cat <<BACKUP
+  restore_backup            restore an older version of this script from backup
+                            ($(backups|wc -l) backup$s available, you must be root)
+
+BACKUP
+        fi
+        exit 0
+    }
+
+}

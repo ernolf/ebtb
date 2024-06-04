@@ -1,0 +1,41 @@
+## include bashmodules ->
+declare channel='prod' lincld rincld REQ mod lmo check=false lmj lmjn rmj lcf fp
+w4uc=3600
+[[ "$scriptname" =~ test ]] && { channel='test' w4uc=36; }
+lincld="/usr/local/include/ernolf/$channel" rincld="includes/$channel"
+REQ=". $lincld" lmj="$lincld/modules.json" rmj="$rincld/modules.json" lcf="$lincld/$sin/.checked"
+lmjn="$lmj~new" lce=$(cat "$lcf" 2>/dev/null) fp=$(cat "$lincld/fp" 2>/dev/null)
+$rt && ((rte - lce > w4uc)) && {
+    curl -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
+    if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && check=:; fi
+}
+for mod in ${modules[@]}; do
+    lmo="$lincld/$mod"
+    $rt && mkdir -p "${lmo%/*}"
+    $check && {
+        ${pager:-false} || printf "\r\e[K.. checking modules - $mod"
+        c4u "$mod"
+    } || { ${pager:-false} || printf "\r\e[K.. loading modules - $mod"; }
+    sourced "$mod" && continue
+    if [ -f "$lmo" ]; then
+        $REQ/$mod
+    elif ! $rt; then
+        . <(req $mod)
+    elif (($(curl -o "$lmo" -w %{http_code} -A "$(fp)REQ $mod" $cargs/$rincld/$mod) == 200)); then
+        log REQ $mod
+        $REQ/$mod
+    else
+        nohome $mod
+    fi
+    [ "$mod" = 'dependency' ] && dependency_check
+done
+$check && echo $rte >"$lcf"
+[ -f "$lmjn" ] && mv "$lmjn" "$lmj"
+$rt && ! ((lce)) && echo $rte >"$lcf"
+${pager:-false} || te1
+eval "$(echo "$(unquote $my_json)" | jq -r 'keys[] as $key|"my_\($key)=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
+declare upinf='(no update info available)'
+. <(req update)
+"$do_update" && my_update
+[ "$1" = "my_update_check" ] && my_update_check
+"$do_restore_backup" && restore_backup

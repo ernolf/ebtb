@@ -1,0 +1,78 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "gpg#gnupg#GNU Privacy Guard"
+    "jq#jq#command-line JSON processor"
+)
+modules=(
+    basics sed tempfile ansi exit anykey verbose line array ask sudo dependency
+    vdir integrity nc/nextcloud nc/nextcloud_db
+)
+mymodules=(
+    $sin/help $sin/list_shares
+)
+
+declare debug=false
+declare verbose=false
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+
+### general (minified)
+__general__
+## include bashmodules (minified) ->
+__module_builder__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+##############################################################################
+
+v_echo "help=$help, verbose=$verbose, debug=$debug"
+
+
+## parsing options
+#options="help verbose debug"
+#for option in $options; do declare $option=false; done
+options="$(getopt -o hs: --long help,sharetype: -n 'me' -- "$@")"
+eval set -- "$options"
+
+command=list_shares
+while true; do
+    case $1 in
+        -h|--help)
+            print_help
+            ;;
+        -s|--sharetype)
+            sharetype=$2
+            shift 2
+            ;;
+        --)
+            shift
+            break
+            ;;
+        *)
+            echo "Unknown option: $1" >&2
+            print_help
+            ;;
+    esac
+done
+
+(($#)) && $command $* || print_help
+
+exit 0
+

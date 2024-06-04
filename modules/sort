@@ -1,0 +1,43 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SORT_BASHLIB:-false} && return 0 || {
+    SORT_BASHLIB=:
+
+    bubble_sort(){
+        local -a array index temp
+        local -i len i j
+
+        array=($@)
+        len=$#
+
+        for ((i = 0; i < len; i++)); do
+            index[$i]=$i
+        done
+
+        for ((i = 0; i < len-1; i++)); do
+            for ((j = 0; j < len-i-1; j++)); do
+                if ((array[j] < array[j+1])); then
+
+                    temp=${array[j]}
+                    array[j]=${array[j+1]}
+                    array[j+1]=$temp
+
+                    temp=${index[j]}
+                    index[j]=${index[j+1]}
+                    index[j+1]=$temp
+                fi
+            done
+        done
+        for ((i = 0; i < len; i++)); do
+            echo -n "${index[i]} "
+        done
+    }
+
+}

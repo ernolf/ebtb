@@ -1,0 +1,441 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${MH_BASHLIB:-false} && return 0 || {
+    MH_BASHLIB=:
+
+    . <(require sed)
+
+    [ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
+    lf="$TMPDIR/ebtb-logfiles/$bm.log"
+    [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
+
+    [ -n "$rincld" ]||rincld="includes/prod"
+
+    declare machineid
+    declare leftstring_test
+    declare leftstring_notest
+    declare testing=false
+    leftstring_test="nc-apps nc-shares nc-who php-module-builder php-module-builder-test php-updater php-updater-test"
+    leftstring_notest="nc-apps nc-shares nc-who php-module-builder php-updater"
+
+
+    machine_id(){
+        if [ -f /etc/machine-id ]||[ -f /var/lib/dbus/machine-id ]; then
+            [ -f /etc/machine-id ]&&cat "/etc/machine-id"||cat "/var/lib/dbus/machine-id"
+        else
+            # computing pseudo machine-id - md5sum from mac address:
+            ip link show|awk '/ether/ {print $2}'|md5sum|tr -d ' -'
+        fi
+    }; machineid="$(machine_id)"
+
+    fp(){
+        local fingerprint
+        if [ -f "$lincld/fp" ]; then
+            local -i fpe
+            fpe=$(stat -c %Z "$lincld/fp")
+            ((rte-fpe>3600)) && echo > "$lincld/fp"
+            fingerprint=$(< "$lincld/fp")
+        fi
+        if (( ${#fingerprint} == 7 )); then
+            echo $fingerprint
+            return 0
+        else
+            local decimal_number
+            local -i digit checksum
+            if which python3 >/dev/null; then
+                decimal_number=$(python3 -c "print(int('$machineid', 16))")
+            else
+                decimal_number=$(php -r "printf('%.0f', hexdec('$machineid'));")
+            fi
+            while (( ${#decimal_number} > 1 )); do
+                checksum=0
+                for (( i=0; i<${#decimal_number}; i++ )); do
+                    digit="${decimal_number:i:1}"
+                    checksum=$((checksum + digit))
+                done
+                decimal_number=$checksum
+            done
+            fingerprint=":${machineid:14:4}${checksum}:"
+            echo $fingerprint
+            if (( $(id -u) == 0 )); then
+                echo "$fingerprint" > "$lincld/fp"
+            fi
+        fi
+    }
+
+    if ! declare -f ts >/dev/null; then
+        ts() {
+            printf "%(%s-)T"
+            printf "%((%F_%R_%Z))T"
+        }
+    fi
+
+    if ! declare -f log >/dev/null; then
+        log(){
+            ( flock -x 200
+              echo "$(ts) - $bm-$epoch - $(fp)$@" >> "$lf"
+            ) 200>"$lf.lock"
+        }
+    fi
+
+    mh(){
+        if $testing; then
+            [[ " $leftstring_test " =~ " $bm " ]]||{ :;return;}
+        else
+            [[ " $leftstring_notest " =~ " $bm " ]]||{ :;return;}
+        fi
+        if [[ "$-" =~ 'x' ]]; then
+            set +x
+            local debugx=true
+        else
+            local debugx=false
+        fi
+#        curl -Io /dev/null -A "$(fp)$(noansi "${@//'\n'/ }")" $cargs/$rincld/mh.json >/dev/null 2>&1
+        log "$(noansi "${@//'\n'/ }")" &
+        $debugx && set -x
+        return 0
+    }
+
+    #    hashlen=${#hash}
+    #    random_start=$(shuf -i 0-$(($hashlen-$len)) -n 1)
+    #    random_sequence=${hash:$random_start:$len}
+    #    echo $random_sequence
+
+    array_populated(){
+        local array="$1"
+        for i in $(eval echo \${!$array[@]}); do
+            mh "$array-$(printf '%02d' $((i+1))): $(eval echo \${$array[i]} 2>&1)"
+        done
+    }
+
+    detect_hashed_file(){
+        local item hash="$1" echo="$2"
+        for item in $(cd $TMPDIR;ls); do
+            if [ -f "$TMPDIR/$item" ]; then
+                if [[ "$hash" =~ ${item%%_*} ]]; then
+                    $echo&&echo "$TMPDIR/$item"
+                    return 0
+                fi
+            fi
+        done
+        return 1
+    }
+
+    create_hashed_file(){
+        local -i len=16
+        local f hash=$1
+        f=$(mktemp -p $TMPDIR -t ${hash:$(shuf -i 0-$((${#hash}-$len)) -n 1):$len}_XXXXXXXXXXXX 2>/dev/null)
+        chmod 666 "$f"
+        echo "$f"
+    }
+
+# apt
+    mh_apt_install_prechecked(){
+        if (( $# )); then
+            mh "apt_install: $@"
+        fi
+    };prechecked(){ mh_apt_install_prechecked "$@";}
+
+    mh_apt_remove(){
+        if (( $# )); then
+            mh "apt_remove $@" &
+        fi
+    };removed(){ mh_apt_remove "$@";}
+
+    mh_apt_purge(){
+        if (( $# )); then
+            mh "apt_purge $@" &
+        fi
+    };purged(){ mh_apt_purge "$@";}
+
+# selections
+    mh_selections(){
+        if which update-alternatives >/dev/null; then
+            local -a selections
+            mapfile -t selections< <(update-alternatives --get-selections | grep -E "ph(ar|p)")
+            if (( ${#selections[@]} )); then
+                [[ "$1" ]]&&mh "selections - $1"
+                for i in ${!selections[@]}; do mh "selections-$(printf '%02d' $((i+1))): ${selections[i]}"; done
+            fi
+        fi
+    }
+    cleanup_and_fix_alternatives(){
+        if which update-alternatives >/dev/null; then
+            yes '' | update-alternatives --force --all &>/dev/null # repair broken alternatives, remove not existing alternatives
+            sleep 0.5
+            mh_selections "$@" &
+        fi
+    }
+
+    distinf(){ # clf=lock_file, ctf=timestamp_file
+
+        sleep 3
+
+        local hash lock_hash clf ctf
+        local -i cte i
+
+        hash="$(echo $machineid | sha512sum | tr -d ' -')"
+        lock_hash="$(echo "lock-${FUNCNAME[0]}" | sha512sum | tr -d ' -')"
+
+# return if another process is already running this function
+        if detect_hashed_file $lock_hash false 2>/dev/null; then
+            return 0
+        else
+            clf="$(create_hashed_file $lock_hash)" # lockfile
+        fi
+
+        if ctf="$(detect_hashed_file $hash true 2>/dev/null)"; then
+            cte=$(stat -c %Z $ctf)
+            ((rte-cte>3600))&&{
+                (touch $ctf) 2>/dev/null
+            }
+        else
+            ctf=$(create_hashed_file $hash)
+            cte=0
+        fi
+
+# return if last output less then 1 hour ago
+        if ((rte-cte < 3600)); then
+            rm -f "$clf"
+            return 0
+        fi
+
+## it beginns here:
+
+## machine-id
+        mh "machine-id: $machineid"
+
+        . <(require prompt)
+        mh "prompt: $(prompt 2>&1)"
+
+## os-release
+        # /etc/os-release
+        if [ -f /etc/os-release ]||[ -f /usr/lib/os-release ]; then
+            . <(require dist/os_release)
+            local os_release
+            [ -f /etc/os-release ]&&os_release="/etc/os-release"||os_release="/usr/lib/os-release"
+            if echo "$OS_ID" | grep -Eqsw "(ubuntu|debian|raspian)"; then
+                mh "os-release: $OS_NAME $OS_VERSION"
+            else
+                local -a osrelease
+                mapfile -t osrelease < $os_release
+                for i in ${!osrelease[@]}; do mh "os-release - $(printf '%02d' $((i+1))): ${osrelease[i]}"; done
+            fi
+        fi
+
+## locales
+        # localectl status
+        if which localectl >/dev/null; then
+            local -a localestatus
+            mapfile -t localestatus< <(localectl status 2>&1)
+            for i in ${!localestatus[@]}; do mh "localectl status - $((i+1)): ${localestatus[i]}"; done
+        fi
+
+## hostname
+        # /etc/hostname
+        if [ -f /etc/hostname ]; then
+            mh "/etc/hostname: $(< /etc/hostname)"
+        fi
+        # hostname -A, hostname -I
+        if which hostname >/dev/null; then
+            mh "hostname -A: $(hostname -A 2>&1)"
+            mh "hostname -I: $(hostname -I 2>&1)"
+        fi
+
+## user
+        # $USER
+        [ -z "$USER" ] || mh "\$USER: $USER"
+        # $SUDO_USER
+        [ -z "$SUDO_USER" ] || mh "\$SUDO_USER: $SUDO_USER"
+        # id
+        mh "id -a: $(id -a 2>&1)"
+
+## who
+        if which who >/dev/null; then
+            local -a who_all
+            mapfile -t who_all< <(env LC_MESSAGES=C who 2>&1)
+            for i in ${!who_all[@]}; do
+                mh "who - $(printf '%02d' $((i+1))): ${who_all[i]}"
+            done
+        fi
+
+## uptime
+        if which uptime >/dev/null; then
+            mh "uptime: $(uptime 2>&1)"
+        fi
+
+## lscpu
+        if which lscpu >/dev/null; then
+            local -a lscpu
+            mapfile -t lscpu< <(env LC_MESSAGES=C lscpu 2>&1 | grep -iv "not affected")
+            for i in ${!lscpu[@]}; do
+                mh "lscpu - $(printf '%02d' $((i+1))): ${lscpu[i]}"
+            done
+        fi
+
+## free
+        if which free >/dev/null; then
+            local -a free_hwt
+            mapfile -t free_hwt< <(env LC_MESSAGES=C free -hwt 2>&1)
+            for i in ${!free_hwt[@]}; do
+                mh "free - $(printf '%02d' $((i+1))): ${free_hwt[i]}"
+            done
+        fi
+
+## root stuff
+        if (( $(id -u) == 0 )); then
+## SELinux
+            if which sestatus >/dev/null; then
+                if [ "$(sestatus | awk '{print $NF}')" != "disabled" ]; then
+                    local -a selinuxstatus selinuxbooleans
+                    mapfile -t selinuxstatus< <(sestatus -v 2>&1)
+                    for i in ${!selinuxstatus[@]}; do mh "sestatus -v - $(printf '%02d' $((i+1))): ${selinuxstatus[i]}"; done
+                    mapfile -t selinuxbooleans< <(sestatus -b 2>&1)
+                    for i in ${!selinuxbooleans[@]}; do mh "sestatus -b - $(printf '%02d' $((i+1))): ${selinuxbooleans[i]}"; done
+                    mh "id -Z: $(id -Z 2>&1)"
+                fi
+            fi
+
+## AppArmor
+            if which aa-status >/dev/null; then
+                local -a aastatus
+                mapfile -t aastatus< <(aa-status 2>&1)
+                for i in ${!aastatus[@]}; do mh "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
+            fi
+
+## dmidecode
+            if which dmidecode >/dev/null; then
+                local -a dmidecode
+                mapfile -t dmidecode< <(dmidecode -qt 1,11 2>&1 | grep -v "^$")
+                for i in ${!dmidecode[@]}; do
+                    mh "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
+                done
+            fi
+
+## Hypervisor
+            local hypervisor
+            hypervisor="$(dmesg -t 2>&1 | awk 'tolower($0) ~ /^hypervisor/ {print $NF}')"
+            [ -z "$hypervisor" ] || mh "hypervisor: $hypervisor"
+        fi
+
+        local leftstring
+        if $testing; then
+            leftstring="php-module-builder php-module-builder-test php-updater php-updater-test"
+        else
+            leftstring="php-module-builder php-updater"
+        fi
+
+        if [[ " $leftstring " =~ " $bm " ]]; then
+## dpkg
+        # dpkg (debian) based like architecture apt sources
+            if which dpkg >/dev/null; then
+                local -a foreign_architectures
+                dpkg_version="$(env LC_MESSAGES=C dpkg --version 2>/dev/null | grep -oP '\d+(\.\d+){1,3} \(\S+\)')"
+                [ -z "$dpkg_version" ] || mh "dpkg --version: $dpkg_version"
+                mh "apt --version: $(apt --version 2>&1)"
+                mh "dpkg --print-architecture: $(dpkg --print-architecture 2>&1)"
+                mapfile -t foreign_architectures< <(dpkg --print-foreign-architectures 2>&1)
+                if (( ${#foreign_architectures[@]} )); then
+                    for i in ${!foreign_architectures[@]}; do mh "dpkg --print-foreign-architectures $((i+1)): ${foreign_architectures[i]}"; done
+                fi
+
+            # apt sources
+                if [ -d /var/lib/apt/lists ]; then
+                    local -a aptsources aptsourcesfiles
+                    mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_Packages.*$//;s/-deb.*$//;s/_dists/ /;s/_binary-/ /')")
+                    for i in ${!aptsources[@]}; do mh "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|sed 's/\(.*\)\/\(.*\)/\1 \2/')"; done
+
+            # apt sources files
+                    mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_dists.*$//')")
+        #        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|grep -v ':\s*#'|grep -E "*.(list|sources)\:"|awk -F':' '{print $1}'; done))
+                    mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|awk -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
+                    for i in ${!aptsourcesfiles[@]}; do mh "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; done
+                fi
+
+            fi
+
+## php
+        # sury
+            . <(require php/sury)
+            local sury
+            local -i sury_r
+            sury="$(sury)"
+            sury_r=$?
+            mh "sury: r=$sury_r, $sury"
+
+        # php-version
+            if which php >/dev/null; then
+                . <(require php/version)
+                mh "php-version: php$(php_ver)"
+            else
+                mh "php-version: no php binary detected"
+            fi
+
+            mh_selections distinf
+
+        # php candidates
+            if which apt-cache >/dev/null; then
+                local phpvregex
+                local -a candidates
+                phpvregex='php(5\.6|7\.[01234]|8\.[0123])'
+                mapfile -t candidates< <(env LC_MESSAGES=C apt-cache search "^$phpvregex$"|awk '{print substr($1,4,3)}'|sort -ru)
+                mh "php-candidates: ${candidates[@]}"
+            fi
+
+        # installed php packages
+            . <(require php/extensions)
+            populate_pkgs_by_dpkg_array
+            for i in ${!PKGS_BY_DPKG[@]}; do
+                mh "PHP Package-$(printf '%02d' $((i+1))): $( echo ${PKGS_BY_DPKG[i]} 2>&1|awk -F'/' '{print $1 " " $2}')"
+            done
+            . <(require php/fpm)
+            local -a fpm_pools
+            mapfile -t fpm_pools< <(fpm_ps_info brief 2>&1)
+            for i in ${!fpm_pools[@]}; do
+                mh "PHP-FPM pool-$(printf '%02d' $((i+1))): ${fpm_pools[i]}"
+            done
+
+        # pecl
+        if which pecl >/dev/null; then
+            local -a pecl_list
+            mapfile -t pecl_list< <(pecl list 2>&1|sort -u)
+            for i in ${!pecl_list[@]}; do
+                if [[ "$(trim "${pecl_list[i]}")" ]]; then
+                    mh "pecl list $(printf '%02d' $((i+1))): ${pecl_list[i]}"
+                fi
+            done
+        fi
+
+        fi # End " php-module-builder php-updater "
+
+        . <(require httpd)
+        populate_httpd_ nextcloud
+        mh "nextcloud-httpd: $HTTPD_NEXTCLOUD"
+        populate_httpd_ nc-dir
+        for i in "${!HTTPD_NC_DIR[@]}"; do mh "nc-dir-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NC_DIR[i]}"; done
+        populate_httpd_ known
+        for i in "${!HTTPD_KNOWN[@]}"; do mh "known-httpd - $(printf '%02d' $((i+1))): ${HTTPD_KNOWN[i]}"; done
+        populate_httpd_ active
+        for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
+        populate_httpd_ all
+        for i in "${!HTTPD_ALL[@]}"; do mh "all-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ALL[i]}"; done
+
+        rm -f "$clf"
+        return 0
+    }
+    if ! (( $(id -u) )); then
+        if $testing; then
+            [[ " $leftstring_test " =~ " $bm " ]]&&distinf &
+        else
+            [[ " $leftstring_notest " =~ " $bm " ]]&&distinf &
+        fi
+    fi
+
+}

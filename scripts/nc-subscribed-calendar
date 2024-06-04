@@ -1,0 +1,56 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "gpg#gnupg#GNU Privacy Guard"
+    "jq#jq#command-line JSON processor"
+)
+modules=(
+    basics sed tempfile ansi button exit anykey line array sudo ask dependency
+    vdir integrity nc/nextcloud nc/nextcloud_db $sin/functions
+)
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+
+### general (minified)
+__general__
+## include bashmodules (minified) ->
+__module_builder__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+## void
+f
+B;echo "This script looks up for subscribed calendars in the database of your nextcloud"
+echo "and it gives you the means to set an individual refreshrate per calendar";N
+
+#set -x
+if (($(count_calendarsubscriptions)));then
+    capture_user_id
+    list_calendars "$user_id"
+    capture_calendar_id "$user_id"
+    list_examples
+    capture_refreshrate
+    enter_yes
+    update_refreshrate $cal_id $refreshrate
+    final_message
+else
+    echo "There ain't no subscribed calendars in database"
+fi
+exit0
+

@@ -1,0 +1,91 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${NEXTCLOUD_DB_BASHLIB:-false} && return 0 || {
+    NEXTCLOUD_DB_BASHLIB=:
+
+    . <(require ansi)
+    . <(require nc/nextcloud)
+
+    # Database globals:
+    declare DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY dc=false
+
+    database_call(){
+        $dc && return 0
+        local html=$1 configkey db_utf8mb4 dcs
+        for configkey in type:dbtype host:dbhost user:dbuser pass:dbpassword name:dbname pref:dbtableprefix; do
+            local db_${configkey%:*}=$(nc_configkey ${configkey#*:})
+        done
+        DB_TYPE=${db_type%sql} DB_PREF=$db_pref
+        db_host="$(echo $db_host|sed 's/localhost.*/localhost/')"
+        case $DB_TYPE in
+            my) local my_cnf=$(tf)
+                echo -e "[client]\nhost=$db_host\nuser=$db_user\npassword=$db_pass">$my_cnf
+                db_utf8mb4=$(nc_configkey mysql.utf8mb4)
+                if ${db_utf8mb4:-false}; then
+                    dcs="utf8mb4"
+                else
+                    dcs="utf8"
+                fi
+                DB_STRG="mysql --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
+                DB_EXEC="--execute="
+                DB_RAW="-srN"
+                DB_U2T="FROM_UNIXTIME"
+                DB_UT2TS="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
+                TYPE_SQL_QUERY="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
+                ;;
+            pg) export PGPASSWORD=$db_pass
+                DB_STRG="psql --user=$db_user --host=$db_host $html -d $db_name"
+                DB_EXEC="--command="
+                DB_RAW="-At"
+                DB_U2T="TO_TIMESTAMP"
+                DB_UT2TS="TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')"
+#                DB_UT2TS=$(format "TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')")
+                TYPE_SQL_QUERY="REVERSE(SUBSTRING(REVERSE(principaluri) FROM 1 FOR POSITION('/' IN REVERSE(principaluri)) - 1))"
+                ;;
+             *) echo "$(Pbg) * Only mysql or pgsql as database, $db_type is not (yet) supported by this script $(N)"
+                exit 0
+        esac
+        dc=true
+    }
+
+    is_app_enabled(){
+        database_call
+        if [ "$($DB_STRG $DB_RAW $DB_EXEC"SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = '$1' AND configkey = 'enabled'")" = yes ]; then
+            return 0
+        else
+            return 1
+        fi
+    }
+
+    # returns true or false
+    user_exists(){
+        database_call
+        local user="$1" query
+        query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN 'true' ELSE 'false' END"
+        $DB_STRG $DB_RAW $DB_EXEC"$query"
+    }
+
+    # returns uid in corrected case
+    check_username_case(){
+        database_call
+        local user="$1" query
+        query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN (SELECT uid FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) END"
+        $DB_STRG $DB_RAW $DB_EXEC"$query"
+    }
+
+    # returnns true if user disabled, else false
+    user_disabled(){
+        database_call
+        local user="$1" query
+        query="SELECT CASE WHEN (SELECT configvalue FROM ${DB_PREF}preferences WHERE userid = '$user' AND appid = 'core' AND configkey = 'enabled') = 'false' THEN 'true' ELSE 'false' END"
+        $DB_STRG $DB_RAW $DB_EXEC"$query"
+    }
+
+}

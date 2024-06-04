@@ -1,0 +1,34 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${PROMPT_BASHLIB:-false} && return 0 || {
+    PROMPT_BASHLIB=:
+
+    prompt(){
+        local -i r=0
+        if (( $(id -u) )); then
+            if [[ "$(id -Gn) " =~ " sudo " ]]; then
+                echo -n "$USER@${HOSTNAME:-hostname}:~$"
+            elif [ "$1" = "-su" ]; then
+                echo -n "user_with_sudo_rights@${HOSTNAME:-hostname}:~$"
+            else
+                echo -n "$USER@${HOSTNAME:-hostname}:~$"
+            fi
+        else
+            if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" = 'root' ]; then
+                echo -n "root@${HOSTNAME:-hostname}:~#"
+                r=1
+            else
+                echo -n "$SUDO_USER@${HOSTNAME:-hostname}:~$"
+            fi
+        fi
+        return $r
+    }
+
+}

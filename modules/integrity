@@ -1,0 +1,125 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${INTEGRITY_BASHLIB:-false} && return 0 || {
+    INTEGRITY_BASHLIB=:
+
+    . <(require basics)
+    . <(require sed)
+    . <(require ansi)
+    . <(require exit)
+    . <(require tempfile)
+    . <(require line)
+    . <(require sudo)
+    . <(require vdir)
+
+
+    public_key(){
+        cat << PUBLIC_KEY_ASC
+-----BEGIN PGP PUBLIC KEY BLOCK-----
+
+mQINBGSXjUIBEADbt4/706Fw6YNHMPwHT+qtq4ZxJCdUclzovEnCvECtylYCK1M5
+TNpM4CQH9eNVhpyav8Wfi0aZZFwoTX+z7+xCfYcPAGZ1N7rBBIYDxwu59S65zWz6
+04Lm/P0E3FQ9RM80x8HelA9QYA+Y2hBvPjySrK2w2dQRm+L3K114Phg2j2UQKxxh
+2mwEOg/FP35YIMJYiS2QIsOKvfVi7df6UqOMy0aSsgD38NwV+aok9Of3cvKqKsBr
+mQseIFewLd9W7qjGvtHFZfncPDak49zdnOLBNGutj2McknVevAK9AznQ+q3hqBbo
+8tJT8O8XfjSeqf1dYj31H0Q5jY54kJN9NyP57MGLDtfEmKcwEwEYVkY/xt1Uq64K
+9Dj+WxJAczWs/6jZN9bou32/2StIF/wvkvw2GxF8H6kWue1zD9sa7A/xv9WHLy8M
+tHjz9Klcjz2OcsGL6JXk0ro6ySsE7EjTm3LyGdBQsRqe/JHjvmUgUREJxuXW7B3e
+NVdz/OyHX0P2+6hmcsy9CVdxocI6ntUo0/KdoSxdWSIn4k50ywHiqsVYo4QwDzR+
+4yBtcZz+Lp8C9Fs1GWMJ5FlGGfOlLhl3Z7lPO/7j5Tlys/6ZzREBByMNX2lNX6QY
+SN8P+vGbjvGiNEp7ATtkkMv9Zc6KfZtaGv6FUutBziLlCPvMxXCPaL8lBQARAQAB
+tE1bZXJub2xmXSBSYXBoYWVsIEdyYWRlbndpdHogKGNvZGVzaWduaW5nKSA8cmFw
+aGFlbC5ncmFkZW53aXR6QGdvb2dsZW1haWwuY29tPokCVAQTAQoAPhYhBD7kOoTS
+umNalOEDOwsUUTmhcHFcBQJkl41CAhsDBQkFo5qABQsJCAcCBhUKCQgLAgQWAgMB
+Ah4BAheAAAoJEAsUUTmhcHFcjfUP/igMNwF8jd97Uslvz4U/2msaUdEEKinOzejZ
+LN6PrZOcsjGijAs+4UfepPxTShqW3gBIhUNK3Ox4D8WBs36l1H86fbHnXAOHyS7S
+qPOaqpUsSMW3cxt17k7FtXMCROvQWXfOu/vIJ2Nfz8yXyyGxoDLxwRLy3sVsf634
++D2F4Dg4rNs6S44yjPWIWmabXDAgqrD7pCRSw+H3tIXCf8fAgx619DioCv8HDKAZ
+tC0FzOA9rB9OGrXG2DZAOlocIxAvzuEOr3zN33i41j7Vk1Nsbd1mMkJJmSy6AdqD
+RKwLBI/iC8aK4BHBI7O8xXQNT/9BcrSUux1Q751cS61utQVqBVtGFkewRsNvWptP
+qBhNWRftkbev14K0hTGNGC9dK/qKxk+Bkl2GmmYbNnrdFtt0uSZZxAnd/5B4u8X4
+DyUzoCq5SrGJ5LCoGjlUd5TmPUGCZR8gBl+S27URWXSf8ULmBAILcQudm0Eg+l6m
+wt/fw/zM12qd2q8K9JutMw5wDZAYsXen5qb6LljA0F9mhVvrEsrf1ll2X9XbZvXe
+wMVBD9xFEjIAVYCph4A1mkunkyBHVF4CwICxxehecRGrT73xyTVa0+7XDM9C+xWn
+Le6J7RWkwvTfGz3AByNLB1OY3fcpO3z0NNAW/S5fVFFoOHyxityOhDruMCU42Qr4
+YP2ebH/z
+=PJji
+-----END PGP PUBLIC KEY BLOCK-----
+PUBLIC_KEY_ASC
+    }
+
+    integrity_check(){
+        local -i r=1
+        local key mail aut itf="$(tf)" vtf="$(tf)" vdir ddir shash ehash
+        key="$(sed -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
+        mail="$(sed -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
+        aut="$(sed -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
+        su_root "to run the integrity check" integrity_check
+        delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$ca_me" "$itf"
+        if [ -n "$vdirname" ]; then
+            vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
+            [ "$vdir" != "$ddir" ] && setvdir v d "$itf"
+        fi
+        shash="$(sha256sum "$itf" | awk '{print $1}')"
+        ehash="$(tail -n1 "$ca_me" | awk '{print $NF}')"
+        line '=' P 5/75
+        if [ "$shash" != "$ehash" ]; then
+            o5;R;echo "- Wrong hash, looks like script has been tampered with!"
+            line '-' P 5/75
+        fi
+        gpg --list-keys|grep -qs "$key"||gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key" 2>/dev/null
+        gpg --list-keys|grep -qs "$key"||gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" 2>/dev/null
+        gpg --list-keys|grep -qs "$key"||public_key|gpg --import 2>/dev/null
+        gpg --list-keys|grep -qs "$key"||{
+            o5;R;echo "- import of public key failed."
+            qpf;ask "Continue at own risk without check?" $NO&&{
+                sed -i 's/^v=false$/v=true/' "$ca_me"
+                return 0
+            }
+        }
+        gpg --verify "$ca_me" "$itf">"$vtf" 2>&1
+        r=$?
+        grep "$key" "$vtf"
+        grep "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
+        line '-' P 5/75
+        if (( r )); then
+            o5;R;echo "- Integrity check $(blinkR)failed$(R). The script may have been modified or tampered with!"
+            line '-' P 5/75
+            o5;B;echo "You should run:"
+            o5;GRAY;echo "sudo wget -O $ca_me $my_url"
+            o5;B;echo "to fix this.";N
+        else
+            o5;lG;echo "Integrity check passed. The script is authentic.";N
+            sed -i 's/^v=false$/v=true/' "$ca_me"
+        fi
+        line '=' P 5/75
+        (( r )) || anykey
+        return $r
+    }
+
+    if $do_integrity_check; then
+        if integrity_check; then
+            $me "json='$my_json'" $my_args
+            exit 0
+        fi
+    fi
+    declare "$(tail -n2 "$ca_me" | head -n1)"
+    if ! $v; then
+        f
+        o5;B;echo "First run, checking integrity:"
+        if integrity_check; then
+            $me "json='$my_json'" $my_args
+            exit 0
+        else
+            exit1
+        fi
+    fi
+
+}

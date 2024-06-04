@@ -1,0 +1,171 @@
+# Makefile for compilation, editing, and installation of Bash scripts and modules
+
+include config/configure
+
+AUTOR = ernolf
+
+PROJECT = ebtb
+
+# Default directory
+PREFIX ?= /usr/local
+
+# Bindir for scripts
+BINDIR = $(PREFIX)/bin
+
+# Include directory for modules
+INCLUDEDIR = $(PREFIX)/include/$(AUTOR)
+
+# Directory for scripts
+SCRIPTS_DIR = scripts
+
+# Directory for modules
+MODULES_DIR = modules
+
+# Directory for tools
+TOOLS_DIR = tools
+
+# Directory for the build process
+BUILD_DIR = build
+
+# Directory for the script build process
+SBUILD_DIR = $(BUILD_DIR)/scripts
+
+# Directory for the module build process
+MBUILD_DIR = $(BUILD_DIR)/modules
+
+# Default goal
+.DEFAULT_GOAL := help
+
+# List of scripts
+SCRIPTS_BASE = $(notdir $(basename $(wildcard $(SCRIPTS_DIR)/*)))
+
+# List of modules
+MODULES_REL = $(shell find $(MODULES_DIR) -type f | sed 's|$(MODULES_DIR)/||')
+MODULES = $(patsubst %,$(MBUILD_DIR)/%,$(MODULES_REL))
+
+# Help message
+help:
+	@echo "Usage:"
+	@echo "  make <script_name>                    - Build normal script"
+	@echo "  make test SCRIPT_NAME=<script_name>   - Build test script"
+	@echo "  make all-prod                         - Build all scripts"
+	@echo "  make all-test                         - Build all test scripts"
+	@echo "  make and-install-all-scripts          - Build and install all scripts"
+	@echo "  make install-builts                   - Install only the scripts built in the build directory"
+	@echo "  make install-modules                  - Install built modules"
+	@echo "  make uninstall                        - Uninstall scripts"
+	@echo "  make sign-and-release-scripts         - Sign and upload scripts to the webserver"
+	@echo "  make <module_name>                    - Build specific module"
+	@echo "  make module MODULE_NAME=<module_name> - Build specific module (very stable version)"
+	@echo "  make modules                          - Build all modules"
+	@echo "  make sign-and-release-modules         - Sign and upload modules to the webserver"
+	@echo "  make sign-and-release-test-modules    - Sign and upload test-modules to the webserver"
+	@echo "  make clean                            - Clean build directory"
+
+# Set the executable bit for all files in the tools/ directory
+.PHONY: set-executable
+set-executable:
+	@echo "Setting executable flag for files in tools/ directory..."
+	chmod +x tools/*
+	@echo "Done."
+
+# Build a normal script
+$(SBUILD_DIR)/%: $(SCRIPTS_DIR)/% | set-executable
+	mkdir -p $(SBUILD_DIR)
+	$(TOOLS_DIR)/build_script $< $@
+
+$(SCRIPTS_BASE): % : $(SBUILD_DIR)/%
+
+# Build all scripts without test format with 'make all-prod'
+.PHONY: all-prod
+all-prod: $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%) set-executable
+
+$(SBUILD_DIR)/%: $(SCRIPTS_DIR)/%
+	mkdir -p $(SBUILD_DIR)
+	$(TOOLS_DIR)/build_script $< $@
+
+# Build a test script with 'make test SCRIPT_NAME=<script_name>'
+.PHONY: test
+test: set-executable
+	mkdir -p $(SBUILD_DIR)
+	$(TOOLS_DIR)/build_script $(SCRIPTS_DIR)/$(SCRIPT_NAME) $(SBUILD_DIR)/$(SCRIPT_NAME)-test test
+
+# Build all test scripts with 'make all-test'
+.PHONY: all-test
+all-test: $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%-test) set-executable
+
+$(SBUILD_DIR)/%-test: $(SCRIPTS_DIR)/%
+	mkdir -p $(SBUILD_DIR)
+	$(TOOLS_DIR)/build_script $< $@ test
+
+# Make and install all scripts (not test)
+.PHONY: and-install-all-scripts
+and-install-all-scripts: $(addprefix $(SBUILD_DIR)/,$(SCRIPTS_BASE))
+	mkdir -p $(BINDIR)
+	cp $^ $(BINDIR)
+	chmod +x $(addprefix $(BINDIR)/,$(notdir $^))
+
+# Install only the scripts built in the build directory
+.PHONY: install-builts
+install-builts: $(wildcard $(SBUILD_DIR)/*)
+	mkdir -p $(BINDIR)
+	cp $^ $(BINDIR)
+	chmod +x $(addprefix $(BINDIR)/,$(notdir $^))
+
+# Uninstall scripts
+.PHONY: uninstall
+uninstall:
+	rm -f $(addprefix $(BINDIR)/,$(SCRIPTS_BASE))
+	rm -f $(addprefix $(BINDIR)/,$(addsuffix -test,$(SCRIPTS_BASE)))
+
+# Install and sign scripts
+.PHONY: sign-and-release-scripts
+sign-and-release-scripts: $(wildcard $(SBUILD_DIR)/*)
+	@echo "Signing and uploading scripts to nextcloud webserver..."
+	$(TOOLS_DIR)/sign_script $^
+
+# Build a module
+$(MBUILD_DIR)/%: $(MODULES_DIR)/% | set-executable
+	mkdir -p $(dir $@)
+	$(TOOLS_DIR)/build_module $< $@
+
+# Build a module with 'make $modulename'
+$(MODULES_REL): % : $(MBUILD_DIR)/%
+
+# Build all modules with 'make modules'
+.PHONY: modules
+modules: $(MODULES) set-executable
+
+# Build a specific module with 'make module MODULE_NAME=<module_name>'
+.PHONY: module
+module: set-executable
+	mkdir -p $(dir $(MBUILD_DIR)/$(MODULE_NAME))
+	$(TOOLS_DIR)/build_module $(MODULES_DIR)/$(MODULE_NAME) $(MBUILD_DIR)/$(MODULE_NAME)
+
+# Install built modules to INCLUDEDIR/test
+.PHONY: install-modules
+install-modules: $(MODULES)
+	@echo "Installing modules to $(INCLUDEDIR)/test..."
+	mkdir -p $(INCLUDEDIR)/test
+	cp -r $(MBUILD_DIR)/* $(INCLUDEDIR)/test
+	@echo "Done."
+
+# Install and sign modules
+.PHONY: sign-and-release-modules
+sign-and-release-modules: $(wildcard $(SBUILD_DIR)/*)
+	@echo "Signing and uploading scripts to nextcloud webserver..."
+	$(TOOLS_DIR)/sign_module -t2p
+
+# Install and sign modules
+.PHONY: sign-and-release-test-modules
+sign-and-release-test-modules: $(wildcard $(SBUILD_DIR)/*)
+	@echo "Signing and uploading scripts to nextcloud webserver..."
+	$(TOOLS_DIR)/sign_module -t2t
+
+# Clean the build directory
+.PHONY: clean
+clean:
+	@echo "Cleaning up..."
+	rm -rf $(BUILD_DIR)
+	@echo "Done."
+

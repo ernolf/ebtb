@@ -1,0 +1,304 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "less#less#A terminal pager similar to more"
+    "curl#curl#Command line file transfer tool with URL syntax"
+    "gpg#gnupg#GNU Privacy Guard"
+    "xmlstarlet#xmlstarlet#Command line XML toolkit"
+    "jq#jq#Command line JSON processor"
+    "sqlite3#sqlite3#Command line interface for SQLite 3"
+)
+modules=(
+    basics sed tempfile ansi button exit spinner anykey line array ask sudo
+    dependency vdir integrity php/version nc/nextcloud xml $sin/github_api
+    $sin/app_update $sin/filters $sin/db $sin/appstore $sin/data_refine
+    $sin/assumed_version $sin/list $sin/install_overwrite $sin/help
+)
+
+# use parallel running background jobs in order to dramatically increase speed
+#declare bgjobs=false debug=true pager
+#declare bgjobs=false debug=false pager
+declare bgjobs=true debug=false pager
+$bgjobs&&{ [[ -t 1&&! -p /dev/stdout ]]&&pager=false||pager=true;} # is piped to pager?
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+
+### general (minified)
+__general__
+## include bashmodules (minified) ->
+__module_builder__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+all_apps(){
+    stock_up_arrays filtered_appstore=true
+    local s=false ns=false up=false
+    local -a args
+$debug&&echo "$LINENO $*"
+$debug&&set -x
+    while (($#));do
+        case $1 in
+            shipped)
+                s=true
+                shift;;
+            not_shipped)
+                ns=true
+                shift;;
+            updatable)
+                up=true
+                shift;;
+            enabled|disabled|local|store|all)
+                all_endis=$1
+                shift;;
+            *)  args+=("$1")
+                shift
+        esac
+    done
+    $s||$up&&[ "$all_endis" = all -o "$all_endis" = store ]&&all_endis=local
+    for app in $(apps_ $all_endis);do
+        if $s;then # shellcheck disable=SC2068 # only list the shipped apps
+            is_shipped_ "$app" -q&&list $app ${args[@]}
+        elif $ns;then # shellcheck disable=SC2068 # only list the not shipped apps
+            is_shipped_ "$app" -q||list $app ${args[@]}
+        elif $up;then # shellcheck disable=SC2068 # only list the updatable apps
+            echo ${availupd[@]%%#*}|grep -qsw "$app"&&list $app ${args[@]}
+        else # shellcheck disable=SC2068 # list all apps
+            list $app ${args[@]}
+        fi
+    done
+}
+
+# shellcheck disable=SC2068
+shipped(){ all_apps shipped $@;}
+# shellcheck disable=SC2068
+not_shipped(){ all_apps not_shipped $@;}
+# shellcheck disable=SC2068
+updatable(){ all_apps updatable $@;}
+
+id(){ stock_up_arrays filtered_appstore=true all=true;local app
+     # shellcheck disable=SC2068
+#    for app in $(apps_ all);do echo $app|grep -iqs "$app_id"&&list $app $@ use_json_all=true;done
+    for app in $(apps_ all);do [[ "$app" =~ $app_id ]]&&list $app $@ use_json_all=true;done
+}
+
+ids(){ stock_up_arrays filtered_appstore=true all=true;local -i i
+    for i in ${!app_ids[@]};do list ${app_ids[i]} $@ use_json_all=true;done
+}
+
+name(){ stock_up_arrays filtered_appstore=true all=true
+    build_id_name_array(){ local app xml_f name tmp=$1;shift
+        appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id"|jq -r >> $tmp
+        for app in $(apps_ all);do
+            if ! grep -qsw "$app" $tmp;then
+                xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
+                if [ -f "$xml_f" ];then
+                    name=$(xmls -v "(//info/name)" "$xml_f"|sed '2,$d')
+                    echo "$name"|grep -iqs "$*"&&echo "$app" >> $tmp
+                fi
+            fi
+        done
+    }
+    local n_tmp=$(tf)
+    echo "$(GRAY) . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . .$(N)"
+    spinner &
+    build_id_name_array $n_tmp "$app_name" & job_id=$!
+    wait $job_id
+    mapfile id_name_array < $n_tmp
+    kill_spinner
+     # shellcheck disable=SC2068
+    for app in "${id_name_array[@]}";do list $app $@ use_json_all=true;done
+}
+
+update(){ local -a args
+    stock_up_arrays filtered_appstore=true
+    while (($#));do
+        case $1 in
+            enabled|disabled|local|all) all_endis=$1;shift;;
+            *) args+=("$1");shift
+        esac
+    done
+    for app in $(apps_ $all_endis);do
+        echo ${availupd[@]%%#*}|grep -qsw "$app"&&do_update_ $app "${args[@]}"
+    done
+}
+
+declare lang=$(echo "$LANG"|cut -d'_' -f1)
+
+declare nc_version_long nc_version nc_key nc_version_string nc_version_tag nc_lowest nc_min_version nc_max_eol nc_master
+nc_version_long="$(nc_version_ long "$NC_DIR/version.php")"
+nc_version="$(nc_version_ short "$NC_DIR/version.php")"
+nc_key="$(nc_version_ key "$NC_DIR/version.php")"
+nc_version_string="$(nc_version_ string "$NC_DIR/version.php")"
+nc_version_tag="$(tolower "${nc_version_string// /}")"
+nc_lowest="$(lowest_eol)"
+nc_min_version="$nc_lowest"
+nc_max_eol="$(highest_eol)"
+
+if echo $(r_db .tables;) | grep -qs "database_created"; then
+    database_created=true
+fi
+
+# first search for options --nopager --markdown secondrun lang=xx, --(un)supported and remove from @() array
+# and then add the remaining arguments into the new array
+declare secondrun=false nopager=false markdown=false supported=false unsupported=false use_json_all=false update_first=false allow_unstable=false
+args=()
+for arg in "$@";do
+    if [ "$arg" = "secondrun" ];then secondrun=true
+    elif [ "${arg%=*}" = "lang" ];then declare ${arg}
+    elif [ "$arg" = "--nopager" ];then nopager=true
+    elif [ "$arg" = "--no_pager" ];then nopager=true
+    elif [ "$arg" = "--no-pager" ];then nopager=true
+    elif [ "$arg" = "--markdown" ];then markdown=true
+    elif [ "$arg" = "--md" ];then markdown=true
+    elif [ "$arg" = "--supported" ];then supported=true
+    elif [ "$arg" = "--unsupported" ];then unsupported=true use_json_all=true
+    elif [ "$arg" = "--alt" ];then use_json_all=true
+    elif [ "$arg" = "-u" ];then update_first=true
+    elif [ "$arg" = "--update_first" ];then update_first=true
+    elif [ "$arg" = "--update-first" ];then update_first=true
+    elif [ "$arg" = "--allow_unstable" ];then allow_unstable=true
+    elif [ "$arg" = "--allow-unstable" ];then allow_unstable=true
+    elif [ "${arg%=*}" = "version" ];then declare nc_${arg}
+    elif [ "${arg%=*}" = "min_version" ];then declare nc_${arg}
+    elif [ "$arg" = "rebuild_db" ];then $database_created&&rebuild_db
+    elif [ "$arg" = "rebuild-db" ];then $database_created&&rebuild_db
+    elif [ "$arg" = "--rebuild_db" ];then $database_created&&rebuild_db
+    elif [ "$arg" = "--rebuild-db" ];then $database_created&&rebuild_db
+    else args+=("$arg")
+    fi
+done
+set -- "${args[@]}"&&unset -v args
+
+shopt -s extglob
+while (($#));do
+    case $1 in
+        appstore)
+            shift
+            appstore platform=all "$@"
+            break 2
+            ;;
+        install_overwrite)
+            database_created=true nopager=true command=$1
+            $update_first&&command="$1 -u"
+            $update_first&&$allow_unstable&&command="$1 -u --allow-unstable"
+            break 2
+            ;;
+        ?(not_)shipped|all_apps|updat@(e|able))
+            case $1 in shipped|updat@(e|able)) supported=false unsupported=false; esac
+            case $2 in
+                ?(en|dis)abled|local|store|all) command="$1 $2"
+                                    shift 2
+                                    ;;
+                *)                  command="$1 enabled"
+                                    shift
+            esac
+            $allow_unstable&&[[ "$command" =~ update ]]&&command="$command --allow-unstable"
+            ;;
+        @(name|id)=+([a-zA-Z0-9-_ ]))
+            command=${1%=*}
+            declare app_${1%=*}="${1#*=}"
+            nopager=true
+#            use_json_all=true
+            shift
+            ;;
+        ids)
+            command=$1
+            shift
+            declare -a app_ids
+            app_ids=("${@}")
+            nopager=true
+            break 2
+            ;;
+#        version=[1-9]?([0-9]))
+        --min@(_|-)version=*)
+            assumed_version_set ${1#*=} min_
+            shift
+            ;;
+        --version=*)
+            assumed_version_set ${1#*=}
+            shift
+            ;;
+        -H|--filters)
+            command=filters
+            break 2
+            ;;
+        -h|--help)
+            command=print_help
+            $nopager&&command='print_help --cat'
+            break 2
+            ;;
+        --php=*)
+            [[ " ${available_php_versions[*]} " =~ ${1#*=} ]]&&php_version="${1#*=}"||echo "$(Pbg) ERROR: php${1#*=} not found. $(N)"
+            shift
+            ;;
+#        *)  $@
+#            exit 0
+        *)  echo "unknown option $1"
+            print_help
+    esac
+done
+shopt -u extglob
+
+if $supported && $unsupported; then
+    supported=false unsupported=false
+elif $supported; then unsupported=false
+    declare suppunsupp="supp=true"
+elif $unsupported; then supported=false
+    declare suppunsupp="unsupp=true"
+fi
+
+[ "${command:=print_help}" = "print_help" ]&&nopager=true
+[ "${command:=filters}" = "filters" ]&&nopager=true
+# yes, this must be "updat", since it must match with "update" AND "updatable"
+echo $command|grep -qs updat&&nopager=true
+
+# create the database if it does not exist
+$database_created||create_database
+
+if $secondrun||${nopager:=false};then
+    line '-' GRAY 80 b1
+    printf "command = \"$command\""
+    [ "$command" = "name" ]&&printf ", app_name = \"$app_name\""
+    [ "$command" = "id" ]&&printf ", app_id = \"$app_id\""
+    $supported&&printf ", only supported"
+    $unsupported&&printf ", only unsupported"
+    printf ", markdown = $markdown"
+    printf ", nopager = "
+    $secondrun&&printf "false"||printf "$nopager"
+    echo ", lang = $lang"
+    echo "Versions: assumed = $nc_version, is = $nc_version_long, min = $nc_min_version, php = $(php_ver)"
+    line '-' GRAY 80
+    line '=' N 80
+    $markdown&&command="$command md=true"
+    $command $suppunsupp
+else
+    if $supported; then
+        $me secondrun lang=$lang --supported --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+    elif $unsupported; then
+        $me secondrun lang=$lang --unsupported --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+#    elif $use_json_all; then
+#        $me secondrun lang=$lang --alt --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+    else
+        $me secondrun lang=$lang --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+    fi
+    exit 0
+fi
+
+exit 0
+

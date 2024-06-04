@@ -1,0 +1,41 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${TEMPFILE_BASHLIB:-false} && return 0 || {
+    TEMPFILE_BASHLIB=:
+
+    # tempfile creation $1=u (--dry-run)
+    [ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
+
+    tf(){
+        local arg t u='' chmod=''
+        for arg in $@; do
+            case $arg in
+                u)  u=u ;;
+          666|777)  chmod=$arg
+            esac
+        done
+        t="$(mktemp -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
+#        t="$(mktemp -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
+        if [ -z "$u" ]; then
+#            if [ -n "$SUDO_UID" ] && [ -n "$SUDO_GID" ]; then
+#                chown "$SUDO_UID:$SUDO_GID" "$t"
+#            elif [ -n "$SUDO_UID" ]; then
+#                chown "$SUDO_UID" "$t"
+#            elif [ -n "$SUDO_USER" ]; then
+#                chown "$SUDO_USER" "$t"
+#            fi
+            if [ -n "$chmod" ]; then
+                chmod $chmod "$t"
+            fi
+        fi
+        echo "$t"
+    }
+
+}

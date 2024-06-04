@@ -1,0 +1,94 @@
+#!/bin/bash
+
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir
+bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
+[ "$(which "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
+ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+
+cd "$ca_dir/.."
+
+# Source pathes from the configure file
+source config/configure
+# Source the time
+source config/runtime
+
+declare placeholder name mini
+placeholder="$1" name="$2"
+
+mini=true
+
+minify() {
+    if $mini; then 
+        shfmt -mn "$1" |\
+            sed ':a;N;$!ba;s/\\\n//g' |\
+            sed ':a;N;$!ba;s/{\n/{ /g' |\
+            sed ':a;N;$!ba;s/\n/;/g' |\
+            sed 's/ >/>/g' |\
+            sed 's/&;/\&/g' |\
+            sed 's/do;/do /g' |\
+            sed 's/then;/then /g' |\
+            sed 's/else;/else /g'
+    else
+        cat "$1"
+    fi
+}
+
+placeholder_replace(){
+    local placeholder
+    placeholder="$1"
+    case $placeholder in
+        shebang_bash)
+            # https://stackoverflow.com/questions/10376206/what-is-the-preferred-bash-shebang#10383546
+#            echo "#!/usr/bin/env bash"
+            echo "#!/bin/bash"
+            ;;
+        bashlib)
+            echo "# BASHLIB"
+            ;;
+        path_and_scriptname)
+            echo "# $BINDIR/$name"
+            ;;
+        path_and_modulename)
+            echo "# $INCLUDEDIR/${channel:-test}/$name"
+            ;;
+        version_and_datestring)
+            echo "# version $runtime $epoch"
+            ;;
+        copyright)
+            cat "blocks/copyright"
+            ;;
+        license)
+            cat "blocks/license"
+            ;;
+        scriptname)
+            echo "declare scriptname='$name'"
+            echo 'declare sin=${scriptname%-test}'
+            echo "declare -a dependencies modules"
+            ;;
+        when)
+            cat "blocks/when"
+            ;;
+        whoami_whereami)
+            cat "blocks/whoami_whereami"
+            ;;
+        vdirname)
+            cat "blocks/vdirname"
+            ;;
+        general)
+            minify "blocks/general"
+            ;;
+        module_builder)
+            minify "blocks/module_loader"
+            ;;
+        module_integrity)
+            minify "blocks/module_integrity"
+            ;;
+        nextcloud_updater)
+            cat "blocks/nextcloud_updater"
+    esac
+}
+
+placeholder_replace $placeholder
+

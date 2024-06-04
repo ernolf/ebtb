@@ -1,0 +1,19 @@
+declare -a placeholders
+placeholders=(
+    shebang_bash
+    bashlib
+    path_and_scriptname
+    path_and_modulename
+    version_and_datestring
+    copyright
+    license
+    scriptname
+    when
+    whoami_whereami
+    vdirname
+    general
+    module_builder
+    module_integrity
+    nextcloud_updater
+)
+

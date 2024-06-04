@@ -1,0 +1,18 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${XML_BASHLIB:-false} && return 0 || {
+    XML_BASHLIB=:
+
+    # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
+    xmls(){
+        xmlstarlet sel -B -t "$@"
+    }
+
+}

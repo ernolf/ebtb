@@ -1,0 +1,30 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${TODAY_BASHLIB:-false} && return 0 || {
+    TODAY_BASHLIB=:
+
+    # when
+    # today 00:00 in unixtime
+    declare -i today=$(date -d 'today 00:00' +%s)
+
+    # from unix to utc day
+    ut2udF(){
+        date -ud @$1 +%F
+    }
+
+    date2unix0hr(){
+        date -ud "$1 00:00" +%s
+    }
+
+    now(){
+        date +%s
+    }
+
+}

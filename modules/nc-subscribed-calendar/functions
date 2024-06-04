@@ -1,0 +1,161 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${FUNCTIONS_BASHLIB:-false} && return 0 || {
+    FUNCTIONS_BASHLIB=:
+
+    . <(require basics)
+    . <(require exit)
+    . <(require ansi)
+    . <(require line)
+    . <(require nc/nextcloud_db)
+
+    declare user_id cal_id
+    declare -u refreshrate
+
+    # returns if given user has calendar subscriptions
+    user_has_subscribed_calendar(){
+        database_call
+        local user="$1" query
+        query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}calendarsubscriptions WHERE $TYPE_SQL_QUERY = '$user') THEN 'true' ELSE 'false' END"
+        $DB_STRG $DB_RAW $DB_EXEC"$query"
+    }
+
+    # returns total number of calendar subscriptions
+    count_calendarsubscriptions(){
+        database_call
+        local query="SELECT COUNT(*) FROM ${DB_PREF}calendarsubscriptions"
+        $DB_STRG $DB_RAW $DB_EXEC"$query"
+    }
+
+    # returns user_id
+    capture_user_id(){
+        local prompt
+        prompt="$(B)Enter a valid $(Y)user ID$(B), $(GRAY)(without any $(N;W)'$(GRAY) or $(N;W)\"$(GRAY))$(N;B), keep $(C)empty $(B)for $(Y)all$(N)"
+        while :;do
+          # Prompt for user input
+            user_id=''
+            read -p "$prompt ($(q2q))$(B):$(N) " user_id
+            [ "$(tlwr $user_id)" = "q" ]&&nothing_changed
+          # Validate user input
+            if [ -n "$user_id" ]; then
+                [ "$(check_username_case "$user_id")" = 'NULL' ] || user_id=$"$(check_username_case "$user_id")"
+                $(user_exists "$user_id") || { echo "Unknown user \"$user_id\""; continue; }
+                $(user_disabled "$user_id") && { echo "User \"$user_id\" is not an enabled user"; continue; }
+                $(user_has_subscribed_calendar "$user_id") || { echo "User \"$user_id\" ain't have any subscribed calendars"; continue; }
+                return
+            else
+                return
+            fi
+        done
+    }
+
+    list_calendars(){
+        database_call
+        local user="$1" userselect query
+        [ -n "$user" ]&&userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
+        query="SELECT id, $TYPE_SQL_QUERY as user_id, displayname, refreshrate FROM ${DB_PREF}calendarsubscriptions$userselect"
+        $DB_STRG $DB_EXEC"$query"
+    }
+
+    # returns valid_ids
+    list_calendar_ids(){
+        database_call
+        local userselect user="$1" userselect query query_result
+        [ -n "$user" ]&&userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
+        $DB_STRG $DB_RAW $DB_EXEC"SELECT id FROM ${DB_PREF}calendarsubscriptions$userselect"
+    }
+
+    # returns cal_id
+    capture_calendar_id(){
+        local user="$1" choice
+        local -a valid_ids
+        valid_ids=($(list_calendar_ids "$user"))
+    #    read -p "Do you want to change any refreshrates? [y N] " choice
+    #    [ "$(tolower ${choice:-n})" != "y" ]&&{ echo "exiting";exit 0;}
+        while :;do
+          # Prompt for user input
+            cal_id=''
+            read -p "$(B)Enter the $(Y)calendar-id $(B)you want to change$(N) ($(q2q))$(B):$(N) " cal_id
+            [ "$(tlwr $cal_id)" = "q" ]&&nothing_changed
+          # Validate user input
+            if [[ " ${valid_ids[@]} " =~ " $cal_id " ]];then
+                break
+            else
+                echo "$(Pbg)You must enter a calendar id from the listed calendars$(N)"
+            fi
+        done
+    }
+
+    list_examples(){
+        local r1="$(o4;Y)" r2="$(N;o 14;GRAY)-  $(N;C)"
+        line = C 80
+        B;echo "The refreshrate must be a valid $(C)ISO 8601 $(B)duration interval"
+        echo "as described here: $(C)https://www.php.net/manual/dateinterval.construct.php"
+        B;echo "with the limitation that $(Y)Y $(N;GRAY)(year) $(N;B)and $(Y)M $(N;GRAY)(month) $(N;B)are $(R)not $(B)supported.";f
+        echo "  Examples:";N;f
+        echo "${r1}PT5M${r2}every 5 minutes"
+        echo "${r1}PT29M${r2}every 29 minutes"
+        echo "${r1}PT1H${r2}every hour"
+        echo "${r1}PT1H30M${r2}every 1,5 hour"
+        echo "${r1}P4W3DT8H${r2}12 times a year (instead of 'P1M' for every month)"
+        echo "${r1}P13W${r2}4 times a year"
+        echo "${r1}P26W${r2}twice a year (instead of 'P6M')"
+        echo "${r1}P52W${r2}once in a year (instead of 'P1Y')";N;f
+    }
+
+    capture_refreshrate(){
+        local pattern prompt
+        prompt="$(B)Enter the $(Y)refreshrate $(B)you want to set for calendar $(C)$cal_id $(B)or '$(C)NULL$(B)' to unset$(N)"
+        # pattern="^P(?:\d+Y)?(?:\d+M)?(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$"
+        # Nextcloud only accepts a subpart of ISO 8601, it cannot handle M(onth) and Y(ear)
+        # see: 3rdparty/sabre/vobject/lib/DateTimeParser.php, Line 99
+        pattern="^P(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$"
+        while :;do
+            # Prompt for user input
+            refreshrate=''
+            read -rp "$prompt ($(q2q))$(B):$(N) " refreshrate
+            [ "$refreshrate" = "Q" ] && nothing_changed
+            # Validate user input
+            if echo $refreshrate | grep -qsP $pattern || [ "$refreshrate" = "NULL" ]; then
+                break
+            else
+                echo "$(Pbg)You must enter a valid ISO 8601 duration (without P\$nM or P\$nY) or 'NULL'$(N)"
+            fi
+        done
+    }
+
+    enter_yes(){
+        local -l choice
+        read -p "$(B)If you enter $(button ' yes '), the refreshrate of calendar $(Y)$cal_id $(B)wil be set to $(C)$refreshrate$(N) " choice
+        [ "$choice" = "yes" ] || nothing_changed
+    }
+
+    # write new refreshrate to database
+    update_refreshrate(){
+        database_call
+        local cal_id=$1 refreshrate=$2 query
+        query="UPDATE ${DB_PREF}calendarsubscriptions SET refreshrate = '$refreshrate' WHERE id = '$cal_id'"
+        $DB_STRG $DB_EXEC"$query"
+    }
+
+    nothing_changed(){
+        echo "$(Pbg)  nothing changed  $(N)"
+        exit0
+    }
+
+    final_message(){
+        f
+        lG;echo "done!"
+        f
+        P;echo "Run this script again to see the result and monitor the nextcloud log for errors";N
+        f
+    }
+
+}

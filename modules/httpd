@@ -1,0 +1,81 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${HTTPD_BASHLIB:-false} && return 0 || {
+    HTTPD_BASHLIB=:
+
+    declare HTTPD_NEXTCLOUD
+    declare -a HTTPD_NC_DIR HTTPD_KNOWN HTTPD_ACTIVE HTTPD_ALL
+
+    #        apache2     /etc/apache2            /lib/systemd/system/apache2.service
+    #        caddy       /etc/caddy              /lib/systemd/system/caddy.service
+    #        lghttpd     /etc/lighttpd           /lib/systemd/system/lighttpd.service
+    #        mini_httpd  /etc/mini-httpd.conf    /etc/init.d/mini-httpd
+    #        nginx       /etc/nginx              /lib/systemd/system/nginx.service
+    #        tntnet      /etc/tntnet             /lib/systemd/system/tntnet.service
+    #        yaws        /etc/yaws               /lib/systemd/system/yaws.service
+
+    detect_httpd(){
+        local httpd p
+        local -a httpdaemons
+        httpdaemons=(apache2 caddy lighttpd nginx tntnet yaws)
+        case $1 in
+            active) for httpd in ${httpdaemons[@]}; do
+                        systemctl --quiet is-active $httpd && echo "$httpd"
+                    done
+                    ;;
+             known) for httpd in ${httpdaemons[@]}; do
+                        systemctl --no-pager --quiet list-unit-files "$httpd*" >/dev/null 2>&1 && echo "$httpd"
+                    done
+                    ;;
+         nextcloud) for p in $(grep -ER "^\s*(<Directory|root)" /etc 2>/dev/null|awk -F'[>| |;|:]' '/enabled/{gsub(/\/$/,"",$(NF-1));print $1 ";" $(NF-1)}'); do
+                        if find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; &>/dev/null; then
+                            echo "$p" | awk -F'/' '{print $3}'
+                        fi
+                    done | sort -u
+                    ;;
+            nc-dir) for p in $(grep -ER "^\s*(<Directory|root)" /etc 2>/dev/null|awk -F'[>| |;|:]' '/enabled/{gsub(/\/$/,"",$(NF-1));print $1 ";" $(NF-1)}'); do
+                        find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; 2>/dev/null
+                    done | sort -u
+                    ;;
+               all) for p in $(grep -ER "^\s*(<Directory|root)" /etc 2>/dev/null|awk -F'[>| |;|:]' '/enabled/{gsub(/\/$/,"",$(NF-1));print $1 ";" $(NF-1)}'); do
+                        webserver="$(echo "${p%%;*}"|awk -F'/' '{print $3}')"
+                        if [ -e "${p##*;}/occ" ]; then
+                            nextcloud_served_by=$webserver
+                        fi
+                        echo "${p%%;*} - ${p##*;}"
+                    done | sort -u
+        esac
+    }
+
+
+    populate_httpd_(){
+        case $1 in
+         nextcloud) HTTPD_NEXTCLOUD="$(detect_httpd nextcloud 2>&1)"
+                    ;;
+            nc-dir) mapfile -t HTTPD_NC_DIR< <(detect_httpd nc-dir 2>&1)
+                    ;;
+             known) mapfile -t HTTPD_KNOWN< <(detect_httpd known 2>&1)
+                    ;;
+            active) mapfile -t HTTPD_ACTIVE< <(detect_httpd active 2>&1)
+                    ;;
+               all) mapfile -t HTTPD_ALL< <(detect_httpd all 2>&1)
+        esac
+    }
+
+
+    detected_httpd(){
+        populate_httpd_array known
+        populate_httpd_array active
+        if (( ${#HTTPD_KNOWN[@]} == 1 && ${#HTTPD_ACTIVE[@]} ==1 )) && [ "${HTTPD_KNOWN[0]}" = "${HTTPD_ACTIVE[0]}" ]; then
+            echo "${HTTPD_KNOWN[0]}"
+        fi
+    }
+
+}

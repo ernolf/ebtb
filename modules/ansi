@@ -1,0 +1,188 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${ANSI_BASHLIB:-false} && return 0 || {
+    ANSI_BASHLIB=:
+
+    . <(require tempfile)
+
+######################## - lib: ANSI Escape codes #############################
+    declare CSI _8 _24 COLOR CURSOR
+    declare -i FG BG BFG BBG
+    declare -A SGR C CC
+    # (Control Sequence Introducer)
+    CSI='\033[' # either '\e[', '\033[' or '\x1b['
+
+    # special tempfiles
+    COLOR="$(tf 666)" CURSOR="$(tf 666)"
+#    COLOR="/$TMPDIR/${bm:-$$}-COLOR"
+#    CURSOR="/$TMPDIR/${bm:-$$}-CURSOR"
+#    if ! [ -f "$COLOR" ] || ! [ -f "$CURSOR" ]; then
+#        touch "$COLOR" "$CURSOR"
+#        chmod 666 "$COLOR" "$CURSOR"
+#    fi
+
+### ANSI - Color handling
+    # fore- & background, bright fore- & background, 8-bit (256-colors) and 24-bit r;g;b (true color)
+    FG=3 BG=4 BFG=9 BBG=10 _8='8;5' _24='8;2'
+    SGR=( # SGR (Select Graphic Rendition) parameters
+      [N_]='0'      # reset (No Color/Neutral)
+      [B_]='1'      # bright
+      [F_]='2'      # faint
+      [I_]='3'      # italic
+      [U_]='4'      # underline
+      [SBL_]='5'    # slowblink
+      [RBL_]='6'    # rapidblink
+      [INV_]='7'    # invert
+      [HIDE_]='8'   # hide
+      [X_]='9'      # crossed
+    );for p in "${!SGR[@]}";do eval "$p(){ printf '%b' '${SGR[$p]};';}";done
+    C=(   # Color codes
+      [cBLACK]='0'      #000000 - black (3 bit/8 colors)
+      [cR]='1'          #800000 - red (3 bit/8 colors)
+      [cG]='2'          #008000 - green (3 bit/8 colors)
+      [cY]='3'          #808000 - yellow (3 bit/8 colors)
+      [cB]='4'          #000080 - blue (3 bit/8 colors)
+      [cP]='5'          #800080 - magenta (3 bit/8 colors)
+      [cC]='6'          #008080 - cyan (3 bit/8 colors)
+      [cW]='7'          #c0c0c0 - whitegray (3 bit/8 colors)
+      [cBLACKi]="$_8;8" #808080 - blackgray (8-bit/256 colors)
+      [cRi]="$_8;9"     #ff0000 - red intense (8-bit/256 colors)
+      [cGi]="$_8;10"    #ff0000 - green intense (8-bit/256 colors)
+      [cYi]="$_8;11"    #ffff00 - yellow intense (8-bit/256 colors)
+      [cBi]="$_8;12"    #0000ff - blue intense (8-bit/256 colors)
+      [cPi]="$_8;13"    #ff00ff - purple intense (8-bit/256 colors)
+      [cCi]="$_8;14"    #00ffff - cian intense (8-bit/256 colors)
+      [cWi]="$_8;15"    #ffffff - white intense (8-bit/256 colors)
+      [c208]="$_8;208"  #ff8700 - dark orange (8-bit/256 colors)
+      [c214]="$_8;214"  #ffaf00 - orange (8-bit/256 colors)
+      [c220]="$_8;220"  #ffd700 - light orange (8-bit/256 colors)
+      [cNCblue]="$_24;0;130;201"      #0082C9 - Nextcloud blue (24-bit/rgb)
+      [cPHPdarkgrey]="$_24;51;51;51"  #333333 - PHP darkgrey (24-bit/rgb)
+      [cPHPlight]="$_24;226;228;239"  #e2e4ef - PHP light (24-bit/rgb)
+      [cPHPmedium]="$_24;136;146;191" #8892bf - PHP medium (24-bit/rgb)
+      [cPHPdark]="$_24;79;91;147"     #4f5b93 - PHP dark (24-bit/rgb)
+    );for p in "${!C[@]}";do eval "$p(){ printf '%b' \"\${1:-$FG}${C[$p]};\";}";done
+    CC=(  # Composed Color codes
+      [NCbluebg]="$(cWi;cNCblue $BG)"
+      [lPHP]="$(cPHPlight;cBLACK $BG)"
+      [dPHP]="$(cPHPdark;cPHPdarkgrey $BG)"
+      [O]="$(c214)"                     # orange
+      [Obg]="$(F_;cBLACK;c214 $BG)"     # orange background
+      [fO]="$(F_;c214)"                 # orange
+      [lO]="$(c220)"                    # light orange
+      [dO]="$(c208)"                    # dark orange
+      [dObg]="$(cWi;c208 $BG)"          # dark orange
+      [BLACK]="$(cBLACK)"               # black
+      [lBLACK]="$(B_;cBLACK)"           # light black
+      [dBLACK]="$(F_;cBLACK)"           # dark black
+      [R]="$(cR)"                       # red
+      [Rbg]="$(F_;cBLACK;cRi $BG)"      # red background
+      [lR]="$(B_;cR)"                   # light red
+      [bR]="$(cR $BFG)"                 # bright red
+      [dR]="$(F_;cR)"                   # dark red
+      [RGRAYbg]="$(F_;cR;cW $BG)"       # red foreground, gray-background
+      [lRGRAYbg]="$(B_;cR;cW $BG)"      # light red foreground, gray-background
+      [blinkR]="$(SBL_;cR)"             # blinking red
+      [G]="$(cG)"                       # green
+      [lG]="$(B_;cG)"                   # light green
+      [bG]="$(cG $BFG)"                 # bright green
+      [dG]="$(F_;cG)"                   # dark green
+      [GGRAYbg]="$(F_;cG;cW $BG)"       # green foreground, gray-background
+      [lGGRAYbg]="$(B_;cG;cW $BG)"      # light green foreground, gray-background
+      [Gbg]="$(F_;cBLACK;cG $BG)"       # green-background, black foreground
+      [bGbg]="$(F_;cBLACK;cG $BBG)"     # bright green-background, black foreground
+      [Y]="$(cY)"                       # yellow
+      [bY]="$(B_;cY)"                   # bright yellow
+      [dY]="$(F_;cY)"                   # brown (dark yellow)
+      [Yi]="$(cYi)"                     # yellow intense
+      [bYi]="$(B_;cYi)"                 # bright yellow intense
+      [dYi]="$(F_;cYi)"                 # dark yellow intense
+      [B]="$(cB)"                       # blue
+      [lB]="$(B_;cB)"                   # light blue
+      [dB]="$(F_;cB)"                   # dark blue
+      [Bi]="$(cBi)"                     # blue intense
+      [lBi]="$(B_;cBi)"                 # light blue intense
+      [dBi]="$(F_;cBi)"                 # dark blue intense
+      [P]="$(cP)"                       # purple (magenta)
+      [lP]="$(B_;cP)"                   # light purple
+      [dP]="$(F_;cP)"                   # dark purple
+      [Pbg]="$(F_;cBLACK;cP $BG)"       # purple-background, black foreground
+      [bPbg]="$(F_;cBLACK;cP $BBG)"     # bright purple-background, black foreground
+      [C]="$(cC)"                       # cyan
+      [lC]="$(B_;cC)"                   # light cyan
+      [Cbg]="$(F_;cBLACK;cC $BG)"       # cyan bacground, black foreground
+      [bCbg]="$(F_;cBLACK;cC $BBG)"     # bright cyan bacground, black foreground
+      [GRAY]="$(F_;cW)"                 # gray
+      [GRAYbg]="$(F_;cBLACK;cW $BG)"    # gray-background, black foreground
+      [xGRAY]="$(F_;X_;cW)"             # gray-crossed
+      [W]="$(cWi)"                      # white intense (used to supress automatic underlines in links)
+      [N]=''                            # reset (No Color/Neutral)
+    )
+#    for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';}";done
+    for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}";done
+    unset -v FG BG BFG BBG _8 _24 SGR C CC p
+
+    # remove ansi color codes
+    no_ansi(){ echo "$1"|ansi2txt;} # depends on 'colorized-logs' package
+#        # moved to sed module:
+#        noansi(){
+#            echo "$1" | sed -r 's/\x1b\[(;*[0-9]{1,3})*;?m//g'
+#        }
+
+### ANSI - Cursor handling
+    # Cursor Up, Down, Forward, Back, NextLine, PreviousLine, HorizontalAbsolute, Position, Erase in Display, Erase in Line, Scroll Up and Down
+    declare CUU=A CUD=B CUF=C CUB=D CNL=E CPL=F CHA=G CUP=H ED=J EL=K SU=S SD=T
+    # Linefeed (newlines)
+    #feed(){ printf '%b' "$CSI${1:-1}$CNL";} # must be done with "echo" because the lines must be created.
+    f(){
+        local -i n=${1:-1} i
+        for (( i=1; i<=n; i++ )); do
+            printf '%b' '\n'
+#            printf '%b' '\x0a'
+#            printf '%b' '\012'
+#            echo
+        done
+    }
+
+    # delete actual and previous line jump to previous line
+    te0(){
+        printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
+    }
+
+    # delete and stay in actual line
+    te1(){
+        printf '%b' "\r$CSI$EL"
+    }
+
+    # Cursor offset absolute
+    o(){
+#        printf '%b' "\r$CSI$1$CUF"
+        printf '%b' "$CSI$(($1+1))$CHA"
+    }
+    o2(){ o 2;}; o3(){ o 3;}; o4(){ o 4;}; o5(){ o 5;}
+    # repeatedly used offset
+    os(){ o 3;}
+
+    # cursor_ hide & cursor_ show
+    cursor_(){
+        case $1 in
+          hide) printf '%b' "$CSI?25l"
+                echo 'hide' > "$CURSOR"
+                ;;
+          show) printf '%b' "$CSI?25h"
+                echo -n > "$CURSOR"
+        esac
+    }
+
+    ansi_reset(){
+        printf '%b' "$CSI?25h${CSI}0;m"
+    }
+
+}

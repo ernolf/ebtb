@@ -1,0 +1,54 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+
+${HELP_BASHLIB:-false} && return 0 || {
+    HELP_BASHLIB=:
+
+    function print_help(){
+#    . <(require $sin/disclaimer)
+#    disclaimer
+
+        cat <<HELP
+
+  Usage:  $me [-s|--sharetype=(0-13)] -- user|all
+          $me -h|--help
+
+  Options:                     (* = default value)
+         -h --help               help (print this help information)
+         -s --sharetype=[0-13]   A number from 0 to 13, meaning:
+                                  0 = user
+                                  1 = group
+                                 (2 = usergroup Internal type used by DefaultShareProvider)
+                                * 3 = link (default)
+                                  4 = email
+                                  5 = contact (ToDo Check if it is still in use otherwise remove it)
+                                  6 = remote
+                                  7 = circle
+                                  8 = guest
+                                  9 = remote group
+                                 10 = room
+                                (11 = userroom Internal type used by RoomShareProvider)
+                                 12 = deck
+                                (13 = deck user Internal type used by DeckShareProvider)
+
+         user                    nextcloud user
+         all                     all nextcloud users
+
+  examples:
+  list all shares from all users shared with groups
+         $me -s 1 -- all
+  list all link-shares from user "Max"
+         $me Max
+
+HELP
+        exit 0
+    }
+
+}

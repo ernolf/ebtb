@@ -1,0 +1,2 @@
+# when
+declare -i rte;printf -v rte "%(%s)T" -2

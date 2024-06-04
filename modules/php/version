@@ -1,0 +1,26 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${VERSION_BASHLIB:-false} && return 0 || {
+    VERSION_BASHLIB=:
+
+    php_ver(){
+        local php_version="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+        local -a available_php_versions=($(ls $(which php)[78].[0-4] 2>/dev/null|sed "s|$(which php)||g"))
+        local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|tr ' ' '\n'|grep -v "^$php_version$"|tr '\n' ' '))
+
+        if (($#)); then
+            case $1 in alternatives) echo "${alternative_php_versions[@]}"; esac
+        elif (( ${#available_php_versions[@]} )); then
+            printf '%s' "$php_version"
+            return 0
+        fi
+        }
+
+}

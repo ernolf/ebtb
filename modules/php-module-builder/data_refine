@@ -1,0 +1,70 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${DATA_REFINE_BASHLIB:-false} && return 0 || {
+    DATA_REFINE_BASHLIB=:
+
+    . <(require ansi)
+
+    # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
+    find_built_modules(){
+        local pv pvd m
+        local -a pvs=($(ls "$project_dir/$project" 2>/dev/null))
+        for pv in "${pvs[@]}"; do
+            pvd="$project_dir/$project/$pv"
+            if [ -d "$pvd" ]; then
+                local -a ms=($(ls "$pvd"))
+                for m in "${ms[@]}"; do
+                    echo "$pv $m"
+                done
+            fi
+        done
+    }
+
+    # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
+    find_built_module_versions(){
+        local pv pvd m mv mvd
+        local -a pvs=($(ls "$project_dir/$project" 2>/dev/null))
+        for pv in "${pvs[@]}"; do
+            pvd="$project_dir/$project/$pv"
+            if [ -d "$pvd" ];then
+                local -a ms=($(ls "$pvd"))
+                for m in "${ms[@]}"; do
+                    mvd="$pvd/$m"
+                    if [ -d "$mvd" ]; then
+                        local -a mvs=($(ls -d "$mvd"/*))
+                        for mv in "${mvs[@]}"; do
+                            [ -d "$mv" ] && echo "$pv $(basename $mv)"
+                        done
+                    fi
+                done
+            fi
+        done
+    }
+
+#    is_installed_module(){
+#        echo "$installed_modules" | grep -wqs "$1"
+#        return $?
+#    }
+
+    check_conflicts(){
+        declare m conflict="$@" conflicts
+        for m in $conflict; do
+#            is_installed_module $m && conflicts="$conflicts $m"
+            [[ " $installed_modules " =~ " $m " ]] && conflicts="$conflicts $m"
+        done
+        if [ -n "$conflicts" ]; then
+            R;echo "- $module conflicts with$conflicts. Remove conflicting modules first.";N
+            cd
+            rmdir $project_dir/$project/$php_version/$module
+            exit 1
+        fi
+    }
+
+}

@@ -1,0 +1,47 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${DISCLAIMER_BASHLIB:-false} && return 0 || {
+    DISCLAIMER_BASHLIB=:
+
+    . <(require anykey)
+    . <(require php/logo)
+
+    disclaimer(){
+        clear
+        phplogo
+        cat << DISCLAIMER
+
+  Disclaimer
+  ==========
+
+  This script is intended for advanced administrators who are comfortable creating their own modules.
+  It makes life a little easier. Although the build process is made more secure because tested, the
+  possibility of shooting yourself in the feet isn't completely eliminated. It is recommended to use
+  packaged extensions from your distribution wherever possible. You may need to add a PPA (Ubuntu) or
+  DPA (Debian) to your Apt sources to increase the range of installable PHP candidates.
+  Visit Ondřej Surý's website: https://deb.sury.org/ for more details about that.
+
+  Only if the desired extension then still is not offered as package, such as with the lua module, this
+  script can (and should) be used.
+
+
+  Good luck,
+  ernolf
+
+  PS:
+  Feedback and suggestions for improvements/additions are always welcome!
+  You can write me here:
+  https://help.nextcloud.com/t/nextcloud-28-with-php8-3-on-debian-ubuntu-missing-modules-solution/174766
+
+DISCLAIMER
+        anykey
+    }
+
+}

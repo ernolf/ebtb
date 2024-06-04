@@ -1,0 +1,59 @@
+#!/bin/bash
+
+declare debug=false
+declare verbose=false
+
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir
+bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
+[ "$(which "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
+ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+
+cd "$ca_dir/.."
+
+source config/configure
+source config/secrets
+
+declare includedir_dirname="$INCLUDEDIR-dev"
+
+declare channel1="$1"
+declare channel2="$2"
+
+$debug && set -x
+
+declare dir1 dir2 lib libname
+dir1=$MBUILD_DIR
+dir2=$DATA_DIR/$target_includes/${channel2:=prod}
+
+declare -a difflibs=()
+
+$verbose && echo "  checking libs:"
+
+for lib in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print); do
+    libname="${lib#$dir1/}"
+    libname_in_1="$(head -n2 "$lib" | tail -n1 | sed "s|^# $INCLUDEDIR/${channel1:=test}/||")"
+    libname_in_2="$(head -n2 "$dir2/$libname" | tail -n1 | sed "s|^# $INCLUDEDIR/$channel2/||")"
+    $verbose && echo "  - \"$libname\""
+    $verbose && echo "    1: \"$libname_in_1\"  2: \"$libname_in_2\""
+    if ( ! diff <(sed "1,20d" "$lib") <(tail -n +21 "$dir2/$libname" 2>/dev/null) >/dev/null ) || [[ "$libname_in_1" != "$libname_in_2" ]]; then
+        $verbose && echo "                  - different"
+        difflibs+=("$libname")
+        $verbose && echo "${#difflibs[@]}"
+    else
+        $verbose && echo "        - equal"
+    fi
+done
+$verbose && echo
+$verbose && echo "  number of different libs = ${#difflibs[@]}"
+if (( ${#difflibs[@]} )); then
+    $verbose && echo "  found ${#difflibs[@]} different libs:"
+    for i in ${!difflibs[@]}; do
+        $verbose && echo "  - ${difflibs[i]}"||echo "${difflibs[i]}"
+    done
+else
+    $verbose && echo "  all libs are equal, nothing changed"
+fi
+
+$debug && set +x
+

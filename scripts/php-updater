@@ -1,0 +1,423 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "less#less#A terminal pager similar to more"
+    "apt-file#apt-file#Search for files within Debian packages"
+#    "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
+    "lsb_release#lsb-release#Tool to detect the Linux standard base version"
+    "update-the-ca-certificates#ca-certificates#Common CA certificates"
+    "curl#curl#Command line file transfer tool with URL syntax"
+    "gpg#gnupg#GNU Privacy Guard"
+    "jq#jq#Command-line JSON processor"
+    "ccdiff#ccdiff#Colored Character Diff"
+)
+modules=(
+    today interval basics sed tempfile prompt ansi button fstring exit spinner
+    anykey line array ask sudo dependency httpd php/versions php/fpm php/apache2
+    vdir integrity dpkg sort dist/os_release php/sury php/extensions
+    php.net/ini_directives $sin/tasks $sin/linstalled $sin/help $sin/chfiles
+    $sin/merge
+)
+
+declare debug=false
+$debug&&trap 'read -rp "$(R)[DEBUG:]$(N) press Enter to poceed..."' DEBUG
+
+__when__
+
+__whoami_whereami__
+
+# don't change this by hand, its done safe and interactively by the script:
+declare vdirname="" # <-- don't change this!
+
+### general (minified)
+__general__
+## include bashmodules (minified) ->
+__module_builder__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+declare help=false force=false forceflag='' needforce=false supported=false unsupported=false nolts=false distrib_to_old=false distrib_to_new=false distrib_unknown=false pager=:;declare -a args=()
+for arg in "$@";do
+    if [ "$arg" = "-h" ]||[ "$arg" = "--help" ];then help=true
+    elif [ "$arg" = "--force" ];then force=true forceflag=' --force'
+    elif [ "$arg" = "--nopager" ]||[ "$arg" = "--no_pager" ]||[ "$arg" = "--no-pager" ];then pager=false
+    else args+=("$arg");fi
+done;set -- "${args[@]}"&&unset -v args
+$help&&explain
+
+cursor_ hide
+
+## it starts here:
+###############################################################################
+# you MUST be root:
+su_root "to run this script."
+my_update_check
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " distrib_checked " ]]||. <(require $sin/distrib)
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " supported " ]]&&supported=true
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_old " ]]&&{ distrib_to_old=true needforce=true; $force&&supported=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_new " ]]&&{ distrib_to_new=true needforce=true; $force&&supported=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " nolts " ]]&&{ nolts=true needforce=true; $force&&supported=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unknown " ]]&&{ distrib_unknown=true needforce=true; $force&&supported=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unsupported " ]]&&unsupported=true
+
+
+# returns a list with vals unique to $1 - # x1=minimum packages to be installed, x2= packages required by cli and thus installed
+packages_diff(){ local pkg pvo pvn;local -a eia x1 x2;local -i i;pvo="$1" pvn="$2"
+    (( ${#EXTS_ADMIN[@]} ))&&{
+        for i in $(eval echo \${!C4EIBY4_${pvo//./}[@]});do
+            pkgmod="$(eval echo \"\${C4EIBY4_${pvo//./}[i]}\")";pkg=${pkgmod%:*}
+            [[ " $pkg" =~ " php$pvo-" ]]&&eia+=("${pkg#*-}")
+        done;}
+    x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip) x2=(cli common json opcache readline)
+    inst(){ local v x;v="$1";shift;(dpkg -l|awk '/^[hiu]i.*php'$v'/{print $2}'|sed "s/$v//";for x in $@;do echo php-$x;done)|sort -u;}
+    for pkg in $(comm -23 <(inst $1 ${x1[@]} ${eia[@]}) <(inst $2 ${x2[@]})|sed "s/php/php$2/");do
+        if echo "$pkg"|grep -Eqsvw "^$phpvregex$";then apt_exist "$pkg" &>/dev/null && echo $pkg;fi
+    done
+}
+
+install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
+    apt_need_update
+    if apt-cache show php$NEW >/dev/null 2>&1;then
+        separator
+        # update first?
+        f;echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
+        if ask "$(qpf)Do you want to update the system first " "$NO";then
+            apt-mark hold $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1 # hold php as it is for this step.
+            apt-get dist-upgrade
+            pf;echo "$(lG)system updated$(N)"
+            anykey
+        fi
+        apt-mark unhold *php* &>/dev/null
+        which needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
+        detect_and_assign_extensions
+        search_candidates_4_extensions_installed_by_admin $OLD
+        spinner C " . performing thorough review (dry run) of package sources and candidate availability ." &
+        mapfile -t packages< <(packages_diff $OLD $NEW)
+        kill_spinner
+        if ((${#packages[@]})); then
+            apt_install_prechecked --yes php$NEW-cli
+            apt_install_prechecked --yes ${packages[@]}
+        fi
+        which needrestart >/dev/null&&needrestart -r a
+    else f
+        no_candidate "$NEW"
+        exit1
+    fi
+    populate_versions_array
+    separator
+    f;echo " -$(format_string "$(P)If everything looks good so far, the migration of the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
+    f;G;echo "$(prompt;lB) $me$forceflag$(C) $OLD $NEW";N
+    f;os;P;echo "to finalize or redo the migration.";N
+    f;echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(C)php-$OLD$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3;N)"
+    ask "$(qpf)Proceed with next step" "$YES"&&{ separator;"$me$forceflag" "json=$my_json" $OLD $NEW;exit;}||exit0
+}
+
+# messages
+call_help(){ o2;GRAY;echo "You can call the help with:$(o 35;B)$me --help";line '-' dP 2/78;}
+call_me(){ o2;GRAY;echo "You can call this list with:$(o 35;B)$me --list-$1";line '-' dP 2/78 a${2:-1};}
+version_mismatch(){ f;o;Pbg;pf;echo "A version mismatch has been detected which cannot be resolved by this script$(pf;N)";exit1;}
+wrong_first_argument(){ local -i a=$2
+    f;o;Pbg;pf;printf "First argument must be the version of an installed php but "
+    if ((a));then
+        echo "php$1 is not installed$(pf;N)";f;list_candidates;call_me candidates;call_help;f
+    else
+        echo "\"$1\" is not an existing php version$(pf;N)"
+        list_existing;call_me existing;call_help;f
+    fi
+    exit1
+}
+does_not_exist(){ f;o;Pbg;pf;echo "\"$1\" is not an existing php version$(pf;N)";list_existing;call_me existing;call_help;f;exit1;}
+no_candidate(){ f;os;Pbg;pf;echo "Version \"$1\" cannot be installed with your Apt sources$(pf;N;f)";list_candidates;call_me candidates;need_sury_repo;call_help;f;}
+no_higher_candidate(){ f;pf;echo "The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources.";list_candidates;call_me candidates;need_sury_repo;downgrade_possible;anykey;}
+need_ppa(){ need_sury_repo;}
+downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it";}
+end_message(){
+    f;separator xGRAY;f
+    echo "  $(format_string "This script is continually being enhanced and expanded. This means it will be able to perform even more tasks for you safely in the future." 3)"
+    GRAY;echo "  $(format_string "Feel free to donate 1 € by $(C)Paypal$(GRAY) to $(lG)ernolf$(C)<at>$(lG)global-social.net$(GRAY) or at least leave a $(R)❤️$(GRAY) at $(button 1;GRAY) and spread the word, if you like my work." 3;N)"
+    f;o3;button 1;W;pf;echo "https://help.nextcloud.com/t/php-updater-a-script-to-upgrade-php-in-a-safe-way/180215"
+    f;separator xGRAY;f
+}
+
+# TODO 1 -->
+list_tasks(){
+    echo "explain Show help page"
+    echo "check_distrib Check runing distribution (done automaticaly on first run)"
+    echo "list_ubuntu/debian List ubuntu/debian distributions"
+    echo "list_existing List existing PHP-Versions"
+    echo "list_apt_sources List APT sources"
+    echo "list_apt_sources_files List APT sources files"
+    echo "add_apt_sources Add APT sources"
+    echo "remove_apt_sources Remove APT sources"
+    echo "list_candidates List instalable PHP-Versions offered by APT sources"
+    echo "list_installed List installed PHP-related packages and modules"
+    echo "list_ht_servers List enabled web server resources"
+    echo "switch_php_version Set the default PHP version"
+}
+
+tasks(){
+    local -i n=1 i c2=9 c3=29
+    local -a task_list
+    local -l num key
+
+    mapfile -t task_list< <(list_tasks)
+    (( ${#task_list[@]} )) || {
+        o2;echo "no tasks available."
+        anykey
+        return
+    }
+    line '=' P 2/78 b1
+    o3;B;echo "These tasks are available for selection:";N
+    o4;Y;echo "Num$(o $c2)Task$(o $c3)Description"
+    line '-' dP 2/78
+    for i in "${!task_list[@]}"; do
+        task="${task_list[i]}"
+        description=""
+        o3;echo "- $((n+i))$(o $c2)\"$task\"$(o $c3)\"$description\""
+    done
+    line '-' dP 2/78 a2
+    o3;echo "Enter the number of the task you want to execute $(q2q)"
+    while :; do
+        read -rsn 1 num
+        [ "$num" = "q" ] && exit1
+        [[ "$num" =~ ^[1-9]$ ]] || {
+            o3;echo "$invi Please enter a valid number or $(q2q)"
+            continue
+        }
+        (( num<n || num>=(n+${#task_list[@]}) )) && {
+            o3;echo "Invalid task number. Please choose a number from the list or $(q2q)"
+            continue
+        }
+        i="$((num-n))"
+        task="${task_list[i]}"
+        description=""
+        o3;echo "Your choice: task \"$task\""
+        o3;echo "do you want to execute this task?"
+        o3;echo "Press $(box y) to proceed - $(box c) to cancel - $(q2q): "
+        while :; do
+            read -rsn 1 key
+            case "$key" in
+                y)  break 2
+                    ;;
+                c)  return
+                    ;;
+                q)  exit1
+            esac
+        done
+    done
+}
+# TODO <-- 1
+## void ##
+declare lang=$(echo "$LANG"|cut -d'_' -f1)
+declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE dpkg_package php_version php_version_old extension_dir fullpath module sort
+
+$supported&&apt_need_update
+
+declare verbose prefix
+verbose=false
+$verbose&&prefix="$(pf)"||prefix="$(o2;G)Examining the system:$(pf;W)"
+$verbose&&echo "Examining the system:"
+echo "${prefix}populating arrays with inventory results.."
+
+# PACKAGES_INSTALLED_BY_DPKG
+$verbose&&echo "$(pf)Packages installed by dpkg.."
+populate_pkgs_by_dpkg_array
+if $supported; then
+    ext_state cleanup
+    ext_state fix
+fi
+
+$verbose||te0
+# clear
+
+# $1=old;$2=new
+case $1 in
+    --list-installed)
+        list_installed 'quiet=:'
+        exit 0
+        ;;
+    --list-candidates)
+        list_candidates
+        need_sury_repo
+        exit 0
+        ;;
+    --list-existing)
+        list_existing
+        exit 0
+        ;;
+    --switch-version)
+        $supported && switch_default_version
+        exit 0
+        ;;
+    --list-debian)
+        . <(require dist/debian)
+        list_supported_debian
+        exit 0
+        ;;
+    --list-ubuntu)
+        . <(require dist/ubuntu)
+        list_supported_ubuntu
+        exit 0
+        ;;
+    *)  :
+esac 
+
+if $supported && [ $# -eq 2 ];then
+    does_exist_ "${1//php/}" 1 && does_exist_ "${2//php/}" 0 && OLD="${1//php/}" NEW="${2//php/}" || explain
+fi
+
+if $supported; then
+    if [ ${#VERSIONS[@]} -eq 1 ];then
+        [ "${VERSIONS[0]}" = "$PHP_VERSION" ]||version_mismatch
+        OLD=${VERSIONS[0]}
+        separator
+        f
+        echo " -$(W;format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3;N)"
+        f
+        anykey
+        separator
+        list_installed
+        anykey
+        list_candidates
+        call_me candidates
+        need_sury_repo
+        anykey
+        separator
+        if ask "$(qpf)Do you want to install a new php-version now" "$YES";then
+            SUGGESTION="$(i_ver "$OLD")"||{ no_higher_candidate;SUGGESTION="$(d_ver "$OLD")";}
+            rs1="$(os)please enter a new, not yet installed php-version…"
+            while :;do
+                cursor_ show
+                read -rp "E: Please enter the version string you want to install (e.g. '$SUGGESTION'): " NEW
+                cursor_ hide
+                os;echo "You entered: $NEW"
+                if [ -z "$NEW" ];then echo "$rs1";anykey
+                elif [ "$NEW" = "$OLD" ];then
+                    pf;echo "From the point of view of this script, php$NEW is already installed"
+                    echo "$rs1";anykey
+                elif does_exist_ "$NEW" 0;then
+                    if [[ " ${CAN[@]} " =~ " $NEW " ]];then
+                        ask "$(qpf)Are you ready to install php$NEW" "$YES"&&break||exit1
+                    else no_candidate "$NEW";fi
+                else does_not_exist;fi
+            done
+            install_new_php "$OLD" "$NEW"
+        else
+            exit0
+        fi
+    elif [ -n "$NEW" ];then
+        if [[ " ${CAN[@]} " =~ " $NEW " ]]; then
+            declare -a missing_new_packages
+            spinner C " . searching for php$NEW packages yet to be installed ." &
+            mapfile -t missing_new_packages< <(packages_diff $OLD $NEW)
+            kill_spinner
+            if [[ " ${VERSIONS[@]} " =~ " $NEW " ]]; then
+                if ((${#missing_new_packages[@]}));then
+                    array_populated missing_new_packages &
+                    if ((${#missing_new_packages[@]}==1)); then
+                        plu='is:' plu2='one:is' mnp_string="$(B)${missing_new_packages[0]}$(N)"
+                    else
+                        plu='ese:s' plu2='some:are' mnp_string="$(listify B ${missing_new_packages[@]})"
+                    fi
+                    separator
+                    echo " -$(format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Although php$NEW is installed, ${plu2%:*} $(Y)php$NEW$(N) package${plu#*:} ${plu2#*:} still missing compared to $(Y)php$OLD$(N) and the minimum packages that are needed to run a server like Nextcloud. Th${plu%:*} ${plu2#*:} the missing one${plu#*:}:" 3)"
+                    o3;echo "$(format_string "$mnp_string" 3)"
+                    os;echo "If you answer $(box no) here, the script will continue without installing th${plu%:*} package${plu#*:}."
+                    ask "$(qpf)Do you want to install th${plu%:*} package${plu#*:}" "$YES"&&install_new_php "$OLD" "$NEW"
+                fi
+            else
+                echo " -$(format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Since php$NEW is not yet installed at all, it will be installed from scratch." 3)"
+                ask "$(qpf)Are you ready to install php$NEW" "$YES"&&install_new_php "$OLD" "$NEW"||exit1
+            fi
+        else
+            no_candidate "$NEW"
+            pf;exit1
+        fi
+
+        check_config $OLD
+
+        declare -a c_f_a # changed files array
+        spinner C " . searching changed ini- and conf-files for php$OLD to be adapted into php$NEW ." &
+        mapfile -t c_f_a< <(p_nosort $(changed_files_ ini) $(changed_files_ conf))
+        kill_spinner
+        if (( ${#c_f_a[@]} )); then
+            for FILE in ${c_f_a[@]}; do
+                separator O
+                PKG=${FILE%:*} FILE=${FILE#*:}
+                [ -f "$FILE" ]||continue
+                f
+                if [ "$PKG" = "libapache2-mod-php$OLD" ]; then
+                    PKGOLD="$PKG" PKGNEW="${PKG//$OLD/$NEW}"
+                else
+                    PKGOLD="php$OLD-$PKG" PKGNEW="php$NEW-$PKG"
+                fi
+                preq="Q:$(P;format_string "Do you want to migrate the values from the$(C) $(basename $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(basename $FILE)$(P) for$(Y) $PKGNEW" 3;N)"
+                if ask "$preq" $YES;then
+                    merge_settings
+                fi
+            done
+        fi
+        check_fpm_pool_files
+        declare -a o_c_f_a # other changed files array
+        spinner C " . searching other changed files for php$OLD to be adapted into php$NEW ." &
+        mapfile -t o_c_f_a< <(p_nosort $(changed_files_ other))
+        kill_spinner
+        if (( ${#o_c_f_a[@]} )); then
+            for FILE in ${o_c_f_a[@]}; do
+                separator O
+                PKG=${FILE%:*} FILE=${FILE#*:}
+                f;treat_other_files
+            done
+        fi
+        separator
+        echo " -$(format_string "The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
+        f;G;echo "$(prompt;lB) $me$forceflag$(C) $OLD $NEW";N
+        f;O;echo " -$(format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3;N)"
+        f;G;echo "$(prompt;P) $me$forceflag --switch-version";N
+        end_message
+        exit0
+    else # if [ $# -ne 2 ]; then
+        first_brief_help "Brief help:"
+        f
+        anykey
+        separator
+        list_installed
+        anykey
+        separator
+        list_candidates
+        call_me candidates
+        need_sury_repo
+        anykey
+        separator
+        f
+        brief_help "this would be possible calls:"
+        N;f;exit0
+    fi
+else
+    f;lB;echo " -$(format_string "Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$($needforce&&echo -n " unless you call it with $(GRAYbg)[ --force ]";N)" 3)"
+    f
+    anykey
+    separator
+    list_installed
+    anykey
+    separator
+    list_candidates
+    call_me candidates
+    separator
+    need_sury_repo
+    anykey
+    separator
+    ask "$(qpf)Do you want to read the help" "$YES" && explain
+    N;f;exit0
+fi
+

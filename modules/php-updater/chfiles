@@ -1,0 +1,90 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${CHFILES_BASHLIB:-false} && return 0 || {
+    CHFILES_BASHLIB=:
+
+    . <(require basics)
+
+    changed_mod_ini_files(){
+        [ -n "$OLD" ] || OLD="$1"
+        [ -n "$NEW" ] || NEW="$2"
+        local odir ndir ofile cfile ext_objfile ext_pkg omd5 nmd5
+        local -a ofiles nfiles cfiles
+        odir="/etc/php/$OLD/mods-available"
+        ndir="/etc/php/$NEW/mods-available"
+        mapfile -t ofiles< <(ls "$odir")
+        mapfile -t nfiles< <(ls "$ndir")
+        mapfile -t cfiles< <(comm -12 <(p_sort ${ofiles[@]}) <(p_sort ${nfiles[@]}))
+        for cfile in ${cfiles[@]}; do
+            ext_objfile="$(extension_dir_of_ $OLD)/$(awk -F= '/extension=/ {print $2}' "$odir/$cfile")"
+            [ -f "$ext_objfile" ] || continue
+            ext_pkg="$(dpkg -S "$ext_objfile" | awk '{print$1}' 2>/dev/null)" || continue
+            if [ "${ext_pkg%-*}" = "php$OLD" ]; then
+                omd5=$(md5sum "$odir/$cfile" | awk '{print$1}')
+                nmd5=$(md5sum "$ndir/$cfile" | awk '{print$1}')
+                [ "$omd5" = "$nmd5" ] || echo "${ext_pkg#*-}$odir/$cfile"
+            fi
+        done
+    }
+
+    ucf_query(){
+        local reg
+        local -a ouf nuf juf # old_, new_ and joint_ucf_files
+        reg=/var/lib/ucf/registry
+        changed_mod_ini_files
+        mapfile -t ouf< <(awk '/.*php\/'$OLD'/ {print $2}' "$reg")
+        mapfile -t nuf< <(awk '/.*php\/'$NEW'/ {print $2}' "$reg")
+        mapfile -t juf< <(comm -12 <(p_sort ${ouf[@]##/etc/php/$OLD}) <(p_sort ${nuf[@]##/etc/php/$NEW}))
+        ucfq -w $(printf /etc/php/$OLD'%s\n' "${juf[@]##/etc/php/$OLD}") | awk -F: '/Yes$/ {gsub("php'$OLD'-","",$2);print $2 ":" $1}'
+    }
+
+    changed_other_files(){
+        local -a oip nip jip files # old_, new_ and joint_installed_packages
+        mapfile -t oip< <(p_nosort ${PKGS_BY_DPKG[@]%%/*} | awk '/php'$OLD'/ {gsub("'$OLD'","@VERSION@",$1);print $1}')
+        mapfile -t nip< <(p_nosort ${PKGS_BY_DPKG[@]%%/*} | awk '/php'$NEW'/ {gsub("'$NEW'","@VERSION@",$1);print $1}')
+        mapfile -t jip< <(comm -12 <(p_sort ${oip[@]}) <(p_sort ${nip[@]}))
+        for i in ${!jip[@]}; do
+            pkg="${jip[i]//@VERSION@/$OLD}"
+            mapfile -t files< <(dpkg --verify $pkg | awk '{print $NF}')
+            if (( ${#files[@]} )); then
+                printf ''${pkg#*-}':%s\n' "${files[@]}" | sort -u
+            fi
+        done
+    }
+
+    changed_files_(){
+        local pkg changed_file
+        local -a changed_files files
+        local -i r=1
+        mapfile -t changed_files< <(changed_other_files)
+        if [ "$1" = "ini" ]; then
+            mapfile -t files< <(ucf_query)
+            r=0
+        fi
+        if ((${#changed_files[@]})); then
+            for i in ${!changed_files[@]}; do
+                pkg=${changed_files[i]%:*}
+                changed_file=${changed_files[i]#*:}
+                [ -f "$changed_file" ] || continue
+                case $1 in
+                   ini) [[ "$changed_file" =~ ^/etc/php/$OLD/.*\.ini ]] && files+=("${changed_files[i]}")
+                        ;;
+                  conf) [[ "$changed_file" =~ ^/etc/php/$OLD/.*\.conf ]] && files+=("${changed_files[i]}")
+                        ;;
+                 other) [[ ! "$changed_file" =~ ^/etc/php/$OLD/ ]] && files+=("${changed_files[i]}") r=0
+                esac
+            done
+        fi
+        p_sort "${files[@]}"
+        return $r
+    }
+
+}
+

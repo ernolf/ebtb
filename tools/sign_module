@@ -1,0 +1,221 @@
+#!/bin/bash
+
+declare debug=false
+declare verbose=false
+
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir
+bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
+[ "$(which "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
+ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+
+cd "$ca_dir/.."
+
+declare yes=false all=false test2=false channel arg
+declare -a args
+for arg in "$@";do
+    if [ "$arg" = "-t2t" ];then test2=true channel=test yes=true all=true
+    elif [ "$arg" = "--t2t" ];then test2=true channel=test yes=true all=true
+    elif [ "$arg" = "--test2test" ];then test2=true channel=test yes=true all=true
+    elif [ "$arg" = "-t2p" ];then test2=true channel=prod yes=true all=true
+    elif [ "$arg" = "--t2p" ];then test2=true channel=prod yes=true all=true
+    elif [ "$arg" = "--test2prod" ];then test2=true channel=prod yes=true all=true
+    elif [ "$arg" = "-t" ];then channel=test
+    elif [ "$arg" = "--test" ];then channel=test
+    elif [ "$arg" = "-p" ];then channel=prod
+    elif [ "$arg" = "--prod" ];then channel=prod
+    elif [ "$arg" = "-y" ];then yes=true
+    elif [ "$arg" = "--yes" ];then yes=true
+    elif [ "$arg" = "all" ];then all=true
+    elif [ "$arg" = "-a" ];then all=true
+    elif [ "$arg" = "--all" ];then all=true
+    else args+=("$arg")
+    fi
+done
+set -- "${args[@]}" && unset -v arg args
+
+source config/configure
+source config/secrets
+$verbose && yes=false
+#source config/runtime
+
+# declare dir1_dirname="/usr/local/include/ernolf-dev"
+# declare dir1="/usr/local/include/ernolf-dev/${channel:?missing argument! (either -t2p|--test2prod, -t|--test or -p|--prod)}"
+
+declare dir1
+dir1="$DATA_DIR/$target_includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+
+version_(){
+    awk '/^# version 20/ {print $3, $4}' "$1"
+}
+
+epoch_(){
+    awk '/^# version 20/ {print $NF}' "$1"
+}
+
+version_sufix(){
+    sed -ne '/^# version 20/ s/:/./g' -e '/^# version 20/ s/ /_/g' -e '/^#_version_20/ s/#_version_/~/p' "$1"
+}
+
+occ(){
+    sudo -u $HT_USER -E /usr/bin/php -f "$NC_DIR/occ" "$@"
+}
+
+anykey(){
+    local p="Press Any key to continue or q to quit "
+    local -l choice
+    read -rsn 1 -p "$p" choice
+    [ "$choice" = "q" ] && { echo;exit;} || echo
+}
+
+sign_(){
+#$debug && set -x
+    local lib libname libdir target_dir target
+    lib="$MBUILD_DIR/$1"
+    libname="$(basename "$1")"
+    libdir="$(dirname "$1")"
+    [ "$libdir" = '.' ]&&libdir=''
+
+    target_dir="$target_includes/$channel/$libdir"
+    target="$DATA_DIR/${target_dir%/}/$libname"
+
+$debug && anykey
+
+    $yes && echo "  - $libname" || { local -l key
+        echo -n "Enter [y] if you are ready to copy and sign $libname, [q] to quit "
+        while true; do read -rsn 1 key
+            case "$key" in
+                q)  echo; exit 0;;
+                y)  echo; break;;
+                *)  echo -en "\n\"$key\" is not a valid entry. Enter [y] if you are ready to copy, [q] to quit "
+            esac
+        done
+    }
+
+    # create target_dir
+    [ -d "$DATA_DIR/${target_dir%/}" ] || mkdir -p "$DATA_DIR/${target_dir%/}"
+
+    # write lib with adapted path to target
+    if [ "${channel:-test}" = 'test' ]; then
+        cp -a "$lib" "$target"
+    else
+        sed "s#$INCLUDEDIR/test/#$MODULEDIR/#" "$lib" > "$target"
+    fi
+
+    echo "    target: \"$target\""
+
+$debug && anykey
+
+    # sign lib
+    gpg --yes --default-key $OpenPGP_Key --armor --detach-sign "$target"
+
+    # create for json file
+    epoch=$(epoch_ "$lib")
+    hash=$(sha256sum "$target" | awk '{printf $1}')
+
+    echo "$hash $libname" > "$target.sha256"
+
+    # create json object without "size"
+    jq -n --compact-output --arg libname "$1" --arg epoch "$epoch" --arg hash "$hash" \
+      '{ name: $libname, etag: $epoch, hash: $hash }' > "$target.json"
+    return 0
+}
+
+scan_(){
+    # create modules.json
+    # find $DATA_DIR/$target_includes/$channel -type f -name "*.json" -exec jq -s '.' {} + > $DATA_DIR/$target_includes/$channel/modules.json
+    # create modules.json with epoch 
+    find $DATA_DIR/$target_includes/$channel -type f -name "*.json" -exec jq  --compact-output --slurp '
+        . | { "etag": "'$epoch'", "modules": . }' {} + > $DATA_DIR/$target_includes/$channel/modules.json
+
+    chown -R $HT_USER.$HT_USER "$DATA_DIR/$target_includes"
+    occ files:scan --path="$target_includes/$channel"
+    return 0
+}
+
+bulk_(){
+    local libname
+	for libname in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print); do
+#    find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print | while read -r libname; do
+        sign_ "${libname#$dir1/}"
+    done
+}
+
+check_if_dir_exists(){
+    if [ -d "$(dirname "$1")" ]; then
+        echo "    - dir \"$(dirname "$1")\" exists"
+    else
+        echo "    - dir \"$(dirname "$1")\" does not exist"
+        echo "      create dir \"$(dirname "$1")\""
+        mkdir -p $(dirname "$1")
+    fi
+}
+
+test_2_(){
+    local backupdir libname lib backupsufix
+    backupdir="$(dirname $ca_dir)~backups/modules/$channel"
+    local -a difflibs
+    mapfile -t difflibs< <(tools/compare_modules "test" "$channel")
+    if (( ${#difflibs[@]} )); then
+        [ -d "$backupdir" ] || mkdir -p $backupdir
+        echo "  \${#difflibs[@]} = ${#difflibs[@]}"
+        for libname in ${difflibs[@]}; do
+            echo "  - $libname"
+            lib="$dir1/$libname"
+            if [ -f "$lib" ]; then
+                # backupsufix="$(date -d @$(stat -c %Y "$lib") "+~%F-%H%M")"
+                backupsufix="$(version_sufix "$lib")"
+                check_if_dir_exists "$backupdir/$libname$backupsufix"
+                echo "    copy \"$lib\" to \"$backupdir/$libname$backupsufix\""
+                cp -a "$lib" "$backupdir/$libname$backupsufix"
+            else
+                echo "    \"$lib\" does not exist."
+                check_if_dir_exists "$lib"
+            fi
+#            echo "    copy \"$dir1_dirname/$libname\" to \"$lib\""
+#            cp -a "$dir1_dirname/$libname" "$lib"
+$debug && anykey
+            sign_ $libname
+        done
+        scan_
+    else
+        echo "  no different libs. exiting script."
+    fi
+    echo
+    exit 0
+}
+
+echo
+echo "  debug = $debug - yes = $yes - all = $all - channel = $channel"
+$all||echo "  libs to sign = $@"
+echo "  epoch(etag)=$epoch runtime=$runtime"
+echo "  OpenPGP_Key=$OpenPGP_Key"
+echo "  dir1 = $dir1"
+echo "  target_includes = $target_includes"
+echo
+anykey
+echo
+$test2 && test_2_
+
+if $all; then
+    bulk_
+else
+    (($#))&&{
+        echo "  signing this libraries"
+        echo "  - $@"
+        anykey
+    }||{
+        echo "  no libraries past to sign"
+        exit 1
+    }
+    for library in "$@"; do
+        sign_ "$library"
+    done
+fi
+$yes&&echo "  scan files"||echo "  ready to scan?"
+$yes||anykey
+scan_
+
+exit 0
+

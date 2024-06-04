@@ -1,0 +1,55 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${LINE_BASHLIB:-false} && return 0 || {
+    LINE_BASHLIB=:
+
+    . <(require ansi)
+
+    # $1=pattern $2=color $3=(empty spaces/)repetition of pattern((int/)int)
+    # $4 and $5 either a$i or b$i where a is after and b is before
+    # and $i the amount of empty lines
+    line(){
+
+        pl(){
+            printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"
+        }
+
+        local p="$1" c="$2"
+        local -i e=0 r a=1 b=0
+        (( $(expr $3 : '.*/.*') )) && e=${3%/*}
+        r=${3#*/}
+        shift 3
+        while (( $# )); do
+            case "${1:0:1}" in
+              a|b)  (( ${1:1}1 )) && local ${1:0:1}=${1:1}
+                    shift
+                    ;;
+                *)  shift
+            esac
+        done
+        f $b
+        ((e)) && o $e
+        pl "$($c)$p$(N)" $r
+        f $a
+    }
+
+    separator(){
+        local color
+        color="$1"
+        line ' -' ${color:-GRAY} $((($(tput cols)-8)/2))
+    }
+
+    separator2(){
+        local color
+        color="$1"
+        line ' =' ${color:-GRAY} $((($(tput cols)-8)/2))
+    }
+
+}

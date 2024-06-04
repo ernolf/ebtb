@@ -1,0 +1,43 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${VERBOSE_BASHLIB:-false} && return 0 || {
+    VERBOSE_BASHLIB=:
+
+    . <(require ansi)
+    . <(require exit)
+    . <(require anykey)
+
+#    declare debug=false
+#    $debug&&trap 'read -rp "$(R)[DEBUG:]$(N) press Enter to poceed..."' DEBUG
+
+    # error handling
+    error(){
+        if ! ${quiet:-false}; then
+            R; echo "ERROR: $*$(N)" >&2
+            exit1
+        fi
+    }
+
+    # verbose-echo
+    v_echo(){
+        if ${verbose:-false}; then
+            R; echo "VERBOSE:$(N) $*"
+        fi
+    }
+
+    # verbose-echo
+    d_echo(){
+        if ${debug:-false}; then
+            R; echo "DEBUG:$(N) $*"
+            anykey
+        fi
+    }
+
+}

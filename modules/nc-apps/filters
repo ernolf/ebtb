@@ -1,0 +1,105 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${FILTERS_BASHLIB:-false} && return 0 || {
+    FILTERS_BASHLIB=:
+
+    filters(){
+        cat <<FILTERS
+  Usage:
+    $me appstore [ jq filter code ]
+
+  # Query single app "appname" by id:
+    appstore '.[] | select(.id == "appname")'
+
+  # Field contains (int)
+    appstore '.[] | select(.phpMinIntSize | contains(64))'
+
+  # Field contains ("string")
+    appstore '.[] | select(.id | contains("string"))'
+
+  # Field contains ("string") Case insensitive!
+    appstore '.[] | select(.name | ascii_downcase | contains("string"))'
+
+  # Field equals "string"
+    appstore map(select(.id == "string"))
+
+  # All apps where NCmax is greater than "27"
+    appstore 'map(select(.NCmax > "27"))'
+
+  # Apps with NCmax less than "26" and NCmin greater than "20":
+    appstore 'map(select(.NCmax < "26" and .NCmin > "20"))'
+
+  # All apps where phpMax is less than 8.2:
+    appstore 'map(select(.phpMax < "8.2"))'
+
+  # All apps where phpMax is less than 8.2 and phpMax is not empty:
+    appstore 'map(select(.phpMax < "8.2" and (.phpMax | length > 0)))'
+
+  # All apps where phpMin is greater than 7.0 and phpMin is not empty:
+    appstore 'map(select(.phpMin > "7.0" and (.phpMin | length > 0)))'
+
+  # Apps with phpMax less than 8.2 and phpMax is not empty, and phpMin greater than 7.0 and phpMin is not empty:
+    appstore 'map(select(.phpMax < "8.2" and (.phpMax | length > 0) and .phpMin > "7.0" and (.phpMin | length > 0)))'
+
+  # Apps with phpMax less than 8.2 or phpMin greater than 7.0 and either phpMax or phpMin is not empty:
+    appstore 'map(select((.phpMax < "8.2" or .phpMin > "7.0") and ((.phpMax | length > 0) or (.phpMin | length > 0))))'
+
+  # Apps with phpMax less than 8.2 and phpMin greater than 7.0, and both phpMax and phpMin are not empty:
+    appstore 'map(select(.phpMax < "8.2" and .phpMin > "7.0" and (.phpMax | length > 0) and (.phpMin | length > 0)))'
+
+  # Apps with a specific pattern in the name or id:
+    appstore 'map(select(.name | test("pattern")))'
+    appstore 'map(select(.id | test("pattern")))'
+
+  # Apps with specific categories:
+    appstore 'map(select(.categories | contains("category1") or contains("category2")))'
+
+  # Apps with NCmax less than 26 and NCmin greater than 20, and phpMax less than 8.2:
+    appstore 'map(select(.NCmax < "26" and .NCmin > "20" and .phpMax < "8.2"))'
+
+  # phpExtensions is not empty
+    appstore 'map(select(.phpExtensions | length > 0))'
+
+  # Show only selected fields (id, name, and NCmax) for each app:
+    appstore 'map({id, name, NCmax})'
+
+  # in Combination
+    appstore 'map(select(.NCmax > "26" and .NCmin > "20" and .phpMax > "8.1" and (.phpMax | length > 0) and (.phpExtensions | length > 0))) | map({id, name, NCmax})'
+
+  # Sort by last modified, oldest first
+    appstore 'sort_by(.lastModified)'
+
+  # newest first
+    appstore 'sort_by(.lastModified) | reverse'
+
+  # in Combination
+    appstore 'map(select(.NCmax > "26" and .NCmin > "20" and .phpMax < "8.2")) | sort_by(.lastModified)'
+
+  # Apps created after January 1, 2023:
+    appstore 'map(select(.created > "2023-01-01"))'
+
+  # Apps last modified after January 1, 2023:
+    appstore 'map(select(.lastModified > "2023-01-01"))'
+
+  # Apps created before January 1, 2023:
+    appstore 'map(select(.created < "2023-01-01"))'
+
+  # Apps last modified before January 1, 2023:
+    appstore 'map(select(.lastModified < "2023-01-01"))'
+
+  # Apps that haven't been modified after January 1, 2023 (possibly "stale" apps):
+    appstore 'map(select(.lastModified < "2023-01-01"))'
+
+  # Apps created before January 1, 2023 and haven't been modified after that date (potentially "stale" apps):
+    appstore 'map(select(.created < "2023-01-01" and .lastModified < "2023-01-01"))'
+FILTERS
+    }
+
+}

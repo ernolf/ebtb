@@ -1,0 +1,42 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${FUNCTIONS_BASHLIB:-false} && return 0 || {
+    FUNCTIONS_BASHLIB=:
+
+    . <(require nc/nextcloud)
+
+    get_length(){
+        awk -F'=|;' '/TOKEN_LENGTH/{gsub(/[^0-9]+/,"",$2);print $2}' "$NC_DIR$file_of_server"
+    }
+
+    set_length(){
+        sed -i 's/\(public const TOKEN_LENGTH = \)[0-9]\+;/\1'$1';/' "$NC_DIR$file_of_server"
+    }
+
+    is_valid_integer(){
+        if [[ $1 =~ ^[0-9]+$ ]]; then
+            return 0
+        else
+            return 1
+        fi
+    }
+
+    # Function to calculate the number of variations
+    calculate_variations(){
+        local -i token_length=$1 total_characters=62 # Assuming alphanumeric characters (a-zA-Z0-9)
+        # Calculate the total variations with python, since bash has limitations of signed integers
+        echo $(python -c "print('{0:,}'.format($total_characters ** $token_length))")
+    }
+
+    invalid_argument(){
+        echo "invalid argument \"$1\"" >&2
+    }
+
+}

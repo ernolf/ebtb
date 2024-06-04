@@ -1,0 +1,26 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${ARRAY_BASHLIB:-false} && return 0 || {
+    ARRAY_BASHLIB=:
+
+    declare IFS_="$IFS"
+
+    # get array_fld: $1=name_of_array $2=FS $3=key $4=field_nr:
+    a_fld(){
+        local -n a=$1
+        local -i ai=$4
+        for o in "${a[@]}"; do
+            IFS=$2
+            read -ra f<<<"$o"
+            [[ "${f[0]}" = "$3" ]] && echo "${f[ai-1]}"
+        done
+        IFS="$IFS_"
+    }
+}

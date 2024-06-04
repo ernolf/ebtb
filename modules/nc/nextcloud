@@ -1,0 +1,137 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${NEXTCLOUD_BASHLIB:-false} && return 0 || {
+    NEXTCLOUD_BASHLIB=:
+
+    . <(require ansi)
+    . <(require sudo)
+    . <(require php/version)
+
+    declare NC_USER NC_DIR_USER NC_DIR_GROUP
+    # detect location of config.php
+    if [ -d "$NC_DIR" ]; then
+        NC_DIR_USER=$(stat -c %U $NC_DIR) NC_DIR_GROUP=$(stat -c %G $NC_DIR)
+        if cd $NC_DIR 2>/dev/null; then
+            cdir=$(php -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");' 2>/dev/null)
+            cd
+            # pick out NC_USER
+            if (( $(stat -c %u $cdir/config.php 2>/dev/null) )); then
+                NC_USER="$(stat -c %U $cdir/config.php)"
+            fi
+        elif [ "$NC_DIR_USER" = 'root' ]&&[ "$NC_DIR_GROUP" != 'root' ]; then
+            NC_USER=$NC_DIR_GROUP
+        fi
+    fi
+    # if NC_USER still unknown, try these fallbacks:
+    [ -n "$NC_USER" ] || NC_USER="$(ps -o user $(pgrep -f "php|apache2|httpd|nginx")|awk 'NR>1'|sort -u|grep -v root)"
+    [ -n "$NC_USER" ] || NC_USER="$(apachectl -S 2>/dev/null|awk -F '[" ]' '/User:/ { print $3 }')"
+
+    # only load firstrun module if needed
+    if [ ! -d "$NC_DIR" ]; then
+        . <(req nc/first_run)
+        first_run
+    elif [[ "$(id -un)" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
+        su_do "u=NC_USER"
+    elif [ ! -r "$NC_DIR/lib/base.php" ]; then
+        . <(req nc/first_run)
+        first_run
+    fi
+
+    # the occ command call is saved under occ, adapted to the user and environment
+    occ(){ php$(php_ver) -f $NC_DIR/occ $@;}
+
+    if (( $(id -u) )); then
+        [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
+    else
+        # you are root
+        occ(){ sudo -u $NC_USER php$(php_ver) -f $NC_DIR/occ $@;}
+    fi
+
+    config2json(){
+
+        jq_filter(){
+#            echo "$@"|jq -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
+            echo "$@" | jq -c '[.[] | .[]]
+                | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
+                | reduce .[]as $item({};. * $item)'
+        }
+
+#        C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
+        C2J='<?php
+        $c = [];
+        foreach ($argv as $f) {
+            if ($f !== $argv[0]) {
+                include $f;
+                foreach ($CONFIG as $k => $v) {
+                    $c[$f][] = ["key" => $k, "value" => $v];
+                }
+            }
+        }
+        echo json_encode($c);
+        ?>'
+
+        if ls $cdir/*.config.php>/dev/null 2>&1; then
+            jq_filter $(echo "$C2J" | php -- $cdir/config.php $cdir/*.config.php)
+        else
+            jq_filter $(echo "$C2J" | php -- $cdir/config.php)
+        fi
+    }
+
+    declare config_json
+    nc_configkey(){
+        if [ -z "$config_json" ]; then
+            config_json="$(config2json)"
+            jq -r ".[\"$1\"].value" <<< "$config_json"
+        fi
+    }
+
+    nc_configkey_exist_(){
+        grep -qsw "$1" $NC_DIR/config/*config.php
+        return $?
+    }
+
+    declare NC_DATADIR
+    if nc_configkey_exist_ datadirectory; then
+        NC_DATADIR="$(nc_configkey datadirectory)"
+    elif [ -d "$NC_DIR/data" ];then
+        NC_DATADIR="$NC_DIR/data"
+    else
+        NC_DATADIR=""
+    fi
+
+    # array with latest versions from end of life platforms
+    declare -a latest_eol=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13)
+
+    lowest_eol(){
+        local v l="999"
+        for v in "${latest_eol[@]}"; do
+            (( $(v2i "$v") < $(v2i "$l") )) && l="$v"
+        done
+        echo "$l"
+    }
+
+    highest_eol(){
+        local v h
+        for v in "${latest_eol[@]}"; do
+            (( $(v2i "$v") > $(v2i "$h") )) && h="$v"
+        done
+        echo "$v"
+    }
+
+    nc_version_(){ local version_php="$2"
+        case $1 in
+            long)   awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php";;
+            short)  awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php";;
+            key)    awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php";;
+            string) awk -F"'" '/\$OC_VersionString =/{print $2}' "$version_php";;
+        esac
+    }
+
+}

@@ -1,0 +1,396 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+# This script checks the mimetypes of files within Nextcloud's data
+# directory and verifies if their file extensions are correct. If
+# they're not, it changes or appends them as necessary. It integrates
+# with Nextcloud's Command Line API, `./occ`, and is intended to be used
+# in conjunction with 'Flow external script'.
+# Therefore create [Run script]-rules in:
+# http[s]://%your-nextcloud%/settings/admin/workflow
+# Example rule for jpeg-Files:
+#
+#   When [File created]
+#     and [File MIME type] [is] [Custom mimetype] [image/jpeg]
+#     and [File name] [does not match] [/^.*\.(jpe?g)$/i]
+#  >_ Pass files to external scripts for processing outside of Nextcloud
+#          [/usr/local/bin/nc-mimecheck -q %n]
+#
+########################################################################
+
+__scriptname__
+
+deps=(
+    "gpg#gnupg#GNU Privacy Guard"
+    "jq#jq#command-line JSON processor"
+)
+modules=(
+    basics sed tempfile ansi button exit anykey verbose line array ask sudo
+    dependency vdir integrity nc/nextcloud nc/nextcloud_db $sin/mime_types
+    $sin/help $sin/functions
+)
+
+# make module loading quiet if -q or --quiet is passed
+for a in "$@";do [[ "$a" == '-q'||"$a" == '--quiet' ]]&&declare pager=:;done;unset -v a
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+
+### general (minified)
+__general__
+## include bashmodules (minified) ->
+__module_builder__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+declare bools="listmimes recursive dryrun verbose debug quiet bak enabled_user"
+# declare options
+reset_bools(){ local bool
+    for bool in $bools;do declare -g $bool=false;done
+}
+
+declare variables="options basepath nc_path tempfile
+                   iid blacklist listmimesoftype wom1 wom2"
+for undeclared_option in $bools $variables;do
+   declare $undeclared_option
+done
+declare grepopts='-qs'
+# "woa" stands for wrong options array
+# "woi" stands for wrong option index
+declare -a woa;declare -i woi=0
+# green good
+declare gg="$(lG)Good!$(N)"
+
+declare mimedetector="mimetype -b"
+#mimedetector="file -b --mime-type"
+
+# set all bools to 'false'
+reset_bools
+
+# parsing options
+# Check if -l|--list option has an argument and add 'all' if missing
+shopt -s extglob
+while (($#));do
+    case "$1" in
+        -l|--list)
+            if [[ -n "${2}"&&"${2}" != -* ]];then :;else
+                shift;set -- "-l" "all" "$@"
+            fi
+            break 2
+            ;;
+        --detector)
+            if [[ -n "${2}"&&"${2}" != -* ]];then
+                shiftedoption="$shiftedoption ${1} ${2}"
+                shift 2
+            fi
+            ;;
+        @(-)+([a-z])p)
+            if [[ -n "${2}"&&"${2}" != -* ]];then
+                shiftedoption="$shiftedoption ${1} ${2}"
+                shift 2
+            fi
+            ;;
+        @(-)+([a-z])l)
+            if [[ -n "${2}"&&"${2}" != -* ]];then :;else
+                set -- "${1}" "all" "${@:2}"
+            fi
+            break 2
+            ;;
+        @(-)*([a-z])l+([a-z]))
+            set -- "-l" "all" "${1/l/}" "${@:2}"
+            break 2
+            ;;
+        --) break 2
+            ;;
+        *)  shiftedoption="$shiftedoption ${1}"
+            shift
+            ;;
+    esac
+done
+shopt -u extglob
+[ -n "$shiftedoption" ]&&set -- $shiftedoption $@
+unset shiftedoption
+
+options=$(getopt -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$me" -- "$@")
+if (($?==0));then
+    eval set -- "$options"
+    while :;do
+        case $1 in
+            -h|--help)
+                print_help
+                ;;
+            -l|--listmimes)
+                listmimes=true
+                if [ -n "$2" ];then
+                    listmimesoftype="$2"
+                    shift 2
+                else
+                    listmimesoftype='all'
+                    shift
+                fi
+                ;;
+            --detector)
+                mimedetector=$2
+                shift 2
+                ;;
+            -d|--dryrun)
+                dryrun=true
+                shift
+                ;;
+            -r|--recursive)
+                recursive=true
+                shift
+                ;;
+            -q|--quiet)
+                quiet=true
+                shift
+                ;;
+            -v|--verbose)
+                if $verbose;then
+                    debug=true;grepopts=''
+                else
+                    verbose=true;grepopts='-q'
+                fi
+                shift
+                ;;
+            --debug)
+                verbose=true
+                debug=true
+                grepopts=''
+                shift
+                ;;
+            --) shift
+                break
+                ;;
+            *)  wrong_option -r "Missing or unknown option $1"
+                shift
+                ;;
+        esac
+    done
+else
+    wrong_option "Missing or unknown option"
+fi
+
+$debug&&set -x
+
+# some verbose echos
+v_echo "$(P)all available options after parsing arguments:$(N)"
+v_echo "$(pf;Y)detector$(N)=\"$(G)$mimedetector$(N)\""
+for bool in $bools;do
+    eval v_echo \"\$\(pf\;Y\)$bool\$\(N\)=\$$bool\"
+done
+v_echo "$(pf;Y)basepath$(N)=\"$(G)$*$(N)\""
+
+# print suported mimes and exit, no further checks
+$listmimes&&{
+    if [ $listmimesoftype != 'false' ];then
+        if [ $listmimesoftype = 'all' ];then
+            list_mimes "all" $(echo "${mime_ext_regex_array[@]}")
+            exit 0
+        else
+            for ((i=0;i<${#listmimesoftype};i++));do
+                case ${listmimesoftype:i:1} in
+                i) list_mimes image $(echo "${mime_ext_regex_image[@]}")
+                   ;;
+                v) list_mimes video $(echo "${mime_ext_regex_video[@]}")
+                   ;;
+                a) list_mimes audio $(echo "${mime_ext_regex_audio[@]}")
+                   ;;
+                t) list_mimes text $(echo "${mime_ext_regex_text[@]}")
+                   ;;
+                *) f;R;printf "OPTION: invalid -l | --list"
+                   printf " \"type\" '${listmimesoftype:i:1}'$(N), "
+                   printf "either a combination of $(Pbg) i v a t $(N)"
+                   echo " or $(Pbg) all $(N) are allowed"
+                   try_help
+                esac
+            done
+        exit 0
+        fi
+    fi
+}
+
+## further verification of arguments
+# gathering all further errors in array, then echo all of them together
+
+# check path
+if ! $listmimes; then
+    if [ -z "$*" ]; then
+        wrong_option -r "Missing path to directory or file to scan"
+    else
+        # check for existence of path if absolute
+        helpvar="$*"
+        if [ "${helpvar:0:1}" = "/" -a ! -e "$*" ]; then
+            wom1="Path to directory or file to scan"
+            wom2="does not exist"
+            wrong_option -r "$wom1 $(Pbg)$*$(R)#$wom2"
+            unset helpvar
+        fi
+    fi
+fi
+# if errors found, echo them all together, echo help and exit 
+wrong_option -x
+
+# cd into NC_DATADIR because nextcloud understands pathes from there
+if nc_configkey_exist_ datadirectory;then
+    NC_DATADIR="$(nc_configkey datadirectory)"
+    if [ -d "$NC_DATADIR" ];then
+        v_echo "$(pf;Y)the nextcloud data directory is$(N) \"$(B)$NC_DATADIR$(N)\""
+    else
+        error "can not find nextcloud data directory."
+    fi
+elif [ -d "$NC_DIR/data" ];then
+    NC_DATADIR="$NC_DIR/data"
+    v_echo "$(pf;Y)no information about the nextcloud data directory,$(N)"
+    v_echo "$(pf;Y)use the default directory$(N) \"$(B)$NC_DATADIR$(N)\""
+else
+    error "can not find nextcloud data directory."
+fi
+
+cd "$NC_DATADIR"
+
+# remove absolute path to NC_DATADIR if not invoked by nextcloud flow
+basepath="$(echo "$*"|sed 's\'$NC_DATADIR'/\\1')"
+user2check="$(check_username_case "${basepath%%/*}")"
+[ "$user2check" = "${basepath%%/*}" ]||{
+    v_echo "$(pf;Y)user case corrected:$(N) from \"$(B)${basepath%%/*}$(N)\" to \"$(B)$user2check$(N)\" "
+}
+basepath="$user2check/${basepath#*/}"
+v_echo "$(pf;Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
+
+# now as we entered the data dir, we can check relative dir (or file)
+if [ ! -e "$basepath" ];then
+    wom1="$(Pbg)$*$(R) does not exist"
+    wom2="path must look like: $(GRAY)($PWD/)$(Y)%USER%/files/path..$(N)"
+    wrong_option -r "$wom1#$wom2"
+    wrong_option -x
+fi
+
+# thoroughly but slowly tests
+iid="$(nc_configkey instanceid)"
+blacklist="appdata_$iid|updater-$iid"
+if echo "$basepath"|grep -Eqs  "$blacklist";then
+    wrong_option "blacklisted filepath $(Pbg)$basepath$(N)"
+else
+    v_echo "$(pf;Y)basepath is no system dir (appdata or backup). $gg"
+fi
+
+# TODO: enable groupfolders
+#    groupfolder = __groupfolders/$groupfolder_id/
+# if groupfolder, not occ files:scan but occ groupfolders:scan
+if echo "$basepath"|grep $grepopts "__groupfolders/[0-9]";then
+    wrong_option "groupfolders not (yet) supported"
+else
+    v_echo "$(pf;Y)basepath is not a groupfolder. $gg"
+fi
+
+# check if basepath is a user
+#       user dir = $user_id/files/
+#occ user:info "${basepath%%/*}"|grep $grepopts "enabled: true"
+    # this does not work with usernames containing spaces:
+    #if enabled_user="$(occ user:info --output=json -- "'$user2check'"|jq '.enabled')"; then
+if $(user_exists "$user2check"); then
+    #    if $enabled_user;then
+    if "$(user_disabled "$user2check")"; then
+        wrong_option "\"${basepath%%/*}\" is not an enabled user"
+    else
+        v_echo "$(pf)\"$(C)${basepath%%/*}$(N)\"$(Y) is an enabled user. $gg"
+        if [ "${basepath%%/*}" = "$basepath" ];then
+            basepath="$basepath/files/"
+            v_echo "$(pf;Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
+        fi
+        if echo "$basepath/"|grep $grepopts "^${basepath%%/*}/files/";then
+            v_echo "$(pf;Yi)basepath check succeeded. $gg"
+        else
+            wom1="basepath $(Pbg)$basepath$(R)"
+            wom2="is not in /files/ directory of user \"${basepath%%/*}\""
+            wrong_option -r "$wom1#$wom2"
+            wrong_option -x
+        fi
+    #    else
+    #        wrong_option "\"${basepath%%/*}\" is not an enabled user"
+    fi
+else
+    wrong_option "\"${basepath%%/*}\" is not a user"
+fi
+
+# checks are done, now the work can begin
+$quiet||echo "$(Y)cd into nextcloud data directory:$(N) \"$(B)$NC_DATADIR$(N)\""
+v_echo "$(pf;Y)working directory (PWD) now is:$(N) \"$(B)$PWD$(N)\""
+
+$recursive&&v_echo "$(pf;Y)recursive set to$(N) \"$recursive\""
+
+# define a temporary file
+tempfile="$(tf)"
+v_echo "$(pf;Y)temporary file:$(N) \"$(B)$tempfile$(N)\"$(Y) created$(N)"
+
+# function to write and read in the temporary file,
+# returns 'true'' or 'false'
+do_occ_filesscan(){ [ "$1" = "set" ]&&echo "$2" > $tempfile||cat $tempfile;}
+do_occ_filesscan set false
+
+v_echo "$(pf;Y)do_occ_filesscan preset to$(N) $(do_occ_filesscan)"
+
+if [ -d "$basepath" ];then
+    # if $actualpath a directory, all files inside will be treated
+    path="${basepath%/}"
+    if $recursive;then
+        $quiet||echo "$(G)check all files in$(N) \"$(B)$path$(N)\"$(G) recursively$(N)"
+        v_echo "$(pf;Y)do_occ_filesscan$(N)=$(do_occ_filesscan)"
+        find "$path" -type d|while read subpath;do
+            $quiet||echo "   $(pf;B)$subpath$(N)"
+            scan_dir "$subpath"
+            if [ $? -eq 0 ];then
+                v_echo "$(pf;Y)changed path:$(N) \"$(B)$subpath$(N)\""
+                v_echo "$(pf;Y)do_occ_filesscan$(N)=$(do_occ_filesscan)"
+            fi
+        done
+    else
+        $quiet||echo "check all files in: \"$path\""
+        scan_dir "$path"
+    fi
+#set -x
+else
+# if $actualpath is a file, only that file will be treated.
+    #exract path for occ files:scan at the end
+    path="$(dirname "$basepath")"
+    mimetype="$($mimedetector "$basepath")"
+    echo "${mime_ext_regex_array[@]%%:*}"|grep -qsw "$mimetype"||error "MIME type '$mimetype' not supported"
+    extension="$(a_fld mime_ext_regex_array ':' "$mimetype" 2)"
+    regex="$(a_fld mime_ext_regex_array ':' "$mimetype" 3)"
+    main "$basepath" "$regex" "$extension" "$mimetype"
+fi
+v_echo "$(pf;Y)do_occ_filesscan at end of script:$(N) $(do_occ_filesscan)"
+# if anything changed, $(occ files:scan) the affected directory
+if $(do_occ_filesscan);then
+    $recursive&&occshallow=""||occshallow=" --shallow"
+    occdebug=""
+    $quiet&&occdebug=" --quiet"
+    $verbose&&occdebug=" -v"
+    $debug&&occdebug=" -vvv"
+    occcommand="files:scan"
+    occstring="$occcommand$occshallow$occdebug"
+    $quiet||G;echo "running$(N;f)$PWD# occ $occstring --path=\"$(B)$path$(N)\""
+    if $dryrun;then
+        echo " -$(G) option$(N) --dryrun$(G) was set, nothing changed$(N)"
+    else
+        occ $occstring --path="$path"
+    fi
+else
+    $quiet||echo " -$(G) nothing changed$(N)"
+fi
+$debug&&set +x
+
+exit 0
+

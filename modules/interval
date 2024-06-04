@@ -1,0 +1,58 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${INTERVAL_BASHLIB:-false} && return 0 || {
+    INTERVAL_BASHLIB=:
+
+    . <(require today)
+
+    interval(){
+        local until since years months and N_D_F O_D_F
+        local -i UT_1 UT_2 N_D O_D N_Y N_M N_DAY O_Y O_M O_DAY IY IM ID
+        UT_1=$1 UT_2=$2 until='' since='' years=' year' months=' month' and=' and '
+        (( $# == 1 )) && UT_2=$today
+        (( UT_1 > UT_2 )) && N_D=$UT_1 O_D=$UT_2 || N_D=$UT_2 O_D=$UT_1
+        (( N_D == today )) && since=" ago"
+        (( O_D == today )) && until="in "
+        N_D_F=$(date -ud @$N_D +%Y-%-m-%-d)
+        O_D_F=$(date -ud @$O_D +%Y-%-m-%-d)
+        read -r N_Y N_M N_DAY <<< ${N_D_F//-/ }
+        read -r O_Y O_M O_DAY <<< ${O_D_F//-/ }
+        IY=$((N_Y-O_Y)) IM=$((N_M-O_M)) ID=$((N_DAY-O_DAY))
+        (( ID < 0 )) && (( IM-- ))
+        (( IM < 0 )) && {
+            ((IY--))
+            ((IM+=12))
+        }
+        (( IY == 1 )) || years=" years"
+        (( IM == 1 )) || months=" months"
+        if (( IY > 0 || IM > 0 )); then
+            (( IM )) || unset and IM months
+            (( IY )) || unset and IY years
+            echo "$until$IY$years$and$IM$months$since"
+        else
+            echo "${until}less than 1$months$since"
+        fi
+    }
+
+    # from seconds to human readable
+    sec2hr(){
+        local outstring
+        local -i seconds minutes hours days
+        seconds=${1%.*}
+        days=$((seconds / 86400))
+        (( days ))&&outstring="$days days"
+        hours=$((seconds / 3600 % 24))
+        (( hours ))&&outstring="$outstring, $hours hours"
+        minutes=$((seconds / 60 % 60))
+        outstring="$outstring and $minutes minutes"
+        echo "$outstring"
+    }
+
+}

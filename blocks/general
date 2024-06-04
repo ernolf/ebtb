@@ -1,0 +1,88 @@
+# general
+log(){
+    ( flock -x 200
+      echo "$(ts) - $bm-$epoch - $(fp)$@" >> "$lf"
+    ) 200>"$lf.lock"
+}
+ts() {
+    printf "%(%s-)T"
+    printf "%((%F_%R_%Z))T"
+}
+ver_() {
+    awk '/^# v/{print$3,$4}' "$1"
+}
+epch_() {
+    awk '/^# v/{print$NF}' "$1"
+}
+fp() {
+    cat $lincld/fp 2>/dev/null
+}
+hc() {
+    local a=$1
+    shift
+    log "$1" &
+    curl -$a /dev/null -w %{http_code} -A "$(fp)$@"
+}
+nohome() {
+    echo -e "\n - Failed to load required module \"$1\".\n   try again later or run\n   - sudo wget -O $ca_me $my_url\n   and start the script again."
+    rm -f "$lincld/$1"
+    exit 1
+}
+sourced() {
+    local am
+    local -u m="${1#*/}_BASHLIB"
+    eval am="\$$m"
+    ${am:-false} && return 0 || return 1
+}
+json_etag() {
+    which jq >/dev/null || return 1
+    jq -r '.etag' "$1" 2>/dev/null
+    return $?
+}
+c4u() {
+    local -u m="${1#*/}_BASHLIB"
+    [ -f "$lincld/$1" ] || return 0
+    local -i le=$(module_etag "$1" "$lmj") re=$(module_etag "$1" "$lmjn")
+    ((le < re)) && {
+        rm "$lincld/$1"
+        declare -g $m=false
+    }
+}
+req() {
+    sourced $1 && return 0 || { log req $1;curl -A "$(fp)req $1" $cargs/$rincld/$1 && return 0 || nohome $l; }
+}
+require() { req $@; }
+module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
+declare lf version my_home my_url cargs opt opts astr="$(id -un): " A="$(uname -a)"
+declare -i epoch my_epoch my_size lce mje mjne w4uc
+declare -a args tntd
+[ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
+lf="$TMPDIR/ebtb-logfiles/$bm.log"
+[ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
+version="$(ver_ "$apm")" epoch="$(epch_ "$apm")" my_home='https://global-social.net/apps/raw/s'
+my_url="$my_home/$scriptname" cargs="-se $bm-$epoch --http2-prior-knowledge $my_home"
+opts="rt run2 irun2 do_update do_restore_backup do_integrity_check"
+for opt in $opts; do declare $opt=false; done
+(($(id -u))) || rt=:
+for arg in "$@"; do
+    if [ "${arg%=*}" = 'json' ]; then
+        declare run2=: my_$arg astr="run2 $astr"
+    elif [ "$arg" = 'irun2' ]; then
+        declare irun2=: astr="irun2 $astr"
+    elif [ "$arg" = 'my_update' ]; then
+        declare do_update=: astr="update $astr"
+    elif [ "$arg" = 'restore_backup' ]; then
+        declare do_restore_backup=: astr="backup $astr"
+    elif [ "$arg" = 'integrity_check' ]; then
+        declare do_integrity_check=: astr="integrity $astr"
+    else
+        args+=("$arg")
+    fi
+done
+set -- "${args[@]}" && unset -v args
+declare my_args="$*" r my_json my_scriptname my_hash
+$run2 && r=$(hc Io "$astr$my_args" $cargs/${scriptname}_json) || {
+    r=$(hc D "$astr$my_args" $cargs/${scriptname}_json)
+    ((${r##*$'\n'} == 200)) && my_json="${r%$'\n'*}"
+}
+unset -v r

@@ -1,0 +1,46 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${PHP_LOGO_BASHLIB:-false} && return 0 || {
+    PHP_LOGO_BASHLIB=:
+
+    . <(require ansi)
+
+    php_logo(){
+        cat << PHPLOGO
+  $(dPHP)hhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhH$(N)
+  $(dPHP)HhhHhhhHhhHhhHhhHhhhHhhHhhHhhhhPPPppPppPpppPpPPPPhhhHhhhHhhHhhHhhhHhhHhhHhhHhh$(N)
+  $(dPHP)hhhhhhhhhhhhhhhhhhhhPPp$(lPHP):::;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)pppPhhhhhhhhhhhhhhhhhhhh$(N)
+  $(dPHP)hhHhhHhhHhhHHhhPp$(lPHP):;;;;;;;;;;;;;;;;;,,,,,;;;;;;;;;;;;;;;;;;;;:$(dPHP)pPhHhhHhhHHhhHhhH$(N)
+  $(dPHP)HhhHhhhHhhhPp$(lPHP):;;;;;;;;;;;;;;;;;;;;,    .;;;;;;;;;;;;;;;;;;;;;;;;;$(dPHP)pPhhHhhHhhHhh$(N)
+  $(dPHP)hhHhhHhhP$(lPHP):;;;;;;;;;;;;;;;;;;;;;;;;.    ';;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)phhhhHhhH$(N)
+  $(dPHP)hhhhhhp$(lPHP);;;;;;;;;'...........',;;;,     ......',;;;'...........',;;;;;;;$(dPHP)phhhhhh$(N)
+  $(dPHP)HhhHP$(lPHP);;;;;;;;;;;.             .,;'             .,,              .,;;;;;;;$(dPHP)PhHhh$(N)
+  $(dPHP)hhHp$(lPHP);;;;;;;;;;;'    .''''..    .;.    .'''..    ..    .'''...    .;;;;;;;;$(dPHP)phhH$(N)
+  $(dPHP)HhP$(lPHP);;;;;;;;;;;;.    ';;;;;,     ,    .;;;;;.    '.    ,;;;;;'    .;;;;;;;;;$(dPHP)Phh$(N)
+  $(dPHP)hh$(lPHP):;;;;;;;;;;;,     ,;;;;;.    ..    ';;;;,    .'    .;;;;;;.    .;;;;;;;;;:$(dPHP)hh$(N)
+  $(dPHP)hh$(lPHP):;;;;;;;;;;;.    .;;;,'.    .,    .;;;;;.    ..    ';;;,'.    .,;;;;;;;;;:$(dPHP)hH$(N)
+  $(dPHP)HhP$(lPHP);;;;;;;;;;;.              .,'    .;;;;;.    '              ..,;;;;;;;;;;$(dPHP)Phh$(N)
+  $(dPHP)hhHP$(lPHP);;;;;;;;;'     ........',;;.....,;;;;,......    .........',;;;;;;;;;;;$(dPHP)phhH$(N)
+  $(dPHP)hhhhh$(lPHP):;;;;;;;.    ,;;;;;;;;;;;;;;;;;;;;;;;;;;;;.   .;;;;;;;;;;;;;;;;;;;;;$(dPHP)Phhhh$(N)
+  $(dPHP)HhhHhhP$(lPHP):;;;;,    .;;;;;;;;;;;;;;;;;;;;;;;;;;;;'    .;;;;;;;;;;;;;;;;;;:$(dPHP)pHhhHhh$(N)
+  $(dPHP)hhHhhHhhhp$(lPHP):;,....';;;;;;;;;;;;;;;;;;;;;;;;;;;;'....,;;;;;;;;;;;;;;;;$(dPHP)pPHHhhHhhH$(N)
+  $(dPHP)HhhHhhhHhhHhp$(lPHP):;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)phhhHhhHhhHhh$(N)
+  $(dPHP)hhhhhhhhhhhhhhhPPp$(lPHP):;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)pphhhhhhhhhhhhhhhh$(N)
+  $(dPHP)hhHhhHhhHhhHHhhHhhHhhhPppp$(lPHP):;;;;;;;;;;;;;;;;;;;;;;;;::$(dPHP)pPPPhhhhHhhHhhHhhHHhhHhhH$(N)
+  $(dPHP)HhhHhhhHhhHhhHhhHHhhHhhHhhHhhHhPhhPPPPPPPPPPPhhhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhh$(N)
+  $(dPHP)hhHhhHhhHhhhHhhHhhHhhHhhhHhhHhhHhhHhhhHhhHhhHhhhHhhHhhHhhHhhhHhhHhhHhhHhhhHhhH$(N)
+PHPLOGO
+    }
+
+    phplogo(){
+        php_logo
+    }
+
+}

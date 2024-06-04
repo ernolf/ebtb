@@ -1,0 +1,58 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "watch#procps#Run a task periodically, showing output on stdout"
+    "gpg#gnupg#GNU Privacy Guard"
+    "jq#jq#command-line JSON processor"
+    "html2text#html2text#Advanced HTML-to-text converter"
+)
+modules=(
+    basics sed tempfile ansi button exit anykey line array sudo dependency vdir
+    integrity nc/nextcloud nc/nextcloud_db $sin/help $sin/last $sin/monitor
+)
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+
+### general (minified)
+__general__
+## include bashmodules (minified) ->
+__module_builder__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+## SCRIPT SPECIFIC
+command=print_help
+while (($#));do
+    case $1 in
+        monitor|last)
+            command=nc_$1
+            break 2
+            ;;
+        -h|--help)
+            print_help
+            ;;
+        *)  f;echo "--> unknown option: \"$1\" <--"
+            print_help
+    esac
+done
+
+$command
+
+exit 0
+

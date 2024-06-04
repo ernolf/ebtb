@@ -1,0 +1,89 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${BUTTON_BASHLIB:-false} && return 0 || {
+    BUTTON_BASHLIB=:
+
+    . <(require ansi)
+
+    buttonize(){
+        local oldcolor
+        oldcolor="$(cat $COLOR 2>/dev/null)"
+        GRAYbg
+        printf '%s' '['
+        case $1 in
+            OK) GGRAYbg
+                ;;
+           NOK) RGRAYbg
+        esac
+        printf '%s' "$2"
+        GRAYbg
+        printf '%s' ']'
+        ${oldcolor:-N}
+    }
+
+    button(){
+        case $1 in
+          no|q) buttonize NOK "$1"
+                ;;
+             *) buttonize OK "$1"
+        esac
+    }
+
+    box(){
+        case $1 in
+          no|q) buttonize NOK " $1 "
+                ;;
+             *) buttonize OK " $1 "
+        esac
+    }
+
+    check(){
+        [[ " OK NOK " =~ " $1 " ]]||return
+        case $1 in
+            OK) buttonize OK '✔️'
+                ;;
+           NOK) buttonize NOK '✖️'
+        esac
+    }
+
+    q2q(){
+        printf '%s' "$(box q) to quit"
+    }
+
+#    button(){
+#        oldcolor="$(cat $COLOR)"
+#        case $1 in
+#         no|q)  RGRAYbg
+#                printf "[$1]"
+#                ;;
+#            *)  GGRAYbg
+#                printf "[$1]"
+#        esac
+#        ${oldcolor:-N}
+#    }
+
+#    check(){
+#        [[ " OK NOK " =~ " $1 " ]]||return
+#        oldcolor="$(cat $COLOR)"
+#        GRAYbg
+#        printf "["
+#        case $1 in
+#            OK) GGRAYbg
+#                printf "✔️"
+#                ;;
+#           NOK) RGRAYbg
+#                printf "✖️"
+#        esac
+#        GRAYbg
+#        printf "]"
+#        ${oldcolor:-N}
+#    }
+
+}

@@ -1,0 +1,268 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${MERGE_BASHLIB:-false} && return 0 || {
+    MERGE_BASHLIB=:
+
+    . <(require ansi)
+    . <(require basics)
+    . <(require sed)
+    . <(require spinner)
+    . <(require line)
+    . <(require fstring)
+    . <(require php.ini/ini_directives)
+
+    defaults_and_changelog(){
+        local key default changelog tip
+        local -i r=0
+        key="$1" tip=''
+        if default="$(ini_directives "$key" default)"; then
+            os;GRAY
+            if [ -z "$default" ]; then
+                echo "this directive has no default value"
+            else
+                echo "the value defaults to $(Cbg)\"$default\"$(N)"
+            fi
+            if changelog="$(ini_directives "$key" changelog)"; then
+                if [ -n "$changelog" ]; then
+                    if grep -iqs "removed" <<< "$changelog"; then
+                        tip="\nTIP: $(O)do $(Rbg) not $(O) integrate this directive into the new config if it got removed$(N)" r=1
+                    fi
+                    os;GRAY;echo "this is the changelog of this directive:"
+                    os;N;echo -e "- $(Cbg)\"$changelog\"$(N)$tip"
+                fi
+            fi
+        else
+            os;GRAY;echo "This script does not have any information about this directive.";N
+        fi
+        return $r
+    }
+
+    # key_ name and key_ val
+    key_(){
+        case $1 in
+          name) trim "${2%%=*}"
+                ;;
+           val) trim "${2##*=}"
+        esac
+    }
+
+    comm_(){
+        is_extension(){ grep -Eqs "^\s*extension\s*=.*" <<< "$1";}
+
+        local opath npath key val nval
+        local -i oi ni i j
+        local -a osettings nsettings osettings_names nsettings_names diff1_names diff2_names diff1_names_with_values diff2_names_with_values
+
+        [ -n "$2" ] && opath="$2" || opath="$FILE"
+        [ -n "$3" ] && npath="$3" || npath="${FILE//$OLD/$NEW}"
+        mapfile -t osettings< <(stripconf "$opath")
+        # add the extensions loaded by mods-available to prevent loading multiple times
+        mapfile -t nsettings< <(stripconf "$npath";grep -Ehr "^\s*(zend_)?extension\s*=.*" "/etc/php/$NEW/mods-available")
+        # get all settings from the old ini file and store the settings in an array
+        for oi in "${!osettings[@]}"; do
+            key="$(key_ name "${osettings[oi]}")";osettings_names+=("$key")
+        done
+        # get all settings from the new ini file and store the settings in an array
+        for ni in "${!nsettings[@]}"; do
+            key="$(key_ name "${nsettings[ni]}")";nsettings_names+=("$key")
+        done
+        case $1 in
+            1)  # get the settings that are in the old settings array but not in the new settings array
+                mapfile -t diff1_names< <(comm -23 <(p_sort "${osettings_names[@]}") <(p_sort "${nsettings_names[@]}"))
+                # get the values for the settings in diff1_names
+                for i in "${!diff1_names[@]}"; do
+                    val="$(key_ val "$(grep -E "^\s*$(escaped ${diff1_names[i]})\s*=.*" "$opath")")"
+                    diff1_names_with_values+=("${diff1_names[i]}=$val")
+                done
+                # add all occurrences of "extension=*" to diff1_names_with_values
+                for oi in "${!osettings[@]}"; do
+                    is_extension "${osettings[oi]}"&&{ val="$(key_ val "${osettings[oi]}")"
+                        for ni in "${!nsettings[@]}"; do
+                            is_extension "${nsettings[ni]}"&&{ nval="$(key_ val "${nsettings[ni]}")";[ "$val" = "$nval" ]&&break 2;}
+                        done
+                        diff1_names_with_values+=("extension=$val")
+                    }
+                done
+                p_sort "${diff1_names_with_values[@]}" # remove duplicates
+                ;;
+            2)  # get the settings that are in the new settings array but not in the old settings array
+                mapfile -t diff2_names< <(comm -13 <(p_sort "${osettings_names[@]}") <(p_sort "${nsettings_names[@]}"))
+                # get the values for the settings in diff2_names
+                for j in "${!diff2_names[@]}"; do
+                    val="$(key_ val "$(grep -E "^\s*$(escaped ${diff2_names[j]})\s*=.*" "$npath")")"
+                    diff2_names_with_values+=("${diff2_names[j]}=$val")
+                done
+                p_sort "${diff2_names_with_values[@]}" # remove duplicates
+        esac
+    }
+
+    first_step(){
+        local opath npath key nkey val nval
+        local -a osettings nsettings
+        local -i i ni
+        opath="$FILE"
+        npath="${FILE//$OLD/$NEW}"
+        mapfile -t osettings< <(stripconf "$opath")
+        mapfile -t nsettings< <(stripconf "$npath")
+        for i in ${!osettings[@]}; do
+            key="$(key_ name "${osettings[i]}")"
+            val="$(key_ val "${osettings[i]}")"
+            for ni in "${!nsettings[@]}"; do
+                nkey="$(key_ name "${nsettings[ni]}")"
+                spinner dO " . comparing $npath with $opath ." &
+                if [ "$key" = "$nkey" ]; then
+                    nval="$(key_ val "${nsettings[ni]}")"
+                    if [ "${val//$OLD/}" != "${nval//$NEW/}" ]; then
+                        kill_spinner
+                        f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) it is $(GRAYbg)\"$nval\"" 3;N)"
+                        defaults_and_changelog "$key"
+                        question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val//$OLD/$NEW}\"" 3;N)"
+                        if ask "$question" "$YES"; then
+                            sed -i "s|^\s*$key.*$|;$key = $nval\n$key = ${val//$OLD/$NEW}|" "$npath"
+                            echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val//$OLD/$NEW}\"" 3;N)"
+                        fi
+                        separator
+                    fi
+                    break
+                fi
+            done
+        done
+        kill_spinner
+    }
+
+    merge_settings(){
+        last_occurrence(){
+            local key npat
+            local -i llnr
+            key="$1" npath="$2"
+            if [ "$key" = "extension" ]; then
+                # find the line number of the last occurrence of the extension setting, including uncommented lines
+                llnr=$(grep -n "^\s*;\{0,1\}\s*extension" "$npath" | tail -1 | cut -d ":" -f 1)
+            else
+                # find the line numbers of all occurrences of the setting name, ignoring uncommented lines
+                llnr=$(grep -n "^\s*;\s*$(escaped $key)\s*=.*" "$npath" | tail -1 | cut -d ":" -f 1)
+            fi
+            echo $llnr
+        }
+        first_step
+        local key val question defaultanswer opath npath
+        local -a settings2merge1_ settings2merge2_
+        local -i i1 i2 last
+        opath="$FILE"
+        npath="${FILE//$OLD/$NEW}"
+        last=0
+        mapfile -t settings2merge1_< <(comm_ 1)
+        for i1 in "${!settings2merge1_[@]}"; do
+            spinner dO " . comparing $npath with $opath ." &
+            key="$(key_ name "${settings2merge1_[i1]}")"
+            val="$(key_ val "${settings2merge1_[i1]}")"
+            [ "$key" = "" ] && continue
+            last=$(last_occurrence "$key" "$npath") # find the last occurrence of the commented setting_name
+            if grep -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
+                kill_spinner
+                lnr=$(grep -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | cut -d ":" -f 1)
+                f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3;N)"
+                defaults_and_changelog "$key"
+                question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new $(basename $FILE) as well" 3)"
+                if ask "$question" "$YES"; then
+                    sed -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" $npath
+                    echo "R:$(format_string "Line nr. $last $(GRAYbg)\"$key = $val\"$(N) uncommented in $(B)$npath" 3;N)"
+                fi
+                separator
+            elif ((last)); then
+                kill_spinner
+                # append the val after the last occurrence
+                f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) and $(P)is not set$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3;N)"
+                defaults_and_changelog "$key"
+                question="Q:$(format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
+                if ask "$question" "$YES"; then
+                    sed -i "${last}a\\$key = $val" "$npath"
+                    echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) added after line $last in $(B)$npath" 3;N)"
+                fi
+                separator
+            else
+                kill_spinner
+                f;echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$npath" 3;N)"
+                defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
+                question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
+                if ask "$question" "$defaultanswer"; then
+                    echo "$key = $val" >> "$npath"
+                    echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) appended to the end of $(B)$npath" 3;N)"
+                fi
+                separator
+            fi
+        done
+        mapfile -t settings2merge2_< <(comm_ 2)
+        for i2 in "${!settings2merge2_[@]}"; do
+            spinner dO " . comparing $npath with $opath ." &
+            key="$(key_ name "${settings2merge2_[i2]}")"
+            val="$(key_ val "${settings2merge2_[i2]}")"
+            [ "$key" = "" ] && continue
+            if grep -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
+                kill_spinner
+                f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGOLD" 3;N)"
+                defaults_and_changelog "$key"
+                question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new $(basename $FILE) as well" 3)"
+                if ask "$question" "$YES"; then
+                    sed -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" $npath
+                    echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3;N)"
+                fi
+                separator
+            fi
+        done
+        kill_spinner
+    }
+
+    treat_other_files(){
+        local opath npath diff_output
+        local -i c2 c3
+        c2=20 c3=25
+        opath="$FILE"
+        npath="${FILE//$OLD/$NEW}"
+        diff_output="$(ccdiff <(sed "s/$OLD/@VERSION@/" "$opath") <(sed "s/$NEW/@VERSION@/" "$npath") | grep -v "^[><]")"
+        [ -n "$diff_output" ] || return # don't treat empty diffs
+        echo " -$(format_string "The file $(C)$FILE$(N), which is part of the $(Y)$PKGOLD$(N) package has been changed after installation. This script can migrate those changes for you, so look exactly what it suggests to do. If it does not look good, simply answer $(box no) and edit the file yourself as you need it." 3)"
+        f;os;echo "This is the detected diff:"
+        f;echo "$diff_output"
+        f;os;echo "Based on this diff, this script would suggest this:"
+        line '=' P 2/78 b1  # old config:
+        line '-' GRAY 2/78
+        os;GRAY;echo "old:$(f;o5)- config-file$(o $c2)-->$(o $c3)$npath"
+        line '-' GRAY 2/78
+        GRAY;echo -n "-->  begin";line "  -->" GRAY 14
+        cat $npath
+        GRAY;echo -n "<--   end ";line "  <--" GRAY 14
+        line '=' P 2/78  # new config draft:
+        line '-' GRAY 2/78
+        os;GRAY;echo "draft: (not yet written to file)$(f;o5)- config-file$(o $c2)-->$(o $c3)$npath"
+        line '-' GRAY 2/78
+        GRAY;echo -n "-->  begin";line "  -->" GRAY 14
+        sed "s/$OLD/$NEW/g" $opath
+        GRAY;echo -n "<--   end ";line "  <--" GRAY 14
+        line '=' P 2/78 a2
+        echo " -$(format_string "Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter [yes]." 3)"
+        line '=' P 2/78 b1
+        if ask "$(qpf)Apply changes to $npath as suggested" $YES; then
+            sed "s/$OLD/$NEW/g" $opath > $npath
+            line '-' GRAY 2/78;os;GRAY
+            echo "new:$(f;o5)- config-file$(o $c2)-->$(o $c3)$npath"
+            line '-' GRAY 2/78
+            GRAY;echo -n "-->  begin";line "  -->" GRAY 14
+            cat $npath
+            GRAY;echo -n "<--   end ";line "  <--" GRAY 14
+            line '=' P 2/78
+            os;echo "Changes written to disk"
+        else
+            os;C;echo "$npath$(N) not changed.$(f;os)You can call this script again or edit $(C)$FILE$(N;f;os)with an editor of your choice."
+        fi
+        line '=' P 2/78
+    }
+
+}
