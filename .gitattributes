@@ -1,0 +1,4 @@
+blocks/* linguist-language=Bash
+config/* linguist-language=Bash
+modules/* linguist-language=Bash
+scripts/* linguist-language=Bash
