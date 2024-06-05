@@ -157,28 +157,6 @@ PHP_VERSIONS
         . <(require php/sury)
     }
 
-#normal:
-#        call_me candidates
-#        f
-#        [ $(echo ${EXISTING[0]%%;*} | sed 's/\.//') -eq ${CAN[0]//./} ] || need_ppa
-#        anykey
-#        ask "$(qpf)Do you want to list the installed php packages" "$YES" && list_installed
-#        anykey
-#        ask "$(qpf)Do you want to read the help" "$YES" && explain
-
-#quiet:
-#        f
-#        [ $(echo ${EXISTING[0]%%;*} | sed 's/\.//') -eq ${CAN[0]//./} ] || need_ppa
-#        anykey
-#        ask "$(qpf)Do you want to list the installed php packages" "$YES" && list_installed
-#        anykey
-#        ask "$(qpf)Do you want to read the help" "$YES" && explain
-
-#only:
-#        call_me candidates
-#        call_help
-#        f
-
     does_exist_(){
         local -i r=0 a=$2
         if ((a)); then
@@ -220,7 +198,6 @@ PHP_VERSIONS
         for i in ${!selections[@]}; do
             o3;pf;echo "$(lG)${selections[i]}";N
         done
-#        Y;echo "  $(format_string "Please consider: $(dY)if some alternatives listed here are not in the expected php version, then the package that provides these binaries may not be installed in that version." 3)"
         N;f
         pf;Y;echo "Switch default php version to:"
         for i in ${!VERSIONS[@]}; do
@@ -257,11 +234,7 @@ PHP_VERSIONS
                             f;G;echo "$(prompt;lB) $me$forceflag$(C) --list-installed";N
                             f;o2;echo "$(format_string ".. until the end (do not quit in between), not only to look if the switch worked but to scan once more for possible configuration errors from the point of view of the new version. If everything looks good and is working well, considder to completely remove the old php version." 3)"
                             break
-#                        else
-#                            echo "$invi. Please select a valid option."
                         fi
-                        ;;
-#                    *)  echo "$invi. Please select a valid option."
             esac
         done
         end_message

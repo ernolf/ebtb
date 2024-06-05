@@ -57,7 +57,7 @@ ${LIST_BASHLIB:-false} && return 0 || {
                 (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section=store
             fi
         fi
-$debug&&{ echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
+$debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
         case $section in
             enabled|disabled|na)
                 local info_xml="$NC_DIR/apps/$id/appinfo/info.xml"
@@ -74,7 +74,7 @@ $debug&&{ echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
                 fi
                 if [ ! -f "$info_xml" ]; then
                     if [ "$command" = "ids" -o "$command" = "name" ]; then
-$debug&& #  echo "Unsupported App: $id";line '-' GRAY 80
+$debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
                        return
                     else
                         echo "$(Pbg)  Database too old.  $(N)"

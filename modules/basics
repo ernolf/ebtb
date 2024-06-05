@@ -22,22 +22,13 @@ ${BASICS_BASHLIB:-false} && return 0 || {
         printf "%*s" $1 ' '
     }; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}
 
+    # tolower
     tlwr(){
         printf %s "${*,,}"
     }
     tolower(){
         printf %s "${*,,}"
     }
-
-#    # remove NULL byte to get rid of "warning: command substitution: ignored null byte in input"
-#    rm0bt(){
-#        printf "${*//%/%%}" | tr -d '\0'
-#    }
-
-#    # tolower and rm0bt combined
-#    tlwrm0(){
-#        printf "${*//%/%%}" | tr '[:upper:]' '[:lower:]' | tr -d '\0'
-#    }
 
     # printf not sorted line by line
     p_nosort(){
@@ -75,58 +66,23 @@ ${BASICS_BASHLIB:-false} && return 0 || {
         fi
     }
 
-#    text2blob(){
-#        printf "$*" | xxd -p -c 99999 | sed 's/\(..\)/\\\x\1/g'
-#    }
-
-#    blob2text(){
-#        printf "$*" | sed 's/\\x//g' | xxd -r -p
-#    }
-
-#    file2blob(){
-#        xxd -p -c 99999 "$1" | sed 's/\(..\)/\\\x\1/g'
-#    }
-
-#    blob2file(){
-#        if [ -d $(dirname "$1") ]; then
-#            local f="$1"
-#            shift
-#            blob2text $* > $f
-#        else
-#            blob2text $*
-#        fi
-#    }
-
     # version to integer
     v2i(){
         awk '{print $1*1000000000+$2*1000000+$3*1000+$4}' <<< "${1//./ }"
     }
 
+    # htmldecode
     htmldecode(){
         php -r "echo html_entity_decode('$*');"
     }
-# alternatives
-#        echo $* | php -R 'echo html_entity_decode($argn);'
 
-#    this moved to sed
-#    urldecode(){
-#        php -r "echo urldecode('$*');"
-#    }
-
+    # no nullglob
     nonullglob(){
         local -a glob_expanded=($1)
         [ "${glob_expanded[0]}" = "$1" ] && return 1 || return 0
     }
 
-# alternatives
-#    nonullglob(){
-#        local -a files
-#        shopt -s nullglob
-#        files=($1*)
-#        shopt -u nullglob
-#        (( ${#files[@]} )) && return 0 || return 1
-#    }
-
+    # check if bool
     boolean(){
         if grep -qswiE "(on|1)" <<< "$1"; then
             echo -n 'true'
@@ -139,10 +95,9 @@ ${BASICS_BASHLIB:-false} && return 0 || {
     }
 
     # escape $, [, ], ( and ) for grep -E
+    # a great bash include!
     escaped(){
         printf '%q' "$@"
     }
-# alternatives
-#        sed 's/\$/\\$/g; s/\[/\\[/g; s/\]/\\]/g' <<< "$1"
 
 }

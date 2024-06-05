@@ -42,7 +42,6 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                 fi
             else
                 ini_dir="/etc/php/$PHP_VERSION/mods-available"
-    #            echo "pecl uninstall ${mods[@]%(*}"
                 pecl uninstall ${mods[@]%(*}
                 for mod in ${mods[@]%(*}; do
                     pecl uninstall $mod # for the sake of stability, if something went wrong 2 lines before
@@ -83,7 +82,6 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                         pkgmod="$(eval echo \"\${C4EIBY4_${PHP_VERSION//./}[i]}\")"
                         if (( $(pecl list | grep -wc "${pkgmod#*:}") )); then
                             (( pecli++ ))
-    #                        pkgmods+=("$pkgmod")
                             pkgs+=("${pkgmod%:*}")
                             mods+=("${pkgmod#*:}(php$PHP_VERSION)")
                         fi
@@ -417,8 +415,6 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                 f
                 if ask "$(qpf)Do you want to execute this fix$plu" $YES;then
                     . $xtmp
-#                    mapfile -t inifiles_< <(grep -Eslix "$pattern" $php_inis)
-#                    if (( ${#inifiles_[@]} )); then
                     if grep -Eqslix "$pattern" $php_inis; then
                         echo "R: $(R)removal from ${inifiles[@]} failed.$(N)"
                     else
@@ -597,7 +593,6 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                 infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W), where it already exists but there it is commented out. It will be removed from $(C)$php_ini$(W) and uncommented in $(C)$ext_ini$(W)."
                                 echo -e "\n$(R)$line$(N)" >> $itmp
                                 C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-#                                echo "sed -Ei 's|^\s*[;|#]\s*$(escaped $key)\s*=.*|$line|' '$ext_ini'" >> $xtmp
                                 echo "sed -Ei 's|^$oldstring$|$line|' '$ext_ini'" >> $xtmp
                                 echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
                             fi

@@ -41,7 +41,6 @@ ${SURY_BASHLIB:-false} && return 0 || {
         local -l id codename wrong_codename architecture aptsource wrong_aptsource asu asd return
         local -a architectures aptsources
         asu='ppa.launchpadcontent.net_ondrej_php_ubuntu_' # aptsource ubuntu
-#             ppa.launchpadcontent.net_ondrej_php_ubuntu_jammy_main_amd64
         asd='packages.sury.org_php_' # aptsource debian
 
         if [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " sury " ]]; then
@@ -207,7 +206,6 @@ ${SURY_BASHLIB:-false} && return 0 || {
                         if ask "$(qpf)Do you want to replace http URIs with https URIs now" "$YES"; then
                             . <(require php/versions)
                             switch_php_to_ $PHP_VERSION
-    #                        aptsource_file=$(grep -r "$http_aptsource" /etc/apt/sources.list.d|awk -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}')
                             for aptsource_file in /etc/apt/sources.list.d/*\.{list,sources}; do
                                 if [ -f "$aptsource_file" ]; then
                                     if grep -Eqs "^(deb|URIs).*$http_token" "$aptsource_file"; then
@@ -310,13 +308,6 @@ ${SURY_BASHLIB:-false} && return 0 || {
                             os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
                             anykey
                         fi
-
-#                        aptsource_file="$(find /etc/apt \( -name "*.list" -o -name "*.sources" \) -exec grep -q "$aptsource" {} \; -exec grep -q "$wrong_codename" {} \; -print)"
-#                        os;pf;echo "move '$aptsource_file' to '$aptsource_file.disabled'"
-#                        mv -T "$aptsource_file" "$aptsource_file.disabled"
-#                        add_repository "$id" "$codename"
-#                        "$me$forceflag" "json=$my_json" --list-candidates
-
                     fi
                 fi
 

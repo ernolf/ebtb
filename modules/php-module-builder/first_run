@@ -73,11 +73,6 @@ ${FIRST_RUN_BASHLIB:-false} && return 0 || {
                             *)  $firstloop && { firstloop=false;f;}
                                 te0;o2;B;echo "please enter $yn$q"
                         esac
-    #                    [ "$choice" = "q" ] && { f;exit 0;}
-    #                    [ "${choice:-y}" = "y" ] && register_project_dir "$dir"
-    #                    [ "$choice" = "n" ] && { te1;o2;B;echo "enter the directory please $q:";N;break;}
-    #                    $firstloop && { firstloop=false;f;}
-    #                    te0;o2;B;echo "please enter $yn$q"
                     done
                 done
             fi

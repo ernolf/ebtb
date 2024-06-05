@@ -121,8 +121,6 @@ ${FPM_BASHLIB:-false} && return 0 || {
         fi
     }
 
-#        socket) socket="$(ss -lx|awk '/'$pkg'/{print $5}')"
-
     check_fpm_pool_files(){
         [[ "$(phpquery -v $OLD -S)" =~ fpm ]] || return # return if no fpm installed for php$OLD
         local pkgold pkgnew odir ndir ext be plu this

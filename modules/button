@@ -57,33 +57,4 @@ ${BUTTON_BASHLIB:-false} && return 0 || {
         printf '%s' "$(box q) to quit"
     }
 
-#    button(){
-#        oldcolor="$(cat $COLOR)"
-#        case $1 in
-#         no|q)  RGRAYbg
-#                printf "[$1]"
-#                ;;
-#            *)  GGRAYbg
-#                printf "[$1]"
-#        esac
-#        ${oldcolor:-N}
-#    }
-
-#    check(){
-#        [[ " OK NOK " =~ " $1 " ]]||return
-#        oldcolor="$(cat $COLOR)"
-#        GRAYbg
-#        printf "["
-#        case $1 in
-#            OK) GGRAYbg
-#                printf "✔️"
-#                ;;
-#           NOK) RGRAYbg
-#                printf "✖️"
-#        esac
-#        GRAYbg
-#        printf "]"
-#        ${oldcolor:-N}
-#    }
-
 }

@@ -267,6 +267,5 @@ EOF
         anykey
         $pager||phplogo 2>/dev/null
     }
-#    $help&&explain
 }
 

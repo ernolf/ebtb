@@ -71,7 +71,6 @@ ${INI_BASHLIB:-false} && return 0 || {
             done) > $ini_dir/$module.ini
             ini_symlinks
         fi
-    #    (($(echo "$need"|wc -w)))&&{ $remove&&$me $php_version $need --remove||$me $php_version $need;exit 0;}
     }
 
 }

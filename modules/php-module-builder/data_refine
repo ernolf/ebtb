@@ -48,15 +48,9 @@ ${DATA_REFINE_BASHLIB:-false} && return 0 || {
         done
     }
 
-#    is_installed_module(){
-#        echo "$installed_modules" | grep -wqs "$1"
-#        return $?
-#    }
-
     check_conflicts(){
         declare m conflict="$@" conflicts
         for m in $conflict; do
-#            is_installed_module $m && conflicts="$conflicts $m"
             [[ " $installed_modules " =~ " $m " ]] && conflicts="$conflicts $m"
         done
         if [ -n "$conflicts" ]; then

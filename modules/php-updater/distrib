@@ -81,8 +81,6 @@ ${DISTRIB_BASHLIB:-false} && return 0 || {
             ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked unknown || exit1
         fi
 
-#        list_existing
-#        call_me existing 2
     }
 
 
@@ -147,8 +145,6 @@ ${DISTRIB_BASHLIB:-false} && return 0 || {
             ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked to_old nolts || exit1
         fi
 
-#        list_existing
-#        call_me existing 2
     }
 
     . <(require dist/os_release)

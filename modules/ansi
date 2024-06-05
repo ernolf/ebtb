@@ -21,12 +21,6 @@ ${ANSI_BASHLIB:-false} && return 0 || {
 
     # special tempfiles
     COLOR="$(tf 666)" CURSOR="$(tf 666)"
-#    COLOR="/$TMPDIR/${bm:-$$}-COLOR"
-#    CURSOR="/$TMPDIR/${bm:-$$}-CURSOR"
-#    if ! [ -f "$COLOR" ] || ! [ -f "$CURSOR" ]; then
-#        touch "$COLOR" "$CURSOR"
-#        chmod 666 "$COLOR" "$CURSOR"
-#    fi
 
 ### ANSI - Color handling
     # fore- & background, bright fore- & background, 8-bit (256-colors) and 24-bit r;g;b (true color)
@@ -128,13 +122,6 @@ ${ANSI_BASHLIB:-false} && return 0 || {
 #    for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';}";done
     for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}";done
     unset -v FG BG BFG BBG _8 _24 SGR C CC p
-
-    # remove ansi color codes
-    no_ansi(){ echo "$1"|ansi2txt;} # depends on 'colorized-logs' package
-#        # moved to sed module:
-#        noansi(){
-#            echo "$1" | sed -r 's/\x1b\[(;*[0-9]{1,3})*;?m//g'
-#        }
 
 ### ANSI - Cursor handling
     # Cursor Up, Down, Forward, Back, NextLine, PreviousLine, HorizontalAbsolute, Position, Erase in Display, Erase in Line, Scroll Up and Down

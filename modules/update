@@ -20,8 +20,6 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
     . <(require integrity)
     . <(require mh)
 
-#    eval "$(echo "$my_json"|jq -r 'keys[] as $key|"my_\($key)=\(.[$key]|@sh)"')"
-
     # for backwards compatibilty
     if [ -n "$basename_me" ]&&[ -z "$bm" ]; then
         declare bm="$basename_me"
@@ -112,7 +110,6 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
             exit 0
         }
     }
-#    "$do_update" && my_update
 
     my_update_check(){
         local -l key
@@ -133,7 +130,6 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
             upinf="(latest version)"
         fi
     }
-#    [ "$1" = "my_update_check" ] && my_update_check
 
     restore_backup(){
         local -i n=1 i c2=9 c3=29
@@ -199,6 +195,4 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
             exit 0
         }
     }
-#    distinf &
-#    "$do_restore_backup" && restore_backup ## - lib: auto-update and backup - end #
 }

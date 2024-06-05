@@ -24,13 +24,6 @@ ${TEMPFILE_BASHLIB:-false} && return 0 || {
         t="$(mktemp -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
 #        t="$(mktemp -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
         if [ -z "$u" ]; then
-#            if [ -n "$SUDO_UID" ] && [ -n "$SUDO_GID" ]; then
-#                chown "$SUDO_UID:$SUDO_GID" "$t"
-#            elif [ -n "$SUDO_UID" ]; then
-#                chown "$SUDO_UID" "$t"
-#            elif [ -n "$SUDO_USER" ]; then
-#                chown "$SUDO_USER" "$t"
-#            fi
             if [ -n "$chmod" ]; then
                 chmod $chmod "$t"
             fi
