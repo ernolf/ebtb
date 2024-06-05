@@ -3,35 +3,25 @@
 include config/configure
 
 AUTOR = ernolf
-
 PROJECT = ebtb
-
 # Default directory
-PREFIX ?= /usr/local
-
+PREFIX ?= /usr/local/usr/local
 # Bindir for scripts
 BINDIR = $(PREFIX)/bin
-
 # Include directory for modules
 INCLUDEDIR = $(PREFIX)/include/$(AUTOR)
-
 # Directory for scripts
 SCRIPTS_DIR = scripts
-
 # Directory for modules
 MODULES_DIR = modules
-
 # Directory for tools
 TOOLS_DIR = tools
-
 # Directory for the build process
 BUILD_DIR = build
-
 # Directory for the script build process
-SBUILD_DIR = $(BUILD_DIR)/scripts
-
+SBUILD_DIR = $(BUILD_DIR)/$(SCRIPTS_DIR)
 # Directory for the module build process
-MBUILD_DIR = $(BUILD_DIR)/modules
+MBUILD_DIR = $(BUILD_DIR)/$(MODULES_DIR)
 
 # Default goal
 .DEFAULT_GOAL := help
@@ -46,11 +36,11 @@ MODULES = $(patsubst %,$(MBUILD_DIR)/%,$(MODULES_REL))
 # Help message
 help:
 	@echo "Usage:"
-	@echo "  make <script_name>                    - Build normal script"
-	@echo "  make test SCRIPT_NAME=<script_name>   - Build test script"
-	@echo "  make all-prod                         - Build all scripts"
-	@echo "  make all-test                         - Build all test scripts"
-	@echo "  make and-install-all-scripts          - Build and install all scripts"
+	@echo "  make <script_name>                    - Build 'prod' script"
+	@echo "  make test SCRIPT_NAME=<script_name>   - Build 'test' script"
+	@echo "  make all-prod                         - Build all 'prod' scripts"
+	@echo "  make all-test                         - Build all 'test' scripts"
+	@echo "  make and-install-all-scripts          - Build and install all (prod) scripts"
 	@echo "  make install-builts                   - Install only the scripts built in the build directory"
 	@echo "  make install-modules                  - Install built modules"
 	@echo "  make uninstall                        - Uninstall scripts"
@@ -58,8 +48,8 @@ help:
 	@echo "  make <module_name>                    - Build specific module"
 	@echo "  make module MODULE_NAME=<module_name> - Build specific module (very stable version)"
 	@echo "  make modules                          - Build all modules"
-	@echo "  make sign-and-release-modules         - Sign and upload modules to the webserver"
-	@echo "  make sign-and-release-test-modules    - Sign and upload test-modules to the webserver"
+	@echo "  make sign-and-release-modules         - Sign and upload 'prod' modules to webserver"
+	@echo "  make sign-and-release-test-modules    - Sign and upload 'test' modules to webserver"
 	@echo "  make clean                            - Clean build directory"
 
 # Set the executable bit for all files in the tools/ directory
@@ -118,7 +108,7 @@ uninstall:
 	rm -f $(addprefix $(BINDIR)/,$(SCRIPTS_BASE))
 	rm -f $(addprefix $(BINDIR)/,$(addsuffix -test,$(SCRIPTS_BASE)))
 
-# Install and sign scripts
+# Sign scripts and upload to webserver
 .PHONY: sign-and-release-scripts
 sign-and-release-scripts: $(wildcard $(SBUILD_DIR)/*)
 	@echo "Signing and uploading scripts to nextcloud webserver..."
@@ -150,19 +140,19 @@ install-modules: $(MODULES)
 	cp -r $(MBUILD_DIR)/* $(INCLUDEDIR)/test
 	@echo "Done."
 
-# Install and sign modules
+# Sign 'prod' modules and upload to webserver
 .PHONY: sign-and-release-modules
 sign-and-release-modules: $(wildcard $(SBUILD_DIR)/*)
-	@echo "Signing and uploading scripts to nextcloud webserver..."
+	@echo "Signing and uploading 'prod' modules to nextcloud webserver..."
 	$(TOOLS_DIR)/sign_module -t2p
 
-# Install and sign modules
+# Sign 'test' modules and upload to webserver
 .PHONY: sign-and-release-test-modules
 sign-and-release-test-modules: $(wildcard $(SBUILD_DIR)/*)
-	@echo "Signing and uploading scripts to nextcloud webserver..."
+	@echo "Signing and uploading 'test' modules to nextcloud webserver..."
 	$(TOOLS_DIR)/sign_module -t2t
 
-# Clean the build directory
+# Clean build directory
 .PHONY: clean
 clean:
 	@echo "Cleaning up..."

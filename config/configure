@@ -1,35 +1,25 @@
 # Configuration file for the project
 
 AUTOR="ernolf"
-
 PROJECT="ebtb"
-
 # Prefix directory
-PREFIX="/usr/local"
-
+PREFIX="/usr/local/usr/local"
 # Directory for scripts
 BINDIR="$PREFIX/bin"
-
 # Directory for modules
 INCLUDEDIR="$PREFIX/include/$AUTOR"
-
+# Directory for module channel
 MODULEDIR="$INCLUDEDIR/$channel"
-
 # Directory for scripts
 SCRIPTS_DIR="scripts"
-
 # Directory for modules
 MODULES_DIR="modules"
-
 # Directory for tools
 TOOLS_DIR="tools"
-
 # Directory for the build process
 BUILD_DIR="build"
-
 # Directory for the script build process
-SBUILD_DIR=$BUILD_DIR/scripts
-
+SBUILD_DIR="$BUILD_DIR/$SCRIPTS_DIR"
 # Directory for the module build process
-MBUILD_DIR=$BUILD_DIR/modules
+MBUILD_DIR="$BUILD_DIR/$MODULES_DIR"
 
