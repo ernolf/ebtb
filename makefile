@@ -5,7 +5,7 @@ include config/configure
 AUTOR = ernolf
 PROJECT = ebtb
 # Default directory
-PREFIX ?= /usr/local/usr/local
+PREFIX ?= /usr/local
 # Bindir for scripts
 BINDIR = $(PREFIX)/bin
 # Include directory for modules

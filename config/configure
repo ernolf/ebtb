@@ -3,7 +3,7 @@
 AUTOR=ernolf
 PROJECT=ebtb
 # Prefix directory
-PREFIX=/usr/local/usr/local
+PREFIX=/usr/local
 # Directory for scripts
 BINDIR=$PREFIX/bin
 # Directory for modules
