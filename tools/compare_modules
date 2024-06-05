@@ -15,27 +15,25 @@ cd "$ca_dir/.."
 source config/configure
 source config/secrets
 
-declare includedir_dirname="$INCLUDEDIR-dev"
-
-declare channel1="$1"
-declare channel2="$2"
-
 $debug && set -x
 
-declare dir1 dir2 lib libname
+declare channel1 channel2 dir1 dir2 lib libname
+declare -a difflibs=()
+
+channel1="$1"
+channel2="$2"
 dir1=$MBUILD_DIR
 dir2=$DATA_DIR/$target_includes/${channel2:=prod}
 
-declare -a difflibs=()
-
 $verbose && echo "  checking libs:"
 
-for lib in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print); do
+for lib in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs "# BASHLIB"' _ {} \; -print); do
     libname="${lib#$dir1/}"
     libname_in_1="$(head -n2 "$lib" | tail -n1 | sed "s|^# $INCLUDEDIR/${channel1:=test}/||")"
     libname_in_2="$(head -n2 "$dir2/$libname" | tail -n1 | sed "s|^# $INCLUDEDIR/$channel2/||")"
     $verbose && echo "  - \"$libname\""
     $verbose && echo "    1: \"$libname_in_1\"  2: \"$libname_in_2\""
+    # Only modules that difference in body or path/name
     if ( ! diff <(sed "1,20d" "$lib") <(tail -n +21 "$dir2/$libname" 2>/dev/null) >/dev/null ) || [[ "$libname_in_1" != "$libname_in_2" ]]; then
         $verbose && echo "                  - different"
         difflibs+=("$libname")

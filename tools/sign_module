@@ -37,18 +37,11 @@ set -- "${args[@]}" && unset -v arg args
 
 source config/configure
 source config/secrets
+source <(tail -n +10 modules/anykey)
 $verbose && yes=false
-#source config/runtime
-
-# declare dir1_dirname="/usr/local/include/ernolf-dev"
-# declare dir1="/usr/local/include/ernolf-dev/${channel:?missing argument! (either -t2p|--test2prod, -t|--test or -p|--prod)}"
 
 declare dir1
 dir1="$DATA_DIR/$target_includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
-
-version_(){
-    awk '/^# version 20/ {print $3, $4}' "$1"
-}
 
 epoch_(){
     awk '/^# version 20/ {print $NF}' "$1"
@@ -60,13 +53,6 @@ version_sufix(){
 
 occ(){
     sudo -u $HT_USER -E /usr/bin/php -f "$NC_DIR/occ" "$@"
-}
-
-anykey(){
-    local p="Press Any key to continue or q to quit "
-    local -l choice
-    read -rsn 1 -p "$p" choice
-    [ "$choice" = "q" ] && { echo;exit;} || echo
 }
 
 sign_(){
@@ -123,11 +109,9 @@ $debug && anykey
 }
 
 scan_(){
-    # create modules.json
-    # find $DATA_DIR/$target_includes/$channel -type f -name "*.json" -exec jq -s '.' {} + > $DATA_DIR/$target_includes/$channel/modules.json
     # create modules.json with epoch 
-    find $DATA_DIR/$target_includes/$channel -type f -name "*.json" -exec jq  --compact-output --slurp '
-        . | { "etag": "'$epoch'", "modules": . }' {} + > $DATA_DIR/$target_includes/$channel/modules.json
+    find $dir1 -type f -name "*.json" -exec jq  --compact-output --slurp '
+        . | { "etag": "'$epoch'", "modules": . }' {} + > $dir1/modules.json
 
     chown -R $HT_USER.$HT_USER "$DATA_DIR/$target_includes"
     occ files:scan --path="$target_includes/$channel"
@@ -136,8 +120,8 @@ scan_(){
 
 bulk_(){
     local libname
-	for libname in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print); do
-#    find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print | while read -r libname; do
+#    for libname in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs "# BASHLIB"' _ {} \; -print); do
+    find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print | while read -r libname; do
         sign_ "${libname#$dir1/}"
     done
 }
@@ -173,8 +157,6 @@ test_2_(){
                 echo "    \"$lib\" does not exist."
                 check_if_dir_exists "$lib"
             fi
-#            echo "    copy \"$dir1_dirname/$libname\" to \"$lib\""
-#            cp -a "$dir1_dirname/$libname" "$lib"
 $debug && anykey
             sign_ $libname
         done
@@ -189,7 +171,6 @@ $debug && anykey
 echo
 echo "  debug = $debug - yes = $yes - all = $all - channel = $channel"
 $all||echo "  libs to sign = $@"
-echo "  epoch(etag)=$epoch runtime=$runtime"
 echo "  OpenPGP_Key=$OpenPGP_Key"
 echo "  dir1 = $dir1"
 echo "  target_includes = $target_includes"

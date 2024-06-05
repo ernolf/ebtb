@@ -13,7 +13,7 @@ ${ANYKEY_BASHLIB:-false} && return 0 || {
     anykey(){
         local p
         local -l choice
-        if $ANSI_BASHLIB && $BUTTON_BASHLIB && $EXIT_BASHLIB; then
+        if ${ANSI_BASHLIB:-false} && ${BUTTON_BASHLIB:-false} && ${EXIT_BASHLIB:-false}; then
             local -l cursor_status
             if [ -f "$CURSOR" ]; then
                 cursor_status="$(< "$CURSOR")"
@@ -31,6 +31,7 @@ ${ANYKEY_BASHLIB:-false} && return 0 || {
                 te1
             fi
         else
+            unset ANYKEY_BASHLIB
             p="Press any key to continue or 'q' to quit "
             read -rsn 1 -p "$p" choice
             if [ "$choice" = "q" ]; then

@@ -10,16 +10,10 @@ ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
 cd "$ca_dir/.."
 
 source config/secrets
+source <(tail -n +10 modules/anykey)
 
 occ(){
     sudo -u $HT_USER -E /usr/bin/php -f "$NC_DIR/occ" "$@"
-}
-
-anykey(){
-    local p="Press Any key to continue or q to quit "
-    local -l choice
-    read -rsn 1 -p "$p" choice
-    [ "$choice" = "q" ] && { echo;exit;} || echo
 }
 
 epoch_(){
