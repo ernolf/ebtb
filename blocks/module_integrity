@@ -1,4 +1,5 @@
 # check module integrity if root is running script and remove tainted modules
+if $rt && [ "$(tail -n1 "$ca_me")" != nohash ]; then
 $rt && {
     [ -f "$lmj" ] || curl -o "$lmj" -A "$(fp)$A" $cargs/$rmj
     jq -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256 2>/dev/null
@@ -11,5 +12,5 @@ $rt && {
         "$me" "json=$my_json" $my_args
         exit 0
     }
-}
+fi
 unset -v rt lcf tntd

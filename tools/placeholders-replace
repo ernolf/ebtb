@@ -11,6 +11,9 @@ cd "$ca_dir/.."
 
 # Source pathes from the configure file
 source config/configure
+if $LOCAL_SERVER; then
+    MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
+fi
 # Source the time
 source config/runtime
 
@@ -25,9 +28,13 @@ minify() {
             sed ':a;N;$!ba;s/\n/;/g' |\
             sed 's/ >/>/g' |\
             sed 's/&;/\&/g' |\
+            sed 's/in;/in /g' |\
             sed 's/do;/do /g' |\
             sed 's/then;/then /g' |\
-            sed 's/else;/else /g'
+            sed 's/else;/else /g' |\
+            sed 's/if;/if /g' |\
+            sed 's/;;;;/;;/g' |\
+            sed 's/;;;/;;/g'
     else
         cat "$1"
     fi
@@ -73,6 +80,15 @@ placeholder_replace(){
             ;;
         vdirname)
             cat "blocks/vdirname"
+            ;;
+        tempdir)
+            echo '[ -z "$TMPDIR" ]&&declare TMPDIR="/tmp"'
+            ;;
+        module_server)
+            echo "declare my_home=$MY_HOME"
+            if $LOCAL_SERVER; then
+                minify "blocks/module_server"
+            fi
             ;;
         general)
             minify "blocks/general"

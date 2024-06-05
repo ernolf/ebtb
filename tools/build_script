@@ -42,8 +42,10 @@ for placeholder in "${placeholders[@]}"; do
     awk '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname'"); next } 1' $output_script > $tempfile
     cat $tempfile > $output_script
 done
-
 rm -f $tempfile
+
+# disable integrity check for local server
+$LOCAL_SERVER&&echo -e "v=true\nnohash" >> "$output_script"
 
 exit 0
 

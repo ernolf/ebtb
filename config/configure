@@ -2,8 +2,9 @@
 
 AUTOR=ernolf
 PROJECT=ebtb
+MY_HOME=https://global-social.net/apps/raw/s
 # Prefix directory
-PREFIX=/usr/local
+PREFIX=/usr/local/local
 # Directory for scripts
 BINDIR=$PREFIX/bin
 # Directory for modules
@@ -24,4 +25,13 @@ SBUILD_DIR=$BUILD_DIR/$SCRIPTS_DIR
 MBUILD_DIR=$BUILD_DIR/$MODULES_DIR
 # Minify (some) codeblocks in scripts
 MINIFY=true
+# Local module server
+LOCAL_SERVER=true
+# Port (ephemeral port range = 49152 - 65535)
+LOCAL_SERVER_PORT=48484
+# Only php
+# TODO: python2, python3, php or Node.js
+LOCAL_SERVER_BINARY=php
+# Server directory
+LOCAL_SERVER_DIRECTORY=$PREFIX/src/$PROJECT
 

@@ -40,8 +40,13 @@ source config/secrets
 source <(tail -n +10 modules/anykey)
 $verbose && yes=false
 
-declare dir1
-dir1="$DATA_DIR/$target_includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+declare dir1 dir2
+dir1="$MBUILD_DIR"
+if $LOCAL_SERVER; then
+    dir2="$LOCAL_SERVER_DIRECTORY/includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+else
+    dir2="$DATA_DIR/$target_includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+fi
 
 epoch_(){
     awk '/^# version 20/ {print $NF}' "$1"
@@ -58,13 +63,13 @@ occ(){
 sign_(){
 #$debug && set -x
     local lib libname libdir target_dir target
-    lib="$MBUILD_DIR/$1"
+    lib="$dir1/$1"
     libname="$(basename "$1")"
     libdir="$(dirname "$1")"
     [ "$libdir" = '.' ]&&libdir=''
 
-    target_dir="$target_includes/$channel/$libdir"
-    target="$DATA_DIR/${target_dir%/}/$libname"
+    target_dir="$dir2/$libdir"
+    target="${target_dir%/}/$libname"
 
 $debug && anykey
 
@@ -80,7 +85,7 @@ $debug && anykey
     }
 
     # create target_dir
-    [ -d "$DATA_DIR/${target_dir%/}" ] || mkdir -p "$DATA_DIR/${target_dir%/}"
+    [ -d "${target_dir%/}" ] || mkdir -p "${target_dir%/}"
 
     # write lib with adapted path to target
     if [ "${channel:-test}" = 'test' ]; then
@@ -93,8 +98,8 @@ $debug && anykey
 
 $debug && anykey
 
-    # sign lib
-    gpg --yes --default-key $OpenPGP_Key --armor --detach-sign "$target"
+    # sign lib if not local server
+    $LOCAL_SERVER || gpg --yes --default-key $OpenPGP_Key --armor --detach-sign "$target"
 
     # create for json file
     epoch=$(epoch_ "$lib")
@@ -110,8 +115,9 @@ $debug && anykey
 
 scan_(){
     # create modules.json with epoch 
-    find $dir1 -type f -name "*.json" -exec jq  --compact-output --slurp '
-        . | { "etag": "'$epoch'", "modules": . }' {} + > $dir1/modules.json
+    $LOCAL_SERVER && { echo "Local server, nothing to scan"; return 0; }
+    find $dir2 -type f -name "*.json" -exec jq  --compact-output --slurp '
+        . | { "etag": "'$epoch'", "modules": . }' {} + > $dir2/modules.json
 
     chown -R $HT_USER.$HT_USER "$DATA_DIR/$target_includes"
     occ files:scan --path="$target_includes/$channel"
@@ -146,7 +152,7 @@ test_2_(){
         echo "  \${#difflibs[@]} = ${#difflibs[@]}"
         for libname in ${difflibs[@]}; do
             echo "  - $libname"
-            lib="$dir1/$libname"
+            lib="$dir2/$libname"
             if [ -f "$lib" ]; then
                 # backupsufix="$(date -d @$(stat -c %Y "$lib") "+~%F-%H%M")"
                 backupsufix="$(version_sufix "$lib")"
@@ -173,7 +179,7 @@ echo "  debug = $debug - yes = $yes - all = $all - channel = $channel"
 $all||echo "  libs to sign = $@"
 echo "  OpenPGP_Key=$OpenPGP_Key"
 echo "  dir1 = $dir1"
-echo "  target_includes = $target_includes"
+echo "  dir2 = $dir2"
 echo
 anykey
 echo

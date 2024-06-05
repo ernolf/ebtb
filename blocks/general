@@ -53,14 +53,13 @@ req() {
 }
 require() { req $@; }
 module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
-declare lf version my_home my_url cargs opt opts astr="$(id -un): " A="$(uname -a)"
+declare lf version my_url cargs opt opts astr="$(id -un): " A="$(uname -a)"
 declare -i epoch my_epoch my_size lce mje mjne w4uc
 declare -a args tntd
-[ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
 lf="$TMPDIR/ebtb-logfiles/$bm.log"
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
-version="$(ver_ "$apm")" epoch="$(epch_ "$apm")" my_home='https://global-social.net/apps/raw/s'
-my_url="$my_home/$scriptname" cargs="-se $bm-$epoch --http2-prior-knowledge $my_home"
+version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"
+my_url="$my_home/$scriptname" cargs="-se $bm-$epoch $my_home"
 opts="rt run2 irun2 do_update do_restore_backup do_integrity_check"
 for opt in $opts; do declare $opt=false; done
 (($(id -u))) || rt=:

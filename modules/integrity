@@ -110,7 +110,7 @@ PUBLIC_KEY_ASC
                 o5;B;echo "to fix this.";N
             else
                 o5;B;echo "to get a signed version of this script or disable the integrity check.";N
-                qpf;ask "Do you want to disable the integrity check at own risk?" $NO&&{
+                qpf;ask "Do you want to disable the integrity check at own risk" $NO&&{
                     echo -e "v=true\nnohash" >> "$ca_me"
                     return 0
                 }

@@ -11,6 +11,8 @@ placeholders=(
     when
     whoami_whereami
     vdirname
+    tempdir
+    module_server
     general
     module_loader
     module_integrity

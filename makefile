@@ -42,14 +42,16 @@ help:
 	@echo "  make all-test                         - Build all 'test' scripts"
 	@echo "  make and-install-all-scripts          - Build and install all (prod) scripts"
 	@echo "  make install-builts                   - Install only the scripts built in the build directory"
-	@echo "  make install-modules                  - Install built modules"
 	@echo "  make uninstall                        - Uninstall scripts"
 	@echo "  make sign-and-release-scripts         - Sign and upload scripts to the webserver"
 	@echo "  make <module_name>                    - Build specific module"
 	@echo "  make module MODULE_NAME=<module_name> - Build specific module (very stable version)"
 	@echo "  make modules                          - Build all modules"
-	@echo "  make sign-and-release-modules         - Sign and upload 'prod' modules to webserver"
-	@echo "  make sign-and-release-test-modules    - Sign and upload 'test' modules to webserver"
+	@echo "  make install-modules                  - Install built modules (only test channel)"
+	@echo "  make sign-and-release-modules         - Sign and upload 'prod' modules to webserver (only if different)"
+	@echo "  make sign-and-release-test-modules    - Sign and upload 'test' modules to webserver (only if different)"
+	@echo "  make sign-and-release-all-modules     - Sign and upload 'prod' modules to webserver"
+	@echo "  make sign-and-release-all-test-modules- Sign and upload 'test' modules to webserver"
 	@echo "  make clean                            - Clean build directory"
 
 # Set the executable bit for all files in the tools/ directory
@@ -143,14 +145,26 @@ install-modules: $(MODULES)
 # Sign 'prod' modules and upload to webserver
 .PHONY: sign-and-release-modules
 sign-and-release-modules: $(wildcard $(SBUILD_DIR)/*)
-	@echo "Signing and uploading 'prod' modules to nextcloud webserver..."
+	@echo "Signing and uploading 'prod' modules to moduleserver..."
 	$(TOOLS_DIR)/sign_module -t2p
 
 # Sign 'test' modules and upload to webserver
 .PHONY: sign-and-release-test-modules
 sign-and-release-test-modules: $(wildcard $(SBUILD_DIR)/*)
-	@echo "Signing and uploading 'test' modules to nextcloud webserver..."
+	@echo "Signing and uploading 'test' modules to moduleserver..."
 	$(TOOLS_DIR)/sign_module -t2t
+
+# Sign 'prod' modules and upload to webserver
+.PHONY: sign-and-release-all-modules
+sign-and-release-all-modules: $(wildcard $(SBUILD_DIR)/*)
+	@echo "Signing and uploading 'prod' modules to moduleserver..."
+	$(TOOLS_DIR)/sign_module -p -a -y
+
+# Sign 'test' modules and upload to webserver
+.PHONY: sign-and-release-all-test-modules
+sign-and-release-all-test-modules: $(wildcard $(SBUILD_DIR)/*)
+	@echo "Signing and uploading 'test' modules to moduleserver..."
+	$(TOOLS_DIR)/sign_module -t -a -y
 
 # Clean build directory
 .PHONY: clean

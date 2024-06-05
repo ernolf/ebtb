@@ -1,0 +1,32 @@
+ls_(){
+    case $1 in
+        pidstatus)
+            [ -f "$ls_pid_file" ] && ps -p $(cat "$ls_pid_file") > /dev/null && return 0 || return 1
+            ;;
+        portstatus)
+            lsof -Pi :$lsp -sTCP:LISTEN -t >/dev/null && return 0 || return 1
+            ;;
+        start)
+            if ls_ pidstatus && ls_ portstatus; then
+                return 0
+            elif ! ls_ pidstatus && ! ls_ portstatus; then
+                cd "$lsd"
+                php -S localhost:$lsp &>/dev/null &
+                echo $! > "$ls_pid_file"
+            elif ls_ pidstatus && ! ls_ portstatus; then
+                ls_ restart
+            fi
+            ;;
+        stop)
+            if ls_ pidstatus; then
+                echo "Stopping local module server..."
+                kill $(cat "$ls_pid_file")
+                rm -f "$ls_pid_file"
+            fi
+            ;;
+        restart)
+            ls_ stop
+            ls_ start
+    esac
+}
+ls_ start
