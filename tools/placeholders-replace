@@ -14,13 +14,11 @@ source config/configure
 # Source the time
 source config/runtime
 
-declare placeholder name mini
+declare placeholder name
 placeholder="$1" name="$2"
 
-mini=true
-
 minify() {
-    if $mini; then
+    if $MINIFY; then
         shfmt -mn "$1" |\
             sed ':a;N;$!ba;s/\\\n//g' |\
             sed ':a;N;$!ba;s/{\n/{ /g' |\

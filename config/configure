@@ -22,4 +22,6 @@ BUILD_DIR=build
 SBUILD_DIR=$BUILD_DIR/$SCRIPTS_DIR
 # Directory for the module build process
 MBUILD_DIR=$BUILD_DIR/$MODULES_DIR
+# Minify (some) codeblocks in scripts
+MINIFY=true
 
