@@ -41,7 +41,7 @@ declare vdirname="" # <-- don't change this!
 ### general (minified)
 __general__
 ## include bashmodules (minified) ->
-__module_builder__
+__module_loader__
 # check module integrity if root is running script and remove tainted modules (minified)
 __module_integrity__
 ## <- include bashmodules end #
@@ -270,7 +270,7 @@ case $1 in
         exit 0
         ;;
     *)  :
-esac 
+esac
 
 if $supported && [ $# -eq 2 ];then
     does_exist_ "${1//php/}" 1 && does_exist_ "${2//php/}" 0 && OLD="${1//php/}" NEW="${2//php/}" || explain

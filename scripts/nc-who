@@ -29,7 +29,7 @@ __vdirname__
 ### general (minified)
 __general__
 ## include bashmodules (minified) ->
-__module_builder__
+__module_loader__
 # check module integrity if root is running script and remove tainted modules (minified)
 __module_integrity__
 ## <- include bashmodules end #

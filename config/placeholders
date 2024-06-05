@@ -12,7 +12,7 @@ placeholders=(
     whoami_whereami
     vdirname
     general
-    module_builder
+    module_loader
     module_integrity
     nextcloud_updater
 )

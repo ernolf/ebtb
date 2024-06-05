@@ -47,7 +47,7 @@ __vdirname__
 ### general (minified)
 __general__
 ## include bashmodules (minified) ->
-__module_builder__
+__module_loader__
 # check module integrity if root is running script and remove tainted modules (minified)
 __module_integrity__
 ## <- include bashmodules end #
@@ -239,7 +239,7 @@ if ! $listmimes; then
         fi
     fi
 fi
-# if errors found, echo them all together, echo help and exit 
+# if errors found, echo them all together, echo help and exit
 wrong_option -x
 
 # cd into NC_DATADIR because nextcloud understands pathes from there

@@ -20,7 +20,7 @@ placeholder="$1" name="$2"
 mini=true
 
 minify() {
-    if $mini; then 
+    if $mini; then
         shfmt -mn "$1" |\
             sed ':a;N;$!ba;s/\\\n//g' |\
             sed ':a;N;$!ba;s/{\n/{ /g' |\
@@ -79,7 +79,7 @@ placeholder_replace(){
         general)
             minify "blocks/general"
             ;;
-        module_builder)
+        module_loader)
             minify "blocks/module_loader"
             ;;
         module_integrity)
