@@ -39,8 +39,9 @@ __whoami_whereami__
 declare vdirname="" # <-- don't change this!
 __tempdir__
 
-### general (minified)
+### module handling (minified)
 __module_server__
+## general
 __general__
 ## include bashmodules (minified) ->
 __module_loader__

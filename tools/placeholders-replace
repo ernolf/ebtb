@@ -87,7 +87,12 @@ placeholder_replace(){
         module_server)
             echo "declare my_home=$MY_HOME"
             if $LOCAL_SERVER; then
-                minify "blocks/module_server"
+                case $LOCAL_SERVER_BINARY in
+                       php) http_server_string='php -S localhost:' ;;
+                   python3) http_server_string='python3 -m http.server '
+                esac
+                echo "## local module server"
+                minify "blocks/module_server" | sed "s/__http_server__/$http_server_string/"
             fi
             ;;
         general)

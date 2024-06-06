@@ -11,7 +11,7 @@ ls_(){
                 return 0
             elif ! ls_ pidstatus && ! ls_ portstatus; then
                 cd "$lsd"
-                php -S localhost:$lsp &>/dev/null &
+                __http_server__ $lsp &>/dev/null &
                 echo $! > "$ls_pid_file"
             elif ls_ pidstatus && ! ls_ portstatus; then
                 ls_ restart

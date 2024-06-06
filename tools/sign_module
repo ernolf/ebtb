@@ -36,16 +36,23 @@ done
 set -- "${args[@]}" && unset -v arg args
 
 source config/configure
-source config/secrets
+if [ -f config/secrets ]; then
+    source config/secrets
+elif ! $LOCAL_SERVER; then
+    echo "Could not find config/secrets file while 'LOCAL_SERVER' is not set to 'true' in"
+    echo "config/configure file. This ain't gonna work."
+    echo "error"
+    exit 1
+fi
 source <(tail -n +10 modules/anykey)
 $verbose && yes=false
 
-declare dir1 dir2
-dir1="$MBUILD_DIR"
+declare dir1_source dir2_dest
+dir1_source="$MBUILD_DIR"
 if $LOCAL_SERVER; then
-    dir2="$LOCAL_SERVER_DIRECTORY/includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+    dir2_dest="$LOCAL_SERVER_DIRECTORY/includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 else
-    dir2="$DATA_DIR/$target_includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+    dir2_dest="$DATA_DIR/$target_includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 fi
 
 epoch_(){
@@ -63,12 +70,12 @@ occ(){
 sign_(){
 #$debug && set -x
     local lib libname libdir target_dir target
-    lib="$dir1/$1"
+    lib="$dir1_source/$1"
     libname="$(basename "$1")"
     libdir="$(dirname "$1")"
     [ "$libdir" = '.' ]&&libdir=''
 
-    target_dir="$dir2/$libdir"
+    target_dir="$dir2_dest/$libdir"
     target="${target_dir%/}/$libname"
 
 $debug && anykey
@@ -115,20 +122,21 @@ $debug && anykey
 
 scan_(){
     # create modules.json with epoch 
-    $LOCAL_SERVER && { echo "Local server, nothing to scan"; return 0; }
-    find $dir2 -type f -name "*.json" -exec jq  --compact-output --slurp '
-        . | { "etag": "'$epoch'", "modules": . }' {} + > $dir2/modules.json
+    find $dir2_dest -type f -name "*.json" -exec jq  --compact-output --slurp '
+        . | { "etag": "'$epoch'", "modules": . }' {} + > $dir2_dest/modules.json
 
-    chown -R $HT_USER.$HT_USER "$DATA_DIR/$target_includes"
+    $LOCAL_SERVER && { echo "Local server, nothing to scan"; return 0; }
+
+    chown -R $HT_USER.$HT_USER "${dir2_dest%/*}"
     occ files:scan --path="$target_includes/$channel"
     return 0
 }
 
 bulk_(){
     local libname
-#    for libname in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs "# BASHLIB"' _ {} \; -print); do
-    find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print | while read -r libname; do
-        sign_ "${libname#$dir1/}"
+#    for libname in $(find $dir1_source -type f -exec sh -c 'head -n 1 "$1" | grep -qs "# BASHLIB"' _ {} \; -print); do
+    find $dir1_source -type f -exec sh -c 'head -n 1 "$1" | grep -q "# BASHLIB"' _ {} \; -print | while read -r libname; do
+        sign_ "${libname#$dir1_source/}"
     done
 }
 
@@ -152,7 +160,7 @@ test_2_(){
         echo "  \${#difflibs[@]} = ${#difflibs[@]}"
         for libname in ${difflibs[@]}; do
             echo "  - $libname"
-            lib="$dir2/$libname"
+            lib="$dir2_dest/$libname"
             if [ -f "$lib" ]; then
                 # backupsufix="$(date -d @$(stat -c %Y "$lib") "+~%F-%H%M")"
                 backupsufix="$(version_sufix "$lib")"
@@ -176,10 +184,13 @@ $debug && anykey
 
 echo
 echo "  debug = $debug - yes = $yes - all = $all - channel = $channel"
-$all||echo "  libs to sign = $@"
-echo "  OpenPGP_Key=$OpenPGP_Key"
-echo "  dir1 = $dir1"
-echo "  dir2 = $dir2"
+$all || echo "  libs to sign = $@"
+echo -n "  OpenPGP_Key = "
+$LOCAL_SERVER && echo "(local server, no signing)" || echo "$OpenPGP_Key"
+echo "  source directory      = $dir1_source"
+echo "  destination directory = $dir2_dest"
+echo
+echo "  continue only if everything looks good here!"
 echo
 anykey
 echo
@@ -188,11 +199,11 @@ $test2 && test_2_
 if $all; then
     bulk_
 else
-    (($#))&&{
+    (($#)) && {
         echo "  signing this libraries"
         echo "  - $@"
         anykey
-    }||{
+    } || {
         echo "  no libraries past to sign"
         exit 1
     }
@@ -200,8 +211,8 @@ else
         sign_ "$library"
     done
 fi
-$yes&&echo "  scan files"||echo "  ready to scan?"
-$yes||anykey
+$yes && echo "  scan files" || echo "  ready to scan?"
+$yes || anykey
 scan_
 
 exit 0

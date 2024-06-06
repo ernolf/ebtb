@@ -26,7 +26,7 @@ ${EXIT_BASHLIB:-false} && return 0 || {
     # define a trap to clean up the temporary file
     exit_trap(){
         [ -f "$spinner_pid_file" ] && kill_spinner
-        ${local_server:-false}&&ls_ stop
+        ${local_server:-false} && ls_ stop
         nonullglob "$TMPDIR/${bm}$$_*" && (rm -f $TMPDIR/${bm}$$_*) 2>/dev/null
         nonullglob "$TMPDIR/${bm:-$$}_*" && (rm -f $TMPDIR/${bm:-$$}_*) 2>/dev/null
         ansi_reset

@@ -27,8 +27,9 @@ __whoami_whereami__
 __vdirname__
 __tempdir__
 
-### general (minified)
+### module handling (minified)
 __module_server__
+## general
 __general__
 ## include bashmodules (minified) ->
 __module_loader__
