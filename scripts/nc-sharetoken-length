@@ -15,7 +15,7 @@ dependencies=(
 )
 modules=(
     basics sed tempfile ansi exit anykey line array sudo ask dependency vdir
-    integrity nc/nextcloud xml $sin/functions
+    integrity nc/nextcloud $sin/functions
 )
 
 __when__
