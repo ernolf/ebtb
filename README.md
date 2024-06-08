@@ -17,6 +17,8 @@ These are the scripts available for installation:
 
 - **nc-apps**
   - A command-line Appstore client for the Nextcloud Appstore
+- **nc-integrity-fix**
+  - Resolve "*`Some files have not passed the integrity check`*" warnings
 - **nc-mimecheck**
   - A mimetype checker script to integrate with flow external script
 - **nc-shares**

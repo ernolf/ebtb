@@ -1,0 +1,255 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "curl#curl#Command line file transfer tool with URL syntax"
+    "gpg#gnupg#GNU Privacy Guard"
+    "xmlstarlet#xmlstarlet#Command line XML toolkit"
+    "jq#jq#Command line JSON processor"
+)
+modules=(
+    basics sed tempfile ansi button fstring exit spinner anykey line array ask
+    sudo dependency vdir integrity xml nc/nextcloud nc/nextcloud_db
+)
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+__tempdir__
+
+### module handling (minified)
+__module_server__
+## general
+__general__
+## include bashmodules (minified) ->
+__module_loader__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+# https://github.com/nextcloud/server/blob/master/lib/private/IntegrityCheck/Checker.php
+
+debug=false
+
+declare affected_app affected_file this be pl1 pl2 one integritycheck_json scan_result question 
+declare -a shiped_apps affected_apps FILE_MISSING INVALID_HASH EXTRA_FILE EXCEPTION
+
+integritycheck_json=$(tf) scan_result=$(tf)
+
+prune_arrays(){ FILE_MISSING=() INVALID_HASH=() EXTRA_FILE=() EXCEPTION=();}
+
+mapfile shipped_apps< <(occ app:list --shipped=true --output=json | jq  -r '.enabled | keys | sort []')
+is_shipped_(){ [[ " $(echo -n ${shipped_apps[@]}) " =~ " $1 " ]];}
+
+db_integritycheck_(){
+    database_call
+    local db_query
+    case "$1" in
+        cull)
+            db_query="SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = 'core' AND configkey = 'oc.integritycheck.checker';"
+            $DB_STRG $DB_RAW $DB_EXEC"$db_query"
+            ;;
+        clean)
+            db_query="DELETE FROM ${DB_PREF}appconfig WHERE ${DB_PREF}appconfig.appid = 'core' AND ${DB_PREF}appconfig.configkey = 'oc.integritycheck.checker';"
+            $DB_STRG $DB_EXEC"$db_query"
+    esac
+}
+
+
+json_2_array(){
+    jq -r '
+        to_entries[]
+        | select(.value | objects)
+        | .key as $section
+        | "\($section)=(" +
+            (.value | keys_unsorted | map("\"\(.)\"") | join(" "))
+            + ")"
+    ' <<< "$@"
+}
+
+occ_integritycheck_(){
+    case "$1" in
+        core)
+if $debug; then
+            occ integrity:check-core
+else
+            spinner C " . Rescaning server core ." &
+            occ integrity:check-core --quiet
+fi
+            ;;
+        *)
+if $debug; then
+            occ integrity:check-app $1
+else
+            spinner C " . Rescaning $1 app ." &
+            occ integrity:check-app --quiet -- $1
+fi
+    esac
+$debug || kill_spinner
+}
+
+nc_download_default(){
+    local app_id file version_tag path github_raw url url1 url2 tempfile
+    app_id="$1" file="$2" path="$2"
+    version_tag="v$(awk -F\' '/String/{gsub(/ /,"");$2=tolower($2);print $2}' "$NC_DIR/version.php")"
+    github_raw='https://raw.githubusercontent.com'
+    tempfile=$(tf)
+    case "$app_id" in
+      core) url1="$github_raw/nextcloud/server/$version_tag/$file"
+            ;;
+         *) if is_shipped_ "$app_id"; then
+                path="apps/$app_id/$file"
+                url1="$github_raw/nextcloud/server/$version_tag/apps/$app_id/$file"
+                url2="$github_raw/nextcloud/$app_id/$version_tag/$file"
+            else
+                xml_f="$NC_DIR/apps/$app_id/appinfo/info.xml"
+                repo="$(xmls -v "//info/repository" "$xml_f" | sed '2,$d;s|.git$||1')"
+                if [ -z "$repo" ]; then
+                    issueTracker=$(xmls -v "//info/bugs" "$info_xml" | sed '2,$d')
+                    repo=$(sed 's|/issues$||1' <<< "${issueTracker%/}")
+                fi
+                if [[ "$repo" =~ github.com ]]; then
+                    url="$(sed 's/github/raw.githubusercontent/' <<< "$repo")"
+                else
+                    echo "download of '$path' failed. You must check this one yourself"
+                fi
+                version_tag="$(xmls -v "//info/version" "$xml_f" | sed '2,$d')"
+                path="apps/$app_id/$file"
+                url1="$url/$version_tag/$file"
+                url2="$url/v$version_tag/$file"
+            fi
+    esac
+    $debug && {
+        echo "app_id = $app_id"
+        echo "file = $file"
+        echo "path = $path"
+        echo "version_tag = $version_tag"
+        echo "url = $url"
+        echo "url1 = $url1"
+        echo "url2 = $url2"
+        anykey
+    }
+    if (($(curl -so "$tempfile" -w %{http_code} "$url1") == 200)); then
+        mv "$tempfile" "$NC_DIR/$path"
+        chown "$NC_USER.$NC_USER" "$NC_DIR/$path"
+        echo "download of '$file' from '$url1' succeeded"
+    elif (($(curl -so "$tempfile" -w %{http_code} "$url2") == 200)); then
+        mv "$tempfile" "$NC_DIR/$path"
+        chown "$NC_USER.$NC_USER" "$NC_DIR/$path"
+        echo "download of '$file' from '$url2' succeeded"
+    else
+        echo "download of '$path' failed. You must check this one yourself"
+    fi
+}
+
+db_integritycheck_ cull > $integritycheck_json
+
+$debug && { echo "integritycheck_json:";jq '.' $integritycheck_json;anykey;}
+
+mapfile -t affected_apps< <(jq -r keys[] $integritycheck_json)
+
+if (( ${#affected_apps[@]} )); then
+    if (( ${#affected_apps[@]} > 1 )); then
+        this='hese' be='are' pl1='s'
+    else
+        this='his' be='is' pl1=''
+    fi
+    echo "T$this app$pl1 $be affected:"
+    for affected_app in ${affected_apps[@]}; do
+        pf;echo "$affected_app"
+    done
+    separator
+
+    $debug && { anykey;set -x;}
+
+    for affected_app in ${affected_apps[@]}; do
+        echo -n > $scan_result
+        prune_arrays
+        json_2_array "$(jq ".$affected_app" "$integritycheck_json")" > $scan_result
+        . $scan_result
+
+        $debug && { set +x;echo "scan_result:";cat $scan_result;anykey;}
+
+        if (( ${#FILE_MISSING[@]} )); then
+            if (( ${#FILE_MISSING[@]} > 1 )); then
+                this='hese' be='are' pl1='s'
+            else
+                this='his' be='is' pl1=''
+            fi
+            echo "T$this file$pl1 $be missing in [$affected_app]:"
+            for affected_file in ${FILE_MISSING[@]}; do
+                pf;echo "$affected_file"
+            done
+            question="Q:$(format_string "Do you want to download t$this missing file$pl1 for your version from github" 3;N)"
+            if ask "$question" $YES;then
+                for affected_file in ${FILE_MISSING[@]}; do
+                    nc_download_default $affected_app $affected_file
+                done
+                occ_integritycheck_ $affected_app
+            fi
+        fi
+        if (( ${#EXTRA_FILE[@]} )); then
+            if (( ${#EXTRA_FILE[@]} > 1 )); then
+                this='hese' be='were' pl1='s'
+            else
+                this='his' be='was' pl1=''
+            fi
+            echo "T$this extra (needless) file$pl1 $be found in [$affected_app]:"
+            for affected_file in ${EXTRA_FILE[@]}; do
+                pf;echo "$affected_file"
+            done
+# TODO: add backup option
+            if ask "$(qpf)Do you want to remove t$this needless file" "$YES"; then
+                for affected_file in ${EXTRA_FILE[@]}; do
+                    rm $affected_file
+                done
+                occ_integritycheck_ $affected_app
+            fi
+        fi
+        if (( ${#INVALID_HASH[@]} )); then
+            if (( ${#INVALID_HASH[@]} > 1 )); then
+                one='' this='hese' be='are' pl1='s' pl2='es'
+            else
+                one=' a' this='his' be='is' pl1='' pl2=''
+            fi
+            echo "The hash$pl2 of t$this file$pl1 in [$affected_app] $be invalid:"
+            for affected_file in ${INVALID_HASH[@]}; do
+                pf;echo "$affected_file"
+            done
+            question="Q:$(format_string "Do you want to replace t$this invalid file$pl1 with$one file$pl1 downloaded from github for your version" 3;N)"
+            if ask "$question" $YES;then
+                for affected_file in ${INVALID_HASH[@]}; do
+                    nc_download_default $affected_app $affected_file
+                done
+                occ_integritycheck_ $affected_app
+            fi
+        fi
+        if (( ${#EXCEPTION[@]} )); then
+            echo "This exception was detected for [$affected_app]:"
+            pf;echo "$(jq -r ".$affected_app.EXCEPTION.message" $integritycheck_json)"
+            echo "This script cannot resolve integrity violations of type 'EXCEPTION'."
+        fi
+        separator
+    done
+    db_integritycheck_ clean
+    echo
+    echo " -$(format_string "You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3;N)"
+else
+    echo
+    echo " -$(format_string "This script could not find any integrity warnings to resolve." 3;N)"
+fi
+
+exit 0
+
