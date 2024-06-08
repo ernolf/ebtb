@@ -12,8 +12,6 @@ ${GITHUB_API_BASHLIB:-false} && return 0 || {
 
     . <(require basics)
 
-    declare github_raw="https://raw.githubusercontent.com/nextcloud"
-
     github_api(){
         local URL="https://api.github.com/repos/$1/$2?per_page=$3"
         case $2 in
