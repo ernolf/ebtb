@@ -3,6 +3,7 @@ declare channel='prod' lincld rincld REQ mod lmo check=false lmj lmjn rmj lcf fp
 w4uc=3600
 [[ "$scriptname" =~ test ]] && { channel='test' w4uc=36; }
 lincld="${ca_dir%/*}/include/ernolf/$channel" rincld="includes/$channel"
+mkdir -p $lincld/$sin
 REQ=". $lincld" lmj="$lincld/modules.json" rmj="$rincld/modules.json" lcf="$lincld/$sin/.checked"
 lmjn="$lmj~new" lce=$(cat "$lcf" 2>/dev/null) fp=$(cat "$lincld/fp" 2>/dev/null)
 $rt && ((rte - lce > w4uc)) && {
