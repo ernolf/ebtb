@@ -8,7 +8,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
 
 This is how you can install such a signed script:
 
-```sh 
+```sh
 sudo wget -O /usr/local/bin/$scriptname https://global-social.net/script/$scriptname
 sudo chmod +x /usr/local/bin/$scriptname
 ```
@@ -42,7 +42,7 @@ The config/configure file is already set up to build the scripts with the local 
 
 These are the steps to build:
 
-```sh 
+```sh
 sudo make and-install-all-scripts
 sudo make modules
 sudo make sign-and-release-all-modules
