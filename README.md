@@ -30,9 +30,9 @@ These are the scripts available for installation:
 - **nc-who**
   - Follow live who is logged in on your Nextcloud server
 - **php-module-builder**
-  - Build PHP modules that cannot be built with PECL, like Lua
+  - Build PHP modules on your ubuntu/debian based server that cannot be built with PECL, like Lua
 - **php-updater**
-  - Update PHP on your server and switch back and forth between versions without much hassle
+  - Update PHP on your ubuntu/debian based server and switch back and forth between versions without much hassle
 
 ---
 
