@@ -73,7 +73,7 @@ placeholder_replace(){
             echo "declare -a dependencies modules"
             ;;
         when)
-            cat "blocks/when"
+            echo -e '# when\ndeclare -i rte;printf -v rte "%(%s)T" -2'
             ;;
         whoami_whereami)
             cat "blocks/whoami_whereami"
