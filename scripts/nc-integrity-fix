@@ -131,16 +131,9 @@ nc_download_default(){
                 url2="$url/v$version_tag/$file"
             fi
     esac
-    $debug && {
-        echo "app_id = $app_id"
-        echo "file = $file"
-        echo "path = $path"
-        echo "version_tag = $version_tag"
-        echo "url = $url"
-        echo "url1 = $url1"
-        echo "url2 = $url2"
-        anykey
-    }
+
+$debug && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag = $version_tag\nurl = $url\nurl1 = $url1\nurl2 = $url2";anykey;}
+
     if (($(curl -so "$tempfile" -w %{http_code} "$url1") == 200)); then
         mv "$tempfile" "$NC_DIR/$path"
         chown "$NC_USER.$NC_USER" "$NC_DIR/$path"
@@ -171,16 +164,13 @@ if (( ${#affected_apps[@]} )); then
         pf;echo "$affected_app"
     done
     separator
-
-    $debug && { anykey;set -x;}
-
     for affected_app in ${affected_apps[@]}; do
         echo -n > $scan_result
         prune_arrays
         json_2_array "$(jq ".$affected_app" "$integritycheck_json")" > $scan_result
         . $scan_result
 
-        $debug && { set +x;echo "scan_result:";cat $scan_result;anykey;}
+$debug && { echo "scan_result:";cat $scan_result;anykey;}
 
         if (( ${#FILE_MISSING[@]} )); then
             if (( ${#FILE_MISSING[@]} > 1 )); then
