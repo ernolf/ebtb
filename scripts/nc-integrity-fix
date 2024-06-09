@@ -50,8 +50,8 @@ integritycheck_json=$(tf) scan_result=$(tf)
 
 prune_arrays(){ FILE_MISSING=() INVALID_HASH=() EXTRA_FILE=() EXCEPTION=();}
 
-mapfile shipped_apps< <(occ app:list --shipped=true --output=json | jq  -r '.enabled | keys | sort []')
-is_shipped_(){ [[ " $(echo -n ${shipped_apps[@]}) " =~ " $1 " ]];}
+mapfile -t shipped_apps< <(occ app:list --shipped=true --output=json | jq  -r '.enabled | keys | sort []')
+is_shipped_(){ [[ " ${shipped_apps[@]} " =~ " $1 " ]];}
 
 db_integritycheck_(){
     database_call
