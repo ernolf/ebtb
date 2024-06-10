@@ -44,16 +44,6 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
         first_run
     fi
 
-    # the occ command call is saved under occ, adapted to the user and environment
-    occ(){ php$(php_ver) -f $NC_DIR/occ $@;}
-
-    if (( $(id -u) )); then
-        [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
-    else
-        # you are root
-        occ(){ sudo -u $NC_USER php$(php_ver) -f $NC_DIR/occ $@;}
-    fi
-
     config2json(){
 
         jq_filter(){
@@ -96,6 +86,23 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
         grep -qsw "$1" $NC_DIR/config/*config.php
         return $?
     }
+
+    # detect, if apc is required for cli
+    if [ $(nc_configkey memcache.local) = '\OC\Memcache\APCu' ] && ! grep -qs apc.enable_cli< <(php$(php_ver) -i); then
+        phpcli_call='php$(php_ver) --define apc.enable_cli=1'
+    else
+        phpcli_call='php$(php_ver)'
+    fi
+
+    # the occ command call is saved under occ, adapted to the user and environment
+    occ(){ phpcli_call -f $NC_DIR/console.php $@;}
+
+    if (( $(id -u) )); then
+        [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
+    else
+        # you are root
+        occ(){ sudo -u $NC_USER phpcli_call -f $NC_DIR/console.php $@;}
+    fi
 
     declare NC_DATADIR
     if nc_configkey_exist_ datadirectory; then
