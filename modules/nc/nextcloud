@@ -88,20 +88,21 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
     }
 
     # detect, if apc is required for cli
-    if [ $(nc_configkey memcache.local) = '\OC\Memcache\APCu' ] && ! grep -qs apc.enable_cli< <(php$(php_ver) -i); then
-        phpcli_call='php$(php_ver) --define apc.enable_cli=1'
+    declare phpcli
+    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! grep -qs "apc.enable_cli"< <(php$(php_ver) -i); then
+        phpcli="php$(php_ver) --define apc.enable_cli=1"
     else
-        phpcli_call='php$(php_ver)'
+        phpcli="php$(php_ver)"
     fi
 
     # the occ command call is saved under occ, adapted to the user and environment
-    occ(){ phpcli_call -f $NC_DIR/console.php $@;}
+    occ(){ $phpcli -f $NC_DIR/console.php $@;}
 
     if (( $(id -u) )); then
         [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
     else
         # you are root
-        occ(){ sudo -u $NC_USER phpcli_call -f $NC_DIR/console.php $@;}
+        occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php $@;}
     fi
 
     declare NC_DATADIR
