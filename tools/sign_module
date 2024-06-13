@@ -121,13 +121,13 @@ $debug && anykey
 }
 
 scan_(){
-    # create modules.json with epoch 
+    # create modules.json with epoch
     find $dir2_dest -type f -name "*.json" -exec jq  --compact-output --slurp '
         . | { "etag": "'$epoch'", "modules": . }' {} + > $dir2_dest/modules.json
 
     $LOCAL_SERVER && { echo "Local server, nothing to scan"; return 0; }
 
-    chown -R $HT_USER.$HT_USER "${dir2_dest%/*}"
+    chown -R $HT_USER:$HT_USER "${dir2_dest%/*}"
     occ files:scan --path="$target_includes/$channel"
     return 0
 }
