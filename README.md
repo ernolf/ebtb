@@ -25,6 +25,8 @@ These are the scripts available for installation:
   - List shares with their tokens and full path on the command line
 - **nc-sharetoken-length**
   - Define the length of the Nextcloud share token, which is normally 15 characters long, to any length between 4 and 32
+- **nc-sql**
+  - A commandline client for the nextcloud database (for MySQL/MariaDB and PostgreSQL, no SQLite3)
 - **nc-subscribed-calendar**
   - Define the refresh rate of subscribed calendars per calendar instead of one refresh rate for all subscribed calendars
 - **nc-who**

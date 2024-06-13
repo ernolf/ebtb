@@ -1,0 +1,88 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__scriptname__
+
+dependencies=(
+    "curl#curl#Command line file transfer tool with URL syntax"
+    "gpg#gnupg#GNU Privacy Guard"
+    "xmlstarlet#xmlstarlet#Command line XML toolkit"
+    "jq#jq#Command line JSON processor"
+)
+modules=(
+    basics sed tempfile ansi button fstring exit spinner anykey line array ask
+    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
+)
+
+__when__
+
+__whoami_whereami__
+
+__vdirname__
+__tempdir__
+
+### module handling (minified)
+__module_server__
+## general
+__general__
+## include bashmodules (minified) ->
+__module_loader__
+# check module integrity if root is running script and remove tainted modules (minified)
+__module_integrity__
+## <- include bashmodules end #
+
+__nextcloud_updater__
+
+
+help(){
+    cat << HELP
+
+    $me [ --raw [ --execute "query;" ] ]
+
+    $me
+                open sql cli-client in interactive mode
+    --raw, -r   raw output
+    --execute,-e "query;"
+                run a query and exit
+
+HELP
+exit0
+}
+
+# first search for option --raq and remove from @() array
+# and then add the remaining arguments into the new array
+declare raw=false execute=false
+args=()
+for arg in "$@";do
+    if [ "$arg" = "--help" ];then help
+    elif [ "$arg" = "-h" ];then help
+    elif [ "$arg" = "--raw" ];then raw=true
+    elif [ "$arg" = "-r" ];then raw=true
+    elif [ "$arg" = "--execute" ];then execute=true
+    elif [ "$arg" = "-e" ];then execute=true
+    else args+=("$arg")
+    fi
+done
+set -- "${args[@]}"&&unset -v args
+
+declare DATABASE_CALL
+database_call
+if $raw; then
+    DATABASE_CALL="$DB_STRG $DB_RAW"
+else
+    DATABASE_CALL="$DB_STRG"
+fi
+if $execute; then
+    $DATABASE_CALL $DB_EXEC"$@"
+else
+    $DATABASE_CALL
+fi
+
+exit0
+
