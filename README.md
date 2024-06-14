@@ -26,7 +26,7 @@ These are the scripts available for installation:
 - **nc-sharetoken-length**
   - Define the length of the Nextcloud share token, which is normally 15 characters long, to any length between 4 and 32
 - **nc-sql**
-  - A commandline client for the nextcloud database (for MySQL/MariaDB and PostgreSQL, no SQLite3)
+  - A command-line client for the nextcloud database (for MySQL/MariaDB and PostgreSQL, no SQLite3)
 - **nc-subscribed-calendar**
   - Define the refresh rate of subscribed calendars per calendar instead of one refresh rate for all subscribed calendars
 - **nc-who**
@@ -38,7 +38,7 @@ These are the scripts available for installation:
 
 ---
 
-Since the scripts are very restrictive with the integrity check and do not allow any changes to the code—modified modules are immediately deleted and replaced by the module server—I have integrated a local module server that allows anyone to host the modules on their own localhost independently of any outside web server. If the scripts are built that way, the local module server starts and stops together with the script and takes over the provision of the modules.
+Since the scripts are very restrictive with the integrity check and do not allow any changes to the code — modified modules are immediately deleted and replaced by the module server — I have integrated a local module server that allows anyone to host the modules on their own localhost independently of any outside web server. If the scripts are built that way, the local module server starts and stops together with the script and takes over the provision of the modules.
 
 The config/configure file is already set up to build the scripts with the local web server.
 
