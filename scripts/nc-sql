@@ -55,7 +55,7 @@ HELP
 exit0
 }
 
-# first search for option --raq and remove from @() array
+# first search for options --raw, -r, --execute, -e and remove from @() array
 # and then add the remaining arguments into the new array
 declare raw=false execute=false
 args=()
