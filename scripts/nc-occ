@@ -43,7 +43,7 @@ __nextcloud_updater__
 declare JSON_FILE arg INCLUDE_ALL_OPTIONS INCLUDE_HELP HELP
 
 # File containing the JSON output from 'occ list --format=json'
-JSON_FILE="$TMP/$bm-tmp/occ_commands.json"
+JSON_FILE="$TMPDIR/$bm-tmp/occ_commands.json"
 # Flags to include all options and help option
 INCLUDE_ALL_OPTIONS=false
 INCLUDE_HELP=false
