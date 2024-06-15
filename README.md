@@ -21,6 +21,8 @@ These are the scripts available for installation:
   - Resolve "*`Some files have not passed the integrity check`*" warnings
 - **nc-mimecheck**
   - A mimetype checker script to integrate with flow external script
+- **nc-occ**
+  - Interactively create your *`occ`* commands. This brings you the feature you have always wanted and missed most, without even knowing.
 - **nc-shares**
   - List shares with their tokens and full path on the command line
 - **nc-sharetoken-length**
