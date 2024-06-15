@@ -12,8 +12,13 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
 
     . <(require ansi)
     . <(require sudo)
+    . <(require nc/nextcloud_aio)
     . <(require php/version)
 
+if $AIO; then
+    cdir="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data/config"
+    abs_datadir="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
+else
     declare NC_USER NC_DIR_USER NC_DIR_GROUP
     # detect location of config.php
     if [ -d "$NC_DIR" ]; then
@@ -43,6 +48,7 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
         . <(req nc/first_run)
         first_run
     fi
+fi
 
     config2json(){
 
@@ -83,26 +89,29 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
     }
 
     nc_configkey_exist_(){
-        grep -qsw "$1" $NC_DIR/config/*config.php
+        grep -qsw "$1" $cdir/*config.php
         return $?
     }
 
-    # detect, if apc is required for cli
-    declare phpcli
-    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! grep -qs "apc.enable_cli"< <(php$(php_ver) -i); then
-        phpcli="php$(php_ver) --define apc.enable_cli=1"
+    if $AIO; then
+        occ(){ docker exec --user www-data -it nextcloud-aio-nextcloud php occ $@;}
     else
-        phpcli="php$(php_ver)"
-    fi
-
-    # the occ command call is saved under occ, adapted to the user and environment
-    occ(){ $phpcli -f $NC_DIR/console.php $@;}
-
-    if (( $(id -u) )); then
-        [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
-    else
-        # you are root
-        occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php $@;}
+        # detect, if apc is required for cli
+        declare phpcli
+        if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! grep -qs "apc.enable_cli"< <(php$(php_ver) -i); then
+            phpcli="php$(php_ver) --define apc.enable_cli=1"
+        else
+            phpcli="php$(php_ver)"
+        fi
+        # the occ command call is saved under occ, adapted to the user and environment
+        occ(){ $phpcli -f $NC_DIR/console.php $@;}
+        
+        if (( $(id -u) )); then
+            [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
+        else
+            # you are root
+            occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php $@;}
+        fi
     fi
 
     declare NC_DATADIR

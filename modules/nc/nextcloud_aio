@@ -1,0 +1,39 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${NEXTCLOUD_AIO_BASHLIB:-false} && return 0 || {
+    NEXTCLOUD_AIO_BASHLIB=:
+
+    . <(require tempfile)
+    . <(require sudo)
+
+    declare AIO=false
+
+    detect_aio(){
+        docker_ps_json="$(tf)"
+        # detect if any docker containers are running on the host (without -a, because only running containers matter here)
+        docker ps --no-trunc --format=json 2>/dev/null > $docker_ps_json
+        mapfile -t docker_names< <(jq -r .Names $docker_ps_json)
+        if (( ${#docker_names[@]} )); then
+            if [[ "${docker_names[@]}" =~ nextcloud-aio-mastercontainer && "${docker_names[@]}" =~ nextcloud-aio-nextcloud ]]; then
+                AIO=true
+            fi
+        fi
+    }
+
+    if (( $(id -u) )); then # you are not root
+        if ps aux | grep -qs "[d]ockerd"; then # dockerd is running
+            su_root "to detect all-in-one"
+        fi
+    else
+        detect_aio
+    fi
+
+}
+
