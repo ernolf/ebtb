@@ -136,11 +136,11 @@ $debug && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag =
 
     if (($(curl -so "$tempfile" -w %{http_code} "$url1") == 200)); then
         mv "$tempfile" "$NC_DIR/$path"
-        chown "$NC_USER.$NC_USER" "$NC_DIR/$path"
+        chown "$NC_USER:$NC_USER" "$NC_DIR/$path"
         echo "download of '$file' from '$url1' succeeded"
     elif (($(curl -so "$tempfile" -w %{http_code} "$url2") == 200)); then
         mv "$tempfile" "$NC_DIR/$path"
-        chown "$NC_USER.$NC_USER" "$NC_DIR/$path"
+        chown "$NC_USER:$NC_USER" "$NC_DIR/$path"
         echo "download of '$file' from '$url2' succeeded"
     else
         echo "download of '$path' failed. You must check this one yourself"
