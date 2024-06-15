@@ -12,6 +12,7 @@ ${FIRST_RUN_BASHLIB:-false} && return 0 || {
 
     . <(require basics)
     . <(require ansi)
+    . <(require sudo)
     . <(require button)
     . <(require anykey)
     . <(require vdir)
