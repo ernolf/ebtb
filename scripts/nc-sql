@@ -12,7 +12,7 @@ __scriptname__
 dependencies=(
     "curl#curl#Command line file transfer tool with URL syntax"
     "gpg#gnupg#GNU Privacy Guard"
-    "xmlstarlet#xmlstarlet#Command line XML toolkit"
+#    "xmlstarlet#xmlstarlet#Command line XML toolkit"
     "jq#jq#Command line JSON processor"
 )
 modules=(
@@ -55,6 +55,15 @@ HELP
 exit0
 }
 
+execute_query() {
+    local query="$1"
+    if $AIO; then
+        aio_wrapper nextcloud-aio-database "$DATABASE_CALL $DB_EXEC \"$query\""
+    else
+        $DATABASE_CALL $DB_EXEC "$query"
+    fi
+}
+
 # first search for options --raw, -r, --execute, -e and remove from @() array
 # and then add the remaining arguments into the new array
 declare raw=false execute=false
@@ -71,6 +80,9 @@ for arg in "$@";do
 done
 set -- "${args[@]}"&&unset -v args
 
+if $AIO && which psql &>/dev/null; then
+        DOCKER=false
+fi
 declare DATABASE_CALL
 database_call
 if $raw; then
@@ -79,10 +91,19 @@ else
     DATABASE_CALL="$DB_STRG"
 fi
 if $execute; then
-    $DATABASE_CALL $DB_EXEC"$@"
+    if $DOCKER; then
+        docker exec -it nextcloud-aio-database bash -c "$DATABASE_CALL $DB_EXEC\"$*\""
+    else
+        $DATABASE_CALL $DB_EXEC"$*"
+    fi
 else
-    $DATABASE_CALL
+    if $DOCKER; then
+        docker exec -it nextcloud-aio-database bash -c "$DATABASE_CALL"
+    else
+        $DATABASE_CALL
+    fi
 fi
 
 exit0
+
 

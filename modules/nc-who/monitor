@@ -27,7 +27,7 @@ ${MONITOR_BASHLIB:-false} && return 0 || {
 
     nc_monitor(){
         database_call --html
-        local prompt proviso list db_query query
+        local prompt proviso list query db_query
         local -l choice key
         local -i watch_pid=0
 
@@ -58,7 +58,7 @@ ${MONITOR_BASHLIB:-false} && return 0 || {
             esac
 
           # authtoken.type constants from lib/private/Authentication/Token/IToken.php line 31
-            db_query="SELECT $DB_U2T(at.last_activity) AS last_activity,
+            query="SELECT $DB_U2T(at.last_activity) AS last_activity,
                         CASE
                           WHEN at.type = '0' AND at.remember = '1' THEN (SELECT us.status FROM ${DB_PREF}user_status us WHERE us.user_id = at.uid)
                           ELSE 'n.a.'
@@ -68,7 +68,7 @@ ${MONITOR_BASHLIB:-false} && return 0 || {
                       ORDER BY at.last_activity DESC"
           # watch breaks the formating of the tables made by  mysql client.
           # therefore we must build it again from html output.
-            query="$DB_STRG $DB_EXEC\"$db_query\"|tr -d '\n'|sed 's/>\s*</></g;s|<p>.*</p>||'"
+            db_query="$DB_STRG $DB_EXEC\"$query\"|tr -d '\n'|sed 's/>\s*</></g;s|<p>.*</p>||'"
           # Empty row with one single dash, since completely empty is supressed
             local -i rr=5 new_rr;local sed_empty_row sed_pre_html2text html2text_command first_line sed_post_html2text watch_command key
             sed_empty_row="s|</TH></TR>|</TH></TR><TR><TD>-</TD>$(line '<td></td>' N 3 a0)</TR>|Ig"
@@ -96,7 +96,7 @@ ${MONITOR_BASHLIB:-false} && return 0 || {
                                     s/~/_/g               # change ~ back to underscore
                                     s/=/ /g'              # change = back to spaces
                 "
-                watch_command="$query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
+                watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
                 watch -tn $rr "$watch_command" & watch_pid=$!
                 trap 'cleanup $watch_pid cls; interrupted INT' INT
                 trap 'cleanup $watch_pid cls; interrupted TERM' TERM

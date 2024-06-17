@@ -14,7 +14,7 @@ ${LAST_BASHLIB:-false} && return 0 || {
 
     nc_last(){
         database_call
-        local db_query
+        local query
 
         group_query(){
             case $DB_TYPE in
@@ -35,7 +35,7 @@ ${LAST_BASHLIB:-false} && return 0 || {
         }
 
         if is_app_enabled guests; then
-            db_query="
+            query="
             SELECT uid, last_login
             FROM (
                 $(group_query users)
@@ -45,11 +45,15 @@ ${LAST_BASHLIB:-false} && return 0 || {
             ORDER BY
                 CASE WHEN last_login = 'never' THEN 1 ELSE 0 END, last_login DESC"
         else
-            db_query="$(group_query users)
+            query="$(group_query users)
             ORDER BY
                 CASE WHEN p.configvalue IS NULL THEN 1 ELSE 0 END, p.configvalue DESC"
         fi
-        $DB_STRG $DB_EXEC"$db_query"
+        if $DOCKER; then
+            docker exec -it nextcloud-aio-database bash -c "$DB_STRG $DB_EXEC\"$query\""
+        else
+            $DB_STRG $DB_EXEC"$query"
+        fi
         exit 0
     }
 

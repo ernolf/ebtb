@@ -15,40 +15,39 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
     . <(require nc/nextcloud_aio)
     . <(require php/version)
 
-if $AIO; then
-    cdir="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data/config"
-    abs_datadir="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
-else
-    declare NC_USER NC_DIR_USER NC_DIR_GROUP
-    # detect location of config.php
-    if [ -d "$NC_DIR" ]; then
-        NC_DIR_USER=$(stat -c %U $NC_DIR) NC_DIR_GROUP=$(stat -c %G $NC_DIR)
-        if cd $NC_DIR 2>/dev/null; then
-            cdir=$(php -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");' 2>/dev/null)
-            cd
-            # pick out NC_USER
-            if (( $(stat -c %u $cdir/config.php 2>/dev/null) )); then
-                NC_USER="$(stat -c %U $cdir/config.php)"
+    if $AIO; then
+        cdir="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data/config"
+    else
+        declare NC_USER NC_DIR_USER NC_DIR_GROUP
+        # detect location of config.php
+        if [ -d "$NC_DIR" ]; then
+            NC_DIR_USER=$(stat -c %U $NC_DIR) NC_DIR_GROUP=$(stat -c %G $NC_DIR)
+            if cd $NC_DIR 2>/dev/null; then
+                cdir=$(php -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");' 2>/dev/null)
+                cd
+                # pick out NC_USER
+                if (( $(stat -c %u $cdir/config.php 2>/dev/null) )); then
+                    NC_USER="$(stat -c %U $cdir/config.php)"
+                fi
+            elif [ "$NC_DIR_USER" = 'root' ]&&[ "$NC_DIR_GROUP" != 'root' ]; then
+                NC_USER=$NC_DIR_GROUP
             fi
-        elif [ "$NC_DIR_USER" = 'root' ]&&[ "$NC_DIR_GROUP" != 'root' ]; then
-            NC_USER=$NC_DIR_GROUP
+        fi
+        # if NC_USER still unknown, try these fallbacks:
+        [ -n "$NC_USER" ] || NC_USER="$(ps -o user $(pgrep -f "php|apache2|httpd|nginx")|awk 'NR>1'|sort -u|grep -v root)"
+        [ -n "$NC_USER" ] || NC_USER="$(apachectl -S 2>/dev/null|awk -F '[" ]' '/User:/ { print $3 }')"
+
+        # only load firstrun module if needed
+        if [ ! -d "$NC_DIR" ]; then
+            . <(req nc/first_run)
+            first_run
+        elif [[ "$(id -un)" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
+            su_do "u=NC_USER"
+        elif [ ! -r "$NC_DIR/lib/base.php" ]; then
+            . <(req nc/first_run)
+            first_run
         fi
     fi
-    # if NC_USER still unknown, try these fallbacks:
-    [ -n "$NC_USER" ] || NC_USER="$(ps -o user $(pgrep -f "php|apache2|httpd|nginx")|awk 'NR>1'|sort -u|grep -v root)"
-    [ -n "$NC_USER" ] || NC_USER="$(apachectl -S 2>/dev/null|awk -F '[" ]' '/User:/ { print $3 }')"
-
-    # only load firstrun module if needed
-    if [ ! -d "$NC_DIR" ]; then
-        . <(req nc/first_run)
-        first_run
-    elif [[ "$(id -un)" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
-        su_do "u=NC_USER"
-    elif [ ! -r "$NC_DIR/lib/base.php" ]; then
-        . <(req nc/first_run)
-        first_run
-    fi
-fi
 
     config2json(){
 
@@ -115,7 +114,9 @@ fi
     fi
 
     declare NC_DATADIR
-    if nc_configkey_exist_ datadirectory; then
+    if $AIO; then
+        NC_DATADIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
+    elif nc_configkey_exist_ datadirectory; then
         NC_DATADIR="$(nc_configkey datadirectory)"
     elif [ -d "$NC_DIR/data" ];then
         NC_DATADIR="$NC_DIR/data"

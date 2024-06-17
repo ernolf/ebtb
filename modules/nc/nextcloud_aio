@@ -13,7 +13,8 @@ ${NEXTCLOUD_AIO_BASHLIB:-false} && return 0 || {
     . <(require tempfile)
     . <(require sudo)
 
-    declare AIO=false
+    declare AIO DOCKER
+    AIO=false DOCKER=false
 
     detect_aio(){
         docker_ps_json="$(tf)"
@@ -23,8 +24,15 @@ ${NEXTCLOUD_AIO_BASHLIB:-false} && return 0 || {
         if (( ${#docker_names[@]} )); then
             if [[ "${docker_names[@]}" =~ nextcloud-aio-mastercontainer && "${docker_names[@]}" =~ nextcloud-aio-nextcloud ]]; then
                 AIO=true
+                DOCKER=true
             fi
         fi
+    }
+
+    aio_wrapper(){
+        local container_name="$1"
+        shift
+        sudo docker exec -it "$container_name" bash -c "$*"
     }
 
     if (( $(id -u) )); then # you are not root
