@@ -22,17 +22,17 @@ These are the scripts available for installation:
 - **nc-mimecheck**
   - A mimetype checker script to integrate with flow external script
 - **nc-occ**
-  - Interactively create your *`occ`* commands. This brings you the feature you have always wanted and missed most, without even knowing.
+  - Interactively create your *`occ`* commands. This brings you the feature you have always wanted and missed most, without even knowing. (Nextcloud All-in-One is supported)
 - **nc-shares**
   - List shares with their tokens and full path on the command line
 - **nc-sharetoken-length**
   - Define the length of the Nextcloud share token, which is normally 15 characters long, to any length between 4 and 32
 - **nc-sql**
-  - A command-line client for the nextcloud database (for MySQL/MariaDB and PostgreSQL, no SQLite3)
+  - A command-line client for the nextcloud database (for MySQL/MariaDB and PostgreSQL, no SQLite3. Nextcloud All-in-One is supported)
 - **nc-subscribed-calendar**
   - Define the refresh rate of subscribed calendars per calendar instead of one refresh rate for all subscribed calendars
 - **nc-who**
-  - Follow live who is logged in on your Nextcloud server
+  - Follow live who is logged in on your Nextcloud server. (Nextcloud All-in-One is supported)
 - **php-module-builder**
   - Build PHP modules on your ubuntu/debian based server that cannot be built with PECL, like Lua
 - **php-updater**
