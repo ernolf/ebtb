@@ -120,26 +120,26 @@ PUBLIC_KEY_ASC
             sed -i 's/^v=false$/v=true/' "$ca_me"
         fi
         line '=' P 5/75
-        (( r )) || anykey
         return $r
     }
 
-    if $do_integrity_check; then
+    run_integrity_check(){
         if integrity_check; then
-            $me "json='$my_json'" $my_args
+            f;pf;G;echo "Integrity check passed. Please start script again"
             exit 0
+        else
+            exit1
         fi
+    }
+
+    if $do_integrity_check; then
+        run_integrity_check
     fi
     declare "$(tail -n2 "$ca_me" | head -n1)"
     if ! "${v:-false}"; then
         f
         o5;B;echo "First run, checking integrity:"
-        if integrity_check; then
-            $me "json='$my_json'" $my_args
-            exit 0
-        else
-            exit1
-        fi
+        run_integrity_check
     fi
 
 }

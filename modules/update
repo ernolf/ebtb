@@ -106,7 +106,7 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
             fi
             # set "$lincld/$sin/.checked" to 0 if exists to build up with newest modules
             [ -f "$lincld/$sin/.checked" ] && echo "0" >"$lincld/$sin/.checked"
-            "$me" "json=$my_json" $my_args
+            f;pf;G;echo "Update was successfull. Please start script again"
             exit 0
         }
     }
@@ -114,7 +114,6 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
     my_update_check(){
         local -l key
         if (( my_epoch > epoch )); then
-#            echo "my_epoch=$my_epoch - epoch=$epoch"
             f;o5;echo "A new version of this script is available."
             while :; do
                 o5;echo "Press - [$(lG)u$(N)] for update - [$(Y)i$(N)] to ignore"
@@ -191,7 +190,7 @@ ${UPDATE_BASHLIB:-false} && return 0 || {
             fi
             # set "$lincld/$sin/.checked" to 0 if exists to build up with newest modules
             [ -f "$lincld/$sin/.checked" ] && echo "0" >"$lincld/$sin/.checked"
-            "$me" "json=$my_json" $my_args
+            f;pf;G;echo "Restoring backup was successfull. Please start script again"
             exit 0
         }
     }
