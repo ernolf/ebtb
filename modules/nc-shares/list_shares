@@ -52,7 +52,7 @@ ${LIST_SHARES_BASHLIB:-false} && return 0 || {
         local grpfldr_id thisgrpfldr sed_string
         if is_app_enabled groupfolders && [ -d "$NC_DATADIR/__groupfolders" ]; then
             for grpfldr_id in `ls $NC_DATADIR/__groupfolders* | grep [0-9]`; do
-                thisgrpfldr="$($DB_STRG $DB_RAW $DB_EXEC"SELECT mount_point FROM ${DB_PREF}group_folders WHERE folder_id = $grpfldr_id")"
+                thisgrpfldr="$(db_raw_exec_ "SELECT mount_point FROM ${DB_PREF}group_folders WHERE folder_id = $grpfldr_id")"
                 sed_string="${sed_string};s@__groupfolders/${grpfldr_id}@/${thisgrpfldr}@g"
                 d_echo "sed_string: \"$sed_string\""
             done
@@ -107,7 +107,7 @@ ${LIST_SHARES_BASHLIB:-false} && return 0 || {
     #    exit
     #TODO <-
 
-        $DB_STRG $DB_EXEC"$query" | column -t -s $'\t' | sed "s\ files/\ /\g$sed_string"
+        db_exec_ "$query" | column -t -s $'\t' | sed "s\ files/\ /\g$sed_string"
 
     #    pipe_h2t "$DB_STRG $DB_EXEC" "$query"
     }

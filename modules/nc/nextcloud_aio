@@ -30,9 +30,22 @@ ${NEXTCLOUD_AIO_BASHLIB:-false} && return 0 || {
     }
 
     aio_wrapper(){
-        local container_name="$1"
+        local interactive_tty container_name
+        if [ "$1" = '-it' ]; then
+            interactive_tty='-it'
+            shift
+        else
+            interactive_tty=''
+        fi
+        container_name="$1"
         shift
-        sudo docker exec -it "$container_name" bash -c "$*"
+        sudo docker exec $interactive_tty "nextcloud-aio-$container_name" bash -c "$*"
+    }
+
+    aio_not_supported(){
+        $AIO || return 0
+        f;pf;R;echo "This script cannot be used with Nextcloud All-in-One …"
+        exit1
     }
 
     if (( $(id -u) )); then # you are not root

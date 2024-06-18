@@ -83,27 +83,20 @@ set -- "${args[@]}"&&unset -v args
 if $AIO && which psql &>/dev/null; then
         DOCKER=false
 fi
-declare DATABASE_CALL
-database_call
-if $raw; then
-    DATABASE_CALL="$DB_STRG $DB_RAW"
-else
-    DATABASE_CALL="$DB_STRG"
-fi
+
 if $execute; then
-    if $DOCKER; then
-        docker exec -it nextcloud-aio-database bash -c "$DATABASE_CALL $DB_EXEC\"$*\""
+    if $raw; then
+        db_raw_exec_ "$*"
     else
-        $DATABASE_CALL $DB_EXEC"$*"
+        db_exec_ "$*"
     fi
 else
-    if $DOCKER; then
-        docker exec -it nextcloud-aio-database bash -c "$DATABASE_CALL"
+    if $raw; then
+        db_raw_interactive
     else
-        $DATABASE_CALL
+        db_interactive
     fi
 fi
 
 exit0
-
 

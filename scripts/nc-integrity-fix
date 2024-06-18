@@ -43,6 +43,8 @@ __nextcloud_updater__
 
 debug=false
 
+aio_not_supported
+
 declare affected_app affected_file this be pl1 pl2 one integritycheck_json scan_result question 
 declare -a shiped_apps affected_apps FILE_MISSING INVALID_HASH EXTRA_FILE EXCEPTION
 
@@ -59,11 +61,11 @@ db_integritycheck_(){
     case "$1" in
         cull)
             db_query="SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = 'core' AND configkey = 'oc.integritycheck.checker';"
-            $DB_STRG $DB_RAW $DB_EXEC"$db_query"
+            db_raw_exec_ "$db_query"
             ;;
         clean)
             db_query="DELETE FROM ${DB_PREF}appconfig WHERE ${DB_PREF}appconfig.appid = 'core' AND ${DB_PREF}appconfig.configkey = 'oc.integritycheck.checker';"
-            $DB_STRG $DB_EXEC"$db_query"
+            db_exec_ "$db_query"
     esac
 }
 

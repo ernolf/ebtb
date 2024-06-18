@@ -59,57 +59,71 @@ ${NEXTCLOUD_DB_BASHLIB:-false} && return 0 || {
         dc=true
     }
 
-    is_app_enabled(){
-        database_call
+    db_interactive(){
+        database_call &>/dev/null
         if $DOCKER; then
-            if [ "$(docker exec -it nextcloud-aio-database bash -c "$DB_STRG $DB_RAW $DB_EXEC\"SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = '$1' AND configkey = 'enabled'\"")" = yes ]; then
-                return 0
-            else
-                return 1
-            fi
+            aio_wrapper -it database "$DB_STRG"
         else
-            if [ "$($DB_STRG $DB_RAW $DB_EXEC"SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = '$1' AND configkey = 'enabled'")" = yes ]; then
-                return 0
-            else
-                return 1
-            fi
+            $DB_STRG
+        fi
+    }
+
+    db_raw_interactive(){
+        database_call &>/dev/null
+        if $DOCKER; then
+            aio_wrapper -it database "$DB_STRG $DB_RAW"
+        else
+            $DB_STRG $DB_RAW
+        fi
+    }
+
+    db_exec_(){
+        database_call &>/dev/null
+        local query="$*"
+        if $DOCKER; then
+            aio_wrapper database "$DB_STRG $DB_EXEC\"$query\""
+        else
+            $DB_STRG $DB_EXEC"$query"
+        fi
+    }
+
+    db_raw_exec_(){
+        database_call &>/dev/null
+        local query="$*"
+        if $DOCKER; then
+            aio_wrapper database "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
+        else
+            $DB_STRG $DB_RAW $DB_EXEC"$query"
+        fi
+    }
+
+    is_app_enabled(){
+        if [ "$(db_raw_exec_ "SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = '$1' AND configkey = 'enabled'")" = yes ]; then
+            return 0
+        else
+            return 1
         fi
     }
 
     # returns true or false
     user_exists(){
-        database_call
         local user="$1" query
         query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN 'true' ELSE 'false' END"
-        if $DOCKER; then
-            docker exec -it nextcloud-aio-database bash -c "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
-        else
-            $DB_STRG $DB_RAW $DB_EXEC"$query"
-        fi
+        db_raw_exec_ "$query"
     }
 
     # returns uid in corrected case
     check_username_case(){
-        database_call
         local user="$1" query
         query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN (SELECT uid FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) END"
-        if $DOCKER; then
-            docker exec -it nextcloud-aio-database bash -c "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
-        else
-            $DB_STRG $DB_RAW $DB_EXEC"$query"
-        fi
+        db_raw_exec_ "$query"
     }
 
     # returnns true if user disabled, else false
     user_disabled(){
-        database_call
         local user="$1" query
         query="SELECT CASE WHEN (SELECT configvalue FROM ${DB_PREF}preferences WHERE userid = '$user' AND appid = 'core' AND configkey = 'enabled') = 'false' THEN 'true' ELSE 'false' END"
-        if $DOCKER; then
-            docker exec -it nextcloud-aio-database bash -c "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
-        else
-            $DB_STRG $DB_RAW $DB_EXEC"$query"
-        fi
+        db_raw_exec_ "$query"
     }
 
 }

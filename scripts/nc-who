@@ -41,12 +41,6 @@ __nextcloud_updater__
 
 ## SCRIPT SPECIFIC
 
-if $AIO; then
-    dependencies=("psql#postgresql-client#front-end for PostgreSQL")
-    dependency_check
-    DOCKER=false
-fi
-
 command=print_help
 while (($#));do
     case $1 in

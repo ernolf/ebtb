@@ -49,11 +49,7 @@ ${LAST_BASHLIB:-false} && return 0 || {
             ORDER BY
                 CASE WHEN p.configvalue IS NULL THEN 1 ELSE 0 END, p.configvalue DESC"
         fi
-        if $DOCKER; then
-            docker exec -it nextcloud-aio-database bash -c "$DB_STRG $DB_EXEC\"$query\""
-        else
-            $DB_STRG $DB_EXEC"$query"
-        fi
+        db_exec_ "$query"
         exit 0
     }
 
