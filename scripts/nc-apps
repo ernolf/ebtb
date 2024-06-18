@@ -49,6 +49,8 @@ __module_integrity__
 
 __nextcloud_updater__
 
+aio_not_supported
+
 all_apps(){
     stock_up_arrays filtered_appstore=true
     local s=false ns=false up=false
