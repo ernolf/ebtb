@@ -55,15 +55,6 @@ HELP
 exit0
 }
 
-execute_query() {
-    local query="$1"
-    if $AIO; then
-        aio_wrapper nextcloud-aio-database "$DATABASE_CALL $DB_EXEC \"$query\""
-    else
-        $DATABASE_CALL $DB_EXEC "$query"
-    fi
-}
-
 # first search for options --raw, -r, --execute, -e and remove from @() array
 # and then add the remaining arguments into the new array
 declare raw=false execute=false
