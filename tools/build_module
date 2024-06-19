@@ -17,6 +17,8 @@ fi
 
 # Source the configure file
 source config/configure
+# Source the secrets configure file if exists
+[ -f config/secrets ] && source config/secrets
 # Source the placeholders file
 source config/placeholders
 

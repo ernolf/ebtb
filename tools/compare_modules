@@ -12,8 +12,10 @@ ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
+# Source the configure file
 source config/configure
-source config/secrets
+# Source the secrets configure file if exists
+[ -f config/secrets ] && source config/secrets
 
 $debug && set -x
 

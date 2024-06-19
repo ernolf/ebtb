@@ -35,7 +35,9 @@ for arg in "$@";do
 done
 set -- "${args[@]}" && unset -v arg args
 
+# Source the configure file
 source config/configure
+# Source the secrets configure file if exists
 if [ -f config/secrets ]; then
     source config/secrets
 elif ! $LOCAL_SERVER; then
