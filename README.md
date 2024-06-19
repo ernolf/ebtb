@@ -47,6 +47,12 @@ The config/configure file is already set up to build the scripts with the local 
 These are the steps to build:
 
 ```sh
+# Be sure to cleanup older builds
+sudo make clean
+
+# Be sure to perform a pull beforehand to get the latest version.
+git pull origin main
+
 sudo make and-install-all-scripts
 sudo make modules
 sudo make sign-and-release-all-modules
