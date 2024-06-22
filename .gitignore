@@ -1,1 +1,3 @@
-config/secrets
+/config/secrets
+/build
+
