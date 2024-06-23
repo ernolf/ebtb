@@ -26,6 +26,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
     . <(require php/extensions)
     . <(require php/apache2)
     . <(require php/fpm)
+    . <(require $sin/merge)
 
     replace_aim(){ # replace admin installed modules
         replace_(){
@@ -367,6 +368,15 @@ ${TASKS_BASHLIB:-false} && return 0 || {
         fi
     }
 
+    ini_directive_detect(){
+        local ver ini_directive result
+        ver="$1" ini_directive="$2"
+        find "/etc/php/$ver" -name "*.ini" ! -type l | while read -r file; do
+            if result="$(stripconf "$file" | grep "$ini_directive")"; then
+                echo "$file:$result"
+            fi
+        done
+    }
 
     ext_config_fix(){
         local ver ext ext_ini xtmp itmp must_be_fixed_message should_be_fixed_message good_to_be_fixed_message pattern sapi php_inis php_ini line plu be ini_string ini_string_ php_ini_dpkg key val basic_infostring infostring oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
@@ -379,11 +389,11 @@ ${TASKS_BASHLIB:-false} && return 0 || {
         if [ "$OLD" = "$ver" ] && [[ "$NEW" ]]; then
             must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here but then the script will not continue, since it would multiply errors and various strange behaviour could arrise."
             should_be_fixed_message="This should be fixed before this script migrates the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will be migrated as well."
-            good_to_be_fixed_message="This is not an error but about an important optimization that is missing which you better can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
+            good_to_be_fixed_message="This is not an error but about a possible optimization that is missing which you can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
         else
             must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php$ver$(P) to an other php version. You can answer $(box no) here but then the script cannot upgrade from this version, since it would multiply errors and various strange behaviour could arrise."
             should_be_fixed_message="This should be fixed in the configuration of $(C)php$ver$(P)."
-            good_to_be_fixed_message="This is not an error but about an important optimization that is missing in the configuration of $(C)php$ver$(P) which you better can add."
+            good_to_be_fixed_message="This is not an error but about a possible optimization that is missing in the configuration of $(C)php$ver$(P) which you can add."
         fi
         # get rid of double extension loaders
         pattern="^\s*(zend_)?extension\s*=\s*$ext.*$"
@@ -429,87 +439,98 @@ ${TASKS_BASHLIB:-false} && return 0 || {
         fi
         case $ext in
             redis)
-                echo -n > $xtmp; echo -n > $itmp
-                basic_infostring="The redis module is installed on this server and if you want to use redis for transactional file locking, these directives should be added for optimum perfomance. The best place for this directives is $(C)$ext_ini$(W)"
-                optionblock="redis.session.locking_enabled=1\nredis.session.lock_wait_time=10000\nredis.session.lock_retries=-1"
-                optionblock_r="redis.session.lock_retries=-1\nredis.session.lock_wait_time=10000\nredis.session.locking_enabled=1"
-                optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
-                optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
-                pattern='redis\.session\.lock'
-                if ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" &&
-                   ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" &&
-                   ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" &&
-                   ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
-                    for sapi in $(phpquery -v $ver -S); do
-                        php_ini="/etc/php/$ver/$sapi/php.ini"
-                        if [ -f "$php_ini" ]; then
-                            if p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
-                               p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
-                               p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
-                               p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
-                                inifiles1_+=("$php_ini")
-                            else
-                                inifiles2_+=("$php_ini")
-                            fi
-                        fi
-                    done
-                    if (( ${#inifiles1_[@]} == 0 )); then
-                        echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
-                        echo -e "\n   - $(O)Missing optimization for redis transactional file locking feature in php$ver configuration:" >> $itmp
-                        infostring="$basic_infostring."
-                        echo -e "\n$(R)$optionblock$(N)" >> $itmp
-                        C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                        echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
-                    elif (( ${#inifiles2_[@]} )); then
-                        if (( ${#inifiles1_[@]} == 1 )); then
-                            ini_string="$(C)${inifiles1_[0]}$(W)"
-                        else
-                            ini_string=$(listify_ C W ${inifiles1_[@]})
-                        fi
-                        echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
-                        echo -e "\n   - $(O)Partially missing optimization for redis transactional file locking feature:" >> $itmp
-                        infostring="$basic_infostring but it is only located in $ini_string. So this lines will be removed from there and appended to $(C)$ext_ini$(W) to make it available to all SAPIs."
-                        echo -e "\n$(R)$optionblock$(N)" >> $itmp
-                        C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                        for i in ${!inifiles1_[@]}; do
-                            echo "sed -i '/$pattern/d' '${inifiles1_[i]}'" >> $xtmp
-                        done
-                        echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
-                    fi
-                fi
-                if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
-                    kill_spinner
-                    separator
-                    cat "$itmp"
-                    f
-                    if ask "$(qpf)Do you want to execute this optimizations" $YES;then
-                        . $xtmp
-                        if p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
-                           p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
-                           p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
-                           p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
-                            echo "R: $(lG)Directives successfully written in $ext_ini.$(N)"
-                            for i in ${!inifiles1_[@]}; do
-                                if p_sort "$(stripconf "${inifiles1_[i]}"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock"; then
-                                    echo "R: $(R)removal from ${inifiles1_[i]} failed.$(N)"
-                                else
-                                    echo "R: $(lG)removal from ${inifiles1_[i]} was successfull.$(N)"
+                local -a sessionsavehandler
+                mapfile -t sessionsavehandler< <(ini_directive_detect "session.save_handler")
+                if (( ${#sessionsavehandler[@]} )); then
+                    for i in ${!sessionsavehandler[@]}; do
+                        if [[ "$(key_ val ${sessionsavehandler[i]##*:})" == "redis" &&
+                              "${sessionsavehandler[i]%%:*}" == "/etc/php/$ver/mods-available/redis.ini" ]]; then
+
+                        echo -n > $xtmp; echo -n > $itmp
+                        basic_infostring="The redis module is installed on this server and if you want to use redis for session management, these directives should be added. The best place for this directives is $(C)$ext_ini$(W)"
+                        optionblock="redis.session.locking_enabled=1\nredis.session.lock_wait_time=10000\nredis.session.lock_retries=-1"
+                        optionblock_r="redis.session.lock_retries=-1\nredis.session.lock_wait_time=10000\nredis.session.locking_enabled=1"
+                        optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
+                        optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
+                        pattern='redis\.session\.lock'
+                        if ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" &&
+                           ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" &&
+                           ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" &&
+                           ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
+                            for sapi in $(phpquery -v $ver -S); do
+                                php_ini="/etc/php/$ver/$sapi/php.ini"
+                                if [ -f "$php_ini" ]; then
+                                    if p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
+                                       p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
+                                       p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
+                                       p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
+                                        inifiles1_+=("$php_ini")
+                                    else
+                                        inifiles2_+=("$php_ini")
+                                    fi
                                 fi
                             done
-                        else
-                            echo "R: $(R)this step failed.$(N)"
+                            if (( ${#inifiles1_[@]} == 0 )); then
+                                echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
+                                echo -e "\n   - $(O)Missing directives for redis session management feature in php$ver configuration:" >> $itmp
+                                infostring="$basic_infostring."
+                                echo -e "\n$(R)$optionblock$(N)" >> $itmp
+                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                                echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
+                            elif (( ${#inifiles2_[@]} )); then
+                                if (( ${#inifiles1_[@]} == 1 )); then
+                                    ini_string="$(C)${inifiles1_[0]}$(W)"
+                                else
+                                    ini_string=$(listify_ C W ${inifiles1_[@]})
+                                fi
+                                echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
+                                echo -e "\n   - $(O)(Partially) missing directives for redis session management feature:" >> $itmp
+                                infostring="$basic_infostring but it is only located in $ini_string. So this lines will be removed from there and appended to $(C)$ext_ini$(W) to make it available to all SAPIs."
+                                echo -e "\n$(R)$optionblock$(N)" >> $itmp
+                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                                for i in ${!inifiles1_[@]}; do
+                                    echo "sed -i '/$pattern/d' '${inifiles1_[i]}'" >> $xtmp
+                                done
+                                echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
+                            fi
                         fi
-                    else
-                        echo "R: $(R)you answered $(box no), nothing changed.$(N)"
-                    fi
-                    anykey
+                        if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
+                            kill_spinner
+                            separator
+                            cat "$itmp"
+                            f
+                            if ask "$(qpf)Do you want to apply this directives as suggested" $YES;then
+                                . $xtmp
+                                if p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
+                                   p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
+                                   p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
+                                   p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
+                                    echo "R: $(lG)Directives successfully written in $ext_ini.$(N)"
+                                    for i in ${!inifiles1_[@]}; do
+                                        if p_sort "$(stripconf "${inifiles1_[i]}"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock"; then
+                                            echo "R: $(R)removal from ${inifiles1_[i]} failed.$(N)"
+                                        else
+                                            echo "R: $(lG)removal from ${inifiles1_[i]} was successfull.$(N)"
+                                        fi
+                                    done
+                                else
+                                    echo "R: $(R)this step failed.$(N)"
+                                fi
+                            else
+                                echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                            fi
+                            anykey
+                        fi
+
+                        break
+                        fi
+                    done
                 fi
                 ;;
             opcache)
                 echo -n > $xtmp; echo -n > $itmp
                 echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" > $itmp
-                pattern='^\s*opcache.enable_cli\s*=\s*(on|1)\s*$'
-
+                pattern='^\s*opcache.enable_cli\s*=\s*(on|1)\s*$' php_inis=''
                 for sapi in $(phpquery -v $ver -S); do
                     if [[ "$sapi" != 'cli' && -f "/etc/php/$ver/$sapi/php.ini" ]]; then
                         php_inis+=" /etc/php/$ver/$sapi/php.ini"
@@ -562,6 +583,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
             igbinary)
                 echo -n > $xtmp; echo -n > $itmp
                 echo -e "\n -$(P;format_string "$must_be_fixed_message" 3;N)" >> $itmp
+                php_inis=''
                 for sapi in $(phpquery -v $ver -S); do
                     php_ini="/etc/php/$ver/$sapi/php.ini"
                     if [ -f "$php_ini" ]; then
