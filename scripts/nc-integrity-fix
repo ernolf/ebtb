@@ -103,18 +103,17 @@ $debug || kill_spinner
 }
 
 nc_download_default(){
-    local app_id file version_tag path github_raw url url1 url2 tempfile
+    local app_id file version_tag path url url1 url2 tempfile
     app_id="$1" file="$2" path="$2"
     version_tag="v$(awk -F\' '/String/{gsub(/ /,"");$2=tolower($2);print $2}' "$NC_DIR/version.php")"
-    github_raw='https://raw.githubusercontent.com'
     tempfile=$(tf)
     case "$app_id" in
-      core) url1="$github_raw/nextcloud/server/$version_tag/$file"
+      core) url1="$github_raw/server/$version_tag/$file"
             ;;
          *) if is_shipped_ "$app_id"; then
                 path="apps/$app_id/$file"
-                url1="$github_raw/nextcloud/server/$version_tag/apps/$app_id/$file"
-                url2="$github_raw/nextcloud/$app_id/$version_tag/$file"
+                url1="$github_raw/server/$version_tag/apps/$app_id/$file"
+                url2="$github_raw/$app_id/$version_tag/$file"
             else
                 xml_f="$NC_DIR/apps/$app_id/appinfo/info.xml"
                 repo="$(xmls -v "//info/repository" "$xml_f" | sed '2,$d;s|.git$||1')"
