@@ -297,6 +297,11 @@ $ext_inf && {
 
 ## root stuff
         if (( $(id -u) == 0 )); then
+
+## All-in-One
+            [ -z "$AIO" ] && . <(require nc/nextcloud_aio)
+            mh "AIO = $AIO - DOCKER = $DOCKER"
+
 $ext_inf && {
 ## SELinux
             if which sestatus >/dev/null; then
