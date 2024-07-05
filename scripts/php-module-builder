@@ -25,7 +25,10 @@ __when__
 
 __whoami_whereami__
 
-__vdirname__
+# don't change this by hand, its done safe and interactively by the script:
+declare vdirname='project_dir' # <-- don't change this!
+declare dflt_$vdirname='UNDEFINED' # <-- don't change this!
+declare $vdirname="UNDEFINED" # <-- don't change this!
 __tempdir__
 
 ### module handling (minified)
