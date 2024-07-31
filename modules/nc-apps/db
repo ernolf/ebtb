@@ -146,7 +146,7 @@ SQL
     $debug&&set +x
         fi
 
-        for latest in master $(list_latest); do
+        for latest in $(list_latest) master; do
             meta="stable"
 
 # TODO Possible fix for wrong github labels:
