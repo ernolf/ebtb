@@ -119,7 +119,7 @@ $debug && set +x
         esac
     }
 
-    # $1=app, $2=-q  #### D O N 'T   T O U C H...T H I S
+    # $1=app, $2=-q  #### D O N 'T   T O U C H   T H I S
     is_shipped_(){
         local query_version=$nc_version shipped_json
         (( $(v2i $nc_version) > $(v2i $nc_master) )) && query_version="$nc_master"
