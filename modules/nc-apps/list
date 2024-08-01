@@ -24,7 +24,8 @@ ${LIST_BASHLIB:-false} && return 0 || {
         # overwrite bools with parameter values
         local var; for var in "$@"; do local $var; done #; unset -v var
         # app meta data
-        local name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
+        local info_xml tag name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
+        local -a types
         # app belongs to section (either "enabled", "disabled", "store" or "na")
         local section="$(get_applist_section_ $id)"
         # nextcloud version used for database queries must exist
@@ -60,9 +61,9 @@ ${LIST_BASHLIB:-false} && return 0 || {
 $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
         case $section in
             enabled|disabled|na)
-                local info_xml="$NC_DIR/apps/$id/appinfo/info.xml"
+                info_xml="$NC_DIR/apps/$id/appinfo/info.xml"
                 if $is_shipped && (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )); then
-                    local tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
+                    tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
                     local rawURLserver=$github_raw/server/$tag/apps/$id/appinfo/info.xml
                     local rawURLapp=$github_raw/$id/$tag/appinfo/info.xml
                     local github_info_xml=$(tf)
@@ -114,6 +115,31 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
         fi
         [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | sed 's|/issues$||1')
         (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section="$(get_applist_section_ $id)"
+
+        if [ -z "$info_xml" ]; then
+            if [[ "$repo" =~ github.com ]]; then
+                local url="$(sed 's/github/raw.githubusercontent/' <<< "$repo")"
+                local github_info_xml=$(tf)
+                for tag in "$version" "v$version" master main; do
+                    if (( $(hc sD $bm-$epoch -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
+                        info_xml=$github_info_xml
+                        break
+                    fi
+                done
+            fi
+        fi
+        [ -z "$info_xml" ] || mapfile -t types< <(xmls -m "//types/*" -v "name()" -n "$info_xml")
+
+        not_restrictable_to_groups() {
+            (( ${#types[@]} )) || return 1
+            local type
+            for type in "${types[@]}"; do
+                case $type in
+                    filesystem|prelogin|authentication|logging|prevent_group_restriction) return 0
+                esac
+            done
+            return 1
+        }
 
         known_issues(){ # Fixes and known issues
             case "$id" in
@@ -259,6 +285,13 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
             NCmax="$(lG)$NCmax$(N)"
         fi
         echo "${in}NC min/max$(N)$mid$($md||es 6)$NCmin / $NCmax"
+
+        # not restrictable to groups
+        if not_restrictable_to_groups; then
+            echo "$in $(O)$mid$($md||es 15)App can not be restricted to groups"
+#        else
+#            echo "$in $(G)$mid$($md||es 15)App can be restricted to groups"
+        fi
 
         # shipped or appstore
         if $is_shipped; then
