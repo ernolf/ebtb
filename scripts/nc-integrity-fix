@@ -45,7 +45,7 @@ debug=false
 
 aio_not_supported
 
-declare affected_app affected_file this be pl1 pl2 one integritycheck_json scan_result question 
+declare affected_app affected_file abspath this be pl1 pl2 one integritycheck_json scan_result question 
 declare -a shiped_apps affected_apps FILE_MISSING INVALID_HASH EXTRA_FILE EXCEPTION
 
 integritycheck_json=$(tf) scan_result=$(tf)
@@ -166,6 +166,10 @@ if (( ${#affected_apps[@]} )); then
     done
     separator
     for affected_app in ${affected_apps[@]}; do
+        case $affected_app in
+            core) abspath="$NC_DIR";;
+               *) abspath="$(occ app:getpath -- "$affected_app")"
+        esac
         echo -n > $scan_result
         prune_arrays
         json_2_array "$(jq ".$affected_app" "$integritycheck_json")" > $scan_result
@@ -204,7 +208,7 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
 # TODO: add backup option
             if ask "$(qpf)Do you want to remove t$this needless file" "$YES"; then
                 for affected_file in ${EXTRA_FILE[@]}; do
-                    rm $affected_file
+                    rm "$abspath/$affected_file"
                 done
                 occ_integritycheck_ $affected_app
             fi
