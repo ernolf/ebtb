@@ -15,10 +15,7 @@ dependencies=(
 )
 modules=(
     basics sed tempfile ansi exit anykey verbose line array ask sudo dependency
-    vdir integrity nc/nextcloud nc/nextcloud_db
-)
-mymodules=(
-    $sin/help $sin/list_shares
+    vdir integrity nc/nextcloud nc/nextcloud_db $sin/help $sin/list_shares
 )
 
 declare debug=false
