@@ -13,7 +13,7 @@ ${FUNCTIONS_BASHLIB:-false} && return 0 || {
     . <(require nc/nextcloud)
 
     get_length(){
-        awk -F'=|;' '/TOKEN_LENGTH/{gsub(/[^0-9]+/,"",$2);print $2}' "$NC_DIR$file_of_server"
+        awk -F'=|;' '/const TOKEN_LENGTH/{gsub(/[^0-9]+/,"",$2);printf $2}' "$NC_DIR$file_of_server"
     }
 
     set_length(){
@@ -30,7 +30,8 @@ ${FUNCTIONS_BASHLIB:-false} && return 0 || {
 
     # Function to calculate the number of variations
     calculate_variations(){
-        local -i token_length=$1 total_characters=62 # Assuming alphanumeric characters (a-zA-Z0-9)
+        # https://github.com/nextcloud/server/blob/dcdb4bbf8ab2d618e789a631a410ad70829766aa/lib/public/Security/ISecureRandom.php#L55
+        local -i token_length=$1 total_characters=52
         # Calculate the total variations with python, since bash has limitations of signed integers
         echo $(python -c "print('{0:,}'.format($total_characters ** $token_length))")
     }
