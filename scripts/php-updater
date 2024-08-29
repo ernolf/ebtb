@@ -147,7 +147,7 @@ downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower v
 end_message(){
     f;separator xGRAY;f
     echo "  $(format_string "This script is continually being enhanced and expanded. This means it will be able to perform even more tasks for you safely in the future." 3)"
-    GRAY;echo "  $(format_string "Feel free to donate 1 € by $(C)Paypal$(GRAY) to $(lG)ernolf$(C)<at>$(lG)global-social.net$(GRAY) or at least leave a $(R)❤️$(GRAY) at $(button 1;GRAY) and spread the word, if you like my work." 3;N)"
+    GRAY;echo "  $(format_string "Feel free to donate some \$ or € by $(C)Paypal$(GRAY) to $(lG)ernolf$(C)<at>$(lG)global-social.net$(GRAY) or in cryptocurrency by $(C)Ethereum$(GRAY) (ERC20), $(C)BNB Smart Chain$(GRAY) (BEP20), $(C)Polygon$(GRAY) (MATIC) to $(lG)0x72b7901b3daa45a7266A77Aa3B3552aB686d0D0D$(GRAY) or by $(C)Solana$(GRAY) (SOL) to $(lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(GRAY) or at least leave a $(R)❤️$(GRAY) at $(button 1;GRAY) and spread the word, if you like my work." 3;N)"
     f;o3;button 1;W;pf;echo "https://help.nextcloud.com/t/php-updater-a-script-to-upgrade-php-in-a-safe-way/180215"
     f;separator xGRAY;f
 }
