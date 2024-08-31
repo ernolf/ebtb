@@ -130,14 +130,15 @@ show_menu() {
             ;;
         q)  exit0
             ;;
-        *)  return $((choice - 1))
+        *)  separator
+            return $((choice - 1))
     esac
 }
 
 # Function to parse the JSON file and create the menu
 parse_json() {
     local -i level=$1
-    local special_commands selected_command choice
+    local special_commands selected_command choice description usage
     local -a special_options general_options options
     special_commands="check|completion|help|list|status|upgrade"
 
@@ -157,7 +158,7 @@ parse_json() {
 
     if [[ "${options[choice]}" =~ ^($special_commands)$ ]]; then
         selected_command=${options[choice]}
-        pf;echo "You have selected the command '$selected_command'."
+        pf;echo "Command$(o 15;Yi)$selected_command";N
         if [[ "$INCLUDE_HELP" == true ]]; then
             execute_command "$selected_command" --help
         else
@@ -167,14 +168,18 @@ parse_json() {
         parse_json 2 "${options[choice]}"
     else
         selected_command=${options[choice]}
-        pf;echo "You have selected the command '$selected_command'."
+        pf;echo "Command$(o 15;Yi)$selected_command";N
         if [[ "$INCLUDE_HELP" == true ]]; then
             # long help
             # execute_command "$selected_command" --help
-            occ "$selected_command" --help
+            pf;echo "Help"
+            occ "$selected_command" --help | awk '{print "   " $0}'
         else
             # brief usage message
-            jq -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .usage[], .description' "$JSON_FILE"
+            description="$(jq -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .description' "$JSON_FILE")"
+            usage="$(jq -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .usage[]' "$JSON_FILE")"
+            o3;GRAY;echo "Description$(N;o 14;format_string "$description" 15)"
+            o3;GRAY;echo "Usage$(N;o 14;format_string "$usage" 15)"
         fi
 #        parse_arguments "$selected_command"
         parse_options "$selected_command"
@@ -195,9 +200,10 @@ parse_arguments() {
         description=$(jq -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].description' "$JSON_FILE")
         is_required=$(jq -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].is_required' "$JSON_FILE")
 
-        echo "Argument: $argument"
-        echo "Description: $description"
-        
+        separator
+        pf;echo "Argument$(o 15)$argument"
+        o3;GRAY;echo "Description$(N;o 15)$description"
+        f
         if [[ $is_required == "true" ]]; then
             read -p "Enter the value for $argument: " value
             selected_arguments+=("$value")
@@ -208,6 +214,7 @@ parse_arguments() {
             fi
         fi
     done
+    f
     if (( "${#selected_arguments[@]}" )); then
         execute_command "$command" "${selected_options[@]}" -- "${selected_arguments[@]}"
     else
@@ -235,13 +242,13 @@ parse_options() {
         description=$(jq -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].description' "$JSON_FILE")
         default=$(jq -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].default' "$JSON_FILE")
 
-
-        pf;echo "Option: --$option"
-        pf;echo "Description: $description"
+        separator
+        pf;echo "Option$(o 15)--$option"
+        o3;GRAY;echo "Description$(N;o 15)$description"
         if [[ $default != "null" ]]; then
-            pf;echo "Default value: $default"
+            o3;GRAY;echo "Default$(N;o 15)$default"
         fi
-
+        f
         if [[ $accept_value == "true" ]]; then
             if ask "$(qpf)Do you want to set this option" $NO $Yes; then
                 if [[ $default != "null" ]]; then
