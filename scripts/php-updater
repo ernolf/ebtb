@@ -49,6 +49,12 @@ __module_loader__
 __module_integrity__
 ## <- include bashmodules end #
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/php-updater-a-script-to-upgrade-php-in-a-safe-way/180215"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+
 declare help=false force=false forceflag='' needforce=false supported=false unsupported=false nolts=false distrib_to_old=false distrib_to_new=false distrib_unknown=false pager=:;declare -a args=()
 for arg in "$@";do
     if [ "$arg" = "-h" ]||[ "$arg" = "--help" ];then help=true
@@ -144,13 +150,6 @@ no_candidate(){ f;os;Pbg;pf;echo "Version \"$1\" cannot be installed with your A
 no_higher_candidate(){ f;pf;echo "The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources.";list_candidates;call_me candidates;need_sury_repo;downgrade_possible;anykey;}
 need_ppa(){ need_sury_repo;}
 downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it";}
-end_message(){
-    f;separator xGRAY;f
-    echo "  $(format_string "This script is continually being enhanced and expanded. This means it will be able to perform even more tasks for you safely in the future." 3)"
-    GRAY;echo "  $(format_string "Feel free to donate some \$ or € by $(C)Paypal$(GRAY) to $(lG)ernolf$(C)<at>$(lG)global-social.net$(GRAY) or in cryptocurrency by $(C)Ethereum$(GRAY) (ERC20), $(C)BNB Smart Chain$(GRAY) (BEP20), $(C)Polygon$(GRAY) (MATIC) to $(lG)0x72b7901b3daa45a7266A77Aa3B3552aB686d0D0D$(GRAY) or by $(C)Solana$(GRAY) (SOL) to $(lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(GRAY) or at least leave a $(R)❤️$(GRAY) at $(button 1;GRAY) and spread the word, if you like my work." 3;N)"
-    f;o3;button 1;W;pf;echo "https://help.nextcloud.com/t/php-updater-a-script-to-upgrade-php-in-a-safe-way/180215"
-    f;separator xGRAY;f
-}
 
 # TODO 1 -->
 list_tasks(){
@@ -387,8 +386,7 @@ if $supported; then
         f;G;echo "$(prompt;lB) $me$forceflag$(C) $OLD $NEW";N
         f;O;echo " -$(format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3;N)"
         f;G;echo "$(prompt;P) $me$forceflag --switch-version";N
-        end_message
-        exit0
+        donate_
     else # if [ $# -ne 2 ]; then
         first_brief_help "Brief help:"
         f

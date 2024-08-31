@@ -1,0 +1,43 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${DONATE_BASHLIB:-false} && return 0 || {
+    DONATE_BASHLIB=:
+
+    . <(require ansi)
+    . <(require line)
+    . <(require fstring)
+
+    donate(){
+    cat <<DONATE
+
+$(separator xGRAY)
+
+  $(GRAY;format_string "This script is continually being enhanced and expanded. This means it will be able to perform even more tasks for you safely in the future." 3)
+   $(GRAY)Feel free to donate by
+   $(GRAY)* $(C)Paypal$(GRAY) to
+       $(lG)ernolf$(C)<at>$(lG)global-social.net
+   $(GRAY)or in cryptocurrency
+   $(GRAY)* $(C)Bitcoin$(GRAY) to
+       $(lG)bc1qwlcqc7zsak45vwqk0dt7hnxlrta7syzstgf7t8
+   $(GRAY)* $(C)Ethereum$(GRAY), $(C)BNB Smart Chain$(GRAY), $(C)Polygon$(GRAY) to
+       $(lG)0x72b7901b3daa45a7266A77Aa3B3552aB686d0D0D
+   $(GRAY)* $(C)Solana$(GRAY) to
+       $(lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(N)
+  $(GRAY;format_string "or at least leave a $(R)❤️$(GRAY) at $(button 1;GRAY) and spread the word, if you like my work." 3;N)
+
+$(button 1;W;pf)$1
+
+$(separator xGRAY)
+
+DONATE
+    exit 0
+    }
+
+}

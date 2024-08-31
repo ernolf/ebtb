@@ -15,6 +15,7 @@ ${EXIT_BASHLIB:-false} && return 0 || {
 
     exit0(){
         G; echo "exiting script."
+        N; echo "generous? run '$me --donate'"
         N; exit 0
     }
 

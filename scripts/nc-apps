@@ -49,6 +49,12 @@ __module_integrity__
 
 __nextcloud_updater__
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/script-nc-apps-a-helpful-and-more-verbose-complement-to-occ-app-list/164389"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+
 aio_not_supported
 
 all_apps(){
@@ -305,5 +311,5 @@ else
     exit 0
 fi
 
-exit 0
+exit0
 

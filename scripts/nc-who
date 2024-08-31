@@ -41,6 +41,12 @@ __nextcloud_updater__
 
 ## SCRIPT SPECIFIC
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/script-nc-who-similar-to-unix-who-follow-live-who-is-logged-in/164972"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+
 command=print_help
 while (($#));do
     case $1 in
@@ -58,5 +64,5 @@ done
 
 $command
 
-exit 0
+exit0
 

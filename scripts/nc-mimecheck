@@ -57,6 +57,12 @@ __module_integrity__
 
 __nextcloud_updater__
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/mimetype-checker-script-for-files-without-or-with-wrong-file-extensions-for-flow-external-script/155648"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+
 declare bools="listmimes recursive dryrun verbose debug quiet bak enabled_user"
 # declare options
 reset_bools(){ local bool
@@ -219,7 +225,7 @@ $listmimes&&{
                    try_help
                 esac
             done
-        exit 0
+            exit 0
         fi
     fi
 }
@@ -395,5 +401,5 @@ else
 fi
 $debug&&set +x
 
-exit 0
+$quiet&&exit 0||exit0
 

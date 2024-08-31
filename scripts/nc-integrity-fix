@@ -41,6 +41,12 @@ __nextcloud_updater__
 
 # https://github.com/nextcloud/server/blob/master/lib/private/IntegrityCheck/Checker.php
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/nc-integrity-fix-script-to-resolve-some-files-have-not-passed-the-integrity-check-warnings/194729"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+
 debug=false
 
 aio_not_supported
@@ -244,7 +250,8 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
 else
     echo
     echo " -$(format_string "This script could not find any integrity warnings to resolve." 3;N)"
+    exit 0
 fi
 
-exit 0
+exit0
 

@@ -123,5 +123,5 @@ if [ ${new_value:-$old_value} -ne $old_value ]; then
     fi
 fi
 
-exit0
+exit 0
 

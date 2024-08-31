@@ -39,6 +39,11 @@ __module_integrity__
 
 __nextcloud_updater__
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/script-nc-occ-interactive-occ-interface/195249"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
 
 declare JSON_FILE arg INCLUDE_ALL_OPTIONS INCLUDE_HELP HELP
 

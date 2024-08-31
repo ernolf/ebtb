@@ -41,6 +41,12 @@ __module_loader__
 __module_integrity__
 ## <- include bashmodules end #
 
+donate_(){
+    . <(require donate)
+    donate "https://help.nextcloud.com/t/nextcloud-28-with-php8-3-on-debian-ubuntu-missing-modules-solution/174766"
+}
+for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+
 ## it starts here:
 ###############################################################################
 # you MUST be root:
@@ -324,7 +330,7 @@ else
     fi
 fi
 
-exit 0
+exit0
 <<EOF
 Module         8.0 8.1 8.2 8.3 Supported
 --------------+---+---+---+---+---------
