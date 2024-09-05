@@ -265,22 +265,21 @@ parse_options() {
             fi
         fi
     done
-    parse_arguments "$selected_command" ${selected_options[@]}
+    parse_arguments "$selected_command" "${selected_options[@]}"
 #    execute_command "$command" "${selected_options[@]}"
 }
 
 # Function to execute the full command
 execute_command() {
-    local command options cmd
-    command=$1
+    local command options
+    command="$1"
     shift
     options=("$@")
-    cmd="occ $command ${options[@]}"
 
-    echo "Execute the command: $cmd"
+    echo "Execute the command: occ $command ${options[@]}"
     f
     anykey execute
-    $cmd
+    occ "$command" "${options[@]}"
 }
 
 # Main

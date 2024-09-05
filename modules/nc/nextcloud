@@ -103,13 +103,13 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
             phpcli="php$(php_ver)"
         fi
         # the occ command call is saved under occ, adapted to the user and environment
-        occ(){ $phpcli -f $NC_DIR/console.php $@;}
+        occ(){ $phpcli -f $NC_DIR/console.php "$@";}
         
         if (( $(id -u) )); then
             [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
         else
             # you are root
-            occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php $@;}
+            occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php "$@";}
         fi
     fi
 
