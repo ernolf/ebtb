@@ -140,7 +140,7 @@ parse_json() {
     local -i level=$1
     local special_commands selected_command choice description usage
     local -a special_options general_options options
-    special_commands="check|completion|help|list|status|upgrade"
+    special_commands="check|completion|help|list|setupchecks|status|upgrade"
 
     if (( level == 1 )); then
         # List main categories, including special commands first
