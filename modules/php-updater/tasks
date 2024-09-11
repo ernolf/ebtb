@@ -440,7 +440,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
         case $ext in
             redis)
                 local -a sessionsavehandler
-                mapfile -t sessionsavehandler< <(ini_directive_detect "session.save_handler")
+                mapfile -t sessionsavehandler< <(ini_directive_detect "$ver" "session.save_handler")
                 if (( ${#sessionsavehandler[@]} )); then
                     for i in ${!sessionsavehandler[@]}; do
                         if [[ "$(key_ val ${sessionsavehandler[i]##*:})" == "redis" &&
