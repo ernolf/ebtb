@@ -18,14 +18,17 @@ ${APPSTORE_BASHLIB:-false} && return 0 || {
     dl_appstore_json_db(){
         local unit=$1 appstore_api='https://apps.nextcloud.com/api/v1' p etag # p stands for platform
 
-        # etag to unix
+        # etag to unix, with check if the string is in hexadecimal format (lowercase only)
         e2u(){
-            [ -z "$1" ] || printf "$(date --utc --date="${1%%.*}" +"%s").$(printf "${1#*.}" | sed 's/+.*//')"
+            [ -z "$1" ] || {
+                [[ "$1" =~ ^[0-9a-f-]+$ ]] && printf "$1" || printf "$(date --utc --date="${1%%.*}" +"%s").$(printf "${1#*.}" | sed 's/+.*//')"
+            }
         }
-
-        # unix to etag
+        # unix to etag, with check if the string is in hexadecimal format (lowercase only)
         u2e(){
-            [ -z "$1" ] || date --utc --date="@$1" +"%Y-%m-%d %H:%M:%S".${1#*.}+00:00
+            [ -z "$1" ] || {
+                [[ "$1" =~ ^[0-9a-f-]+$ ]] && echo "$1" || date --utc --date="@$1" +"%Y-%m-%d %H:%M:%S".${1#*.}+00:00
+            }
         }
 
         local platformdir new_etag unix_etag new_unix_etag response
