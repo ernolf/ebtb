@@ -138,14 +138,31 @@ ${ANSI_BASHLIB:-false} && return 0 || {
         done
     }
 
-    # delete actual and previous line jump to previous line
-    te0(){
-        printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
-    }
+#    # delete actual and previous line jump to previous line
+#    te0(){
+#        printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
+#    }
 
     # delete and stay in actual line
     te1(){
         printf '%b' "\r$CSI$EL"
+    }
+
+    # Deletes the current line and moves up n lines, deleting each line
+    te0(){
+        local lines=${1:-1} # Default to 1 line if no argument is provided
+        for ((i=0; i<lines; i++)); do
+            printf '%b' "\r$CSI$EL$CSI$CPL" # Delete the current line and move up one line
+        done
+        te1 # Delete the last displayed line
+    }
+
+    # Moves up n lines
+    te(){
+        local lines=${1:-1} # Default to 1 line if no argument is provided
+        for ((i=0; i<lines; i++)); do
+            printf '%b' "\r$CSI$CPL" # Delete the current line and move up one line
+        done
     }
 
     # Cursor offset absolute
