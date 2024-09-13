@@ -239,6 +239,7 @@ while (($#));do
 #        version=[1-9]?([0-9]))
         --min@(_|-)version=*)
             assumed_version_set ${1#*=} min_
+            use_json_all=true
             shift
             ;;
         --version=*)
