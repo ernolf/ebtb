@@ -169,7 +169,7 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
             fi
         fi
 
-        if ( [  -n "$NCmax" ] && (( ${NCmax%%.*} < ${nc_min_version%%.*} )) ); then
+        if ( [ -n "$NCmax" ] && (( ${NCmax%%.*} < ${nc_min_version%%.*} )) ); then
             return 0
         fi
 
