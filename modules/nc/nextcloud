@@ -16,7 +16,8 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
     . <(require php/version)
 
     if $AIO; then
-        cdir="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data/config"
+        NC_DIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
+        cdir="$NC_DIR/config"
     else
         declare NC_USER NC_DIR_USER NC_DIR_GROUP
         # detect location of config.php
@@ -93,7 +94,7 @@ ${NEXTCLOUD_BASHLIB:-false} && return 0 || {
     }
 
     if $AIO; then
-        occ(){ docker exec --user www-data -it nextcloud-aio-nextcloud php occ $@;}
+        occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@;}
     else
         # detect, if apc is required for cli
         declare phpcli

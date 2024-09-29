@@ -24,8 +24,8 @@ ${LIST_BASHLIB:-false} && return 0 || {
         # overwrite bools with parameter values
         local var; for var in "$@"; do local $var; done #; unset -v var
         # app meta data
-        local info_xml tag name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
-        local -a types
+        local info_xml apps_path tag name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
+        local -a types apps_paths
         # app belongs to section (either "enabled", "disabled", "store" or "na")
         local section="$(get_applist_section_ $id)"
         # nextcloud version used for database queries must exist
@@ -61,7 +61,10 @@ ${LIST_BASHLIB:-false} && return 0 || {
 $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
         case $section in
             enabled|disabled|na)
-                info_xml="$NC_DIR/apps/$id/appinfo/info.xml"
+                mapfile -t apps_paths < <(nc_configkey apps_paths | jq -r 'if . == null then "apps" else .[] | .path | split("/")[-1] end')
+                for apps_path in ${apps_paths[@]}; do
+                    [ -f "$NC_DIR/$apps_path/$id/appinfo/info.xml" ] && info_xml="$NC_DIR/$apps_path/$id/appinfo/info.xml"
+                done
                 if $is_shipped && (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )); then
                     tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
                     local rawURLserver=$github_raw/server/$tag/apps/$id/appinfo/info.xml

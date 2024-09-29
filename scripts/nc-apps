@@ -16,6 +16,7 @@ dependencies=(
     "xmlstarlet#xmlstarlet#Command line XML toolkit"
     "jq#jq#Command line JSON processor"
     "sqlite3#sqlite3#Command line interface for SQLite 3"
+    "php#php-cli#PHP Commandline Interface"
 )
 modules=(
     basics sed tempfile ansi button exit spinner anykey line array ask sudo
@@ -54,8 +55,6 @@ donate_(){
     donate "https://help.nextcloud.com/t/script-nc-apps-a-helpful-and-more-verbose-complement-to-occ-app-list/164389"
 }
 for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
-
-aio_not_supported
 
 all_apps(){
     stock_up_arrays filtered_appstore=true
