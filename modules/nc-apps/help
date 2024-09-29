@@ -13,6 +13,7 @@ ${HELP_BASHLIB:-false} && return 0 || {
     . <(require ansi)
     . <(require php/version)
     . <(require nc/nextcloud_logo)
+    . <(require $sin/l10n)
 
     print_help(){
         # for backwards compatibilty
@@ -119,7 +120,7 @@ $(nextcloud_logo)
 
    id=[pattern]             list apps where id matches "pattern"
 
-   lang=[ISO 639-1]         language to be used for translations instead of the detected locale on your computer, which is "$(echo "$LANG"|cut -d'_' -f1)"
+   lang=[ISO 639-1]         language to be used for translations instead of the detected locale on your computer, which is "$lang"
 
    updatable [section*)]    list updatable apps (no store section)
 

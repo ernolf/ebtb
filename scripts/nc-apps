@@ -21,7 +21,7 @@ modules=(
     basics sed tempfile ansi button exit spinner anykey line array ask sudo
     dependency vdir integrity php/version nc/nextcloud xml $sin/github_api
     $sin/app_update $sin/filters $sin/db $sin/appstore $sin/data_refine
-    $sin/assumed_version $sin/list $sin/install_overwrite $sin/help
+    $sin/assumed_version $sin/list $sin/install_overwrite $sin/l10n $sin/help
 )
 
 # use parallel running background jobs in order to dramatically increase speed
@@ -149,8 +149,6 @@ update(){ local -a args
     done
 }
 
-declare lang=$(echo "$LANG"|cut -d'_' -f1)
-
 declare nc_version_long nc_version nc_key nc_version_string nc_version_tag nc_lowest nc_min_version nc_max_eol nc_master
 nc_version_long="$(nc_version_ long "$NC_DIR/version.php")"
 nc_version="$(nc_version_ short "$NC_DIR/version.php")"
@@ -171,7 +169,7 @@ declare secondrun=false nopager=false markdown=false supported=false unsupported
 args=()
 for arg in "$@";do
     if [ "$arg" = "secondrun" ];then secondrun=true
-    elif [ "${arg%=*}" = "lang" ];then declare ${arg}
+    elif [ "${arg%=*}" = "lang" ];then lang="$(validate_language ${arg#*=})"
     elif [ "$arg" = "--nopager" ];then nopager=true
     elif [ "$arg" = "--no_pager" ];then nopager=true
     elif [ "$arg" = "--no-pager" ];then nopager=true

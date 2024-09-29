@@ -1,0 +1,27 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${L10N_BASHLIB:-false} && return 0 || {
+    L10N_BASHLIB=:
+
+    # Check if the given language code is valid. If not, return 'en'
+    validate_language() {
+        local lang="$1" valid_languages
+        # get new languages: jq -r '[.[] | .translations | keys[]] | unique | join(" ")' /path/toapps.json"
+        valid_languages="af ar bg bn ca cs da de el en es fa fi fr gl he hi hu id it ja ko lt mk mn ne nl nn pl pt pt-br ro ru sk sl sq sr sv ta te th tr uk ur vi zh-hans zh-hant"
+        # Check if the provided language code is in the list of valid languages
+        if [[ ! " $valid_languages " =~ " $lang " ]]; then
+            lang="en"
+        fi
+        echo "$lang"
+    }
+
+    declare lang="$(validate_language $(echo "$LANG"|cut -d'_' -f1))"
+
+}
