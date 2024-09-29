@@ -54,7 +54,6 @@ ${HTTPD_BASHLIB:-false} && return 0 || {
         esac
     }
 
-
     populate_httpd_(){
         case $1 in
          nextcloud) HTTPD_NEXTCLOUD="$(detect_httpd nextcloud 2>&1)"
@@ -69,13 +68,13 @@ ${HTTPD_BASHLIB:-false} && return 0 || {
         esac
     }
 
-
-    detected_httpd(){
-        populate_httpd_array known
-        populate_httpd_array active
-        if (( ${#HTTPD_KNOWN[@]} == 1 && ${#HTTPD_ACTIVE[@]} ==1 )) && [ "${HTTPD_KNOWN[0]}" = "${HTTPD_ACTIVE[0]}" ]; then
-            echo "${HTTPD_KNOWN[0]}"
-        fi
-    }
+# example:
+#    detected_httpd(){
+#        populate_httpd_ known
+#        populate_httpd_ active
+#        if (( ${#HTTPD_KNOWN[@]} == 1 && ${#HTTPD_ACTIVE[@]} ==1 )) && [ "${HTTPD_KNOWN[0]}" = "${HTTPD_ACTIVE[0]}" ]; then
+#            echo "${HTTPD_KNOWN[0]}"
+#        fi
+#    }
 
 }
