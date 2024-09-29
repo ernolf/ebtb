@@ -205,6 +205,13 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
             echo "${in}Summary$(C)$mid$($md||es 9)$(htmldecode "$summary")"
         fi
 
+        # not restrictable to groups
+        if not_restrictable_to_groups; then
+            echo "$in $(O)$mid$($md||es 15)App can not be restricted to groups"
+#        else
+#            echo "$in $(G)$mid$($md||es 15)App can be restricted to groups"
+        fi
+
         # Categories
         if [ -n "$categories" ]; then
             echo "${in}Categories$(Y)$mid$($md||es 6)$categories"
@@ -285,13 +292,6 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
             NCmax="$(lG)$NCmax$(N)"
         fi
         echo "${in}NC min/max$(N)$mid$($md||es 6)$NCmin / $NCmax"
-
-        # not restrictable to groups
-        if not_restrictable_to_groups; then
-            echo "$in $(O)$mid$($md||es 15)App can not be restricted to groups"
-#        else
-#            echo "$in $(G)$mid$($md||es 15)App can be restricted to groups"
-        fi
 
         # shipped or appstore
         if $is_shipped; then
