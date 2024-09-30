@@ -239,8 +239,7 @@ PHP_VERSIONS
                         fi
             esac
         done
-        end_message
-        exit0
+        donate_
     }
 
 }
