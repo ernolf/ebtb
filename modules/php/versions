@@ -18,7 +18,7 @@ ${VERSIONS_BASHLIB:-false} && return 0 || {
 
     declare PHP_VERSION phpvregex
     declare -a EXISTING VERSIONS CAN
-    phpvregex='php(5\.6|7\.[01234]|8\.[0123])'
+    phpvregex='php(5\.6|7\.[01234]|8\.[01234])'
 
     no_php(){
         f;R
@@ -34,7 +34,7 @@ ${VERSIONS_BASHLIB:-false} && return 0 || {
 
     existing_php_versions(){
         cat <<PHP_VERSIONS
-        8.4;20230901;1861833600;1830211200
+        8.4;20240924;1861833600;1830211200
         8.3;20230831;1830211200;1767139200
         8.2;20220829;1798675200;1735603200
         8.1;20210902;1767139200;1700870400
