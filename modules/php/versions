@@ -23,14 +23,19 @@ ${VERSIONS_BASHLIB:-false} && return 0 || {
     no_php(){
         f;R
         pf;echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
-        os;echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
-        N
-        anykey
-        explain
+        if [[ " php-module-builder php-module-builder-test " =~ " $bm " ]]; then
+            os;echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
+            os;echo "You should at least install the package php\$version-cli first"
+            exit0
+        elif [[ " php-updater php-updater-test " =~ " $bm " ]]; then
+            os;echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
+            N
+            anykey
+            explain
+        fi
     }
 
     which php >/dev/null 2>&1 && PHP_VERSION="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
-
 
     existing_php_versions(){
         cat <<PHP_VERSIONS
