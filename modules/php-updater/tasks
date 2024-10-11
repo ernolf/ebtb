@@ -434,7 +434,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                     echo "R: $(R)you answered $(box no), nothing changed.$(N)"
                 fi
                 anykey
-                spinner C " . searching known configuration errors in php$ver ." &
+                spinner C " . ext_config_fix() searching known configuration errors in php$ver ." &
             fi
         fi
         case $ext in
@@ -536,6 +536,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                         php_inis+=" /etc/php/$ver/$sapi/php.ini"
                     fi
                 done
+                [ -f "${php_inis%% *}" ] || return
                 mapfile -t inifiles1_< <(grep -Eslix "$pattern" $php_inis)
                 if (( ${#inifiles1_[@]} )); then
                     line=$(grep -Eix "$pattern" ${inifiles1_[0]})
@@ -678,7 +679,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
         [ -d "$amdir" ] || return 1
         mapfile -t am_ini_files< <(ls "$amdir"|awk -F. '/\.ini$/{print$1}')
         for am in ${am_ini_files[@]}; do
-            spinner C " . searching known configuration errors in php$ver ." &
+            spinner C " . check_config() searching known configuration errors in php$ver." &
             ext_config_fix $ver $am
         done
         kill_spinner
