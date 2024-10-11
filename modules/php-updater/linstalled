@@ -125,22 +125,46 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
                             W;echo " <<INACTIVE not linked";N
                         fi
                         ;;
-                   fpm) pv=${pkg#php}; pv=${pv%-fpm}
+                   fpm) pv=${pkg#php}; pv=${pv%-fpm} # extract version
                         if (( ${#sockets[@]} )); then
-                            local connected_webserver
-                            for i in ${!sockets[@]}; do
-                                connected_webserver=''
-                                socket=${sockets[i]}
-                                for webserver in $(grep -R "^[^#]*unix:$socket" /etc/{apache2,nginx}/*enabled/* 2>/dev/null|awk -F/ '{print$3}' | sort -u); do
-                                    systemctl -q is-active $webserver && connected_webserver="$connected_webserver $webserver"
-                                done
-                                o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
-                                if [ -z "$connected_webserver" ]; then
-                                    SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
-                                else
-                                    SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
+                            local -a enabled_webservers
+                            local -A server_status
+                            for webserver in apache2 nginx; do
+                                server_status[$webserver]=0 # "not installed"
+                                if command -v $webserver >/dev/null 2>&1; then
+                                    server_status[$webserver]=1 # "disabled"
+                                    if systemctl is-enabled $webserver >/dev/null 2>&1; then
+                                        enabled_webservers+=($webserver)
+                                        server_status[$webserver]=2 # "enabled & inactive"
+                                        if systemctl is-active $webserver >/dev/null 2>&1; then
+                                            server_status[$webserver]=3 # "enabled & active"
+                                        fi
+                                    fi
                                 fi
+                                (( ${server_status[$webserver]} )) || continue # jump to next server
                             done
+                            if (( ${#enabled_webservers[@]} )); then
+                                local connected_webserver
+                                for webserver in ${enabled_webservers[@]}; do
+                                    case $webserver in
+                                        apache2)local -a a2conffiles
+                                                mapfile -t a2conffiles< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null| tail +2 | awk '{print $NF}')
+                                                grep -qs "^[^#]*unix:$socket" ${a2conffiles[@]} || continue
+                                                ;;
+                                        nginx)  grep -qs "^[^#]*unix:$socket" <(nginx -T 2>/dev/null) || continue
+                                    esac
+                                    case ${server_status[$webserver]} in
+                                        2)  connected_webserver="$connected_webserver $(N;GRAY)$webserver(inactive)$(N;lG)" ;;
+                                        3)  connected_webserver=" $webserver $connected_webserver"
+                                    esac
+                                done
+                            fi
+                            o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
+                            if [ -z "$connected_webserver" ]; then
+                                SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
+                            else
+                                SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
+                            fi
                         fi
                         ;;
                     *)  :
