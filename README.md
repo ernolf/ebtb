@@ -25,8 +25,6 @@ These are the scripts available for installation:
   - Interactively create your *`occ`* commands. This brings you the feature you have always wanted and missed most, without even knowing. (Nextcloud All-in-One is supported)
 - **nc-shares**
   - List shares with their tokens and full path on the command line
-- **nc-sharetoken-length**
-  - Define the length of the Nextcloud share token, which is normally 15 characters long, to any length between 4 and 32
 - **nc-sql**
   - A command-line client for the nextcloud database (for MySQL/MariaDB and PostgreSQL, no SQLite3. Nextcloud All-in-One is supported)
 - **nc-subscribed-calendar**
