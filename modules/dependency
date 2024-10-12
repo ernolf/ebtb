@@ -25,7 +25,7 @@ ${DEPENDENCY_BASHLIB:-false} && return 0 || {
         local -a mis
         local -i c2=18 c3=34
         for dependency in ${dependencies[@]%%#*}; do
-            if ! which $dependency >/dev/null; then
+            if ! command -v $dependency >/dev/null; then
                 dpkg -l | grep -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"||mis+=("$dependency")
             fi
         done
@@ -42,7 +42,7 @@ ${DEPENDENCY_BASHLIB:-false} && return 0 || {
                 o2;echo "$bin$(o $c2)$(a_fld dependencies '#' "$bin" 2)$(o $c3)$(a_fld dependencies '#' "$bin" 3)"
             done
             line '-' dP 2/78 a2
-            if which apt-get >/dev/null; then
+            if command -v apt-get >/dev/null; then
                 local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
                 . <(require ask)
                 mh "$install" &

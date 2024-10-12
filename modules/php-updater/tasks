@@ -55,13 +55,13 @@ ${TASKS_BASHLIB:-false} && return 0 || {
             ext_state fix
             apt_install_prechecked --yes ${pkgs[@]}
         }
-        if which pecl >/dev/null; then
+        if command -v pecl >/dev/null; then
             local pmb ver pkgmod modstring serializers compression replaced
             local -i aimct=$1 iam imb pecli=0
             local -a ibymb pkgmods mods pkgs
             replaced=false
             eval iam=\${#C4EIBY4_${PHP_VERSION//./}[@]}
-            which php-module-builder >/dev/null&&pmb=true||pmb=false
+            command -v php-module-builder >/dev/null&&pmb=true||pmb=false
             mapfile -t ibymb< <(grep -lr "module built by php-module-builder" /etc/php/)
             imb=${#ibymb[@]}
             if (( iam )); then

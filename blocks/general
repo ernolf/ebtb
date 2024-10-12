@@ -35,7 +35,7 @@ sourced() {
     ${am:-false} && return 0 || return 1
 }
 json_etag() {
-    which jq >/dev/null || return 1
+    command -v jq >/dev/null || return 1
     jq -r '.etag' "$1" 2>/dev/null
     return $?
 }

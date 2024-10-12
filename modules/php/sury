@@ -79,7 +79,7 @@ ${SURY_BASHLIB:-false} && return 0 || {
             esac
         fi
 
-        if which dpkg >/dev/null; then
+        if command -v dpkg >/dev/null; then
             architecture="$(dpkg --print-architecture )"
             mapfile -t architectures< <(p_sort $architecture $(dpkg --print-foreign-architectures 2>/dev/null))
             if [ -d /var/lib/apt/lists ] && [ -n "$aptsource" ]; then
