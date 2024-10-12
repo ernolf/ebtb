@@ -242,7 +242,7 @@ else
                 priority=25 need="msgpack"
                 ;;
          redis) apt_install $basics liblz4-dev libzstd-dev
-                need="igbinary"
+                priority=25 need="igbinary"
                 configure_opts="--enable-redis-igbinary --enable-redis-lzf --enable-redis-zstd --enable-redis-lz4 --with-liblz4"
                 pecl_download
                 ;;
