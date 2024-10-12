@@ -336,92 +336,94 @@ exit0
 <<EOF
 Module         8.0 8.1 8.2 8.3 8.4 Supported
 --------------+---+---+---+---+---------
-amqp          | x | x | x | x | - |
-apcu          | x | x | x | x | - |     X
-ast           | x | x | x | x | - |
-bcmath        | x | x | x | x | x | <
-bz2           | x | x | x | x | x | <
-cgi           | x | x | x | x | x | <
-cli           | x | x | x | x | x | <
-common        | x | x | x | x | x | <
-curl          | x | x | x | x | x | <
-dba           | x | x | x | x | x | <
+amqp          | x | x | x | x | x |
+apcu          | x | x | x | x | x |     X
+ast           | x | x | x | x | x |
+bcmath        | x | x | x | x | x |
+bz2           | x | x | x | x | x |
+cgi           | x | x | x | x | x |
+cli           | x | x | x | x | x |
+common        | x | x | x | x | x |
+curl          | x | x | x | x | x |
+dba           | x | x | x | x | x |
 decimal       | x | x | x | x | - |
-dev           | x | x | x | x | x | <
+dev           | x | x | x | x | x |
 dio           | x | x | x | x | - |
-ds            | x | x | x | x | - |
-enchant       | x | x | x | x | x | <
-excimer       | x | x | x | x | - |     X
+ds            | x | x | x | x | x |
+enchant       | x | x | x | x | x |
+excimer       | x | x | x | x | x |     X
 facedetect    | x | x | - | - | - |     X
-fpm           | x | x | x | x | x | <
-gd            | x | x | x | x | x | <
-gearman       | x | x | x | x | - |
-gmagick       | x | x | x | x | - |
-gmp           | x | x | x | x | x | <
-gnupg         | x | x | x | x | - |
+fpm           | x | x | x | x | x |
+gd            | x | x | x | x | x |
+gearman       | x | x | x | x | x |
+gmagick       | x | x | x | x | x |
+gmp           | x | x | x | x | x |
+gnupg         | x | x | x | x | x |
 grpc          | x | x | x | x | - |
-http          | x | x | x | x | - |
-igbinary      | x | x | x | x | - |     X
-imagick       | x | x | x | x | - |     X
-imap          | x | x | x | x | - |
+http          | x | x | x | x | x |
+igbinary      | x | x | x | x | x |     X
+imagick       | x | x | x | x | x |     X
+imap          | x | x | x | x | x |
 inotify       | x | x | x | x | - |
-interbase     | x | x | x | x | x | <
-intl          | x | x | x | x | x | <
-ldap          | x | x | x | x | x | <
-libvirt-php   | x | x | x | - | - |
+interbase     | x | x | x | x | x |
+intl          | x | x | x | x | x |
+ldap          | x | x | x | x | x |
+libvirt-php   | x | x | x | x | x |
 lua           | - | - | - | - | - |     X
-lz4           | x | x | x | - | - |     X
-mailparse     | x | x | x | x | - |
-maxminddb     | x | x | x | x | - |
-mbstring      | x | x | x | x | x | <
-mcrypt        | x | x | x | - | - |
-memcache      | x | x | x | x | - |     X
-memcached     | x | x | x | x | - |     X
-mongodb       | x | x | x | x | x | <
-msgpack       | x | x | x | x | x | <   X
-mysql         | x | x | x | x | x | <
-oauth         | x | x | x | x | x | <
-odbc          | x | x | x | x | x | <
-opcache       | x | x | x | x | x | <
-pcov          | x | x | x | x | - |
-pgsql         | x | x | x | x | x | <
-phalcon5      | x | x | - | - | - |
-phpdbg        | x | x | x | x | x | <
-pinba         | x | x | x | - | - |
+lz4           | x | x | x | x | - |     X
+mailparse     | x | x | x | x | x |
+maxminddb     | x | x | x | x | x |
+mbstring      | x | x | x | x | x |
+mcrypt        | x | x | x | x | x |
+memcache      | x | x | x | x | x |     X
+memcached     | x | x | x | x | x |     X
+mongodb       | x | x | x | x | x |
+msgpack       | x | x | x | x | x |     X
+mysql         | x | x | x | x | x |
+oauth         | x | x | x | x | x |
+odbc          | x | x | x | x | x |
+opcache       | x | x | x | x | x |
+pcov          | x | x | x | x | x |
+pgsql         | x | x | x | x | x |
+phalcon       | x | x | x | x | x |
+phalcon5      | x | x | x | x | - |
+phpdbg        | x | x | x | x | x |
+pinba         | x | x | x | x | - |
+pq            | x | x | x | x | x |
 propro        | x | x | x | - | - |
 protobuf      | x | x | x | x | - |
-ps            | x | x | x | x | - |
-pspell        | x | x | x | x | - |
-psr           | x | x | x | x | - |
-raphf         | x | x | x | x | - |
+ps            | x | x | x | x | x |
+pspell        | x | x | x | x | x |
+psr           | x | x | x | x | x |
+raphf         | x | x | x | x | x |
 rdkafka       | x | x | x | x | - |
-readline      | x | x | x | x | x | <
-redis         | x | x | x | x | - |     X
-rrd           | x | x | x | x | - |     X
+readline      | x | x | x | x | x |
+redis         | x | x | x | x | x |     X
+rrd           | x | x | x | x | x |     X
 smbclient     | x | x | x | x | - |     X
-snmp          | x | x | x | x | x | <
-soap          | x | x | x | x | x | <
+snmp          | x | x | x | x | x |
+soap          | x | x | x | x | x |
 solr          | x | x | x | x | - |     X
-sqlite3       | x | x | x | x | x | <
-ssh2          | x | x | x | x | - |     x
-stomp         | x | x | x | x | - |     X
+sqlite3       | x | x | x | x | x |
+ssh2          | x | x | x | x | x |     x
+stomp         | x | x | x | x | x |     X
 swoole        | x | x | x | x | - |     x
-sybase        | x | x | x | x | x | <
+sybase        | x | x | x | x | x |
 tideways      | x | x | x | - | - |     X
-tidy          | x | x | x | x | x | <
-uopz          | x | x | x | x | - |     X
-uploadprogress| x | x | x | x | - |     X
-uuid          | x | x | x | x | - |     X
+tidy          | x | x | x | x | x |
+uopz          | x | x | x | x | x |     X
+uploadprogress| x | x | x | x | x |     X
+uuid          | x | x | x | x | x |     X
 vips          | x | x | x | x | - |     X
-xdebug        | x | x | x | x | - |     X
+xdebug        | x | x | x | x | x |     X
 xhprof        | x | x | x | x | - |     X
-xml           | x | x | x | x | x | <
-xmlrpc        | x | x | x | x | - |
-xsl           | x | x | x | x | x | <
-yac           | x | x | x | x | - |     X
-yaml          | x | x | x | x | - |     X
-zip           | x | x | x | x | x | <
-zmq           | x | x | x | x | - |
+xml           | x | x | x | x | x |
+xmlrpc        | x | x | x | x | x |
+xsl           | x | x | x | x | x |
+yac           | x | x | x | x | x |     X
+yaml          | x | x | x | x | x |     X
+zip           | x | x | x | x | x |
+zmq           | x | x | x | x | x |
 zstd          | x | x | x | x | - |     X
 EOF
 
