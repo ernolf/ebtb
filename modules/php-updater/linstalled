@@ -30,7 +30,7 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
 
     list_installed(){
         cursor_ hide
-        local arg sapi socket quiet only pkg plu fullpath mod pv webserver pkgmod modstring question active_sapi infostring this
+        local arg sapi quiet only pkg plu fullpath mod pv webserver pkgmod modstring question active_sapi infostring this
         local -a sockets
         local -i c2 c3 i iim iam ctr aimct
         c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
@@ -144,26 +144,30 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
                                 (( ${server_status[$webserver]} )) || continue # jump to next server
                             done
                             if (( ${#enabled_webservers[@]} )); then
-                                local connected_webserver
-                                for webserver in ${enabled_webservers[@]}; do
-                                    case $webserver in
-                                        apache2)local -a a2conffiles
-                                                mapfile -t a2conffiles< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null| tail +2 | awk '{print $NF}')
-                                                grep -qs "^[^#]*unix:$socket" ${a2conffiles[@]} || continue
-                                                ;;
-                                        nginx)  grep -qs "^[^#]*unix:$socket" <(nginx -T 2>/dev/null) || continue
-                                    esac
-                                    case ${server_status[$webserver]} in
-                                        2)  connected_webserver="$connected_webserver $(N;GRAY)$webserver(inactive)$(N;lG)" ;;
-                                        3)  connected_webserver=" $webserver $connected_webserver"
-                                    esac
+                                local connected_webserver socket
+                                for i in ${!sockets[@]}; do
+                                    connected_webserver=''
+                                    socket=${sockets[i]}
+                                    for webserver in ${enabled_webservers[@]}; do
+                                        case $webserver in
+                                            apache2)local -a a2conffiles
+                                                    mapfile -t a2conffiles< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null| tail +2 | awk '{print $NF}')
+                                                    grep -qs "^[^#]*unix:$socket" ${a2conffiles[@]} || continue
+                                                    ;;
+                                            nginx)  grep -qs "^[^#]*unix:$socket" <(nginx -T 2>/dev/null) || continue
+                                        esac
+                                        case ${server_status[$webserver]} in
+                                            2)  connected_webserver="$connected_webserver $(N;GRAY)$webserver(inactive)$(N;lG)" ;;
+                                            3)  connected_webserver=" $webserver $connected_webserver"
+                                        esac
+                                    done
+                                    o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
+                                    if [ -z "$connected_webserver" ]; then
+                                        SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
+                                    else
+                                        SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
+                                    fi
                                 done
-                            fi
-                            o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
-                            if [ -z "$connected_webserver" ]; then
-                                SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
-                            else
-                                SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
                             fi
                         fi
                         ;;
