@@ -11,7 +11,7 @@ __scriptname__
 
 dependencies=(
     "less#less#A terminal pager similar to more"
-    "apt-file#apt-file#Search for files within Debian packages"
+#    "apt-file#apt-file#Search for files within Debian packages"
 #    "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
     "lsb_release#lsb-release#Tool to detect the Linux standard base version"
     "update-the-ca-certificates#ca-certificates#Common CA certificates"

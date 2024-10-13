@@ -33,7 +33,7 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
         local arg sapi quiet only pkg plu fullpath mod pv webserver pkgmod modstring question active_sapi infostring this
         local -a sockets
         local -i c2 c3 i iim iam ctr aimct
-        c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
+        c2=28 c3=74 aimct=0 SAPI_A2=() SAPI_FPM=()
         quiet=false only=false
         detect_and_assign_extensions
         iam=${#EXTS_ADMIN[@]}
@@ -196,7 +196,8 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
                     o5;B;echo "for this $(Y)php$pv$(B) module${plu#*:} installed by admin there exist${plu%:*} packaged version${plu#*:}:$(N)"
                     line '-' P 5/75
                     for i in $(eval echo \${!C4EIBY4_${pv//./}[@]}); do
-                        [ "$pv" = "$PHP_VERSION" ] && (( aimct++ ))
+#                        [ "$pv" = "$PHP_VERSION" ] && (( aimct++ ))
+                        (( aimct++ ))
                         pkgmod="$(eval echo \"\${C4EIBY4_${pv//./}[i]}\")"
                         pkg=${pkgmod%:*} mod=${pkgmod#*:}
                         o5;pf;C;echo "$mod$(line ' ' Cbg $((c2-1))/51 a0;o $c2;Cbg)$pkg$(N)"
@@ -216,13 +217,14 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
         $quiet || call_me installed
     #    if ! $quiet && $supported; then
         f
-        anykey
+        $only && exit 0 || anykey
 
         if $supported; then
             if ((aimct));then
                 ((aimct==1))&&plu='s a:'||plu=':s'
                 echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"
-                replace_aim $aimct
+                replace_aim
+                anykey
             fi
             remove_unused_sapis && return 0
             change_sapi && return 0

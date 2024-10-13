@@ -109,7 +109,8 @@ ${EXTENSIONS_BASHLIB:-false} && return 0 || {
             if [ "${fullpath%/*}" = "$extension_dir" ];then
                 sort=true
                 eval EIBY4_${php_version//./}\+\=\(\"${module%%.*}\"\)
-                package="$(apt_file_search "$fullpath")" && eval C4EIBY4_${php_version//./}\+\=\(\"$package:${module%%.*}\"\)
+                package="php$php_version-${module%%.*}"
+                apt_exist "$package" && eval C4EIBY4_${php_version//./}\+\=\(\"$package:${module%%.*}\"\)
             fi
         done
         $sort && mapfile -t "EIBY4_${php_version//./}"< <(eval p_sort \${EIBY4_${php_version//./}[@]})

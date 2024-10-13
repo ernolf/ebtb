@@ -51,16 +51,19 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                     rm -f "$ini_dir/$mod.ini"
                 done
             fi
+            anykey
             ext_state cleanup
             ext_state fix
-            apt_install_prechecked --yes ${pkgs[@]}
+            apt_install_prechecked --yes ${pakages[@]}
         }
         if command -v pecl >/dev/null; then
-            local pmb ver pkgmod modstring serializers compression replaced
-            local -i aimct=$1 iam imb pecli=0
-            local -a ibymb pkgmods mods pkgs
+            local pmb ver module pakage pkgmod modstring serializers compression replaced
+            local -i iam imb pecli=0
+            local -a ibymb pkgmods mods pakages
             replaced=false
-            eval iam=\${#C4EIBY4_${PHP_VERSION//./}[@]}
+            for pv in ${VERSIONS[@]}; do
+                eval iam+=\${#C4EIBY4_${pv//./}[@]}
+            done
             command -v php-module-builder >/dev/null&&pmb=true||pmb=false
             mapfile -t ibymb< <(grep -lr "module built by php-module-builder" /etc/php/)
             imb=${#ibymb[@]}
@@ -69,10 +72,12 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                     spinner C " . search packages for modules installed by the php-module-builder script ." &
                     if ((imb)); then
                         for inifile in ${ibymb[@]}; do
-                            if pkg=$(apt_file_search "$inifile"); then ((pecli++))
-                                ver=${inifile#/etc/php/}
-                                ver=${ver%%/*}
-                                pkgs+=("$pkg")
+                            ver=${inifile#/etc/php/}
+                            ver=${ver%%/*}
+                            module=$(basename ${inifile%.ini})
+                            pakage="php$ver-$module"
+                            if apt_exist "$pakage"; then ((pecli++))
+                                pakages+=("$pakage")
                                 mods+=("$(awk 'NR==1 {print $3}' $inifile)(php$ver)")
                             fi
                         done
@@ -83,7 +88,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                         pkgmod="$(eval echo \"\${C4EIBY4_${PHP_VERSION//./}[i]}\")"
                         if (( $(pecl list | grep -wc "${pkgmod#*:}") )); then
                             (( pecli++ ))
-                            pkgs+=("${pkgmod%:*}")
+                            pakages+=("${pkgmod%:*}")
                             mods+=("${pkgmod#*:}(php$PHP_VERSION)")
                         fi
                     done

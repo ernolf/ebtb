@@ -68,10 +68,13 @@ ${DPKG_BASHLIB:-false} && return 0 || {
     }
 
     apt_exist(){
-        env LC_MESSAGES=C apt-get -qqs install $1 2>&1 | grep -qs "has no installation candidate" && return 1
-        env LC_MESSAGES=C apt-get -qqs install $1 2>&1 | grep -qs "Unable to locate package" && return 1
-        env LC_MESSAGES=C apt-cache policy $1 2>&1 | grep -qs "Candidate: (none)" && return 1
-        env LC_MESSAGES=C apt-get -qqs install $1 2>/dev/null && return 0 || return 1
+        local -a pkgnames
+        mapfile -t pkgnames< <(env LC_MESSAGES=C apt-cache pkgnames "$1")
+        [[ " ${pkgnames[@]} " =~ " $1 " ]] || return 1
+        env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "has no installation candidate" && return 1
+        env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "Unable to locate package" && return 1
+        env LC_MESSAGES=C apt-cache policy "$1" 2>&1 | grep -qs "Candidate: (none)" && return 1
+        env LC_MESSAGES=C apt-get -qqs install "$1" &>/dev/null && return 0 || return 1
     }
 
     apt_install(){
