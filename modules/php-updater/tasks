@@ -37,7 +37,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                         ver=${mods[i]#*php}
                         ver=${ver%)}
                         mod=${mods[i]%(*}
-                        php-module-builder $ver $mod --remove --force
+                        php-module-builder $ver $mod --remove --force --quiet
                         ext_state purge $mod $ver
                     done
                 fi

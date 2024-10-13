@@ -25,14 +25,13 @@ ${INI_BASHLIB:-false} && return 0 || {
 
     ini_symlinks(){
         local sapi
-        f
-        GRAY
         if $remove; then
-            echo "- next step: $(B)phpdismod -prv $php_version -s ALL $module"
+            $quiet||{ f; GRAY; echo "- next step: $(B)phpdismod -prv $php_version -s ALL $module"; }
             ${step:-false} && anykey
+            o2; B; echo "phpdismod -prv $php_version -s ALL $module"; N
             phpdismod -prv $php_version -s ALL $module 2>/dev/null
         else
-            echo "- next step: $(B)phpenmod -rv $php_version -s ALL $module"
+            f; GRAY; echo "- next step: $(B)phpenmod -rv $php_version -s ALL $module"
             ${step:-false} && anykey
             phpenmod -rv $php_version -s ALL $module
             f
@@ -48,8 +47,7 @@ ${INI_BASHLIB:-false} && return 0 || {
     module_ini(){
         if $remove; then
             ini_symlinks
-            f
-            GRAY; echo "- next step: $(B)module_ini (remove):"
+            $quiet||{ f; GRAY; echo "- next step: $(B)module_ini (remove):"; }
             ${step:-false} && anykey
             o2; B; echo "rm \"$ini_dir/$module.ini\""; N
             rm -f "$ini_dir/$module.ini"

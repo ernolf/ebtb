@@ -60,13 +60,14 @@ my_update_check
 ##########
 # first search for options "--firstrun" "--remove" "--force" and remove from @() array
 # and then add the remaining arguments into the new array
-declare firstrun=false remove=false force=false step=false
+declare firstrun=false remove=false force=false step=false quiet=false
 declare -a args
 for arg in $@;do
     if [ "$arg" = "--firstrun" ];then firstrun=true
     elif [ "$arg" = "--remove" ];then remove=true
     elif [ "$arg" = "--force" ];then force=true # step=true
     elif [ "$arg" = "--step" ];then step=true
+    elif [ "$arg" = "--quiet" ];then quiet=true
     else args+=("$arg");fi
 done;set -- "${args[@]}"&&unset args
 
@@ -135,17 +136,17 @@ if $remove;then
     declare extension="$(module_ini_case $module|sed 's/^.*extension=//;s/\.so.*$//')"
     if $module_is_built;then
         lG;echo "- php$php_version-$module seems to be installed by this script"
-        f;GRAY;echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\""
+        $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\"";}
         ${step:-false}&&anykey
         o2;B;echo "rm -r \"$project_dir/$project/$php_version/$module\""
         rm -r "$project_dir/$project/$php_version/$module"
-        f;GRAY;echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""
+        $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\"";}
         ${step:-false}&&anykey
         o2;B;echo "rm \"$extension_dir/$extension.{so,la}\""
-        rm $extension_dir/$extension.{so,la}
-        [ -d "$extension_include_dir/$module" ]&&rm -fr $extension_include_dir/$module
+        rm -f "$extension_dir/$extension".{so,la}
+        [ -d "$extension_include_dir/$module" ]&&rm -fr "$extension_include_dir/$module"
         module_ini
-        ext_state purge $module $php_version
+        ext_state purge "$module" "$php_version"
     elif $module_is_installed;then
         line ' ' Pbg 2/76 a0
         o4;echo "$(Pbg)php$php_version-$module is installed but there is no build directory in$(N)"
@@ -155,11 +156,11 @@ if $remove;then
         o4;printf "$(Pbg)But$(N)"
         if $force;then
             o 8;echo "$(Pbg)--force has been passed.$(N)"
-            f;GRAY;echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""
+            $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\"";}
             ${step:-false}&&anykey
             o2;B;echo "rm \"$extension_dir/$extension.{so,la}\""
-            rm $extension_dir/$extension.{so,la}
-            [ -d "$extension_include_dir/$module" ]&&rm -fr $extension_include_dir/$module
+            rm -f "$extension_dir/$extension.{so,la}"
+            [ -d "$extension_include_dir/$module" ]&&rm -fr "$extension_include_dir/$module"
             module_ini
             ext_state purge $module $php_version
         else
@@ -332,7 +333,7 @@ else
     fi
 fi
 
-exit0
+$quiet&&exit 0||exit0
 <<EOF
 Module         8.0 8.1 8.2 8.3 8.4 Supported
 --------------+---+---+---+---+---------
