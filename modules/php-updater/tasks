@@ -112,7 +112,7 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                 separator
             fi
         fi
-        $replaced && "$me$forceflag" "json=$my_json" --list-installed
+        $replaced && "$me$forceflag" "json=$my_json" --list-installed-only
     }
 
     remove_unused_sapis(){
@@ -137,7 +137,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
             echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
             if ask "$(qpf)Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} now" "$YES"; then
                 apt_purge ${packages_2_purge[@]}
-                "$me$forceflag" "json=$my_json" --list-installed
+                "$me$forceflag" "json=$my_json" --list-installed-only
+                anykey
                 return 0
             else
                 return 1
@@ -164,7 +165,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
             f;echo " -$(format_string "This script can remove $this package$plu in a safe way." 3)"
             if ask "$question" "$YES"; then
                 apt_remove --yes ${DEPENDENCY_PKGS[@]}
-                "$me$forceflag" "json=$my_json" --list-installed
+                "$me$forceflag" "json=$my_json" --list-installed-only
+                anykey
                 return 0
             else
                 return 1
@@ -191,7 +193,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
             f;echo " -$(format_string "This script can remove $this package$plu in a safe way." 3)"
             if ask "$question" "$YES"; then
                 apt_remove --yes ${META_PKGS[@]}
-                "$me$forceflag" "json=$my_json" --list-installed
+                "$me$forceflag" "json=$my_json" --list-installed-only
+                anykey
                 return 0
             else
                 return 1
@@ -242,14 +245,16 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                     1)  cursor_ show
                                         f
                                         apt_remove 'php*-fpm'
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     2)  cursor_ show
                                         f
                                         php_a2module_2_fpm "$PHP_VERSION"
                                         systemctl restart apache2 php$PHP_VERSION-fpm
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     3)  cursor_ show
@@ -257,7 +262,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                         php_a2module_2_fpm "$PHP_VERSION"
                                         systemctl restart apache2 php$PHP_VERSION-fpm
                                         apt_remove 'libapache2-mod-php*'
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                 esac
                             done
@@ -281,14 +287,16 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                     1)  cursor_ show
                                         f
                                         apt_remove 'libapache2-mod-php*'
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     2)  cursor_ show
                                         f
                                         php_fpm_2_a2module $PHP_VERSION
                                         systemctl restart apache2
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     3)  cursor_ show
@@ -296,7 +304,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                         php_fpm_2_a2module $PHP_VERSION
                                         systemctl restart apache2
                                         apt_remove 'php*-fpm'
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                 esac
                             done
@@ -325,7 +334,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                         php_a2module_ disable
                                         php_fpm_module_ enable
                                         systemctl restart apache2 php$active_fpm_version-fpm
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     2)  cursor_ show
@@ -334,14 +344,16 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                         php_fpm_module_ enable
                                         systemctl restart apache2 php$active_fpm_version-fpm
                                         apt_remove 'libapache2-mod-php*'
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     3)  cursor_ show
                                         f
                                         php_fpm_2_a2module $PHP_VERSION
                                         systemctl restart apache2
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                         ;;
                                     4)  cursor_ show
@@ -349,7 +361,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                                         php_fpm_2_a2module $PHP_VERSION
                                         systemctl restart apache2
                                         apt_remove 'php*-fpm'
-                                        "$me$forceflag" "json=$my_json" --list-installed
+                                        "$me$forceflag" "json=$my_json" --list-installed-only
+                                        anykey
                                         return 0
                                 esac
                             done
@@ -360,7 +373,8 @@ ${TASKS_BASHLIB:-false} && return 0 || {
                     pf;N;echo "Consider removing the apache2-mod-php SAPI (recommended)";N
                     if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
                         apt_purge 'libapache2-mod-php*'
-                        "$me$forceflag" "json=$my_json" --list-installed
+                        "$me$forceflag" "json=$my_json" --list-installed-only
+                        anykey
                         return 0
                     fi
                     ;;

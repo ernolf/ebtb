@@ -248,6 +248,10 @@ case $1 in
         list_installed 'quiet=:'
         exit 0
         ;;
+    --list-installed-only)
+        list_installed 'only=:'
+        exit 0
+        ;;
     --list-candidates)
         list_candidates
         need_sury_repo

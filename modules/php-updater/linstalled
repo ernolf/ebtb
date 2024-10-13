@@ -226,10 +226,10 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
                 replace_aim
                 anykey
             fi
-            remove_unused_sapis && return 0
-            change_sapi && return 0
-            remove_dependency_packages && return 0
-            remove_meta_packages && return 0
+            remove_unused_sapis # && return 0
+            change_sapi # && return 0
+            remove_dependency_packages # && return 0
+            remove_meta_packages # && return 0
             kill_spinner
             versions_iterate check_config
         fi
