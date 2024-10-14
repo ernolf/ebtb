@@ -22,10 +22,10 @@ dependencies=(
 )
 modules=(
     today interval basics sed tempfile prompt ansi button fstring exit spinner
-    anykey line array ask sudo dependency httpd php/versions php/fpm php/apache2
-    vdir integrity dpkg sort dist/os_release php/sury php/extensions
-    php.net/ini_directives $sin/merge $sin/tasks $sin/linstalled $sin/help
-    $sin/chfiles
+    anykey line array httpd sudo php/version php/versions dpkg ask dependency
+    php/fpm php/apache2 vdir integrity sort dist/os_release php/sury
+    php/extensions php.net/ini_directives $sin/merge $sin/tasks $sin/linstalled
+    $sin/help $sin/chfiles
 )
 
 declare debug=false
