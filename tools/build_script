@@ -15,6 +15,13 @@ if [[ "$#" -lt 2 ]]; then
     exit 1
 fi
 
+# Ensure that the first argument exists
+if ! [ -f "$1" ]; then
+    echo "\"$1\" does not exist"
+    echo "Usage: $0 <input_module> <output_module>"
+    exit 1
+fi
+
 # Source the configure file
 source config/configure
 # Source the secrets configure file if exists
