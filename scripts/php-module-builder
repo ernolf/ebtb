@@ -85,7 +85,7 @@ declare module="$2" # e.g. igbinary
 declare etc_dir="/etc/php/$php_version"
 declare ini_dir="$etc_dir/mods-available"
 declare supported_php_versions="8.0 8.1 8.2 8.3 8.4"
-declare supported_modules="apcu excimer facedetect igbinary imagick lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd"
+declare supported_modules="apcu brotli excimer facedetect igbinary imagick lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd"
 declare not_supported_modules="xmlrpc zmq"
 declare module_is_built=false
 declare -A built_modules;while read pv m;do built_modules[$pv]+="$m ";done < <(find_built_modules)
@@ -212,6 +212,10 @@ else
     case "$module" in
           apcu) apt_install $basics
                 check_conflicts "xcache yac"
+                pecl_download
+                ;;
+        brotli) apt_install $basics libbrotli-dev
+                configure_opts="--with-libbrotli"
                 pecl_download
                 ;;
     facedetect) apt_install $basics git libopencv-dev
@@ -342,6 +346,7 @@ amqp          | x | x | x | x | x |
 apcu          | x | x | x | x | x |     X
 ast           | x | x | x | x | x |
 bcmath        | x | x | x | x | x |
+brotli        | - | - | - | - | - |     X
 bz2           | x | x | x | x | x |
 cgi           | x | x | x | x | x |
 cli           | x | x | x | x | x |
