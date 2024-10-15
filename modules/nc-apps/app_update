@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${APP_UPDATE_BASHLIB:-false} && return 0 || {
+${APP_UPDATE_BASHLIB:-false} || {
     APP_UPDATE_BASHLIB=:
 
-    . <(require nc/nextcloud)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire nc/nextcloud)
 
     query_updates(){
         occ app:update -n --no-warnings --allow-unstable --showonly --all | sed -e 's/ new version available: /#/' > $1

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${PROMPT_BASHLIB:-false} && return 0 || {
+${PROMPT_BASHLIB:-false} || {
     PROMPT_BASHLIB=:
 
     prompt(){

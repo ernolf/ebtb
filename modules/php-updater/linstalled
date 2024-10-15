@@ -7,26 +7,26 @@ __copyright__
 __license__
 #
 
-${LINSTALLED_BASHLIB:-false} && return 0 || {
+${LINSTALLED_BASHLIB:-false} || {
     LINSTALLED_BASHLIB=:
 
-    . <(require basics)
-    . <(require sed)
-    . <(require ansi)
-    . <(require button)
-    . <(require fstring)
-    . <(require exit)
-    . <(require spinner)
-    . <(require anykey)
-    . <(require line)
-    . <(require array)
-    . <(require ask)
-    . <(require httpd)
-    . <(require php/versions)
-    . <(require php/extensions)
-    . <(require php/apache2)
-    . <(require php/fpm)
-    . <(require $sin/tasks)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire fstring)
+    . <(lrequire spinner)
+    . <(lrequire line)
+    . <(lrequire array)
+    . <(lrequire ask)
+    . <(lrequire httpd)
+    . <(lrequire php/versions)
+    . <(lrequire php/extensions)
+    . <(lrequire php/apache2)
+    . <(lrequire php/fpm)
+    . <(lrequire $sin/tasks)
 
     list_installed(){
         cursor_ hide
@@ -226,10 +226,10 @@ ${LINSTALLED_BASHLIB:-false} && return 0 || {
                 replace_aim
                 anykey
             fi
-            remove_unused_sapis # && return 0
-            change_sapi # && return 0
-            remove_dependency_packages # && return 0
-            remove_meta_packages # && return 0
+            remove_unused_sapis
+            change_sapi
+            remove_dependency_packages
+            remove_meta_packages
             kill_spinner
             versions_iterate check_config
         fi

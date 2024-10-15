@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${ANSI_BASHLIB:-false} && return 0 || {
+${ANSI_BASHLIB:-false} || {
     ANSI_BASHLIB=:
 
-    . <(require tempfile)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire tempfile)
 
 ######################## - lib: ANSI Escape codes #############################
     declare CSI _8 _24 COLOR CURSOR

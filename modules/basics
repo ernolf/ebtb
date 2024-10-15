@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${BASICS_BASHLIB:-false} && return 0 || {
+${BASICS_BASHLIB:-false} || {
     BASICS_BASHLIB=:
 
     declare invi="Invalid input."

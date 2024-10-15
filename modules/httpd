@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${HTTPD_BASHLIB:-false} && return 0 || {
+${HTTPD_BASHLIB:-false} || {
     HTTPD_BASHLIB=:
 
     declare HTTPD_NEXTCLOUD

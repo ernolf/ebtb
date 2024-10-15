@@ -12,4 +12,4 @@ $rt && {
         exit 0
     }
 }
-unset -v rt lcf tntd
+unset -v lcf tntd

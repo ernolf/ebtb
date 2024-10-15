@@ -7,18 +7,20 @@ __copyright__
 __license__
 #
 
-${DPKG_BASHLIB:-false} && return 0 || {
+${DPKG_BASHLIB:-false} || {
     DPKG_BASHLIB=:
 
-    . <(require basics)
-    . <(require sed)
-    . <(require ansi)
-    . <(require fstring)
-    . <(require exit)
-    . <(require anykey)
-    . <(require ask)
-    . <(require today)
-    . <(require php/versions)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire sed)
+    . <(lrequire fstring)
+    . <(lrequire ask)
+    . <(lrequire today)
+    . <(lrequire php/versions)
 
     apt_update(){
         spinner C " .  resynchronizing the APT package index files  ." &
@@ -74,7 +76,7 @@ ${DPKG_BASHLIB:-false} && return 0 || {
         env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "has no installation candidate" && return 1
         env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "Unable to locate package" && return 1
         env LC_MESSAGES=C apt-cache policy "$1" 2>&1 | grep -qs "Candidate: (none)" && return 1
-        env LC_MESSAGES=C apt-get -qqs install "$1" &>/dev/null && return 0 || return 1
+        env LC_MESSAGES=C apt-get -qqs install "$1" &>/dev/null
     }
 
     apt_install(){
@@ -136,7 +138,7 @@ ${DPKG_BASHLIB:-false} && return 0 || {
         fi
         glob="$1"
         if "$quiet"; then
-            (( $(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | wc -l) - 1 )) && return 0 || return 1
+            (( $(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | wc -l) - 1 )) # && return 0 || return 1
         else
             env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | awk '{print $2}'
         fi
@@ -232,7 +234,7 @@ ${DPKG_BASHLIB:-false} && return 0 || {
 
     min_version(){
         local bin="$1" min="$2"
-        dpkg --compare-versions "$($bin --version 2>/dev/null | grep -oP '\d+(\.\d+){1,3}')" ge "$min" && return 0 || return 1
+        dpkg --compare-versions "$($bin --version 2>/dev/null | grep -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
     }
 
     # switch all findable php related packages to manual

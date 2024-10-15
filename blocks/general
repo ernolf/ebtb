@@ -32,12 +32,11 @@ sourced() {
     local am
     local -u m="${1#*/}_BASHLIB"
     eval am="\$$m"
-    ${am:-false} && return 0 || return 1
+    ${am:-false}
 }
 json_etag() {
     command -v jq >/dev/null || return 1
     jq -r '.etag' "$1" 2>/dev/null
-    return $?
 }
 c4u() {
     local -u m="${1#*/}_BASHLIB"
@@ -49,9 +48,22 @@ c4u() {
     }
 }
 req() {
-    sourced $1 && return 0 || { log req $1;curl -A "$(fp)req $1" $cargs/$rincld/$1 && return 0 || nohome $l; }
+    sourced $1 || { log req $1;curl -A "$(fp)req $1" $cargs/$rincld/$1 && return 0 || nohome $l; }
 }
 require() { req $@; }
+lreq() {
+    if [ -f "$lincld/$1" ]; then
+        sourced $1 || cat "$lincld/$1"
+    elif ! $rt; then
+        $(req $1)
+    elif (($(curl -o "$lincld/$1" -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)); then
+        log REQ $1
+        cat "$lincld/$1"
+    else
+        nohome $1
+    fi
+}
+lrequire() { lreq $@; }
 module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
 declare lf version my_url cargs opt opts astr="$(id -un): " A="$(uname -a)"
 declare -i epoch my_epoch my_size lce mje mjne w4uc

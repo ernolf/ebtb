@@ -7,16 +7,16 @@ __copyright__
 __license__
 #
 
-${DISTRIB_BASHLIB:-false} && return 0 || {
+${DISTRIB_BASHLIB:-false} || {
     DISTRIB_BASHLIB=:
 
-    . <(require basics)
-    . <(require ansi)
-    . <(require exit)
-    . <(require anykey)
-    . <(require mh)
-    . <(require ask)
-    . <(require dist/os_release)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire ask)
 
     no_debianoid(){
         pf; echo "$OS_NAME is not a debian derivative and normaly not (yet) supported by this script."

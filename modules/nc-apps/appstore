@@ -7,12 +7,13 @@ __copyright__
 __license__
 #
 
-${APPSTORE_BASHLIB:-false} && return 0 || {
+${APPSTORE_BASHLIB:-false} || {
     APPSTORE_BASHLIB=:
 
-    . <(require ansi)
-    . <(require tempfile)
-    . <(require $sin/db)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire $sin/db)
 
     # appstore-functions:
     dl_appstore_json_db(){

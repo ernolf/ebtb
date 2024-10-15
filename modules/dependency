@@ -7,13 +7,14 @@ __copyright__
 __license__
 #
 
-${DEPENDENCY_BASHLIB:-false} && return 0 || {
+${DEPENDENCY_BASHLIB:-false} || {
     DEPENDENCY_BASHLIB=:
 
-    . <(require ansi)
-    . <(require exit)
-    . <(require array)
-    . <(require sudo)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire array)
+    . <(lrequire sudo)
 
     dependency_check(){
         # for backwards compatibility:
@@ -44,7 +45,7 @@ ${DEPENDENCY_BASHLIB:-false} && return 0 || {
             line '-' dP 2/78 a2
             if command -v apt-get >/dev/null; then
                 local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
-                . <(require ask)
+                . <(lrequire ask)
                 mh "$install" &
                 if ask "$(qpf)Do you want to install this $pkg now"  $YES; then
                     if (( $(id -u) )); then

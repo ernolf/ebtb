@@ -7,17 +7,16 @@ __copyright__
 __license__
 #
 
-${INTEGRITY_BASHLIB:-false} && return 0 || {
+${INTEGRITY_BASHLIB:-false} || {
     INTEGRITY_BASHLIB=:
 
-    . <(require basics)
-    . <(require sed)
-    . <(require ansi)
-    . <(require exit)
-    . <(require tempfile)
-    . <(require line)
-    . <(require sudo)
-    . <(require vdir)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire sed)
+    . <(lrequire line)
+    . <(lrequire sudo)
+    . <(lrequire vdir)
 
 
     public_key(){
@@ -72,7 +71,7 @@ PUBLIC_KEY_ASC
         ehash="$(tail -n1 "$ca_me" | awk '{print $NF}')"
         line '=' P 5/75
         if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
-            . <(require ask)
+            . <(lrequire ask)
             signed=false
             o5;R;echo "- No sha256sum hash, looks like script has not been signed!"
             line '-' P 5/75
@@ -84,7 +83,7 @@ PUBLIC_KEY_ASC
         gpg --list-keys|grep -qs "$key"||gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" 2>/dev/null
         gpg --list-keys|grep -qs "$key"||public_key|gpg --import 2>/dev/null
         gpg --list-keys|grep -qs "$key"||{
-            . <(require ask)
+            . <(lrequire ask)
             o5;R;echo "- import of public key failed."
             qpf;ask "Continue at own risk without check?" $NO&&{
                 sed -i 's/^v=false$/v=true/' "$ca_me"

@@ -7,13 +7,15 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} && return 0 || {
+${HELP_BASHLIB:-false} || {
     HELP_BASHLIB=:
 
-    . <(require ansi)
-    . <(require php/version)
-    . <(require nc/nextcloud_logo)
-    . <(require $sin/l10n)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire php/version)
+    . <(lrequire nc/nextcloud_logo)
+    . <(lrequire $sin/l10n)
 
     print_help(){
         # for backwards compatibilty

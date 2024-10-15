@@ -7,26 +7,23 @@ __copyright__
 __license__
 #
 
-${TASKS_BASHLIB:-false} && return 0 || {
+${TASKS_BASHLIB:-false} || {
     TASKS_BASHLIB=:
 
-    . <(require basics)
-    . <(require sed)
-    . <(require ansi)
-    . <(require button)
-    . <(require fstring)
-    . <(require exit)
-    . <(require spinner)
-    . <(require anykey)
-    . <(require line)
-    . <(require array)
-    . <(require ask)
-    . <(require dpkg)
-    . <(require php/versions)
-    . <(require php/extensions)
-    . <(require php/apache2)
-    . <(require php/fpm)
-    . <(require $sin/merge)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire array)
+    . <(lrequire ask)
+    . <(lrequire dpkg)
+    . <(lrequire php/versions)
+    . <(lrequire php/extensions)
+    . <(lrequire php/apache2)
+    . <(lrequire php/fpm)
+    . <(lrequire $sin/merge)
 
     replace_aim(){ # replace admin installed modules
         replace_(){

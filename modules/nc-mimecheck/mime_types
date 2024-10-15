@@ -7,11 +7,14 @@ __copyright__
 __license__
 #
 
-${MIME_TYPES_BASHLIB:-false} && return 0 || {
+${MIME_TYPES_BASHLIB:-false} || {
     MIME_TYPES_BASHLIB=:
 
-    . <(require ansi)
-    . <(require basics)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
+    . <(lrequire basics)
 
     declare -a mime_ext_regex_image=(
       "image/jpeg:.jpg:^.*\.(jpe?g)$"

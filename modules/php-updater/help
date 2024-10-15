@@ -7,13 +7,16 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} && return 0 || {
+${HELP_BASHLIB:-false} || {
     HELP_BASHLIB=:
 
-    . <(require ansi)
-    . <(require line)
-    . <(require prompt)
-    . <(require fstring)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
+    . <(lrequire line)
+    . <(lrequire prompt)
+    . <(lrequire fstring)
 
     brief_help(){
         local sugg_old sugg_new
@@ -64,7 +67,7 @@ SUDO_MESSAGE
     }
 
     explain(){
-        . <(require php/logo)
+        . <(lrequire php/logo)
         local cat_or_pager sudo
         prompt>/dev/null&&sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
         $pager&&{ cat_or_pager='less -R';phplogo 2>/dev/null;}||cat_or_pager='cat'

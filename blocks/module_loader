@@ -1,5 +1,5 @@
 ## include bashmodules ->
-declare channel='prod' lincld rincld REQ mod lmo check=false lmj lmjn rmj lcf fp
+declare channel='prod' lincld rincld REQ mod check=false lmj lmjn rmj lcf fp
 w4uc=3600
 [[ "$scriptname" =~ test ]] && { channel='test' w4uc=36; }
 lincld="${ca_dir%/*}/include/ernolf/$channel" rincld="includes/$channel"
@@ -11,23 +11,12 @@ $rt && ((rte - lce > w4uc)) && {
     if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && check=:; fi
 }
 for mod in ${modules[@]}; do
-    lmo="$lincld/$mod"
-    $rt && mkdir -p "${lmo%/*}"
+    $rt && mkdir -p "$(dirname "$lincld/$mod")"
     $check && {
         ${pager:-false} || printf "\r\e[K.. checking modules - $mod"
         c4u "$mod"
     } || { ${pager:-false} || printf "\r\e[K.. loading modules - $mod"; }
-    sourced "$mod" && continue
-    if [ -f "$lmo" ]; then
-        $REQ/$mod
-    elif ! $rt; then
-        . <(req $mod)
-    elif (($(curl -o "$lmo" -w %{http_code} -A "$(fp)REQ $mod" $cargs/$rincld/$mod) == 200)); then
-        log REQ $mod
-        $REQ/$mod
-    else
-        nohome $mod
-    fi
+    . <(lreq $mod)
     [ "$mod" = 'dependency' ] && dependency_check
 done
 $check && echo $rte >"$lcf"

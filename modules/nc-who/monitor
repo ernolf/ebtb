@@ -7,13 +7,16 @@ __copyright__
 __license__
 #
 
-${MONITOR_BASHLIB:-false} && return 0 || {
+${MONITOR_BASHLIB:-false} || {
     MONITOR_BASHLIB=:
 
-    . <(require ansi)
-    . <(require button)
-    . <(require anykey)
-    . <(require nextcloud_db)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire nc/nextcloud_db)
 
     # $1=pid $2=cls (clear screen)
     cleanup(){

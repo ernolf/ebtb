@@ -7,12 +7,15 @@ __copyright__
 __license__
 #
 
-${VERBOSE_BASHLIB:-false} && return 0 || {
+${VERBOSE_BASHLIB:-false} || {
     VERBOSE_BASHLIB=:
 
-    . <(require ansi)
-    . <(require exit)
-    . <(require anykey)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
 
 #    declare debug=false
 #    $debug&&trap 'read -rp "$(R)[DEBUG:]$(N) press Enter to poceed..."' DEBUG

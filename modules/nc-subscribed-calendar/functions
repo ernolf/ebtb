@@ -7,14 +7,16 @@ __copyright__
 __license__
 #
 
-${FUNCTIONS_BASHLIB:-false} && return 0 || {
+${FUNCTIONS_BASHLIB:-false} || {
     FUNCTIONS_BASHLIB=:
 
-    . <(require basics)
-    . <(require exit)
-    . <(require ansi)
-    . <(require line)
-    . <(require nc/nextcloud_db)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire exit)
+    . <(lrequire line)
+    . <(lrequire nc/nextcloud_db)
 
     declare user_id cal_id
     declare -u refreshrate

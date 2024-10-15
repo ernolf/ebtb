@@ -7,11 +7,14 @@ __copyright__
 __license__
 #
 
-${NEXTCLOUD_DB_BASHLIB:-false} && return 0 || {
+${NEXTCLOUD_DB_BASHLIB:-false} || {
     NEXTCLOUD_DB_BASHLIB=:
 
-    . <(require ansi)
-    . <(require nc/nextcloud)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
+    . <(lrequire nc/nextcloud)
 
     # Database globals:
     declare DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY dc=false

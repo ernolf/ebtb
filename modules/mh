@@ -7,12 +7,15 @@ __copyright__
 __license__
 #
 
-${MH_BASHLIB:-false} && return 0 || {
+${MH_BASHLIB:-false} || {
     MH_BASHLIB=:
 
-    . <(require sed)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    [ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
+    . <(lrequire sed)
+    . <(lrequire tempfile)
+
     lf="$TMPDIR/ebtb-logfiles/$bm.log"
     [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 
@@ -215,14 +218,14 @@ ${MH_BASHLIB:-false} && return 0 || {
 
 ## prompt
 $ext_inf && {
-        . <(require prompt)
+        . <(lrequire prompt)
         mh "prompt: $(prompt 2>&1)"
 }
 
 ## os-release
         # /etc/os-release
         if [ -f /etc/os-release ]||[ -f /usr/lib/os-release ]; then
-            . <(require dist/os_release)
+            . <(lrequire dist/os_release)
             local os_release
             [ -f /etc/os-release ]&&os_release="/etc/os-release"||os_release="/usr/lib/os-release"
             if echo "$OS_ID" | grep -Eqsw "(ubuntu|debian|raspian)"; then
@@ -299,7 +302,7 @@ $ext_inf && {
         if (( $(id -u) == 0 )); then
 
 ## All-in-One
-            [ -z "$AIO" ] && . <(require nc/nextcloud_aio)
+            [ -z "$AIO" ] && . <(lrequire nc/nextcloud_aio)
             mh "AIO = $AIO - DOCKER = $DOCKER"
 
 $ext_inf && {
@@ -385,7 +388,7 @@ $ext_inf && {
 
         # php-version
             if command -v php >/dev/null; then
-                . <(require php/version)
+                . <(lrequire php/version)
                 mh "php-version: php$(php_ver)"
             else
                 mh "php-version: no php binary detected"
@@ -403,12 +406,12 @@ $ext_inf && {
             fi
 
         # installed php packages
-            . <(require php/extensions)
+            . <(lrequire php/extensions)
             populate_pkgs_by_dpkg_array
             for i in ${!PKGS_BY_DPKG[@]}; do
                 mh "PHP Package-$(printf '%02d' $((i+1))): $( echo ${PKGS_BY_DPKG[i]} 2>&1|awk -F'/' '{print $1 " " $2}')"
             done
-            . <(require php/fpm)
+            . <(lrequire php/fpm)
             local -a fpm_pools
             mapfile -t fpm_pools< <(fpm_ps_info brief 2>&1)
             for i in ${!fpm_pools[@]}; do
@@ -428,7 +431,7 @@ $ext_inf && {
 
         fi # End " php-module-builder php-updater "
 
-        . <(require httpd)
+        . <(lrequire httpd)
         populate_httpd_ nextcloud
         mh "nextcloud-httpd: $HTTPD_NEXTCLOUD"
         populate_httpd_ nc-dir

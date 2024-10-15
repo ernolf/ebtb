@@ -7,16 +7,16 @@ __copyright__
 __license__
 #
 
-${UBUNTU_BASHLIB:-false} && return 0 || {
+${UBUNTU_BASHLIB:-false} || {
     UBUNTU_BASHLIB=:
 
-    . <(require basics)
-    . <(require tempfile)
-    . <(require ansi)
-    . <(require exit)
-    . <(require line)
-    . <(require today)
-    . <(require interval)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire exit)
+    . <(lrequire line)
+    . <(lrequire interval)
     . <(require php/sury)
 
     declare -A UBUNTU_VERSIONS_LIFECYCLE UBUNTU_VERSIONS_DATA UBUNTU_VERSIONS_CODENAME_LONG  UBUNTU_VERSIONS

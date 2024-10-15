@@ -7,16 +7,17 @@ __copyright__
 __license__
 #
 
-${MERGE_BASHLIB:-false} && return 0 || {
+${MERGE_BASHLIB:-false} || {
     MERGE_BASHLIB=:
 
-    . <(require ansi)
-    . <(require basics)
-    . <(require sed)
-    . <(require spinner)
-    . <(require line)
-    . <(require fstring)
-    . <(require php.ini/ini_directives)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire spinner)
+    . <(lrequire line)
+    . <(lrequire fstring)
+    . <(lrequire php.net/ini_directives)
 
     defaults_and_changelog(){
         local key default changelog tip

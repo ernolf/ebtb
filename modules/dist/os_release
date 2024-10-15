@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${OS_RELEASE_BASHLIB:-false} && return 0 || {
+${OS_RELEASE_BASHLIB:-false} || {
     OS_RELEASE_BASHLIB=:
 
     declare OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID

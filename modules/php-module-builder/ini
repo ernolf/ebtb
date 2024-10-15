@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${INI_BASHLIB:-false} && return 0 || {
+${INI_BASHLIB:-false} || {
     INI_BASHLIB=:
 
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
 
     module_ini_case(){
         local module=$1

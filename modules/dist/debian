@@ -7,16 +7,16 @@ __copyright__
 __license__
 #
 
-${DEBIAN_BASHLIB:-false} && return 0 || {
+${DEBIAN_BASHLIB:-false} || {
     DEBIAN_BASHLIB=:
 
-    . <(require basics)
-    . <(require tempfile)
-    . <(require ansi)
-    . <(require exit)
-    . <(require line)
-    . <(require today)
-    . <(require interval)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire exit)
+    . <(lrequire line)
+    . <(lrequire interval)
     . <(require php/sury)
 
     declare -A DEBIAN_VERSIONS_DATA DEBIAN_VERSIONS

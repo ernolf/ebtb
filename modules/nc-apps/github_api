@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${GITHUB_API_BASHLIB:-false} && return 0 || {
+${GITHUB_API_BASHLIB:-false} || {
     GITHUB_API_BASHLIB=:
 
-    . <(require basics)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
 
     github_api(){
         local URL="https://api.github.com/repos/$1/$2?per_page=$3"

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${L10N_BASHLIB:-false} && return 0 || {
+${L10N_BASHLIB:-false} || {
     L10N_BASHLIB=:
 
     # Check if the given language code is valid. If not, return 'en'

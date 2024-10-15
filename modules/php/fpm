@@ -7,18 +7,19 @@ __copyright__
 __license__
 #
 
-${FPM_BASHLIB:-false} && return 0 || {
+${FPM_BASHLIB:-false} || {
     FPM_BASHLIB=:
 
-    . <(require basics)
-    . <(require ansi)
-    . <(require button)
-    . <(require fstring)
-    . <(require exit)
-    . <(require anykey)
-    . <(require line)
-    . <(require ask)
-    . <(require php/versions)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire fstring)
+    . <(lrequire line)
+    . <(lrequire ask)
+    . <(lrequire php/versions)
 
     declare -A SAPI_FPM
 

@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${LINE_BASHLIB:-false} && return 0 || {
+${LINE_BASHLIB:-false} || {
     LINE_BASHLIB=:
 
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
 
     # $1=pattern $2=color $3=(empty spaces/)repetition of pattern((int/)int)
     # $4 and $5 either a$i or b$i where a is after and b is before

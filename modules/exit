@@ -7,11 +7,14 @@ __copyright__
 __license__
 #
 
-${EXIT_BASHLIB:-false} && return 0 || {
+${EXIT_BASHLIB:-false} || {
     EXIT_BASHLIB=:
 
-    . <(require basics)
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire ansi)
 
     exit0(){
         G; echo "exiting script."

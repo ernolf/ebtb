@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${XML_BASHLIB:-false} && return 0 || {
+${XML_BASHLIB:-false} || {
     XML_BASHLIB=:
 
     # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224

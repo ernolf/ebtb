@@ -7,11 +7,14 @@ __copyright__
 __license__
 #
 
-${DATA_REFINE_BASHLIB:-false} && return 0 || {
+${DATA_REFINE_BASHLIB:-false} || {
     DATA_REFINE_BASHLIB=:
 
-    . <(require spinner)
-    . <(require $sin/db)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire spinner)
+    . <(lrequire $sin/db)
 
     create_json_objects(){
         local query_version=$nc_version platform parts major minor item

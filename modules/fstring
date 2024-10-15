@@ -7,11 +7,14 @@ __copyright__
 __license__
 #
 
-${FSTRING_BASHLIB:-false} && return 0 || {
+${FSTRING_BASHLIB:-false} || {
     FSTRING_BASHLIB=:
 
-    . <(require sed)
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire sed)
+    . <(lrequire ansi)
 
     # format a long string in lines with a maximum length
     format_string() {

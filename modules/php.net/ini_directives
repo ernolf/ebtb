@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${INI_DIRECTIVES_BASHLIB:-false} && return 0 || {
+${INI_DIRECTIVES_BASHLIB:-false} || {
     INI_DIRECTIVES_BASHLIB=:
 
     ini_directives(){ local name="$1" def chlog

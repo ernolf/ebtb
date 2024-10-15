@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${HTML2TEXT_BASHLIB:-false} && return 0 || {
+${HTML2TEXT_BASHLIB:-false} || {
     HTML2TEXT_BASHLIB=:
 
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
 
     function pipe_h2t(){ local query psql_fix1 col sed_empty_row psql_fix2 sed_pre_html2text html2text_command
         query="$1\"$2\""

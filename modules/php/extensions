@@ -7,15 +7,17 @@ __copyright__
 __license__
 #
 
-${EXTENSIONS_BASHLIB:-false} && return 0 || {
+${EXTENSIONS_BASHLIB:-false} || {
     EXTENSIONS_BASHLIB=:
 
-    . <(require basics)
-    . <(require ansi)
-    . <(require array)
-    . <(require dpkg)
-    . <(require tempfile)
-    . <(require php/versions)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire ansi)
+    . <(lrequire array)
+    . <(lrequire dpkg)
+    . <(lrequire php/versions)
     [ "$sin" = 'php-updater' ] && . <(require php/sury)
 
     declare -a SAPIS PKGS_BY_DPKG EXTS_ADMIN DEPENDENCY_PKGS META_PKGS

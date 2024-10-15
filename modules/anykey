@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${ANYKEY_BASHLIB:-false} && return 0 || {
+${ANYKEY_BASHLIB:-false} || {
     ANYKEY_BASHLIB=:
 
     anykey(){

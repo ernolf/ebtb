@@ -7,13 +7,15 @@ __copyright__
 __license__
 #
 
-${INSTALL_OVERWRITE_BASHLIB:-false} && return 0 || {
+${INSTALL_OVERWRITE_BASHLIB:-false} || {
     INSTALL_OVERWRITE_BASHLIB=:
 
-    . <(require ansi)
-    . <(require xml)
-    . <(require spinner)
-    . <(require nc/nextcloud)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire xml)
+    . <(lrequire spinner)
+    . <(lrequire nc/nextcloud)
 
     install_overwrite(){
 

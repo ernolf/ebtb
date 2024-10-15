@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${BUTTON_BASHLIB:-false} && return 0 || {
+${BUTTON_BASHLIB:-false} || {
     BUTTON_BASHLIB=:
 
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
 
     buttonize(){
         local oldcolor

@@ -7,17 +7,17 @@ __copyright__
 __license__
 #
 
-${UPDATE_BASHLIB:-false} && return 0 || {
+${UPDATE_BASHLIB:-false} || {
     UPDATE_BASHLIB=:
 
-    . <(require tempfile)
-    . <(require ansi)
-    . <(require exit)
-    . <(require button)
-    . <(require line)
-    . <(require sudo)
-    . <(require vdir)
-    . <(require integrity)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire line)
+    . <(lrequire sudo)
+    . <(lrequire vdir)
+    . <(lrequire integrity)
     . <(require mh)
 
     # for backwards compatibilty

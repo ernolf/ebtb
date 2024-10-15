@@ -8,7 +8,7 @@ __license__
 #
 
 
-${HELP_BASHLIB:-false} && return 0 || {
+${HELP_BASHLIB:-false} || {
     HELP_BASHLIB=:
 
     function print_help(){

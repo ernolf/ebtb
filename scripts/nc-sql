@@ -17,7 +17,7 @@ dependencies=(
 )
 modules=(
     basics sed tempfile ansi button fstring exit spinner anykey line array ask
-    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
+    sudo dependency vdir integrity httpd nc/nextcloud nc/nextcloud_db
 )
 
 __when__

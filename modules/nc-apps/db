@@ -7,13 +7,14 @@ __copyright__
 __license__
 #
 
-${DB_BASHLIB:-false} && return 0 || {
+${DB_BASHLIB:-false} || {
     DB_BASHLIB=:
 
-    . <(require ansi)
-    . <(require tempfile)
-    . <(require $sin/github_api)
-    . <(require nc/nextcloud)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire $sin/github_api)
+    . <(lrequire nc/nextcloud)
 
     # used (globaly) by database:
     declare runtime_etag="$rte.000000"

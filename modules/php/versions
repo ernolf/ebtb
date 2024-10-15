@@ -7,14 +7,15 @@ __copyright__
 __license__
 #
 
-${VERSIONS_BASHLIB:-false} && return 0 || {
+${VERSIONS_BASHLIB:-false} || {
     VERSIONS_BASHLIB=:
 
-    . <(require today)
-    . <(require interval)
-    . <(require ansi)
-    . <(require line)
-    . <(require array)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire interval)
+    . <(lrequire line)
+    . <(lrequire array)
 
     declare PHP_VERSION phpvregex
     declare -a EXISTING VERSIONS CAN

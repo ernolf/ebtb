@@ -7,11 +7,13 @@ __copyright__
 __license__
 #
 
-${PECL_BASHLIB:-false} && return 0 || {
+${PECL_BASHLIB:-false} || {
     PECL_BASHLIB=:
 
-    . <(require ansi)
-    . <(require exit)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire exit)
 
     pecl_download(){
         local chan download_output file_name

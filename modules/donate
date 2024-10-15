@@ -7,12 +7,14 @@ __copyright__
 __license__
 #
 
-${DONATE_BASHLIB:-false} && return 0 || {
+${DONATE_BASHLIB:-false} || {
     DONATE_BASHLIB=:
 
-    . <(require ansi)
-    . <(require line)
-    . <(require fstring)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire line)
+    . <(lrequire fstring)
 
     donate(){
     cat <<DONATE

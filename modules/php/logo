@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${PHP_LOGO_BASHLIB:-false} && return 0 || {
+${PHP_LOGO_BASHLIB:-false} || {
     PHP_LOGO_BASHLIB=:
 
-    . <(require ansi)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire ansi)
 
     php_logo(){
         cat << PHPLOGO

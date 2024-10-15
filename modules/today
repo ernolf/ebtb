@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${TODAY_BASHLIB:-false} && return 0 || {
+${TODAY_BASHLIB:-false} || {
     TODAY_BASHLIB=:
 
     # when

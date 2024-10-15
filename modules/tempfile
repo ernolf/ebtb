@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${TEMPFILE_BASHLIB:-false} && return 0 || {
+${TEMPFILE_BASHLIB:-false} || {
     TEMPFILE_BASHLIB=:
 
     # tempfile creation $1=u (--dry-run)

@@ -7,13 +7,15 @@ __copyright__
 __license__
 #
 
-${NEXTCLOUD_BASHLIB:-false} && return 0 || {
+${NEXTCLOUD_BASHLIB:-false} || {
     NEXTCLOUD_BASHLIB=:
 
-    . <(require ansi)
-    . <(require sudo)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire sudo)
+    . <(lrequire php/version)
     . <(require nc/nextcloud_aio)
-    . <(require php/version)
 
     if $AIO; then
         NC_DIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"

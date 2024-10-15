@@ -7,11 +7,16 @@ __copyright__
 __license__
 #
 
-${DISCLAIMER_BASHLIB:-false} && return 0 || {
+${DISCLAIMER_BASHLIB:-false} || {
     DISCLAIMER_BASHLIB=:
 
-    . <(require anykey)
-    . <(require php/logo)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire php/logo)
 
     disclaimer(){
         clear

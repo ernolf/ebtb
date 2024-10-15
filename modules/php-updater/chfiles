@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${CHFILES_BASHLIB:-false} && return 0 || {
+${CHFILES_BASHLIB:-false} || {
     CHFILES_BASHLIB=:
 
-    . <(require basics)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
 
     changed_mod_ini_files(){
         [ -n "$OLD" ] || OLD="$1"

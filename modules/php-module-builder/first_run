@@ -7,13 +7,16 @@ __copyright__
 __license__
 #
 
-${FIRST_RUN_BASHLIB:-false} && return 0 || {
+${FIRST_RUN_BASHLIB:-false} || {
     FIRST_RUN_BASHLIB=:
 
-    . <(require basics)
-    . <(require ansi)
-    . <(require vdir)
-    . <(require $sin/disclaimer)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire basics)
+    . <(lrequire ansi)
+    . <(lrequire vdir)
+    . <(lrequire $sin/disclaimer)
 
     # First run wizzard runs allways and only if occ could not be found in NC_DIR #
     first_run(){

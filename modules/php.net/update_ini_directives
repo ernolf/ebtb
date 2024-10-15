@@ -7,11 +7,11 @@ __copyright__
 __license__
 #
 
-${UPDATE_INI_DIRECTIVES_BASHLIB:-false} && return 0 || {
+${UPDATE_INI_DIRECTIVES_BASHLIB:-false} || {
     UPDATE_INI_DIRECTIVES_BASHLIB=:
 
-    . <(require sed)
-    . <(require php.net/ini_directives)
+    . <(lrequire sed)
+    . <(lrequire php.net/ini_directives)
 
     update_ini_directives(){
         [ -z "$1" ]&&local dryrun=:||local "$1"

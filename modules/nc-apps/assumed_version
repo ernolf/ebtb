@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${ASSUMED_VERSION_BASHLIB:-false} && return 0 || {
+${ASSUMED_VERSION_BASHLIB:-false} || {
     ASSUMED_VERSION_BASHLIB=:
 
-    . <(require $sin/db)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire $sin/db)
 
     # min_version(){ $(echo $(r_db "SELECT CASE WHEN major = (SELECT MIN(major) FROM versions) THEN platform ELSE NULL END AS result FROM versions;"));}
     assumed_version_select(){

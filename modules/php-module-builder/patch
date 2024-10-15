@@ -7,12 +7,8 @@ __copyright__
 __license__
 #
 
-${PATCH_BASHLIB:-false} && return 0 || {
+${PATCH_BASHLIB:-false} || {
     PATCH_BASHLIB=:
-
-    . <(require basics)
-    . <(require ansi)
-    . <(require $sin/disclaimer)
 
     patch_84() {
         local include_dirs files file headers header found dir alt_header

@@ -7,10 +7,13 @@ __copyright__
 __license__
 #
 
-${INTERVAL_BASHLIB:-false} && return 0 || {
+${INTERVAL_BASHLIB:-false} || {
     INTERVAL_BASHLIB=:
 
-    . <(require today)
+    # for backwards compatibility
+    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+
+    . <(lrequire today)
 
     interval(){
         local until since years months and N_D_F O_D_F
