@@ -85,7 +85,7 @@ declare module="$2" # e.g. igbinary
 declare etc_dir="/etc/php/$php_version"
 declare ini_dir="$etc_dir/mods-available"
 declare supported_php_versions="8.0 8.1 8.2 8.3 8.4"
-declare supported_modules="apcu brotli excimer facedetect igbinary imagick inotify lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd"
+declare supported_modules="apcu brotli decimal excimer facedetect igbinary imagick inotify lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd"
 declare not_supported_modules="xmlrpc zmq"
 declare module_is_built=false
 declare -A built_modules;while read pv m;do built_modules[$pv]+="$m ";done < <(find_built_modules)
@@ -216,6 +216,10 @@ else
                 ;;
         brotli) apt_install $basics libbrotli-dev
                 configure_opts="--with-libbrotli"
+                pecl_download
+                ;;
+       decimal) apt_install $basics libmpdec-dev
+                priority=30
                 pecl_download
                 ;;
     facedetect) apt_install $basics git libopencv-dev
@@ -357,7 +361,7 @@ cli           | x | x | x | x | x |
 common        | x | x | x | x | x |
 curl          | x | x | x | x | x |
 dba           | x | x | x | x | x |
-decimal       | x | x | x | x | - |
+decimal       | x | x | x | x | - |     X
 dev           | x | x | x | x | x |
 dio           | x | x | x | x | - |
 ds            | x | x | x | x | x |
