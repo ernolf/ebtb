@@ -65,15 +65,16 @@ ${UBUNTU_BASHLIB:-false} || {
 #    )
 
     UBUNTU_VERSIONS_DATA=(
+        [24.10]="Oracular Oriole;1728518400;1753920000"
         [24.04]="Noble Numbat;1714003200;1874880000"
         [23.10]="Mantic Minotaur;1697068800;1722384000"
         [23.04]="Lunar Lobster;1681948800;1706140800"
         [22.10]="Kinetic Kudu;1666224000;1689811200"
-        [22.04]="Jammy Jellyfish;1650499200;1814313600" # deb.sury.org
+        [22.04]="Jammy Jellyfish;1650499200;1814313600"
         [21.10]="Impish Indri;1634169600;1657756800"
         [21.04]="Hirsute Hippo;1619049600;1642636800"
         [20.10]="Groovy Gorilla;1603324800;1626912000"
-        [20.04]="Focal Fossa;1587600000;1745971200" # deb.sury.org
+        [20.04]="Focal Fossa;1587600000;1745971200"
         [19.10]="Eoan Ermine;1571270400;1594944000"
         [19.04]="Disco Dingo;1555545600;1579737600"
         [18.10]="Cosmic Cuttlefish;1539820800;1563408000"
@@ -124,6 +125,7 @@ ${UBUNTU_BASHLIB:-false} || {
 #    )
 
     UBUNTU_VERSIONS=(
+        [oracular]="24.10"
         [noble]="24.04"
         [mantic]="23.10"
         [lunar]="23.04"
