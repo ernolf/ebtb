@@ -193,6 +193,13 @@ for arg in "$@";do
 done
 set -- "${args[@]}"&&unset -v args
 
+if $supported && $unsupported; then
+    f;o2;R;echo "--supported and --unsupported are passed both but are mutually exclusive"
+    o2;echo "--supported and --unsupported will be ignored";N;f
+    supported=false unsupported=false
+    anykey
+fi
+
 shopt -s extglob
 while (($#));do
     case $1 in
@@ -208,7 +215,11 @@ while (($#));do
             break 2
             ;;
         ?(not_)shipped|all_apps|updat@(e|able))
-            case $1 in shipped|updat@(e|able)) supported=false unsupported=false; esac
+            case $1 in
+                shipped|updat@(e|able))
+                    $supported&&{ f;o2;R;echo "--supported will be ignored since it is implied within \"$1\"";N;f;supported=false;anykey;}
+                    $unsupported&&{ f;o2;R;echo "--unsupported will be ignored since it is mutually exclusive with \"$1\"";N;f;unsupported=false;anykey;}
+            esac
             case $2 in
                 ?(en|dis)abled|local|store|all) command="$1 $2"
                                     shift 2
@@ -264,9 +275,7 @@ while (($#));do
 done
 shopt -u extglob
 
-if $supported && $unsupported; then
-    supported=false unsupported=false
-elif $supported; then unsupported=false
+if $supported; then unsupported=false
     declare suppunsupp="supp=true"
 elif $unsupported; then supported=false
     declare suppunsupp="unsupp=true"
