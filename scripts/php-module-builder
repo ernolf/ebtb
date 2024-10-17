@@ -53,7 +53,7 @@ for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
 # you MUST be root:
 su_root "to run this script"
 my_update_check
-[ "$(tail -n3 "$ca_me"|head -n1)" = "distrib_checked" ]||. <(require $sin/distrib)
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " distrib_checked " ]]||. <(require $sin/distrib)
 ###############################################################################
 
 ##########
