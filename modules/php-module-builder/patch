@@ -70,4 +70,10 @@ ${PATCH_BASHLIB:-false} || {
         esac
     }
 
+    patch_m4(){
+        if [ -n "$m4_patch" ]; then
+            B;echo "- patching config.m4";N
+            sed -i "$m4_patch" config.m4
+        fi
+    }
 }

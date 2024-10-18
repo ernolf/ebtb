@@ -305,7 +305,7 @@ else
 #           zmq) apt_install $basics libzmq3-dev
 #                pecl_download channel://pecl.php.net/zmq-1.1.3
 #                ;;
-          zstd) apt_install $basics
+          zstd) apt_install $basics libzstd-dev
                 priority=30
                 pecl_download
                 ;;
@@ -323,7 +323,7 @@ else
                     te1;exit0;}
                 ;;
     esac
-    [ -z "$m4_patch" ]||{ echo "$(B)- patching config.m4";N;sed -i "$m4_patch" config.m4;}
+    patch_m4
     ${step:-false}&&anykey
     patch_code
     ${step:-false}&&anykey
