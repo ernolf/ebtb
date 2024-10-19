@@ -16,6 +16,12 @@ ${BUTTON_BASHLIB:-false} || {
     . <(lrequire ansi)
 
     buttonize(){
+        if [[ "$-" =~ 'x' ]]; then
+            set +x
+            local debugx=true
+        else
+            local debugx=false
+        fi
         local oldcolor
         oldcolor="$(cat $COLOR 2>/dev/null)"
         GRAYbg
@@ -29,6 +35,7 @@ ${BUTTON_BASHLIB:-false} || {
         GRAYbg
         printf '%s' ']'
         ${oldcolor:-N}
+        $debugx && set -x
     }
 
     button(){

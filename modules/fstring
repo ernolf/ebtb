@@ -18,6 +18,12 @@ ${FSTRING_BASHLIB:-false} || {
 
     # format a long string in lines with a maximum length
     format_string() {
+        if [[ "$-" =~ 'x' ]]; then
+            set +x
+            local debugx=true
+        else
+            local debugx=false
+        fi
         local input output word noansi_word basic_color
         local -i indent max_length current_length marg
         input="$1" indent="$2" output=''
@@ -52,6 +58,7 @@ ${FSTRING_BASHLIB:-false} || {
             fi
         done
         echo -en "$output"
+        $debugx && set -x
     }
 
     listify(){
