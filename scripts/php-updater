@@ -21,11 +21,11 @@ dependencies=(
     "ccdiff#ccdiff#Colored Character Diff"
 )
 modules=(
-    today interval basics sed tempfile prompt ansi button fstring exit spinner
-    anykey line array httpd sudo php/version php/versions dpkg ask dependency
-    php/fpm php/apache2 vdir integrity sort dist/os_release php/sury
-    php/extensions php.net/ini_directives $sin/merge $sin/tasks $sin/linstalled
-    $sin/help $sin/chfiles
+    today interval basics sed tempfile prompt ansi prefix button fstring exit
+    spinner anykey line array httpd sudo php/version php/versions dpkg ask
+    dependency php/fpm php/apache2 vdir integrity sort dist/os_release php/sury
+    php/extensions php.net/ini_directives $sin/pdiff $sin/merge $sin/diff
+    $sin/tasks $sin/linstalled $sin/help $sin/chfiles
 )
 
 declare debug=false
@@ -80,24 +80,14 @@ my_update_check
 [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unsupported " ]]&&unsupported=true
 
 
-# returns a list with vals unique to $1 - # x1=minimum packages to be installed, x2= packages required by cli and thus installed
-packages_diff(){ local pkg pvo pvn;local -a eia x1 x2;local -i i;pvo="$1" pvn="$2"
-    (( ${#EXTS_ADMIN[@]} ))&&{
-        for i in $(eval echo \${!C4EIBY4_${pvo//./}[@]});do
-            pkgmod="$(eval echo \"\${C4EIBY4_${pvo//./}[i]}\")";pkg=${pkgmod%:*}
-            [[ " $pkg" =~ " php$pvo-" ]]&&eia+=("${pkg#*-}")
-        done;}
-    x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip) x2=(cli common json opcache readline)
-    inst(){ local v x;v="$1";shift;(dpkg -l|awk '/^[hiu]i.*php'$v'/{print $2}'|sed "s/$v//";for x in $@;do echo php-$x;done)|sort -u;}
-    for pkg in $(comm -23 <(inst $1 ${x1[@]} ${eia[@]}) <(inst $2 ${x2[@]})|sed "s/php/php$2/");do
-        if echo "$pkg"|grep -Eqsvw "^$phpvregex$";then apt_exist "$pkg" &>/dev/null && echo $pkg;fi
-    done
-}
+# key_ name and key_ val
+key_(){ case $1 in name)trim "${2%%=*}";;val)trim "${2##*=}";esac;}
 
 install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
     apt_need_update
     if apt-cache show php$NEW >/dev/null 2>&1;then
         separator
+# TODO 1 -->
         # update first?
         f;echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
         if ask "$(qpf)Do you want to update the system first " "$NO";then
@@ -106,6 +96,7 @@ install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
             pf;echo "$(lG)system updated$(N)"
             anykey
         fi
+# TODO <-- 1
         apt-mark unhold *php* &>/dev/null
         command -v needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
         detect_and_assign_extensions
@@ -138,9 +129,9 @@ version_mismatch(){ f;o;Pbg;pf;echo "A version mismatch has been detected which 
 wrong_first_argument(){ local -i a=$2
     f;o;Pbg;pf;printf "First argument must be the version of an installed php but "
     if ((a));then
-        echo "php$1 is not installed$(pf;N)";f;list_candidates;call_me candidates;call_help;f
+        bundle echo "php$1 is not installed$(pf;N)";f;list_candidates;call_me candidates;call_help;f
     else
-        echo "\"$1\" is not an existing php version$(pf;N)"
+        bundle echo "\"$1\" is not an existing php version$(pf;N)"
         list_existing;call_me existing;call_help;f
     fi
     exit1
@@ -151,7 +142,7 @@ no_higher_candidate(){ f;pf;echo "The installed PHP version ($PHP_VERSION) is th
 need_ppa(){ need_sury_repo;}
 downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it";}
 
-# TODO 1 -->
+# TODO 0 -->
 list_tasks(){
     echo "explain Show help page"
     echo "check_distrib Check runing distribution (done automaticaly on first run)"
@@ -218,7 +209,7 @@ tasks(){
         done
     done
 }
-# TODO <-- 1
+# TODO <-- 0
 ## void ##
 declare lang=$(echo "$LANG"|cut -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE dpkg_package php_version php_version_old extension_dir fullpath module sort
@@ -275,6 +266,9 @@ case $1 in
         list_supported_ubuntu
         exit 0
         ;;
+    -*) echo "unknown option $1"
+        anykey
+        ;;
     *)  :
 esac
 
@@ -323,6 +317,13 @@ if $supported; then
         fi
     elif [ -n "$NEW" ];then
         if [[ " ${CAN[@]} " =~ " $NEW " ]]; then
+            list_installed 'lonly=:'
+            remove_unused_sapis
+            change_sapi
+            remove_dependency_packages
+            remove_meta_packages
+            kill_spinner
+            check_config $OLD
             declare -a missing_new_packages
             spinner C " . searching for php$NEW packages yet to be installed ." &
             mapfile -t missing_new_packages< <(packages_diff $OLD $NEW)
@@ -349,8 +350,6 @@ if $supported; then
             no_candidate "$NEW"
             pf;exit1
         fi
-
-        check_config $OLD
 
         declare -a c_f_a # changed files array
         spinner C " . searching changed ini- and conf-files for php$OLD to be adapted into php$NEW ." &
@@ -382,7 +381,7 @@ if $supported; then
             for FILE in ${o_c_f_a[@]}; do
                 separator O
                 PKG=${FILE%:*} FILE=${FILE#*:}
-                f;treat_other_files
+                f;diff_other_files
             done
         fi
         separator

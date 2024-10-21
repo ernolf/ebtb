@@ -56,14 +56,14 @@ ${LINSTALLED_BASHLIB:-false} || {
                 if rdepends -q "$pkg"; then
                     o2;pf;
                 else
-                    DEPENDENCY_PKGS+=("$pkg")
+#                    DEPENDENCY_PKGS+=("$pkg")
                     R;printf "DEP  ";N
                 fi
             elif extension_is_ meta "$pkg"; then
                 if rdepends -q "$pkg"; then
                     o2;pf
                 else
-                    META_PKGS+=("$pkg")
+#                    META_PKGS+=("$pkg")
                     dR;printf "META ";N
                 fi
             else
@@ -214,12 +214,13 @@ ${LINSTALLED_BASHLIB:-false} || {
             o 35;B;echo "$me --switch-version"
             line '-' dP 2/78
         fi
-        $quiet || call_me installed
+        ${quiet:-false} || call_me installed
     #    if ! $quiet && $supported; then
         f
-        $only && exit 0 || anykey
+        ${lonly:-false} && return 0
+        ${only:-false} && exit 0 || anykey
 
-        if $supported; then
+        if ${supported:-false}; then
             if ((aimct));then
                 ((aimct==1))&&plu='s a:'||plu=':s'
                 echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"

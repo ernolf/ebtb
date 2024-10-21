@@ -15,6 +15,7 @@ ${ASK_BASHLIB:-false} || {
 
     . <(lrequire basics)
     . <(lrequire ansi)
+    . <(lrequire prefix)
     . <(require mh)
 
     # ask handling
@@ -25,11 +26,6 @@ ${ASK_BASHLIB:-false} || {
     No="[$(R)n$(N)]o"
     #YES="[$(lG)y$(N)]es"
     #NO="[$(R)n$(N)]o"
-
-    # Question prefix
-    qpf(){
-        printf 'Q: '
-    }
 
     flat(){
         echo "$1" | sed -e 's/\[//' -e 's/\]//'
@@ -113,4 +109,14 @@ ${ASK_BASHLIB:-false} || {
         return $r
     }
 
+    bundle(){
+        local hauler
+        local -a payload
+        hauler="$1"
+        shift
+        haul "$hauler $@" # &
+#        sleep 1
+        mapfile -t payload< <($hauler "$@" 2>&1)
+        for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
+    }
 }

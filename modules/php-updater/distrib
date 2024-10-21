@@ -18,6 +18,7 @@ ${DISTRIB_BASHLIB:-false} || {
     . <(lrequire anykey)
     . <(lrequire ask)
     . <(lrequire php/versions)
+    . <(lrequire dist/os_release)
 
     call_me(){
         o2;GRAY;echo "You can call this list with:$(o 35;B)$me --list-$1"
@@ -30,8 +31,6 @@ ${DISTRIB_BASHLIB:-false} || {
     }
 
     check_debian(){
-        . <(require dist/debian)
-
         list_supported_debian
         call_me debian 2
 
@@ -86,7 +85,6 @@ ${DISTRIB_BASHLIB:-false} || {
 
 
     check_ubuntu(){
-        . <(require dist/ubuntu)
         list_supported_ubuntu
         call_me ubuntu 2
 
@@ -148,7 +146,6 @@ ${DISTRIB_BASHLIB:-false} || {
 
     }
 
-    . <(require dist/os_release)
     [[ "$(tail -n3 "$ca_me"|head -n1)" =~ "distrib_checked" ]]||check_os_release
 
 }

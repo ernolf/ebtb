@@ -19,8 +19,8 @@ dependencies=(
     "php#php-cli#PHP Commandline Interface"
 )
 modules=(
-    basics sed tempfile ansi button exit spinner anykey line array ask sudo
-    dependency vdir integrity php/version nc/nextcloud xml $sin/github_api
+    basics sed tempfile ansi prefix button exit spinner anykey line array ask
+    sudo dependency vdir integrity php/version nc/nextcloud xml $sin/github_api
     $sin/app_update $sin/filters $sin/db $sin/appstore $sin/data_refine
     $sin/assumed_version $sin/list $sin/install_overwrite $sin/l10n $sin/help
 )

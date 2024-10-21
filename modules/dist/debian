@@ -17,7 +17,7 @@ ${DEBIAN_BASHLIB:-false} || {
     . <(lrequire exit)
     . <(lrequire line)
     . <(lrequire interval)
-    . <(require php/sury)
+    . <(lrequire php/sury)
 
     declare -A DEBIAN_VERSIONS_DATA DEBIAN_VERSIONS
 

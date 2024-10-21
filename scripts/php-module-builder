@@ -16,9 +16,9 @@ dependencies=(
     "jq#jq#Command-line JSON processor"
 )
 modules=(
-    today interval basics sed tempfile prompt ansi button fstring exit spinner
-    anykey line array httpd sudo php/version php/versions dpkg ask dependency
-    php/fpm vdir integrity dist/os_release php/sury php/extensions
+    today interval basics sed tempfile prompt ansi prefix button fstring exit
+    spinner anykey line array httpd sudo php/version php/versions dpkg ask
+    dependency php/fpm vdir integrity dist/os_release php/sury php/extensions
     $sin/disclaimer $sin/ini $sin/pecl $sin/patch $sin/data_refine
 )
 

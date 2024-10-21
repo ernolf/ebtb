@@ -30,8 +30,8 @@ deps=(
     "jq#jq#command-line JSON processor"
 )
 modules=(
-    basics sed tempfile ansi button exit anykey verbose line array ask sudo
-    dependency vdir integrity nc/nextcloud nc/nextcloud_db $sin/mime_types
+    basics sed tempfile ansi prefix button exit anykey verbose line array ask
+    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db $sin/mime_types
     $sin/help $sin/functions
 )
 

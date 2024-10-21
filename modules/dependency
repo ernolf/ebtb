@@ -15,6 +15,7 @@ ${DEPENDENCY_BASHLIB:-false} || {
 
     . <(lrequire array)
     . <(lrequire sudo)
+    . <(lrequire ask)
 
     dependency_check(){
         # for backwards compatibility:
@@ -45,7 +46,6 @@ ${DEPENDENCY_BASHLIB:-false} || {
             line '-' dP 2/78 a2
             if command -v apt-get >/dev/null; then
                 local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
-                . <(lrequire ask)
                 mh "$install" &
                 if ask "$(qpf)Do you want to install this $pkg now"  $YES; then
                     if (( $(id -u) )); then

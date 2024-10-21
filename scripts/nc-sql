@@ -16,8 +16,8 @@ dependencies=(
     "jq#jq#Command line JSON processor"
 )
 modules=(
-    basics sed tempfile ansi button fstring exit spinner anykey line array ask
-    sudo dependency vdir integrity httpd nc/nextcloud nc/nextcloud_db
+    basics sed tempfile ansi prefix button fstring exit spinner anykey line
+    array ask sudo dependency vdir integrity httpd nc/nextcloud nc/nextcloud_db
 )
 
 __when__

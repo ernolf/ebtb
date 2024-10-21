@@ -1,0 +1,33 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${PREFIX_BASHLIB:-false} || {
+    PREFIX_BASHLIB=:
+
+    # Prefix
+    pf(){
+        printf ' - '
+    }
+
+    # Exclamation
+    xpf(){
+        R;printf "⚠️$(N):"
+    }
+
+    # Information
+    ipf(){
+        printf "I:"
+    }
+
+    # Question
+    qpf(){
+        printf 'Q: '
+    }
+
+}

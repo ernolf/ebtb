@@ -17,6 +17,7 @@ ${HELP_BASHLIB:-false} || {
     . <(lrequire line)
     . <(lrequire prompt)
     . <(lrequire fstring)
+    . <(lrequire php/logo)
 
     brief_help(){
         local sugg_old sugg_new
@@ -67,7 +68,6 @@ SUDO_MESSAGE
     }
 
     explain(){
-        . <(lrequire php/logo)
         local cat_or_pager sudo
         prompt>/dev/null&&sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
         $pager&&{ cat_or_pager='less -R';phplogo 2>/dev/null;}||cat_or_pager='cat'

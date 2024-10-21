@@ -10,8 +10,9 @@ __license__
 ${INI_DIRECTIVES_BASHLIB:-false} || {
     INI_DIRECTIVES_BASHLIB=:
 
-    ini_directives(){ local name="$1" def chlog
-        case $name in
+    ini_directives(){ 
+        local def chlog
+        case $1 in
 ### START INI DIRECTIVES ###
             allow_url_fopen)                       def="1"                                chlog="";;
             allow_url_include)                     def="0"                                chlog="Deprecated as of PHP 7.4.0";;
@@ -566,4 +567,26 @@ ${INI_DIRECTIVES_BASHLIB:-false} || {
         return 0
     }
 
+    section(){
+        local s
+        case "$1" in
+            assert)     s="[Assertion]";;
+            cli_server) s="[CLI Server]";;
+            com)        s="[COM]";;
+            date)       s="[Date]";;
+            mail)       s="[mail functions]";;
+            mysqli)     s="[MySQLi]";;
+            oci8)       s="[OCI8]";;
+            odbc)       s="[ODBC]";;
+            pcre)       s="[Pcre]";;
+            pdo_mysql)  s="[Pdo_mysql]";;
+            pdo_odbc)   s="[Pdo]";;
+            pgsql)      s="[PostgreSQL]";;
+            phar)       s="[Phar]";;
+            session)    s="[Session]";;
+            tidy)       s="[Tidy]";;
+            *)          s="[$1]"
+        esac
+        echo "$s"
+    }
 }

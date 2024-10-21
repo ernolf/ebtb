@@ -17,6 +17,7 @@ ${DISTRIB_BASHLIB:-false} || {
     . <(lrequire exit)
     . <(lrequire anykey)
     . <(lrequire ask)
+    . <(lrequire dist/os_release)
 
     no_debianoid(){
         pf; echo "$OS_NAME is not a debian derivative and normaly not (yet) supported by this script."
@@ -24,7 +25,6 @@ ${DISTRIB_BASHLIB:-false} || {
     }
 
     check_debian(){
-        . <(require dist/debian)
         list_supported_debian
 
         os;lB;printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME";lB
@@ -68,12 +68,9 @@ ${DISTRIB_BASHLIB:-false} || {
             os;echo "You can however continue here if you know what you are doing.";N;f
             ask "$(qpf)continue at own risk" "$NO" && mark_checked unknown || exit1
         fi
-
     }
 
-
     check_ubuntu(){
-        . <(require dist/ubuntu)
         list_supported_ubuntu
 
         os;lB;printf '%s' "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename$(GRAY) $(dY)$OS_VERSION_CODENAME$(GRAY)"
@@ -126,10 +123,7 @@ ${DISTRIB_BASHLIB:-false} || {
             os;echo "You can however continue here if you know what you are doing.";N;f
             ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old nolts || exit1
         fi
-
     }
 
-    . <(require dist/os_release)
     [[ "$(tail -n3 "$ca_me"|head -n1)" =~ "distrib_checked" ]]||check_os_release
-
 }

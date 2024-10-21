@@ -88,6 +88,5 @@ ${CHFILES_BASHLIB:-false} || {
         p_sort "${files[@]}"
         return $r
     }
-
 }
 

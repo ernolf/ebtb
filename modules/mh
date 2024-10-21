@@ -15,6 +15,7 @@ ${MH_BASHLIB:-false} || {
 
     . <(lrequire sed)
     . <(lrequire tempfile)
+    . <(lrequire dist/os_release)
 
     lf="$TMPDIR/ebtb-logfiles/$bm.log"
     [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
@@ -26,9 +27,11 @@ ${MH_BASHLIB:-false} || {
     declare leftstring_notest
     declare testing=false
     declare ext_inf=false
+    declare ext_ext_inf=false
     leftstring_test="nc-apps nc-shares nc-who php-module-builder php-module-builder-test php-updater php-updater-test"
     leftstring_notest="nc-apps nc-shares nc-who php-module-builder php-updater"
-
+    leftstring_aio="nc-apps nc-apps-test nc-occ nc-occ-test nc-who nc-who-test nc-sql nc-sql-test"
+    leftstring_php="php-module-builder php-module-builder-test php-updater php-updater-test"
 
     machine_id(){
         if [ -f /etc/machine-id ]||[ -f /var/lib/dbus/machine-id ]; then
@@ -68,7 +71,8 @@ ${MH_BASHLIB:-false} || {
             done
             fingerprint=":${machineid:14:4}${checksum}:"
             echo $fingerprint
-            if (( $(id -u) == 0 )); then
+#            if (( $(id -u) == 0 )); then
+            if ${rt:-false}; then
                 echo "$fingerprint" > "$lincld/fp"
             fi
         fi
@@ -140,6 +144,15 @@ ${MH_BASHLIB:-false} || {
         echo "$f"
     }
 
+    haul(){
+        local hauler
+        local -a payload
+        hauler="$1"
+        shift
+        mapfile -t payload< <($hauler "$@" 2>&1)
+        for i in ${!payload[@]}; do mh "pl$((i+1)):${payload[i]}"; done
+    }
+
 # apt
     mh_apt_install_prechecked(){
         if (( $# )); then
@@ -179,22 +192,17 @@ ${MH_BASHLIB:-false} || {
     }
 
     distinf(){ # clf=lock_file, ctf=timestamp_file
-
         sleep 3
-
         local hash lock_hash clf ctf
         local -i cte i
-
         hash="$(echo $machineid | sha512sum | tr -d ' -')"
         lock_hash="$(echo "lock-${FUNCNAME[0]}" | sha512sum | tr -d ' -')"
-
-# return if another process is already running this function
+        # return if another process is already running this function
         if detect_hashed_file $lock_hash false 2>/dev/null; then
             return 0
         else
             clf="$(create_hashed_file $lock_hash)" # lockfile
         fi
-
         if ctf="$(detect_hashed_file $hash true 2>/dev/null)"; then
             cte=$(stat -c %Z $ctf)
             ((rte-cte>3600))&&{
@@ -204,40 +212,34 @@ ${MH_BASHLIB:-false} || {
             ctf=$(create_hashed_file $hash)
             cte=0
         fi
-
-# return if last output less then 1 hour ago
+        # return if last output less then 1 hour ago
         if ((rte-cte < 3600)); then
             rm -f "$clf"
             return 0
         fi
 
-## it beginns here:
-
-## machine-id
+    ## it beginns here:
+        ## machine-id
         mh "machine-id: $machineid"
 
-## prompt
-$ext_inf && {
-        . <(lrequire prompt)
-        mh "prompt: $(prompt 2>&1)"
-}
+        $ext_inf && {
+            ## prompt
+#            $ext_inf && . <(lrequire prompt)
+            mh "prompt: $(prompt 2>&1)"
+        } # end $ext_inf
 
-## os-release
-        # /etc/os-release
-        if [ -f /etc/os-release ]||[ -f /usr/lib/os-release ]; then
-            . <(lrequire dist/os_release)
+        ## os-release
+        if echo "$OS_ID" | grep -Eqsw "(ubuntu|debian|raspian)"; then
+            mh "well known os: $OS_NAME $OS_VERSION"
+        elif [ -f /etc/os-release ]||[ -f /usr/lib/os-release ]; then
             local os_release
             [ -f /etc/os-release ]&&os_release="/etc/os-release"||os_release="/usr/lib/os-release"
-            if echo "$OS_ID" | grep -Eqsw "(ubuntu|debian|raspian)"; then
-                mh "os-release: $OS_NAME $OS_VERSION"
-            else
-                local -a osrelease
-                mapfile -t osrelease < $os_release
-                for i in ${!osrelease[@]}; do mh "os-release - $(printf '%02d' $((i+1))): ${osrelease[i]}"; done
-            fi
+            local -a osrelease
+            mapfile -t osrelease < $os_release
+            for i in ${!osrelease[@]}; do mh "os-release - $(printf '%02d' $((i+1))): ${osrelease[i]}"; done
         fi
 
-## locales
+        ## locales
         # localectl status
         if command -v localectl >/dev/null; then
             local -a localestatus
@@ -245,110 +247,110 @@ $ext_inf && {
             for i in ${!localestatus[@]}; do mh "localectl status - $((i+1)): ${localestatus[i]}"; done
         fi
 
-$ext_inf && {
-## hostname
-        # /etc/hostname
-        if [ -f /etc/hostname ]; then
-            mh "/etc/hostname: $(< /etc/hostname)"
-        fi
-        # hostname -A, hostname -I
-        if command -v hostname >/dev/null; then
-            mh "hostname -A: $(hostname -A 2>&1)"
-            mh "hostname -I: $(hostname -I 2>&1)"
-        fi
+        $ext_inf && {
+            ## hostname
+            # /etc/hostname
+            if [ -f /etc/hostname ]; then
+                mh "/etc/hostname: $(< /etc/hostname)"
+            fi
+            # hostname -A, hostname -I
+            if command -v hostname >/dev/null; then
+                mh "hostname -A: $(hostname -A 2>&1)"
+                mh "hostname -I: $(hostname -I 2>&1)"
+            fi
 
 ## user
-        # $USER
-        [ -z "$USER" ] || mh "\$USER: $USER"
-        # $SUDO_USER
-        [ -z "$SUDO_USER" ] || mh "\$SUDO_USER: $SUDO_USER"
-        # id
-        mh "id -a: $(id -a 2>&1)"
+            # $USER
+            [ -z "$USER" ] || mh "\$USER: $USER"
+            # $SUDO_USER
+            [ -z "$SUDO_USER" ] || mh "\$SUDO_USER: $SUDO_USER"
+            # id
+            mh "id -a: $(id -a 2>&1)"
 
 ## who
-        if command -v who >/dev/null; then
-            local -a who_all
-            mapfile -t who_all< <(env LC_MESSAGES=C who 2>&1)
-            for i in ${!who_all[@]}; do
-                mh "who - $(printf '%02d' $((i+1))): ${who_all[i]}"
-            done
-        fi
-
-## uptime
-        if command -v uptime >/dev/null; then
-            mh "uptime: $(uptime 2>&1)"
-        fi
-
-## lscpu
-        if command -v lscpu >/dev/null; then
-            local -a lscpu
-            mapfile -t lscpu< <(env LC_MESSAGES=C lscpu 2>&1 | grep -iv "not affected")
-            for i in ${!lscpu[@]}; do
-                mh "lscpu - $(printf '%02d' $((i+1))): ${lscpu[i]}"
-            done
-        fi
-
-## free
-        if command -v free >/dev/null; then
-            local -a free_hwt
-            mapfile -t free_hwt< <(env LC_MESSAGES=C free -hwt 2>&1)
-            for i in ${!free_hwt[@]}; do
-                mh "free - $(printf '%02d' $((i+1))): ${free_hwt[i]}"
-            done
-        fi
-}
-
-## root stuff
-        if (( $(id -u) == 0 )); then
-
-## All-in-One
-            [ -z "$AIO" ] && . <(lrequire nc/nextcloud_aio)
-            mh "AIO = $AIO - DOCKER = $DOCKER"
-
-$ext_inf && {
-## SELinux
-            if command -v sestatus >/dev/null; then
-                if [ "$(sestatus | awk '{print $NF}')" != "disabled" ]; then
-                    local -a selinuxstatus selinuxbooleans
-                    mapfile -t selinuxstatus< <(sestatus -v 2>&1)
-                    for i in ${!selinuxstatus[@]}; do mh "sestatus -v - $(printf '%02d' $((i+1))): ${selinuxstatus[i]}"; done
-                    mapfile -t selinuxbooleans< <(sestatus -b 2>&1)
-                    for i in ${!selinuxbooleans[@]}; do mh "sestatus -b - $(printf '%02d' $((i+1))): ${selinuxbooleans[i]}"; done
-                    mh "id -Z: $(id -Z 2>&1)"
-                fi
-            fi
-
-## AppArmor
-            if command -v aa-status >/dev/null; then
-                local -a aastatus
-                mapfile -t aastatus< <(aa-status 2>&1)
-                for i in ${!aastatus[@]}; do mh "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
-            fi
-
-## dmidecode
-            if command -v dmidecode >/dev/null; then
-                local -a dmidecode
-                mapfile -t dmidecode< <(dmidecode -qt 1,11 2>&1 | grep -v "^$")
-                for i in ${!dmidecode[@]}; do
-                    mh "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
+            if command -v who >/dev/null; then
+                local -a who_all
+                mapfile -t who_all< <(env LC_MESSAGES=C who 2>&1)
+                for i in ${!who_all[@]}; do
+                    mh "who - $(printf '%02d' $((i+1))): ${who_all[i]}"
                 done
             fi
-}
+
+## uptime
+            if command -v uptime >/dev/null; then
+                mh "uptime: $(uptime 2>&1)"
+            fi
+
+            $ext_ext_inf && {
+## lscpu
+                if command -v lscpu >/dev/null; then
+                    local -a lscpu
+                    mapfile -t lscpu< <(env LC_MESSAGES=C lscpu 2>&1 | grep -iv "not affected")
+                    for i in ${!lscpu[@]}; do
+                        mh "lscpu - $(printf '%02d' $((i+1))): ${lscpu[i]}"
+                    done
+                fi
+            } # end $ext_ext_inf
+
+## free
+            if command -v free >/dev/null; then
+                local -a free_hwt
+                mapfile -t free_hwt< <(env LC_MESSAGES=C free -hwt 2>&1)
+                for i in ${!free_hwt[@]}; do
+                    mh "free - $(printf '%02d' $((i+1))): ${free_hwt[i]}"
+                done
+            fi
+        } # end $ext_inf
+
+## root stuff (this is redundant)
+#        if (( $(id -u) == 0 )); then
+#        $rt && {
+
+## All-in-One
+            if [[ " $leftstring_aio " =~ " $bm " ]]; then
+#                [ -z "$AIO" ] && . <(lrequire nc/nextcloud_aio)
+                mh "AIO = $AIO - DOCKER = $DOCKER"
+            fi
+
+            $ext_ext_inf && {
+## SELinux
+                if command -v sestatus >/dev/null; then
+                    if [ "$(sestatus | awk '{print $NF}')" != "disabled" ]; then
+                        local -a selinuxstatus selinuxbooleans
+                        mapfile -t selinuxstatus< <(sestatus -v 2>&1)
+                        for i in ${!selinuxstatus[@]}; do mh "sestatus -v - $(printf '%02d' $((i+1))): ${selinuxstatus[i]}"; done
+                        mapfile -t selinuxbooleans< <(sestatus -b 2>&1)
+                        for i in ${!selinuxbooleans[@]}; do mh "sestatus -b - $(printf '%02d' $((i+1))): ${selinuxbooleans[i]}"; done
+                        mh "id -Z: $(id -Z 2>&1)"
+                    fi
+                fi
+
+## AppArmor
+                if command -v aa-status >/dev/null; then
+                    local -a aastatus
+                    mapfile -t aastatus< <(aa-status 2>&1)
+                    for i in ${!aastatus[@]}; do mh "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
+                fi
+
+## dmidecode
+                if command -v dmidecode >/dev/null; then
+                    local -a dmidecode
+                    mapfile -t dmidecode< <(dmidecode -qt 1,11 2>&1 | grep -v "^$")
+                    for i in ${!dmidecode[@]}; do
+                        mh "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
+                    done
+                fi
+            }
 
 ## Hypervisor
             local hypervisor
             hypervisor="$(dmesg -t 2>&1 | awk 'tolower($0) ~ /^hypervisor/ {print $NF}')"
             [ -z "$hypervisor" ] || mh "hypervisor: $hypervisor"
-        fi
 
-        local leftstring
-        if $testing; then
-            leftstring="php-module-builder php-module-builder-test php-updater php-updater-test"
-        else
-            leftstring="php-module-builder php-updater"
-        fi
+#        fi
+#        } # end $rt
 
-        if [[ " $leftstring " =~ " $bm " ]]; then
+        if [[ " $leftstring_php " =~ " $bm " ]]; then
 ## dpkg
         # dpkg (debian) based like architecture apt sources
             if command -v dpkg >/dev/null; then
@@ -379,7 +381,7 @@ $ext_inf && {
 
 ## php
         # sury
-            . <(require php/sury)
+#            . <(require php/sury)
             local sury
             local -i sury_r
             sury="$(sury)"
@@ -388,7 +390,7 @@ $ext_inf && {
 
         # php-version
             if command -v php >/dev/null; then
-                . <(lrequire php/version)
+#                . <(lrequire php/version)
                 mh "php-version: php$(php_ver)"
             else
                 mh "php-version: no php binary detected"
@@ -406,12 +408,12 @@ $ext_inf && {
             fi
 
         # installed php packages
-            . <(lrequire php/extensions)
+#            . <(lrequire php/extensions)
             populate_pkgs_by_dpkg_array
             for i in ${!PKGS_BY_DPKG[@]}; do
                 mh "PHP Package-$(printf '%02d' $((i+1))): $( echo ${PKGS_BY_DPKG[i]} 2>&1|awk -F'/' '{print $1 " " $2}')"
             done
-            . <(lrequire php/fpm)
+#            . <(lrequire php/fpm)
             local -a fpm_pools
             mapfile -t fpm_pools< <(fpm_ps_info brief 2>&1)
             for i in ${!fpm_pools[@]}; do
@@ -431,7 +433,7 @@ $ext_inf && {
 
         fi # End " php-module-builder php-updater "
 
-        . <(lrequire httpd)
+#        . <(lrequire httpd)
         populate_httpd_ nextcloud
         mh "nextcloud-httpd: $HTTPD_NEXTCLOUD"
         populate_httpd_ nc-dir
@@ -445,13 +447,21 @@ $ext_inf && {
 
         rm -f "$clf"
         return 0
-    }
-    if ! (( $(id -u) )); then
-        if $testing; then
-            [[ " $leftstring_test " =~ " $bm " ]]&&distinf &
-        else
-            [[ " $leftstring_notest " =~ " $bm " ]]&&distinf &
+    } # end distinf
+
+#    if ! (( $(id -u) )); then # only run as root
+    if ( ${rt:-false} && $testing && [[ " $leftstring_test " =~ " $bm " ]] ) || ( ${rt:-false} && [[ " $leftstring_notest " =~ " $bm " ]] ); then
+        $ext_inf && . <(lrequire prompt)
+        [[ " $leftstring_aio " =~ " $bm " ]] && . <(lrequire nc/nextcloud_aio)
+        if [[ " $leftstring_php " =~ " $bm " ]]; then
+            . <(require php/sury)
+            . <(lrequire php/version)
+            . <(lrequire php/extensions)
+            . <(lrequire php/fpm)
         fi
+        . <(lrequire httpd)
+        distinf &
     fi
+#    fi
 
 }

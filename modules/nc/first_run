@@ -18,7 +18,7 @@ ${FIRST_RUN_BASHLIB:-false} || {
     . <(lrequire anykey)
     . <(lrequire vdir)
     . <(lrequire httpd)
-    . <(require mh)
+    . <(lrequire ask)
 
     first_run(){
         te1

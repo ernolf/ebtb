@@ -16,8 +16,8 @@ dependencies=(
     "php#php-cli#PHP Commandline Interface"
 )
 modules=(
-    basics sed tempfile ansi button fstring exit spinner anykey line array ask
-    sudo dependency vdir integrity nc/nextcloud
+    basics sed tempfile ansi prefix button fstring exit spinner anykey line
+    array ask sudo dependency vdir integrity nc/nextcloud
 )
 
 __when__

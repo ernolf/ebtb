@@ -16,6 +16,7 @@ ${VERSIONS_BASHLIB:-false} || {
     . <(lrequire interval)
     . <(lrequire line)
     . <(lrequire array)
+    . <(lrequire php/sury)
 
     declare PHP_VERSION phpvregex
     declare -a EXISTING VERSIONS CAN
@@ -162,7 +163,6 @@ PHP_VERSIONS
             else version_mismatch; fi
         done
         line '-' dP 2/78
-        . <(require php/sury)
     }
 
     does_exist_(){

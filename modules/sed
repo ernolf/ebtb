@@ -91,7 +91,7 @@ ${SED_BASHLIB:-false} || {
 
     # remove ansi color codes
     noansi(){
-        sed -re 's/\x1B\[[0-9;?]*[a-zA-Z]//g' <<< "$*"
+        sed -re 's/⚠️/!/g;s/\x1B\[[0-9;?]*[a-zA-Z]//g' <<< "$*"
     }
 
     urldecode(){

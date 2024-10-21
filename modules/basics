@@ -12,11 +12,6 @@ ${BASICS_BASHLIB:-false} || {
 
     declare invi="Invalid input."
 
-    # Prefix
-    pf(){
-        printf ' - '
-    }
-
     # Empty spaces
     es(){
         printf "%*s" $1 ' '

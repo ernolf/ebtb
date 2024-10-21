@@ -41,6 +41,28 @@ ${EXTENSIONS_BASHLIB:-false} || {
         mapfile -t PKGS_BY_DPKG< <(detect_installed_by_dpkg)
     }
 
+    populate_dependency_pkgs_array(){
+        DEPENDENCY_PKGS=()
+        populate_pkgs_by_dpkg_array
+        for i in "${!PKGS_BY_DPKG[@]}"; do
+            pkg="${PKGS_BY_DPKG[i]%%/*}"
+            if extension_is_ dependency "$pkg"; then
+                rdepends -q "$pkg"||DEPENDENCY_PKGS+=("$pkg")
+            fi
+        done
+    }
+
+    populate_meta_pkgs_array(){
+        META_PKGS=()
+        populate_pkgs_by_dpkg_array
+        for i in "${!PKGS_BY_DPKG[@]}"; do
+            pkg="${PKGS_BY_DPKG[i]%%/*}"
+            if extension_is_ meta "$pkg"; then
+                rdepends -q "$pkg"||META_PKGS+=("$pkg")
+            fi
+        done
+    }
+
     detect_extensions_in_(){
         local -a files valid_files
         local -i i
