@@ -52,7 +52,7 @@ ${TASKS_BASHLIB:-false} || {
             ext_state fix
             apt_install_prechecked --yes ${pakages[@]}
         }
-        if command -v pecl >/dev/null; then
+        if which pecl >/dev/null; then
             local pmb ver module pakage pkgmod modstring serializers compression replaced
             local -i iam imb pecli=0
             local -a ibymb pkgmods mods pakages
@@ -60,7 +60,7 @@ ${TASKS_BASHLIB:-false} || {
             for pv in ${VERSIONS[@]}; do
                 eval iam+=\${#C4EIBY4_${pv//./}[@]}
             done
-            command -v php-module-builder >/dev/null&&pmb=true||pmb=false
+            which php-module-builder >/dev/null&&pmb=true||pmb=false
             mapfile -t ibymb< <(grep -lr "module built by php-module-builder" /etc/php/)
             imb=${#ibymb[@]}
             if (( iam )); then

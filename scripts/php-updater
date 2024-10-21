@@ -98,7 +98,7 @@ install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
         fi
 # TODO <-- 1
         apt-mark unhold *php* &>/dev/null
-        command -v needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
+        which needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
         detect_and_assign_extensions
         search_candidates_4_extensions_installed_by_admin $OLD
         spinner C " . performing thorough review (dry run) of package sources and candidate availability ." &
@@ -108,7 +108,7 @@ install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
             apt_install_prechecked --yes php$NEW-cli
             apt_install_prechecked --yes ${packages[@]}
         fi
-        command -v needrestart >/dev/null&&needrestart -r a
+        which needrestart >/dev/null&&needrestart -r a
     else f
         no_candidate "$NEW"
         exit1

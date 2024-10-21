@@ -77,7 +77,7 @@ for arg in "$@";do
 done
 set -- "${args[@]}"&&unset -v args
 
-if $AIO && command -v psql >/dev/null; then
+if $AIO && which psql &>/dev/null; then
         DOCKER=false
 fi
 
