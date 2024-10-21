@@ -543,7 +543,7 @@ DEB822
 
     supported_suites_(){
         ((rte))||{ local -i rte; printf -v rte "%(%s)T" -2;}
-        local url outfile exclude suite architecture
+        local url outfile exclude suite architecture date_str
         local -i timestamp
         local -a existing_suites
         local -A last_modified
@@ -555,10 +555,13 @@ DEB822
             debian) url='https://packages.sury.org/php/dists/' exclude='\.\.'
         esac
         curl -so $outfile $url
-        existing_suites=($(grep -oP '(?<=href=")[^"]+(?=/")' $outfile | grep -v "$exclude"))
+        mapfile -t existing_suites< <(grep -oP '(?<=href=")[^"]+(?=/")' "$outfile" | grep -v "$exclude")
         for suite in "${existing_suites[@]}";do
-            timestamp=$(date -d "$(grep "$suite" $outfile | grep -oP '\d{4}-\d{2}-\d{2}.*\d{2}:\d{2}')" "+%s")
-            last_modified[$suite]=$timestamp
+            date_str="$(grep "$suite" "$outfile" | grep -oP '\d{4}-\d{2}-\d{2}.*\d{2}:\d{2}|\d{2}-[A-Za-z]{3}-\d{4}.*\d{2}:\d{2}')"
+            if [[ -n "$date_str" ]]; then
+                timestamp=$(date -d "$date_str" "+%s")
+                last_modified["$suite"]=$timestamp
+            fi
         done
         rm $outfile
         for suite in "${!last_modified[@]}"; do
