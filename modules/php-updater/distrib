@@ -31,6 +31,8 @@ ${DISTRIB_BASHLIB:-false} || {
     }
 
     check_debian(){
+        . <(require dist/debian)
+
         list_supported_debian
         call_me debian 2
 
@@ -85,6 +87,8 @@ ${DISTRIB_BASHLIB:-false} || {
 
 
     check_ubuntu(){
+        . <(require dist/ubuntu)
+
         list_supported_ubuntu
         call_me ubuntu 2
 

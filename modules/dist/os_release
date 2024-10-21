@@ -10,9 +10,6 @@ __license__
 ${OS_RELEASE_BASHLIB:-false} || {
     OS_RELEASE_BASHLIB=:
 
-    . <(require dist/debian)
-    . <(require dist/ubuntu)
-
     declare OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
     declare -l OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
 
