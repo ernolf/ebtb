@@ -15,7 +15,10 @@ ${MH_BASHLIB:-false} || {
 
     . <(lrequire sed)
     . <(lrequire tempfile)
-    . <(lrequire dist/os_release)
+    if ! command -v source_os_release &>/dev/null; then
+        OS_RELEASE_BASHLIB=false
+        . <(lrequire dist/os_release)
+    fi
 
     lf="$TMPDIR/ebtb-logfiles/$bm.log"
     [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
@@ -454,12 +457,27 @@ ${MH_BASHLIB:-false} || {
         $ext_inf && . <(lrequire prompt)
         [[ " $leftstring_aio " =~ " $bm " ]] && . <(lrequire nc/nextcloud_aio)
         if [[ " $leftstring_php " =~ " $bm " ]]; then
-            . <(require php/sury)
-            . <(lrequire php/version)
-            . <(lrequire php/extensions)
-            . <(lrequire php/fpm)
+            if ! command -v sury &>/dev/null; then
+                SURY_BASHLIB=false
+                . <(lrequire php/sury)
+            fi
+            if ! command -v php_ver &>/dev/null; then
+                VERSION_BASHLIB=false
+                . <(lrequire php/version)
+            fi
+            if ! command -v populate_pkgs_by_dpkg_array &>/dev/null; then
+                EXTENSIONS_BASHLIB=false
+                . <(lrequire php/extensions)
+            fi
+            if ! command -v fpm_ps_info &>/dev/null; then
+                FPM_BASHLIB=false
+                . <(lrequire php/fpm)
+            fi
         fi
-        . <(lrequire httpd)
+        if ! command -v populate_httpd_ &>/dev/null; then
+            HTTPD_BASHLIB=false
+            . <(lrequire httpd)
+        fi
         distinf &
     fi
 #    fi
