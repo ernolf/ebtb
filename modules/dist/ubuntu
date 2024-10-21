@@ -13,7 +13,7 @@ ${UBUNTU_BASHLIB:-false} || {
     # for backwards compatibility
     declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
+    . <(lrequire button)
     . <(lrequire exit)
     . <(lrequire line)
     . <(lrequire interval)
