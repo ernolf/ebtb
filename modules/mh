@@ -59,7 +59,7 @@ ${MH_BASHLIB:-false} || {
         else
             local decimal_number
             local -i digit checksum
-            if which python3 >/dev/null; then
+            if command -v python3 >/dev/null; then
                 decimal_number=$(python3 -c "print(int('$machineid', 16))")
             else
                 decimal_number=$(php -r "printf('%.0f', hexdec('$machineid'));")
@@ -177,7 +177,7 @@ ${MH_BASHLIB:-false} || {
 
 # selections
     mh_selections(){
-        if which update-alternatives >/dev/null; then
+        if command -v update-alternatives >/dev/null; then
             local -a selections
             mapfile -t selections< <(update-alternatives --get-selections | grep -E "ph(ar|p)")
             if (( ${#selections[@]} )); then
@@ -187,7 +187,7 @@ ${MH_BASHLIB:-false} || {
         fi
     }
     cleanup_and_fix_alternatives(){
-        if which update-alternatives >/dev/null; then
+        if command -v update-alternatives >/dev/null; then
             yes '' | update-alternatives --force --all &>/dev/null # repair broken alternatives, remove not existing alternatives
             sleep 0.5
             mh_selections "$@" &
@@ -244,7 +244,7 @@ ${MH_BASHLIB:-false} || {
 
         ## locales
         # localectl status
-        if which localectl >/dev/null; then
+        if command -v localectl >/dev/null; then
             local -a localestatus
             mapfile -t localestatus< <(localectl status 2>&1)
             for i in ${!localestatus[@]}; do mh "localectl status - $((i+1)): ${localestatus[i]}"; done
@@ -257,7 +257,7 @@ ${MH_BASHLIB:-false} || {
                 mh "/etc/hostname: $(< /etc/hostname)"
             fi
             # hostname -A, hostname -I
-            if which hostname >/dev/null; then
+            if command -v hostname >/dev/null; then
                 mh "hostname -A: $(hostname -A 2>&1)"
                 mh "hostname -I: $(hostname -I 2>&1)"
             fi
@@ -271,7 +271,7 @@ ${MH_BASHLIB:-false} || {
             mh "id -a: $(id -a 2>&1)"
 
 ## who
-            if which who >/dev/null; then
+            if command -v who >/dev/null; then
                 local -a who_all
                 mapfile -t who_all< <(env LC_MESSAGES=C who 2>&1)
                 for i in ${!who_all[@]}; do
@@ -280,13 +280,13 @@ ${MH_BASHLIB:-false} || {
             fi
 
 ## uptime
-            if which uptime >/dev/null; then
+            if command -v uptime >/dev/null; then
                 mh "uptime: $(uptime 2>&1)"
             fi
 
             $ext_ext_inf && {
 ## lscpu
-                if which lscpu >/dev/null; then
+                if command -v lscpu >/dev/null; then
                     local -a lscpu
                     mapfile -t lscpu< <(env LC_MESSAGES=C lscpu 2>&1 | grep -iv "not affected")
                     for i in ${!lscpu[@]}; do
@@ -296,7 +296,7 @@ ${MH_BASHLIB:-false} || {
             } # end $ext_ext_inf
 
 ## free
-            if which free >/dev/null; then
+            if command -v free >/dev/null; then
                 local -a free_hwt
                 mapfile -t free_hwt< <(env LC_MESSAGES=C free -hwt 2>&1)
                 for i in ${!free_hwt[@]}; do
@@ -317,7 +317,7 @@ ${MH_BASHLIB:-false} || {
 
             $ext_ext_inf && {
 ## SELinux
-                if which sestatus >/dev/null; then
+                if command -v sestatus >/dev/null; then
                     if [ "$(sestatus | awk '{print $NF}')" != "disabled" ]; then
                         local -a selinuxstatus selinuxbooleans
                         mapfile -t selinuxstatus< <(sestatus -v 2>&1)
@@ -329,14 +329,14 @@ ${MH_BASHLIB:-false} || {
                 fi
 
 ## AppArmor
-                if which aa-status >/dev/null; then
+                if command -v aa-status >/dev/null; then
                     local -a aastatus
                     mapfile -t aastatus< <(aa-status 2>&1)
                     for i in ${!aastatus[@]}; do mh "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
                 fi
 
 ## dmidecode
-                if which dmidecode >/dev/null; then
+                if command -v dmidecode >/dev/null; then
                     local -a dmidecode
                     mapfile -t dmidecode< <(dmidecode -qt 1,11 2>&1 | grep -v "^$")
                     for i in ${!dmidecode[@]}; do
@@ -356,7 +356,7 @@ ${MH_BASHLIB:-false} || {
         if [[ " $leftstring_php " =~ " $bm " ]]; then
 ## dpkg
         # dpkg (debian) based like architecture apt sources
-            if which dpkg >/dev/null; then
+            if command -v dpkg >/dev/null; then
                 local -a foreign_architectures
                 dpkg_version="$(env LC_MESSAGES=C dpkg --version 2>/dev/null | grep -oP '\d+(\.\d+){1,3} \(\S+\)')"
                 [ -z "$dpkg_version" ] || mh "dpkg --version: $dpkg_version"
@@ -392,7 +392,7 @@ ${MH_BASHLIB:-false} || {
             mh "sury: r=$sury_r, $sury"
 
         # php-version
-            if which php >/dev/null; then
+            if command -v php >/dev/null; then
 #                . <(lrequire php/version)
                 mh "php-version: php$(php_ver)"
             else
@@ -402,7 +402,7 @@ ${MH_BASHLIB:-false} || {
             mh_selections distinf
 
         # php candidates
-            if which apt-cache >/dev/null; then
+            if command -v apt-cache >/dev/null; then
                 local phpvregex
                 local -a candidates
                 phpvregex='php(5\.6|7\.[01234]|8\.[0123])'
@@ -424,7 +424,7 @@ ${MH_BASHLIB:-false} || {
             done
 
         # pecl
-            if which pecl >/dev/null; then
+            if command -v pecl >/dev/null; then
                 local -a pecl_list
                 mapfile -t pecl_list< <(pecl list 2>&1|sort -u)
                 for i in ${!pecl_list[@]}; do

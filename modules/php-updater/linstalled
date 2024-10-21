@@ -112,14 +112,14 @@ ${LINSTALLED_BASHLIB:-false} || {
             else
                 case "${sapi%:*}" in
                    cli) o5;fO;echo -n "\\php binary$(O) /usr/bin/php${sapi#*:}";N
-                        if [ "$(readlink -e $(which php))" = "/usr/bin/php${sapi#*:}" ]; then
+                        if [ "$(readlink -e $(command -v php))" = "/usr/bin/php${sapi#*:}" ]; then
                             lG;echo " <ACTIVE> linked to generic /usr/bin/php";N
                         else
                             W;echo " <<INACTIVE not linked";N
                         fi
                         ;;
                 phpdbg) o5;fO;echo -n "\\phpdbg binary$(O) /usr/bin/phpdbg${sapi#*:}";N
-                        if [ "$(readlink -e $(which phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
+                        if [ "$(readlink -e $(command -v phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
                             lG;echo " <ACTIVE> linked to generic /usr/bin/phpdbg";N
                         else
                             W;echo " <<INACTIVE not linked";N

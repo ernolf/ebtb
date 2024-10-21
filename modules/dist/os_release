@@ -18,7 +18,7 @@ ${OS_RELEASE_BASHLIB:-false} || {
             local os_release
             [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
             . <(sed 's/^/OS_/g' $os_release)
-        elif which lsb_release >/dev/null; then
+        elif command -v lsb_release >/dev/null; then
             OS_NAME="$(lsb_release -si)"
             OS_ID="${OS_NAME%% *}"
             OS_PRETTY_NAME="$(lsb_release -sd)"

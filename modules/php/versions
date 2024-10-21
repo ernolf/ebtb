@@ -37,7 +37,7 @@ ${VERSIONS_BASHLIB:-false} || {
         fi
     }
 
-    which php >/dev/null 2>&1 && PHP_VERSION="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
+    command -v php >/dev/null 2>&1 && PHP_VERSION="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
 
     existing_php_versions(){
         cat <<PHP_VERSIONS
