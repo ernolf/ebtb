@@ -21,8 +21,29 @@ ${DONATE_BASHLIB:-false} || {
 
 $(separator xGRAY)
 
-  $(GRAY;format_string "This script is continually being enhanced and expanded. This means it will be able to perform even more tasks for you safely in the future." 3)
-   $(GRAY)Feel free to donate by
+  $(GRAY;format_string "If your problem has been resolved with this script, then I was able to help you," 3)
+  $(GRAY;format_string "which fulfills the main motivation of my work!" 3)
+
+  $(GRAY;format_string "What you don't see is that I developed these scripts in endless unpaid hours and" 3)
+  $(GRAY;format_string "am still developing them to this day. This means it will be able to perform even" 3)
+  $(GRAY;format_string "more tasks for you safely in the future." 3)
+
+  $(GRAY;format_string "But it can't lay eggs, doesn't produce wool, milk or meat, but only the fastest" 3)
+  $(GRAY;format_string "and most reliable solution to $(W)YOUR$(GRAY) problem, which would otherwise have cost $(W)YOU$(GRAY)" 3)
+  $(GRAY;format_string "a lot of time, nerves and possibly money. Until today it has almost only cost $(W)MY" 3)
+  $(GRAY;format_string "time, $(W)MY$(GRAY) nerves and $(W)MY$(GRAY) money." 3)
+
+  $(GRAY;format_string "It would actually be quite normal if even a tiny bit of it were to flow back as" 3)
+  $(GRAY;format_string "thanks or recognition, so that I am not left with the costs all by myself while" 3)
+  $(GRAY;format_string "you have been able to solve your problem." 3)
+
+  $(W;format_string "A few users have shown their appreciation with small donations ranging from 1" 3)
+  $(W;format_string "to 20 €/$, for which I sincerely want to express my thanks here!" 3)
+
+  $(GRAY;format_string "My scripts should remain freely accessible and not disappear behind a paywall." 3)
+  $(GRAY;format_string "Everyone should be free to decide if and how they want to support my work." 3)
+  $(GRAY;format_string "If you want to do this with money, you can do so at these addresses:" 3)
+
    $(GRAY)* $(C)Paypal$(GRAY) to
        $(lG)ernolf$(C)<at>$(lG)global-social.net
    $(GRAY)or in cryptocurrency
@@ -32,7 +53,15 @@ $(separator xGRAY)
        $(lG)0x72b7901b3daa45a7266A77Aa3B3552aB686d0D0D
    $(GRAY)* $(C)Solana$(GRAY) to
        $(lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(N)
-  $(GRAY;format_string "or at least leave a $(R)❤️$(GRAY) at $(button 1;GRAY) and spread the word, if you like my work." 3;N)
+
+  $(GRAY;format_string "… and if you don't want to spend money, spreading the word, a 'thank you'," 3)
+  $(GRAY;format_string "a $(R)❤️$(GRAY) or a 'like' at $(button 1;GRAY) are the least that everyone can afford." 3;N)
+
+  $(W;format_string "If your problem has NOT been resolved with this script, then you can really help" 3)
+  $(W;format_string "by providing precise feedback with a description as detailed as possible of your" 3)
+  $(W;format_string "expectation and where that expectation was not met. I will do everything in my" 3)
+  $(W;format_string "power to help you anyway and possibly improve the scripts so that others can" 3)
+  $(W;format_string "benefit from your feedback in the future." 3)
 
 $(button 1;W;pf)$1
 
