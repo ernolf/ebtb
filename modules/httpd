@@ -11,7 +11,7 @@ ${HTTPD_BASHLIB:-false} || {
     HTTPD_BASHLIB=:
 
     declare HTTPD_NEXTCLOUD
-    declare -a HTTPD_NC_DIR HTTPD_KNOWN HTTPD_ACTIVE HTTPD_ALL
+    declare -a HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ACTIVE HTTPD_ALL
 
     #        apache2     /etc/apache2            /lib/systemd/system/apache2.service
     #        caddy       /etc/caddy              /lib/systemd/system/caddy.service
@@ -23,9 +23,18 @@ ${HTTPD_BASHLIB:-false} || {
 
     detect_httpd(){
         local httpd p
-        local -a httpdaemons
+        local -a wellknown_httpdaemons httpdaemons
+        wellknown_httpdaemons=(apache2 nginx)
         httpdaemons=(apache2 caddy lighttpd nginx tntnet yaws)
         case $1 in
+         wk_active) for httpd in ${wellknown_httpdaemons[@]}; do
+                        systemctl --quiet is-active $httpd && echo "$httpd"
+                    done
+                    ;;
+          wk_known) for httpd in ${wellknown_httpdaemons[@]}; do
+                        systemctl --no-pager --quiet list-unit-files "$httpd*" >/dev/null 2>&1 && echo "$httpd"
+                    done
+                    ;;
             active) for httpd in ${httpdaemons[@]}; do
                         systemctl --quiet is-active $httpd && echo "$httpd"
                     done
@@ -59,6 +68,10 @@ ${HTTPD_BASHLIB:-false} || {
          nextcloud) HTTPD_NEXTCLOUD="$(detect_httpd nextcloud 2>&1)"
                     ;;
             nc-dir) mapfile -t HTTPD_NC_DIR< <(detect_httpd nc-dir 2>&1)
+                    ;;
+          wk_known) mapfile -t WK_HTTPD_KNOWN< <(detect_httpd wk_known 2>&1)
+                    ;;
+         wk_active) mapfile -t WK_HTTPD_ACTIVE< <(detect_httpd wk_active 2>&1)
                     ;;
              known) mapfile -t HTTPD_KNOWN< <(detect_httpd known 2>&1)
                     ;;

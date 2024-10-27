@@ -21,17 +21,26 @@ ${PDIFF_BASHLIB:-false} || {
             shift
             (   dpkg -l | awk '/^[hiu]i.*php'$v'/{print $2}' | sed "s/$v//"
                 for x in $@; do
-                    echo php-$x
+                    case $x in
+                        libapache2-mod-php) echo $x
+                                            ;;
+                                     embed) echo libphp-$x
+                                            ;;
+                                         *) echo php-$x
+                    esac
                 done
             ) | sort -u
         }
 
-        local pkg pvo pvn pkgmod pkg
+        local pkg pvo pvn sapi pkgmod pkg
         local -a eia x1 x2
         local -i i
-        pvo="$1" pvn="$2"
-        x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip)
-        x2=(cli common json opcache readline)
+        pvo="$1" pvn="$2" sapi="$3"
+# TODO 0 -->
+#        x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip)
+# TODO <-- 0
+        x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring xml zip)
+        x2=(libapache2-mod-php fpm cli cgi embed phpdbg common json opcache readline)
         if (( ${#EXTS_ADMIN[@]} )); then
             for i in $(eval echo \${!C4EIBY4_${pvo//./}[@]}); do
                 pkgmod="$(eval echo \"\${C4EIBY4_${pvo//./}[i]}\")"
@@ -39,7 +48,7 @@ ${PDIFF_BASHLIB:-false} || {
                 [[ " $pkg" =~ " php$pvo-" ]] && eia+=("${pkg#*-}")
             done
         fi
-        for pkg in $(comm -23 <(inst $1 ${x1[@]} ${eia[@]}) <(inst $2 ${x2[@]}) | sed "s/php/php$2/"); do
+        for pkg in $(comm -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | sed "s/php/php$2/"); do
             if echo "$pkg" | grep -Eqsvw "^$phpvregex$"; then
                 apt_exist "$pkg" &>/dev/null && echo $pkg
             fi

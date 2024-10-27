@@ -20,9 +20,17 @@ ${EXTENSIONS_BASHLIB:-false} || {
     . <(lrequire php/versions)
     [ "$sin" = 'php-updater' ] && . <(require php/sury)
 
-    declare -a SAPIS PKGS_BY_DPKG EXTS_ADMIN DEPENDENCY_PKGS META_PKGS
+    declare -a PKGS_BY_DPKG EXTS_ADMIN DEPENDENCY_PKGS META_PKGS
+    declare -A SAPIS 2>/dev/null
 
-    SAPIS=("apache2:libapache2-mod-php@VER@" "fpm:php@VER@-fpm" "cli:php@VER@-cli" "cgi:php@VER@-cgi" "embed:libphp@VER@-embed" "phpdbg:php@VER@-phpdbg")
+    SAPIS=(
+        [apache2]="libapache2-mod-php@VER@"
+        [fpm]="php@VER@-fpm"
+        [cli]="php@VER@-cli"
+        [cgi]="php@VER@-cgi"
+        [embed]="libphp@VER@-embed"
+        [phpdbg]="php@VER@-phpdbg"
+    )
 
     detect_installed_by_dpkg(){
         local e
@@ -173,7 +181,7 @@ ${EXTENSIONS_BASHLIB:-false} || {
                 for i in ${!VERSIONS[@]}; do
                     ver=${VERSIONS[i]}
                     for sapi in $(phpquery -v $ver -S); do
-                        if [ "$pkg" = "$(a_fld SAPIS : $sapi 2 | sed "s/@VER@/$ver/")" ]; then
+                        if [ "$pkg" = "${SAPIS[$sapi]/@VER@/$ver}" ]; then
                             r=0
                             echo "$sapi:$ver"
                         fi

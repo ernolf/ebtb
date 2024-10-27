@@ -96,7 +96,7 @@ ${LINSTALLED_BASHLIB:-false} || {
                 fi # <--
                 # --> Active SAPI
                 if [ "${sapi%:*}" = 'apache2' ]; then
-                    pv="${pkg//libapache2-mod-php/}"
+                    pv="${pkg/libapache2-mod-php/}" # extract version
                     if systemctl -q is-active apache2; then
                         if (( $(apachectl -tD DUMP_INCLUDES 2>/dev/null | grep -cE "php${sapi#*:}.(load|conf)") == 2 )); then
                             SAPI_A2[$pv]='a'
@@ -143,11 +143,11 @@ ${LINSTALLED_BASHLIB:-false} || {
                                 fi
                                 (( ${server_status[$webserver]} )) || continue # jump to next server
                             done
-                            if (( ${#enabled_webservers[@]} )); then
-                                local connected_webserver socket
-                                for i in ${!sockets[@]}; do
-                                    connected_webserver=''
-                                    socket=${sockets[i]}
+                            local connected_webserver socket
+                            for i in ${!sockets[@]}; do
+                                connected_webserver=''
+                                socket=${sockets[i]}
+                                if (( ${#enabled_webservers[@]} )); then
                                     for webserver in ${enabled_webservers[@]}; do
                                         case $webserver in
                                             apache2)local -a a2conffiles
@@ -161,14 +161,14 @@ ${LINSTALLED_BASHLIB:-false} || {
                                             3)  connected_webserver=" $webserver $connected_webserver"
                                         esac
                                     done
-                                    o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
-                                    if [ -z "$connected_webserver" ]; then
-                                        SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
-                                    else
-                                        SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
-                                    fi
-                                done
-                            fi
+                                fi
+                                o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
+                                if [ -z "$connected_webserver" ]; then
+                                    SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
+                                else
+                                    SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
+                                fi
+                            done
                         fi
                         ;;
                     *)  :

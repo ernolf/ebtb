@@ -22,9 +22,9 @@ dependencies=(
 )
 modules=(
     today interval basics sed tempfile prompt ansi prefix button fstring exit
-    spinner anykey line array httpd sudo php/version php/versions dpkg ask
-    dependency php/fpm php/apache2 vdir integrity sort dist/os_release php/sury
-    php/extensions php.net/ini_directives $sin/pdiff $sin/merge $sin/diff
+    sort spinner anykey line array httpd sudo php/version php/versions dpkg
+    php/extensions php/sury ask dependency php/fpm php/apache2 vdir integrity
+    dist/os_release php.net/ini_directives $sin/pdiff $sin/merge $sin/diff
     $sin/tasks $sin/linstalled $sin/help $sin/chfiles
 )
 __debug__
@@ -80,9 +80,9 @@ my_update_check
 # key_ name and key_ val
 key_(){ case $1 in name)trim "${2%%=*}";;val)trim "${2##*=}";esac;}
 
-install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
+install_new_php(){ local old="$1" new="$2" package sapi;local -a packages sapipkgs sapi_not;local -i i
     apt_need_update
-    if apt-cache show php$NEW >/dev/null 2>&1;then
+    if apt-cache show php$new >/dev/null 2>&1;then
         separator
 # TODO 1 -->
         # update first?
@@ -97,26 +97,29 @@ install_new_php(){ local old="$1" new="$2" package;local -a packages;local -i i
         apt-mark unhold *php* &>/dev/null
         command -v needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
         detect_and_assign_extensions
-        search_candidates_4_extensions_installed_by_admin $OLD
+        search_candidates_4_extensions_installed_by_admin $old
         spinner C " . performing thorough review (dry run) of package sources and candidate availability ." &
-        mapfile -t packages< <(packages_diff $OLD $NEW)
+        mapfile -t packages< <(packages_diff $old $new)
+        mapfile -t sapipkgs< <(for sapi in $(comm -23 <(p_sort $(phpquery -v $old -S)) <(p_sort $(phpquery -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
+        mapfile -t sapi_not< <(for sapi in $(comm -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(phpquery -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}-"; done)
         kill_spinner
         if ((${#packages[@]})); then
-            apt_install_prechecked --yes php$NEW-cli
-            apt_install_prechecked --yes ${packages[@]}
+            apt_install_prechecked --yes ${sapipkgs[@]} ${packages[@]} ${sapi_not[@]}
+#            apt_install_prechecked --yes ${sapi_not[@]}
+#            apt_install_prechecked --yes ${packages[@]}
         fi
         command -v needrestart >/dev/null&&needrestart -r a
     else f
-        no_candidate "$NEW"
+        no_candidate "$new"
         exit1
     fi
     populate_versions_array
     separator
-    f;echo " -$(format_string "$(P)If everything looks good so far, the migration of the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
-    f;G;echo "$(prompt;lB) $me$forceflag$(C) $OLD $NEW";N
+    f;echo " -$(format_string "$(P)If everything looks good so far, the migration of the settings from $(C)php-$old$(P) to $(C)php-$new$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
+    f;G;echo "$(prompt;lB) $me$forceflag$(C) $old $new";N
     f;os;P;echo "to finalize or redo the migration.";N
-    f;echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(C)php-$OLD$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3;N)"
-    ask "$(qpf)Proceed with next step" "$YES"&&{ separator;"$me$forceflag" "json=$my_json" $OLD $NEW;exit;}||exit0
+    f;echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(C)php-$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3;N)"
+    ask "$(qpf)Proceed with next step" "$YES"&&{ separator;"$me$forceflag" "json=$my_json" $old $new;exit;}||exit0
 }
 
 # messages
@@ -269,7 +272,7 @@ case $1 in
     *)  :
 esac
 
-if $supported && [ $# -eq 2 ];then
+if $supported && [ $# -eq 2 ] && [ ${#VERSIONS[@]} -gt 1 ];then
     does_exist_ "${1//php/}" 1 && does_exist_ "${2//php/}" 0 && OLD="${1//php/}" NEW="${2//php/}" || explain
 fi
 
@@ -279,7 +282,7 @@ if $supported; then
         OLD=${VERSIONS[0]}
         separator
         f
-        echo " -$(W;format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3;N)"
+        echo "$(ipf;W;format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3;N)"
         f
         anykey
         separator
