@@ -24,25 +24,16 @@ $(separator xGRAY)
   $(GRAY;format_string "If your problem has been resolved with this script, then I was able to help you," 3)
   $(GRAY;format_string "which fulfills the main motivation of my work!" 3)
 
-  $(GRAY;format_string "What you don't see is that I developed these scripts in endless unpaid hours and" 3)
-  $(GRAY;format_string "am still developing them to this day. This means it will be able to perform even" 3)
-  $(GRAY;format_string "more tasks for you safely in the future." 3)
+  $(GRAY;format_string "I have spent countless unpaid hours developing these scripts - and am still" 3)
+  $(GRAY;format_string "developing them further so that they can safely perform even more helpfull tasks" 3)
+  $(GRAY;format_string "for you in the future." 3)
 
-  $(GRAY;format_string "But it can't lay eggs, doesn't produce wool, milk or meat, but only the fastest" 3)
-  $(GRAY;format_string "and most reliable solution to $(W)YOUR$(GRAY) problem, which would otherwise have cost $(W)YOU$(GRAY)" 3)
-  $(GRAY;format_string "a lot of time, nerves and possibly money. Until today it has almost only cost $(W)MY" 3)
-  $(GRAY;format_string "time, $(W)MY$(GRAY) nerves and $(W)MY$(GRAY) money." 3)
-
-  $(GRAY;format_string "It would actually be quite normal if even a tiny bit of it were to flow back as" 3)
-  $(GRAY;format_string "thanks or recognition, so that I am not left with the costs all by myself while" 3)
-  $(GRAY;format_string "you have been able to solve your problem." 3)
-
-  $(W;format_string "A few users have shown their appreciation with small donations ranging from 1" 3)
-  $(W;format_string "to 20 €/$, for which I sincerely want to express my thanks here!" 3)
+  $(W;format_string "I sincerely want to express my thanks to those who have shown their appreciation" 3)
+  $(W;format_string "with donations!" 3)
 
   $(GRAY;format_string "My scripts should remain freely accessible and not disappear behind a paywall." 3)
   $(GRAY;format_string "Everyone should be free to decide if and how they want to support my work." 3)
-  $(GRAY;format_string "If you want to do this with money, you can do so at these addresses:" 3)
+  $(GRAY;format_string "If you want to do this with money, you can do so to these addresses:" 3)
 
    $(GRAY)* $(C)Paypal$(GRAY) to
        $(lG)ernolf$(C)<at>$(lG)global-social.net
