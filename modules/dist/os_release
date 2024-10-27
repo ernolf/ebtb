@@ -10,8 +10,8 @@ __license__
 ${OS_RELEASE_BASHLIB:-false} || {
     OS_RELEASE_BASHLIB=:
 
-    declare OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
-    declare -l OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
+    declare -g OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
+    declare -gl OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
 
     source_os_release(){
         if [ -f /etc/os-release ] || [ -f /usr/lib/os-release ]; then
@@ -75,7 +75,9 @@ ${OS_RELEASE_BASHLIB:-false} || {
 }
 # COMMENT -->
 
-### Debian
+##### known os-release as examples for developers
+
+#### Debian
 ## common:
 #    NAME="Debian GNU/Linux"
 #    ID=debian
@@ -95,6 +97,14 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    VERSION="11 (bullseye)"
 #    VERSION_CODENAME=bullseye
 
+## 12 (bookworm)
+#    PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
+#    VERSION_ID="12"
+#    VERSION="12 (bookworm)"
+#    VERSION_CODENAME=bookworm
+
+
+### Armbian
 # Armbian 23.8.1 bullseye - like 11 (bullseye)
 #    PRETTY_NAME="Armbian 23.8.1 bullseye"
 #    ARMBIAN_PRETTY_NAME="Armbian 23.8.1 bullseye"
@@ -105,12 +115,6 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    SUPPORT_URL="https://forum.armbian.com"
 #    BUG_REPORT_URL="https://www.armbian.com/bugs"
 
-## 12 (bookworm)
-#    PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
-#    VERSION_ID="12"
-#    VERSION="12 (bookworm)"
-#    VERSION_CODENAME=bookworm
-
 
 ### Raspbian
 ## common:
@@ -120,6 +124,12 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    HOME_URL="http://www.raspbian.org/"
 #    SUPPORT_URL="http://www.raspbian.org/RaspbianForums"
 #    BUG_REPORT_URL="http://www.raspbian.org/RaspbianBugs"
+
+## 10 (buster)
+#    PRETTY_NAME="Raspbian GNU/Linux 10 (buster)"
+#    VERSION_ID="10"
+#    VERSION="10 (buster)"
+#    VERSION_CODENAME=buster
 
 ## 11 (bullseye)
 #    PRETTY_NAME="Raspbian GNU/Linux 11 (bullseye)"
@@ -197,15 +207,6 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    UBUNTU_CODENAME=jammy
 
 ## LMDE (Linux Mint Debian Edition)
-## 6 (faye)
-#    NAME="LMDE"
-#    PRETTY_NAME="LMDE 6 (faye)"
-#    VERSION_ID="6"
-#    VERSION="6 (faye)"
-#    VERSION_CODENAME=faye
-#    ID_LIKE=debian
-#    DEBIAN_CODENAME=bookworm
-
 ## 5 (elsie)
 #    NAME="LMDE"
 #    PRETTY_NAME="LMDE 5 (elsie)"
@@ -214,6 +215,15 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    VERSION_CODENAME=elsie
 #    ID_LIKE=debian
 #    DEBIAN_CODENAME=bullseye
+
+## 6 (faye)
+#    NAME="LMDE"
+#    PRETTY_NAME="LMDE 6 (faye)"
+#    VERSION_ID="6"
+#    VERSION="6 (faye)"
+#    VERSION_CODENAME=faye
+#    ID_LIKE=debian
+#    DEBIAN_CODENAME=bookworm
 
 #    lsb_release -a: Distributor ID: Linuxmint Description: LMDE 6 (faye) Release: 6 Codename: faye
 #    /etc/lsb-release: DISTRIB_ID=LinuxMint DISTRIB_RELEASE=5 DISTRIB_CODENAME=elsie DISTRIB_DESCRIPTION="LMDE 5 Elsie"
@@ -231,6 +241,10 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    VERSION_ID=3.19.1
 
 #    lsb_release -a: Distributor ID: Alpine Description: Alpine Linux v3.19 Release: 3.19.1 Codename: n/a
+
+## 3.20.3
+#    VERSION_ID=3.20.3
+#    PRETTY_NAME=Alpine Linux v3.20
 
 
 #### Suse
