@@ -19,7 +19,7 @@ modules=(
     basics sed tempfile ansi prefix button fstring exit spinner anykey line
     array ask sudo dependency vdir integrity nc/nextcloud
 )
-
+__debug__
 __when__
 
 __whoami_whereami__

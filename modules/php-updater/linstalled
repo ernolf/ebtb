@@ -235,5 +235,4 @@ ${LINSTALLED_BASHLIB:-false} || {
             versions_iterate check_config
         fi
     }
-
 }

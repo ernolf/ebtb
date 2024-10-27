@@ -92,18 +92,18 @@ ${APPSTORE_BASHLIB:-false} || {
                    *)   :
         esac
         local extra_jq="$*"
-
+# TODO 0 -->
 $debug && echo "${FUNCNAME[0]}: platform=$platform, ids=$ids, new=$new, extra_jq=$extra_jq, lang=$lang"
 $debug && anykey
 $debug && set -x
-
+# TODO <-- 0
         local response=$(dl_appstore_json_db apps $platform)
         local http_code=${response%:*} unix_etag=${response#*:}
-
+# TODO 1 -->
 $debug && echo "${FUNCNAME[0]}: http:code=$http_code, unix_etag=$unix_etag"
 $debug && anykey
 $debug && set +x
-
+# TODO <-- 1
         local json_data_file="$(r_db "SELECT json_data_file FROM apps WHERE platform == '$platform' AND etag == '$unix_etag'")"
 
       # jq-filter as here-document:
@@ -191,5 +191,4 @@ JQ
         jq --arg lang "$lang" -f <(echo "$JQ_FILTER") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
         exit 0
     }
-
 }

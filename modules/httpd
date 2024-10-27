@@ -67,7 +67,7 @@ ${HTTPD_BASHLIB:-false} || {
                all) mapfile -t HTTPD_ALL< <(detect_httpd all 2>&1)
         esac
     }
-
+# TODO 0 -->
 # example:
 #    detected_httpd(){
 #        populate_httpd_ known
@@ -76,5 +76,5 @@ ${HTTPD_BASHLIB:-false} || {
 #            echo "${HTTPD_KNOWN[0]}"
 #        fi
 #    }
-
+# TODO <-- 0
 }

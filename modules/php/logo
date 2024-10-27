@@ -45,5 +45,4 @@ PHPLOGO
     phplogo(){
         php_logo
     }
-
 }

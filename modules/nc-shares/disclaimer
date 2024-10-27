@@ -22,5 +22,4 @@ ${DISCLAIMER_BASHLIB:-false} || {
         echo "You can run this script at a later time, it will update itself";N
         anykey
     }
-
 }

@@ -55,13 +55,17 @@ ${NEXTCLOUD_BASHLIB:-false} || {
     config2json(){
 
         jq_filter(){
+# TODO 0 -->
 #            echo "$@"|jq -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
+# TODO <-- 0
             echo "$@" | jq -c '[.[] | .[]]
                 | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
                 | reduce .[]as $item({};. * $item)'
         }
 
+# TODO 1 -->
 #        C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
+# TODO <-- 1
         C2J='<?php
         $c = [];
         foreach ($argv as $f) {
@@ -156,5 +160,4 @@ ${NEXTCLOUD_BASHLIB:-false} || {
             string) awk -F"'" '/\$OC_VersionString =/{print $2}' "$version_php";;
         esac
     }
-
 }

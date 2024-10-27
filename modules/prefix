@@ -10,6 +10,8 @@ __license__
 ${PREFIX_BASHLIB:-false} || {
     PREFIX_BASHLIB=:
 
+    . <(lrequire ansi)
+
     # Prefix
     pf(){
         printf ' - '
@@ -29,5 +31,4 @@ ${PREFIX_BASHLIB:-false} || {
     qpf(){
         printf 'Q: '
     }
-
 }

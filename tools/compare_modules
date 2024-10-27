@@ -25,7 +25,7 @@ declare -a difflibs=()
 channel1="$1"
 channel2="$2"
 dir1=$MBUILD_DIR
-dir2=$DATA_DIR/$target_includes/${channel2:=prod}
+dir2=$DATA_DIR/$target_modules_dir/${channel2:=prod}
 
 $verbose && echo "  checking libs:"
 

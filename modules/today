@@ -12,7 +12,7 @@ ${TODAY_BASHLIB:-false} || {
 
     # when
     # today 00:00 in unixtime
-    declare -i today=$(date -d 'today 00:00' +%s)
+    declare -i today=$(date -ud 'today 00:00' +%s)
 
     # from unix to utc day
     ut2udF(){
@@ -26,5 +26,4 @@ ${TODAY_BASHLIB:-false} || {
     now(){
         date +%s
     }
-
 }

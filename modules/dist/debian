@@ -10,9 +10,6 @@ __license__
 ${DEBIAN_BASHLIB:-false} || {
     DEBIAN_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
     . <(lrequire button)
     . <(lrequire exit)
     . <(lrequire line)
@@ -86,7 +83,5 @@ ${DEBIAN_BASHLIB:-false} || {
         done
 
         line '-' dP 2/78
-#        anykey
     }
-
 }

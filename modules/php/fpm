@@ -110,7 +110,7 @@ ${FPM_BASHLIB:-false} || {
         local -A pools
         ver=$1
         glob=$(fpm_include $ver glob)
-#        for poolfile in $(ls $glob 2>/dev/null); do
+        # for poolfile in $(ls $glob 2>/dev/null); do
         for poolfile in $glob; do # bash has its builtin glob functionality
             pool="$(sed -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
             pools[$pool]="$(fpm_listen "$poolfile" brief)"
@@ -186,5 +186,4 @@ ${FPM_BASHLIB:-false} || {
             fi
         fi
     }
-
 }

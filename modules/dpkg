@@ -249,7 +249,9 @@ ${DPKG_BASHLIB:-false} || {
     switch_php_to_(){
         apt-mark manual $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
         set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
+# TODO 0 -->
 #        apt-mark hold $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
+# TODO <-- 0
     }
 
     list_apt_sources(){
@@ -277,10 +279,11 @@ ${DPKG_BASHLIB:-false} || {
         f;o2;B;echo "This is a list of the files containing the apt sources for your information:";N
         # apt sources files
             mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_dists.*$//')")
+# TODO 1 -->
     #        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|grep -v ':\s*#'|grep -E "*.(list|sources)\:"|awk -F':' '{print $1}'; done))
+# TODO <-- 1
             mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|awk -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
             for i in ${!aptsourcesfiles[@]}; do o2;pf;GRAY;echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}";N; done
         fi
     }
-
 }

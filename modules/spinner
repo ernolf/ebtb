@@ -20,6 +20,7 @@ ${SPINNER_BASHLIB:-false} || {
 
     # Function to display the spinning animation
     spinner(){
+        ${debug:-false} && return 0
         [ -f "$spinner_pid_file" ] && return 0
         local cursor_status color spinr spinl
         local -i L R prog dir pos marg
@@ -76,6 +77,7 @@ ${SPINNER_BASHLIB:-false} || {
 
     # kill and clean up  spinner:
     kill_spinner(){
+        ${debug:-false} && return 0
         local -i ct=0
         until [ -f "$spinner_pid_file" ]; do
             (( ct > 500 )) && return 0
@@ -97,5 +99,4 @@ ${SPINNER_BASHLIB:-false} || {
         cursor_ "$cursor"
         rm -f "$spinner_pid_file"
     }
-
 }

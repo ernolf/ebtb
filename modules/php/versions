@@ -18,8 +18,8 @@ ${VERSIONS_BASHLIB:-false} || {
     . <(lrequire array)
     . <(lrequire php/sury)
 
-    declare PHP_VERSION phpvregex
-    declare -a EXISTING VERSIONS CAN
+    declare -g PHP_VERSION phpvregex
+    declare -ga EXISTING VERSIONS CAN
     phpvregex='php(5\.6|7\.[01234]|8\.[01234])'
 
     no_php(){
@@ -247,5 +247,4 @@ PHP_VERSIONS
         done
         donate_
     }
-
 }

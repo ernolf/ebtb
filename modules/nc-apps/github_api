@@ -50,5 +50,4 @@ ${GITHUB_API_BASHLIB:-false} || {
             echo "v${latest_versions[$key]//z/}"
         done
     }
-
 }

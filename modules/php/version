@@ -22,5 +22,4 @@ ${VERSION_BASHLIB:-false} || {
             return 0
         fi
         }
-
 }

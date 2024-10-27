@@ -135,5 +135,4 @@ PARSE_DIRECTIVES_AWK
         exit 0
     }
     [ "$1" = "--update_ini_directives" ]&&update_ini_directives $2
-
 }

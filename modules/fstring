@@ -18,7 +18,7 @@ ${FSTRING_BASHLIB:-false} || {
 
     # format a long string in lines with a maximum length
     format_string() {
-        if [[ "$-" =~ 'x' ]]; then
+        if [[ "$-" =~ x ]]; then
             set +x
             local debugx=true
         else
@@ -74,6 +74,4 @@ ${FSTRING_BASHLIB:-false} || {
         shift 2
         echo -en "$($color_fg;echo -n "$@"|sed "s/ /, /g;s/\(.*\), /\1 $($color_bg)and$($color_fg) /";$color_bg)"
     }
-
-
 }

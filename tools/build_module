@@ -28,6 +28,8 @@ source config/configure
 [ -f config/secrets ] && source config/secrets
 # Source the placeholders file
 source config/placeholders
+# source sed functions
+source <(tail -n +10 modules/sed)
 
 # Declare variables
 declare input_module output_module modulename tempfile placeholder placeholder_pattern
@@ -38,6 +40,12 @@ modulename=${input_module#$MODULES_DIR/}
 
 # copy the input module to the output module
 cp "$input_module" $output_module
+
+for i in $(seq 0 9); do
+    delx2yi "# TODO $i -->" "# TODO <-- $i" $output_module
+done
+
+delp2ei "# COMMENT -->" $output_module
 
 tempfile=$(mktemp)
 

@@ -30,7 +30,8 @@ sign_(){
 
     script="$1"
     scriptname="$(basename "$script")"
-    target="$DATA_DIR/$target_dir/$scriptname"
+
+    target="$DATA_DIR/$target_scripts_dir/$scriptname"
 
     # first strip old signatures before signing
     echo "    strip old signature"
@@ -59,19 +60,18 @@ sign_(){
     hash=$(sha256sum "$script" | awk '{printf $1}')
 
     # copy file to target
-    echo "    copy '$script' to '$target.sh'"
-    cp "$script" "$target.sh"
+    echo "    copy '$script' to '$target'"
+    cp "$script" "$target"
 
     # create json object
     echo "    create json object '$target.json'"
     jq -n --compact-output --arg scriptname "$scriptname" --arg epoch "$epoch" --arg size "$size" --arg hash "$hash" \
       '{ scriptname: $scriptname, epoch: $epoch, size: $size, hash: $hash }' > "$target.json"
-
 }
 
 scan_(){
-    chown -R $HT_USER:$HT_USER "$DATA_DIR/$target_dir"
-    occ files:scan --path="$target_dir"
+    chown -R $HT_USER:$HT_USER "$DATA_DIR/$target_scripts_dir"
+    occ files:scan --path="$target_scripts_dir"
 }
 
 (($#))&&{

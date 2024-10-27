@@ -70,7 +70,7 @@ $(SCRIPTS_BASE): % : $(SBUILD_DIR)/%
 
 # Build all scripts without test format with 'make all-prod'
 .PHONY: all-prod
-all-prod: $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%) set-executable
+all-prod: set-executable $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%)
 
 $(SBUILD_DIR)/%: $(SCRIPTS_DIR)/%
 	mkdir -p $(SBUILD_DIR)
@@ -84,7 +84,7 @@ test: set-executable
 
 # Build all test scripts with 'make all-test'
 .PHONY: all-test
-all-test: $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%-test) set-executable
+all-test: set-executable $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%-test)
 
 $(SBUILD_DIR)/%-test: $(SCRIPTS_DIR)/%
 	mkdir -p $(SBUILD_DIR)

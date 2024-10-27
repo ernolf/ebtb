@@ -24,7 +24,7 @@ modules=(
     $sin/app_update $sin/filters $sin/db $sin/appstore $sin/data_refine
     $sin/assumed_version $sin/list $sin/install_overwrite $sin/l10n $sin/help
 )
-
+__debug__
 # use parallel running background jobs in order to dramatically increase speed
 #declare bgjobs=false debug=true pager
 #declare bgjobs=false debug=false pager

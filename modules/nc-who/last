@@ -54,5 +54,4 @@ ${LAST_BASHLIB:-false} || {
         fi
         db_exec_ "$query"
     }
-
 }

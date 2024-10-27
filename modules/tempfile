@@ -22,7 +22,9 @@ ${TEMPFILE_BASHLIB:-false} || {
             esac
         done
         t="$(mktemp -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
+# TODO 0 -->
 #        t="$(mktemp -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
+# TODO <-- 0
         if [ -z "$u" ]; then
             if [ -n "$chmod" ]; then
                 chmod $chmod "$t"
@@ -30,5 +32,4 @@ ${TEMPFILE_BASHLIB:-false} || {
         fi
         echo "$t"
     }
-
 }

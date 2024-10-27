@@ -80,8 +80,10 @@ ${FUNCTIONS_BASHLIB:-false} || {
         local user="$1" choice
         local -a valid_ids
         valid_ids=($(list_calendar_ids "$user"))
+# TODO 0 -->
     #    read -p "Do you want to change any refreshrates? [y N] " choice
     #    [ "$(tolower ${choice:-n})" != "y" ]&&{ echo "exiting";exit 0;}
+# TODO <-- 0
         while :;do
           # Prompt for user input
             cal_id=''
@@ -160,5 +162,4 @@ ${FUNCTIONS_BASHLIB:-false} || {
         P;echo "Run this script again to see the result and monitor the nextcloud log for errors";N
         f
     }
-
 }

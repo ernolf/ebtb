@@ -122,7 +122,9 @@ ${ANSI_BASHLIB:-false} || {
       [W]="$(cWi)"                      # white intense (used to supress automatic underlines in links)
       [N]=''                            # reset (No Color/Neutral)
     )
+# TODO 0 -->
 #    for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';}";done
+# TODO <-- 0
     for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}";done
     unset -v FG BG BFG BBG _8 _24 SGR C CC p
 
@@ -135,17 +137,20 @@ ${ANSI_BASHLIB:-false} || {
         local -i n=${1:-1} i
         for (( i=1; i<=n; i++ )); do
             printf '%b' '\n'
+# TODO 1 -->
 #            printf '%b' '\x0a'
 #            printf '%b' '\012'
 #            echo
+# TODO <-- 1
         done
     }
 
+# TODO 2 -->
 #    # delete actual and previous line jump to previous line
 #    te0(){
 #        printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
 #    }
-
+# TODO <-- 2
     # delete and stay in actual line
     te1(){
         printf '%b' "\r$CSI$EL"
@@ -170,7 +175,9 @@ ${ANSI_BASHLIB:-false} || {
 
     # Cursor offset absolute
     o(){
+# TODO 3 -->
 #        printf '%b' "\r$CSI$1$CUF"
+# TODO <-- 3
         printf '%b' "$CSI$(($1+1))$CHA"
     }
     o2(){ o 2;}; o3(){ o 3;}; o4(){ o 4;}; o5(){ o 5;}
@@ -191,5 +198,4 @@ ${ANSI_BASHLIB:-false} || {
     ansi_reset(){
         printf '%b' "$CSI?25h${CSI}0;m"
     }
-
 }

@@ -54,5 +54,4 @@ ${EXIT_BASHLIB:-false} || {
     trap 'exit_trap' EXIT
     trap 'interrupted INT' INT
     trap 'interrupted TERM' TERM
-
 }

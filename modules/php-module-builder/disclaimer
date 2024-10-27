@@ -48,5 +48,4 @@ ${DISCLAIMER_BASHLIB:-false} || {
 DISCLAIMER
         anykey
     }
-
 }

@@ -50,7 +50,9 @@ ${NEXTCLOUD_DB_BASHLIB:-false} || {
                 DB_RAW="-At"
                 DB_U2T="TO_TIMESTAMP"
                 DB_UT2TS="TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')"
+# TODO 0 -->
 #                DB_UT2TS=$(format "TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')")
+# TODO <-- 0
                 TYPE_SQL_QUERY="REVERSE(SUBSTRING(REVERSE(principaluri) FROM 1 FOR POSITION('/' IN REVERSE(principaluri)) - 1))"
                 ;;
              *) echo "$(Pbg) * Only mysql or pgsql as database, $db_type is not (yet) supported by this script $(N)"
@@ -131,5 +133,4 @@ ${NEXTCLOUD_DB_BASHLIB:-false} || {
         query="SELECT CASE WHEN (SELECT configvalue FROM ${DB_PREF}preferences WHERE userid = '$user' AND appid = 'core' AND configkey = 'enabled') = 'false' THEN 'true' ELSE 'false' END"
         db_raw_exec_ "$query"
     }
-
 }

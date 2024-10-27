@@ -43,6 +43,5 @@ ${ANYKEY_BASHLIB:-false} || {
             fi
         fi
     }
-
 }
 

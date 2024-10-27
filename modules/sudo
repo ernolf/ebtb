@@ -77,5 +77,4 @@ ${SUDO_BASHLIB:-false} || {
         su_do "u=root" "r=true" "p=$p" "run=$run" "arg=$@"
         return $?
     }
-
 }

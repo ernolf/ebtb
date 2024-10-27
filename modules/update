@@ -61,7 +61,7 @@ ${UPDATE_BASHLIB:-false} || {
         local my_tmp="$(tf u)" shash
         su_root "to update" my_update
         while :; do
-            curl -o "$my_tmp" -A "$A" $cargs/$scriptname
+            curl -o "$my_tmp" -A "$A" $cargs/scripts/$scriptname
             shash="$(sha256sum "$my_tmp" | awk '{print $1}')"
             if [ "$shash" = "$my_hash" ]; then
                 echo

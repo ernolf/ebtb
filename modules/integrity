@@ -140,5 +140,4 @@ PUBLIC_KEY_ASC
         o5;B;echo "First run, checking integrity:"
         run_integrity_check
     fi
-
 }

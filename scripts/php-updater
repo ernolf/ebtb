@@ -27,10 +27,7 @@ modules=(
     php/extensions php.net/ini_directives $sin/pdiff $sin/merge $sin/diff
     $sin/tasks $sin/linstalled $sin/help $sin/chfiles
 )
-
-declare debug=false
-$debug&&trap 'read -rp "$(R)[DEBUG:]$(N) press Enter to poceed..."' DEBUG
-
+__debug__
 __when__
 
 __whoami_whereami__

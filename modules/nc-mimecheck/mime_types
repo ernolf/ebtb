@@ -133,12 +133,14 @@ ${MIME_TYPES_BASHLIB:-false} || {
     )
 
     declare -a mime_ext_regex_text=(
+# TODO 0 -->
     #    "text/plain:.txt:^.*\.(te?xt)$"
     #    "text/plain:.conf:^.*\.(conf)$"
     #    "text/plain:.cfg:^.*\.(cfg)$"
     #    "text/plain:.rc:^.*\.(rc)$"
     #    "text/plain:.ini:^.*\.(ini)$"
     #    "text/plain:.properties:^.*\.(properties)$"
+# TODO <-- 0
         "text/html:.html:^.*\.(html?)$"
         "text/css:.css:^.*\.(css)$"
         "text/javascript:.js:^.*\.(js)$"
@@ -197,5 +199,4 @@ ${MIME_TYPES_BASHLIB:-false} || {
         done
         echo "$line";echo
     }
-
 }

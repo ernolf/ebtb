@@ -101,5 +101,4 @@ ${FILTERS_BASHLIB:-false} || {
     appstore 'map(select(.created < "2023-01-01" and .lastModified < "2023-01-01"))'
 FILTERS
     }
-
 }

@@ -10,7 +10,10 @@ __license__
 ${PDIFF_BASHLIB:-false} || {
     PDIFF_BASHLIB=:
 
-    # returns a list with vals unique to $1 - # x1=minimum packages to be installed, x2= packages required by cli and thus installed
+    . <(lrequire dpkg)
+    . <(lrequire php/extensions)
+
+    # returns a list with vals unique to $1 - # x1=minimum packages to be installed, x2=sapis and packages required by cli and thus installed
     packages_diff(){
         inst(){
             local v x

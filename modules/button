@@ -63,5 +63,4 @@ ${BUTTON_BASHLIB:-false} || {
     r2r(){
         printf '%s' "$(box r) to return"
     }
-
 }

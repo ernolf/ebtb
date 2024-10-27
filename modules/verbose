@@ -17,9 +17,6 @@ ${VERBOSE_BASHLIB:-false} || {
     . <(lrequire exit)
     . <(lrequire anykey)
 
-#    declare debug=false
-#    $debug&&trap 'read -rp "$(R)[DEBUG:]$(N) press Enter to poceed..."' DEBUG
-
     # error handling
     error(){
         if ! ${quiet:-false}; then
@@ -42,5 +39,4 @@ ${VERBOSE_BASHLIB:-false} || {
             anykey
         fi
     }
-
 }

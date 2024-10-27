@@ -54,5 +54,4 @@ ${LINE_BASHLIB:-false} || {
         color="$1"
         line ' =' ${color:-GRAY} $((($(tput cols)-8)/2))
     }
-
 }

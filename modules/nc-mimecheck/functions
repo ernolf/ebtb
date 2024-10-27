@@ -77,5 +77,4 @@ ${FUNCTIONS_BASHLIB:-false} || {
             (($i))&&i=$ret
         done;return $i
     }
-
 }

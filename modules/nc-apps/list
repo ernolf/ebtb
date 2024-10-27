@@ -45,7 +45,7 @@ ${LIST_BASHLIB:-false} || {
                     break
                 fi
             done
-# TODO
+
             if ( $use_json_all && ! $inappstore &&
             $(jq -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}" 2>/dev/null) ); then
                 inappstore=true
@@ -58,7 +58,9 @@ ${LIST_BASHLIB:-false} || {
                 (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section=store
             fi
         fi
+# TODO 0 -->
 $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
+# TODO <-- 0
         case $section in
             enabled|disabled|na)
                 mapfile -t apps_paths < <(nc_configkey apps_paths | jq -r 'if . == null then "apps" else .[] | .path | split("/")[-1] end')
@@ -78,7 +80,9 @@ $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
                 fi
                 if [ ! -f "$info_xml" ]; then
                     if [ "$command" = "ids" -o "$command" = "name" ]; then
+# TODO 1 -->
 $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
+# TODO <-- 1
                        return
                     else
                         echo "$(Pbg)  Database too old.  $(N)"
@@ -184,11 +188,15 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
             mid="$(N)|"
         elif [[ " ${availupd[@]%%#*} " =~ " $id " ]]; then
             in="$(P)>    $(GRAY)"
+# TODO 2 -->
 #            mid="$(o 21)" # <- does not work in less -R
+# TODO <-- 2
             mid=""
         else
             in="  $(GRAY)"
+# TODO 3 -->
 #            mid="$(o 20)" # <- does not work in less -R
+# TODO <-- 3
             mid="  "
         fi
 
@@ -211,8 +219,10 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
         # not restrictable to groups
         if not_restrictable_to_groups; then
             echo "$in $(O)$mid$($md||es 15)App can not be restricted to groups"
+# TODO 4 -->
 #        else
 #            echo "$in $(G)$mid$($md||es 15)App can be restricted to groups"
+# TODO <-- 4
         fi
 
         # Categories
@@ -345,5 +355,4 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
         line '-' GRAY 80
         return 0
     }
-
 }

@@ -14,5 +14,4 @@ ${XML_BASHLIB:-false} || {
     xmls(){
         xmlstarlet sel -B -t "$@"
     }
-
 }

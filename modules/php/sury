@@ -16,9 +16,8 @@ ${SURY_BASHLIB:-false} || {
     . <(lrequire basics)
     . <(lrequire tempfile)
     . <(lrequire fstring)
-    . <(lrequire dist/os_release)
-    . <(lrequire php/versions)
     . <(lrequire dpkg)
+    . <(lrequire dist/os_release)
 
     sury(){
         # return codes:
@@ -532,10 +531,14 @@ DEB822
     # add_repository $1=ubuntu or debian, $2=codename, $3=package (defaults to php)
     add_repository_deb822(){
         local -l id codename package
+# TODO 0 -->
 #        local -a supported_suites
 #        id="$(lsb_release -si)" codename="$(lsb_release -sc)"
+# TODO <-- 0
         id="$1" codename="$2" package="${3:-php}"
+# TODO 1 -->
 #        supported_suites=($(supported_suites_ $id))
+# TODO <-- 1
         sources_list_deb822 $id $codename $package > /etc/apt/sources.list.d/ondrej-sury_$package.sources
         apt_update
         populate_can_array
@@ -572,5 +575,4 @@ DEB822
             fi
         done
     }
-
 }

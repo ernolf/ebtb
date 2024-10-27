@@ -24,8 +24,10 @@ ${ASK_BASHLIB:-false} || {
     NO="$(R)no$(N)"
     Yes="[$(lG)y$(N)]es"
     No="[$(R)n$(N)]o"
+# TODO 0 -->
     #YES="[$(lG)y$(N)]es"
     #NO="[$(R)n$(N)]o"
+# TODO <-- 0
 
     flat(){
         echo "$1" | sed -e 's/\[//' -e 's/\]//'
@@ -35,8 +37,10 @@ ${ASK_BASHLIB:-false} || {
         echo "$1" | sed -e 's/.*\[//' -e 's/\].*//'
     }
 
+# TODO 1 -->
     #spacefrom(){ echo "$1"|sed 's/[^[:space:]].*//';}
 
+# TODO <-- 1
     first_idx(){
         local str="$1" qpref="$(qpf)"
         local -i i=0
@@ -115,7 +119,9 @@ ${ASK_BASHLIB:-false} || {
         hauler="$1"
         shift
         haul "$hauler $@" # &
+# TODO 2 -->
 #        sleep 1
+# TODO <-- 2
         mapfile -t payload< <($hauler "$@" 2>&1)
         for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
     }

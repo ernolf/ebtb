@@ -73,5 +73,4 @@ ${INI_BASHLIB:-false} || {
             ini_symlinks
         fi
     }
-
 }

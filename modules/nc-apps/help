@@ -208,5 +208,4 @@ EXAMPLES
         $cat_or_pager $htf
         exit 0
     }
-
 }

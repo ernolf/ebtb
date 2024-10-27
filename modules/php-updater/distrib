@@ -151,6 +151,5 @@ ${DISTRIB_BASHLIB:-false} || {
     }
 
     [[ "$(tail -n3 "$ca_me"|head -n1)" =~ "distrib_checked" ]]||check_os_release
-
 }
 

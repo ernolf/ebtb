@@ -63,5 +63,4 @@ ${DATA_REFINE_BASHLIB:-false} || {
             exit 1
         fi
     }
-
 }

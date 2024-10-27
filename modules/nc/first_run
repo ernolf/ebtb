@@ -10,9 +10,6 @@ __license__
 ${FIRST_RUN_BASHLIB:-false} || {
     FIRST_RUN_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
     . <(lrequire sudo)
     . <(lrequire button)
     . <(lrequire anykey)
@@ -123,5 +120,7 @@ ${FIRST_RUN_BASHLIB:-false} || {
             [ -f "$p/occ" ] && complete "$p" || echo "$(Pbg)  * I can not detect a Nextcloud installation in \"$p\" $(N)"
         done
     }
+# TODO 0 -->
 #    [ -r "$NC_DIR/lib/base.php" ] || first_run
+# TODO <-- 0
 }

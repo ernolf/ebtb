@@ -23,5 +23,4 @@ ${VDIR_BASHLIB:-false} || {
         esac
         sed -i "s|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|" "$v3"
     }
-
 }

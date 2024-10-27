@@ -34,12 +34,12 @@ ${INSTALL_OVERWRITE_BASHLIB:-false} || {
 
         replace_array(){
             if $app_install_overwrite_exists; then
-                if (( counter )); then # shellcheck disable=SC2068
+                if (( counter )); then
                     sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/c\\" -e "$aioa" $configfile
-                else # shellcheck disable=SC2068
+                else
                     sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/d" "$configfile"
                 fi
-            else # shellcheck disable=SC2068
+            else
                 sed $@ '$s/^);$/'"$aioa"'\n&/' "$configfile"
             fi
         }

@@ -57,5 +57,4 @@ ${INTERVAL_BASHLIB:-false} || {
         outstring="$outstring and $minutes minutes"
         echo "$outstring"
     }
-
 }

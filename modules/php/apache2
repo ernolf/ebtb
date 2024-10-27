@@ -131,15 +131,20 @@ ${APACHE2_BASHLIB:-false} || {
                 o3;pf;C;echo "${conffiles[i]}";N
             done
             f
+# TODO 0 -->
 if $verbose; then
             echo " -$(format_string "This script can replace $(listify Y ${conn_o[@]}) with $(Y)$conn_n$(N) for you, so look exactly what it suggests to do. If it does not look good, simply answer $(button no) and edit the file yourself as you need it." 3)"
 else
+# TODO <-- 0
             echo " -$(format_string "If you continue here, this script will replace $(listify Y ${conn_o[@]}) with $(Y)$conn_n$(N) for you." 3)"
+# TODO 1 -->
 fi
+# TODO <-- 1
             f
             anykey
             for i in ${!conffiles[@]}; do
                 conffile="${conffiles[i]}"
+# TODO 2 -->
 if $verbose; then
                 separator
                 line '=' P 2/78 b1  # old config
@@ -180,9 +185,12 @@ if $verbose; then
                 fi
                 separator
 else
+# TODO <-- 2
                 sed -E --in-place=.backup '/^\s*#/ !s#'$conn_regex'#'$conn_n'#g' $conffile
                 o3;Pbg;echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conffile.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
+# TODO 3 -->
 fi
+# TODO <-- 3
             done
         else
             return
@@ -223,17 +231,23 @@ fi
         mapfile -t pools_o< <(fpm_pool "$ver_o")
         for pool in ${pools_n[@]}; do
             case $webserver in
+# TODO 4 -->
 #               apache2) if [[ "$pool" =~ " ${pools_o[@]} " && "$pool" == 'www' ]]; then
+# TODO <-- 4
                apache2) if [ "$pool" == 'www' ]; then
                             if php_fpm_conf_ switch2 $ver_n -q; then
                                 o3;G;echo "Successfully switched php-fpm conf from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G).";N
                             else
                                 o3;R;echo "Something went wrong while switching php-fpm from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R).";N
                             fi
+# TODO 5 -->
 #                        elif [ "$pool" = 'www' ]; then
 #                            php_fpm_conf_ enable $ver_n -q
+# TODO <-- 5
                         else
+# TODO 6 -->
             #                [ "$ver_o" = "$ver_n" ] || php_fpm_sites_available_conf_ $pool $ver_o $ver_n
+# TODO <-- 6
                             php_fpm_sites_available_conf_ $webserver $pool $ver_n
                         fi
                         ;;
@@ -248,14 +262,13 @@ fi
         local ver_o ver_n
         ver_n="$1" ver_o="$PHP_VERSION"
         [ -z "$2" ] || ver_o="$2"
-
+# TODO 7 -->
 # TODO !!!! a2 mod php detection
-
+# TODO <-- 7
         if a2dismod -q php* && a2enmod -q php$ver_n && systemctl restart apache2; then
             o3;G;echo "Successfully switched apache2-mod-php from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G).";N
         else
             o3;R;echo "Something went wrong while switching apache2-mod-php from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R).";N
         fi
     }
-
 }

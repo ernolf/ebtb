@@ -21,7 +21,7 @@ modules=(
 
 declare debug=false
 declare verbose=false
-
+__debug__
 __when__
 
 __whoami_whereami__

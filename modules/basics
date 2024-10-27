@@ -94,5 +94,4 @@ ${BASICS_BASHLIB:-false} || {
     escaped(){
         printf '%q' "$@"
     }
-
 }

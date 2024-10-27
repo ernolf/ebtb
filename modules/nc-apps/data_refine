@@ -54,22 +54,29 @@ ${DATA_REFINE_BASHLIB:-false} || {
     }
 
     query_apps(){
+# TODO 0 -->
 $debug && echo "${FUNCNAME[0]}"
-
+# TODO <-- 0
         while (( $# )); do local $1; shift; done
 
         local local_applist appstore_ids local_ids app_id appstore_json global_applist platform="$nc_version"
         local -a appstore_ids_not_installed
         local_applist="$(r_db "SELECT json_data FROM app_lists WHERE section == 'local';")"
 
+# TODO 1 -->
 $debug && set -x
+# TODO <-- 1
         $unsupported||$all&&platform='all'
         appstore_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'appstore_$platform';"|base64 -d)"
+# TODO 2 -->
 $debug && echo "platform=$nc_version, lang=$lang"
 $debug && anykey
+# TODO <-- 2
         local_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'local';"|base64 -d)"
+# TODO 3 -->
 $debug && anykey
 $debug && set +x
+# TODO <-- 3
 
         # iterate through appstore_ids and filter out IDs that are not in local_ids array
         for app_id in $appstore_ids; do
@@ -142,5 +149,4 @@ $debug && set +x
     get_applist_section_(){
         jq -r --arg app "$1" 'if .enabled|has($app) then "enabled" elif .disabled|has($app) then "disabled" elif .store|has($app) then "store" else "na" end' <<< "$applist_json"
     }
-
 }

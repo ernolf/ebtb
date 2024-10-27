@@ -37,7 +37,7 @@ modules=(
 
 # make module loading quiet if -q or --quiet is passed
 for a in "$@";do [[ "$a" == '-q'||"$a" == '--quiet' ]]&&declare pager=:;done;unset -v a
-
+__debug__
 __when__
 
 __whoami_whereami__

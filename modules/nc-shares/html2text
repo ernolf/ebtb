@@ -44,5 +44,4 @@ ${HTML2TEXT_BASHLIB:-false} || {
     #    eval $query | html2text -utf8 -width $(($(tput cols)-80))
     #    eval $query | eval $psql_fix1 | sed -e $sed_empty_row | eval $psql_fix2 | eval $sed_pre_html2text | html2text -utf8 -width 220 | sed -E -e "$sed_post_html2text"
     }
-
 }

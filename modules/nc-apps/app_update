@@ -23,5 +23,4 @@ ${APP_UPDATE_BASHLIB:-false} || {
     do_update_(){
         occ app:update --no-interaction --no-warnings $2 $1
     }
-
 }

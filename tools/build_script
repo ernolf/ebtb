@@ -44,18 +44,20 @@ else
 fi
 
 # copy the input script to the output script
-cp "$input_script" $output_script
+cp $input_script $output_script
 
 for i in $(seq 0 9); do
     delx2yi "# TODO $i -->" "# TODO <-- $i" $output_script
 done
+
+delp2ei '# COMMENT -->' $output_script
 
 tempfile=$(mktemp)
 
 # Replace placeholders with their actual contents
 for placeholder in "${placeholders[@]}"; do
     placeholder_pattern="__${placeholder}__"
-    awk '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname'"); next } 1' $output_script > $tempfile
+    awk '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$test_mode'"); next } 1' $output_script > $tempfile
     cat $tempfile > $output_script
 done
 rm -f $tempfile

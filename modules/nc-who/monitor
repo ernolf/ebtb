@@ -82,7 +82,9 @@ ${MONITOR_BASHLIB:-false} || {
             sed_pre_html2text="sed '$sed_empty_row
                                     s/<th align=\"center\">/<th>/g;s/<td align=\"left\">/<td>/g;s/<tr valign=\"top\">/<tr>/g
                                     s/_/~/g;s/ /=/g;s/<TABLE=BORDER=/<TABLE BORDER=/Ig'"
+# TODO 0 -->
     #                                s/…/.../g'" # replace ellipsis (…) from apple user agent strings with three dots
+# TODO <-- 0
             while :;do
                 html2text_command="html2text -utf8 -width $(($(tput cols)-8))"
                 first_line="| $list, refresh rate = $rr s. - [s] change refresh rate - [r] reload - [b] back - [q] quit"
@@ -103,7 +105,9 @@ ${MONITOR_BASHLIB:-false} || {
                                     s/~/_/g               # change ~ back to underscore
                                     s/=/ /g'              # change = back to spaces
                 "
+# TODO 1 -->
 #                watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
+# TODO <-- 1
                 cat <<-WATCH_COMMAND_TEMPFILE > $watch_command_tempfile
 AIO="$AIO" DOCKER="$DOCKER" DB_STRG="$(sed 's/\$/\\$/' <<< "$DB_STRG")" DB_EXEC="$DB_EXEC"
 $(declare -f aio_wrapper)
@@ -142,5 +146,4 @@ WATCH_COMMAND_TEMPFILE
             echo
         fi
     }
-
 }

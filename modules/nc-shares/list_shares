@@ -85,8 +85,7 @@ ${LIST_SHARES_BASHLIB:-false} || {
         fi
 
         d_echo "query: \"$query\""
-
-    #TODO ->
+# TODO 0 -->
     #        printf -v runtime "%(%F_%R_)T" # declare runtime variable
     #        tmp_file=$(tf) targetdir="/nc/dat/data/ich/files" targetfile="$targetdir/${basename_me}_$runtime$@.pdf"
     #        d_echo "tmp_file: $tmp_file"
@@ -107,11 +106,10 @@ ${LIST_SHARES_BASHLIB:-false} || {
 
     #        $occ files:scan -vvv --path="$targetfile"
     #    exit
-    #TODO <-
-
+# TODO <-- 0
         db_exec_ "$query" | column -t -s $'\t' | sed "s\ files/\ /\g$sed_string"
-
+# TODO 1 -->
     #    pipe_h2t "$DB_STRG $DB_EXEC" "$query"
+# TODO <-- 1
     }
-
 }

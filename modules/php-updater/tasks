@@ -756,6 +756,5 @@ ${TASKS_BASHLIB:-false} || {
         done
         kill_spinner
     }
-
 }
 

@@ -5,8 +5,7 @@ log(){
     ) 200>"$lf.lock"
 }
 ts() {
-    printf "%(%s-)T"
-    printf "%((%F_%R_%Z))T"
+    printf "%(%s-(%F_%R_%Z))T"
 }
 ver_() {
     awk '/^# v/{print$3,$4}' "$1"
@@ -56,7 +55,7 @@ lreq() {
         sourced $1 || cat "$lincld/$1"
     elif ! $rt; then
         $(req $1)
-    elif (($(curl -o "$lincld/$1" -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)); then
+    elif (($(mkdir -p "$(dirname "$lincld/$1")";curl -o "$lincld/$1" -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)); then
         log REQ $1
         cat "$lincld/$1"
     else
@@ -92,8 +91,8 @@ for arg in "$@"; do
 done
 set -- "${args[@]}" && unset -v args
 declare my_args="$*" r my_json my_scriptname my_hash
-$run2 && r=$(hc Io "$astr$my_args" $cargs/${scriptname}_json) || {
-    r=$(hc D "$astr$my_args" $cargs/${scriptname}_json)
+$run2 && r=$(hc Io "$astr$my_args" $cargs/scripts/${scriptname}.json) || {
+    r=$(hc D "$astr$my_args" $cargs/scripts/${scriptname}.json)
     ((${r##*$'\n'} == 200)) && my_json="${r%$'\n'*}"
 }
 unset -v r

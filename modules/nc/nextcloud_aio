@@ -57,6 +57,5 @@ ${NEXTCLOUD_AIO_BASHLIB:-false} || {
     else
         detect_aio
     fi
-
 }
 

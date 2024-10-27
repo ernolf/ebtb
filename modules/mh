@@ -15,9 +15,9 @@ ${MH_BASHLIB:-false} || {
 
     . <(lrequire sed)
     . <(lrequire tempfile)
-    if ! command -v source_os_release &>/dev/null; then
-        OS_RELEASE_BASHLIB=false
-        . <(lrequire dist/os_release)
+
+    if [[ "$lincld" =~ ebtb ]]; then
+        [ -d "${ca_dir%/*}/include/ernolf" ]&&[ -d "${ca_dir%/*}/include/ebtb" ]&&rm -r "${ca_dir%/*}/include/ernolf"
     fi
 
     lf="$TMPDIR/ebtb-logfiles/$bm.log"
@@ -28,12 +28,12 @@ ${MH_BASHLIB:-false} || {
     declare machineid
     declare leftstring_test
     declare leftstring_notest
-    declare testing=false
-    declare ext_inf=false
+    declare testing=true
+    declare ext_inf=true
     declare ext_ext_inf=false
-    leftstring_test="nc-apps nc-shares nc-who php-module-builder php-module-builder-test php-updater php-updater-test"
-    leftstring_notest="nc-apps nc-shares nc-who php-module-builder php-updater"
-    leftstring_aio="nc-apps nc-apps-test nc-occ nc-occ-test nc-who nc-who-test nc-sql nc-sql-test"
+    leftstring_test="nc-apps nc-occ nc-shares nc-sql nc-who php-module-builder php-module-builder-test php-updater php-updater-test"
+    leftstring_notest="nc-apps nc-occ nc-shares nc-sql nc-who php-module-builder php-updater"
+    leftstring_aio="nc-apps nc-apps-test nc-occ nc-occ-test nc-sql nc-sql-test nc-who nc-who-test"
     leftstring_php="php-module-builder php-module-builder-test php-updater php-updater-test"
 
     machine_id(){
@@ -74,7 +74,6 @@ ${MH_BASHLIB:-false} || {
             done
             fingerprint=":${machineid:14:4}${checksum}:"
             echo $fingerprint
-#            if (( $(id -u) == 0 )); then
             if ${rt:-false}; then
                 echo "$fingerprint" > "$lincld/fp"
             fi
@@ -102,7 +101,7 @@ ${MH_BASHLIB:-false} || {
         else
             [[ " $leftstring_notest " =~ " $bm " ]]||{ :;return;}
         fi
-        if [[ "$-" =~ 'x' ]]; then
+        if [[ "$-" =~ x ]]; then
             set +x
             local debugx=true
         else
@@ -114,11 +113,12 @@ ${MH_BASHLIB:-false} || {
         return 0
     }
 
+# TODO 0 -->
     #    hashlen=${#hash}
     #    random_start=$(shuf -i 0-$(($hashlen-$len)) -n 1)
     #    random_sequence=${hash:$random_start:$len}
     #    echo $random_sequence
-
+# TODO <-- 0
     array_populated(){
         local array="$1"
         for i in $(eval echo \${!$array[@]}); do
@@ -225,6 +225,9 @@ ${MH_BASHLIB:-false} || {
         ## machine-id
         mh "machine-id: $machineid"
 
+        ## PID 1
+        mh "pid1: this machine has booted with $(ps -p 1 -o comm= 2>/dev/null)"
+
         $ext_inf && {
             ## prompt
 #            $ext_inf && . <(lrequire prompt)
@@ -305,10 +308,10 @@ ${MH_BASHLIB:-false} || {
             fi
         } # end $ext_inf
 
+# TODO 1 -->
 ## root stuff (this is redundant)
-#        if (( $(id -u) == 0 )); then
 #        $rt && {
-
+# TODO <-- 1
 ## All-in-One
             if [[ " $leftstring_aio " =~ " $bm " ]]; then
 #                [ -z "$AIO" ] && . <(lrequire nc/nextcloud_aio)
@@ -350,9 +353,10 @@ ${MH_BASHLIB:-false} || {
             hypervisor="$(dmesg -t 2>&1 | awk 'tolower($0) ~ /^hypervisor/ {print $NF}')"
             [ -z "$hypervisor" ] || mh "hypervisor: $hypervisor"
 
-#        fi
+# TODO 2 -->
 #        } # end $rt
 
+# TODO <-- 2
         if [[ " $leftstring_php " =~ " $bm " ]]; then
 ## dpkg
         # dpkg (debian) based like architecture apt sources
@@ -375,7 +379,9 @@ ${MH_BASHLIB:-false} || {
 
             # apt sources files
                     mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_dists.*$//')")
+# TODO 3 -->
         #        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|grep -v ':\s*#'|grep -E "*.(list|sources)\:"|awk -F':' '{print $1}'; done))
+# TODO <-- 3
                     mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|awk -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
                     for i in ${!aptsourcesfiles[@]}; do mh "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; done
                 fi
@@ -452,9 +458,9 @@ ${MH_BASHLIB:-false} || {
         return 0
     } # end distinf
 
-#    if ! (( $(id -u) )); then # only run as root
     if ( ${rt:-false} && $testing && [[ " $leftstring_test " =~ " $bm " ]] ) || ( ${rt:-false} && [[ " $leftstring_notest " =~ " $bm " ]] ); then
         $ext_inf && . <(lrequire prompt)
+        . <(lrequire dist/os_release)
         [[ " $leftstring_aio " =~ " $bm " ]] && . <(lrequire nc/nextcloud_aio)
         if [[ " $leftstring_php " =~ " $bm " ]]; then
             if ! command -v sury &>/dev/null; then
@@ -480,6 +486,4 @@ ${MH_BASHLIB:-false} || {
         fi
         distinf &
     fi
-#    fi
-
 }

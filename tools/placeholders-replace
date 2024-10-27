@@ -20,7 +20,7 @@ fi
 source config/runtime
 
 declare placeholder name
-placeholder="$1" name="$2"
+placeholder="$1" name="$2" test_mode="$3"
 
 minify() {
     if $MINIFY; then
@@ -73,6 +73,13 @@ placeholder_replace(){
             echo "declare scriptname='$name'"
             echo 'declare sin=${scriptname%-test}'
             echo "declare -a dependencies modules"
+            ;;
+        debug)
+            if [ "$test_mode" = "test" ]; then
+                cat "blocks/debug"
+            else
+                echo
+            fi
             ;;
         when)
             echo -e '# when\ndeclare -i rte;printf -v rte "%(%s)T" -2'

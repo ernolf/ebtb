@@ -8,6 +8,7 @@ placeholders=(
     copyright
     license
     scriptname
+    debug
     when
     whoami_whereami
     vdirname
