@@ -194,7 +194,7 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
                 pf;echo "$affected_file"
             done
             question="Q:$(format_string "Do you want to download t$this missing file$pl1 for your version from github" 3;N)"
-            if ask "$question" $YES;then
+            if ask "$question" "$YES";then
                 for affected_file in ${FILE_MISSING[@]}; do
                     nc_download_default $affected_app $affected_file
                 done
@@ -230,7 +230,7 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
                 pf;echo "$affected_file"
             done
             question="Q:$(format_string "Do you want to replace t$this invalid file$pl1 with$one file$pl1 downloaded from github for your version" 3;N)"
-            if ask "$question" $YES;then
+            if ask "$question" "$YES";then
                 for affected_file in ${INVALID_HASH[@]}; do
                     nc_download_default $affected_app $affected_file
                 done

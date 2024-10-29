@@ -531,7 +531,7 @@ ${TASKS_BASHLIB:-false} || {
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to apply this fix$plu" $YES;then
+                if ask "$(qpf)Do you want to apply this fix$plu" "$YES";then
                     . $xtmp
                     if grep -Eqslix "$pattern" ${php_inis[@]}; then
                         bundle echo "R: $(R)removal from ${inifiles[@]} failed.$(N)"
@@ -607,7 +607,7 @@ ${TASKS_BASHLIB:-false} || {
                             separator
                             bundle cat "$itmp"
                             f
-                            if ask "$(qpf)Do you want to apply this directives as suggested" $YES;then
+                            if ask "$(qpf)Do you want to apply this directives as suggested" "$YES";then
                                 . $xtmp
                                 if p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
                                    p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
@@ -670,7 +670,7 @@ ${TASKS_BASHLIB:-false} || {
                     separator
                     bundle cat "$itmp"
                     f
-                    if ask "$(qpf)Do you want to apply this fixes" $YES;then
+                    if ask "$(qpf)Do you want to apply this fixes" "$YES";then
                         . $xtmp
                         if grep -Eqsiw "$pattern" /etc/php/$ver/cli/php.ini; then
                             bundle echo "R: $(lG)Directive successfully written in /etc/php/$ver/cli/php.ini.$(N)"
@@ -724,7 +724,7 @@ ${TASKS_BASHLIB:-false} || {
                     separator
                     bundle cat "$itmp"
                     f
-                    if ask "$(qpf)Do you want to apply this fixes" $YES;then
+                    if ask "$(qpf)Do you want to apply this fixes" "$YES";then
                         . $xtmp
                         if grep -Eqsiw "$pattern" /etc/php/$ver/cli/php.ini; then
                             bundle echo "R: $(lG)Directive successfully written in /etc/php/$ver/cli/php.ini.$(N)"
@@ -789,7 +789,7 @@ ${TASKS_BASHLIB:-false} || {
                     separator
                     bundle cat "$itmp"
                     f
-                    if ask "$(qpf)Do you want to apply this fixes" $YES;then
+                    if ask "$(qpf)Do you want to apply this fixes" "$YES";then
                         . $xtmp
                         grep -qs "igbinary" ${php_inis[@]}&&bundle echo "R: $(R)this step failed.$(N)"||bundle echo "R: $(lG)this step was successfull.$(N)"
                     else
@@ -820,7 +820,7 @@ ${TASKS_BASHLIB:-false} || {
                     separator
                     bundle cat "$itmp"
                     f
-                    if ask "$(qpf)Do you want to remove these lines" $YES;then
+                    if ask "$(qpf)Do you want to remove these lines" "$YES";then
                         . $xtmp
                         grep -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"&&bundle echo "R: $(R)removal of this lines failed.$(N)"||bundle echo "R: $(lG)lines successfully removed.$(N)"
                     else

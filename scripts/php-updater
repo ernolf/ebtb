@@ -369,7 +369,7 @@ if $supported; then
                     PKGOLD="php$OLD-$PKG" PKGNEW="php$NEW-$PKG"
                 fi
                 preq="Q:$(P;format_string "Do you want to migrate the values from the$(C) $(basename $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(basename $FILE)$(P) for$(Y) $PKGNEW" 3;N)"
-                if ask "$preq" $YES;then
+                if ask "$preq" "$YES";then
                     merge_settings
                 fi
             done

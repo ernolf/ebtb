@@ -42,7 +42,7 @@ ${DIFF_BASHLIB:-false} || {
         line '=' P 2/78 a2
         echo " -$(format_string "Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter [yes]." 3)"
         line '=' P 2/78 b1
-        if ask "$(qpf)Apply changes to $npath as suggested" $YES; then
+        if ask "$(qpf)Apply changes to $npath as suggested" "$YES"; then
             sed "s/$OLD/$NEW/g" $opath > $npath
             line '-' GRAY 2/78;os;GRAY
             echo "new:$(f;o5)- config-file$(o $c2)-->$(o $c3)$npath"

@@ -21,7 +21,7 @@ ${DISTRIB_BASHLIB:-false} || {
 
     no_debianoid(){
         pf; echo "$OS_NAME is not a debian derivative and normaly not (yet) supported by this script."
-        ask "$(qpf)proceed at own risk" $NO && mark_checked unsupported || exit1
+        ask "$(qpf)proceed at own risk" "$NO" && mark_checked unsupported || exit1
     }
 
     check_debian(){

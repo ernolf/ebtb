@@ -47,7 +47,7 @@ ${DEPENDENCY_BASHLIB:-false} || {
             if command -v apt-get >/dev/null; then
                 local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
                 mh "$install" &
-                if ask "$(qpf)Do you want to install this $pkg now"  $YES; then
+                if ask "$(qpf)Do you want to install this $pkg now" "$YES"; then
                     if (( $(id -u) )); then
                         if su_do "u=root" "r=true" "p=to install this $pkg" "run=apt-get" "arg=-y $install"; then
                             if [[ "$install" =~ apt-file ]]; then

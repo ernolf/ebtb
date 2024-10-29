@@ -208,7 +208,7 @@ parse_arguments() {
             read -p "Enter the value for $argument: " value
             selected_arguments+=("$value")
         else
-            if ask "$(qpf)Do you want to provide a value for $argument" $Yes; then
+            if ask "$(qpf)Do you want to provide a value for $argument" "$Yes"; then
                 read -p "Enter the value for $argument: " value
                 selected_arguments+=("$value")
             fi
@@ -250,7 +250,7 @@ parse_options() {
         fi
         f
         if [[ $accept_value == "true" ]]; then
-            if ask "$(qpf)Do you want to set this option" $NO $Yes; then
+            if ask "$(qpf)Do you want to set this option" "$NO" "$Yes"; then
                 if [[ $default != "null" ]]; then
                     o3;read -p "Enter the value (default: $default): " value
                     value=${value:-$default}
@@ -260,7 +260,7 @@ parse_options() {
                 selected_options+=("--$option=$value")
             fi
         else
-            if ask "$(qpf)Do you want to enable this option" $NO $Yes; then
+            if ask "$(qpf)Do you want to enable this option" "$NO" "$Yes"; then
                 selected_options+=("--$option")
             fi
         fi

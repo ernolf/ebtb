@@ -165,7 +165,7 @@ if $verbose; then
                 line '=' P 2/78 a2
                 echo " -$(format_string "$(O)Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter $(N;box yes)." 3)"
                 f
-                if ask "$(qpf)Apply changes to $conffile as suggested" $YES; then
+                if ask "$(qpf)Apply changes to $conffile as suggested" "$YES"; then
                     sed -E --in-place=.backup '/^\s*#/ !s#'$conn_regex'#'$conn_n'#g' $conffile
                     line '=' P 2/78 b1
                     line '-' GRAY 2/78

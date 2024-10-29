@@ -85,7 +85,7 @@ PUBLIC_KEY_ASC
         gpg --list-keys|grep -qs "$key"||{
             . <(lrequire ask)
             o5;R;echo "- import of public key failed."
-            qpf;ask "Continue at own risk without check?" $NO&&{
+            qpf;ask "Continue at own risk without check?" "$NO"&&{
                 sed -i 's/^v=false$/v=true/' "$ca_me"
                 return 0
             }
@@ -109,7 +109,7 @@ PUBLIC_KEY_ASC
                 o5;B;echo "to fix this.";N
             else
                 o5;B;echo "to get a signed version of this script or disable the integrity check.";N
-                qpf;ask "Do you want to disable the integrity check at own risk" $NO&&{
+                qpf;ask "Do you want to disable the integrity check at own risk" "$NO"&&{
                     echo -e "v=true\nnohash" >> "$ca_me"
                     return 0
                 }
