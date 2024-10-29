@@ -16,8 +16,9 @@ dependencies=(
     "html2text#html2text#Advanced HTML-to-text converter"
 )
 modules=(
-    basics sed tempfile ansi button exit anykey line array sudo dependency vdir
-    integrity nc/nextcloud nc/nextcloud_db $sin/help $sin/last $sin/monitor
+    basics awksed tempfile ansi button exit anykey line array sudo dependency
+    vdir integrity nc/nextcloud nc/nextcloud_db
+    $sin/help $sin/last $sin/monitor
 )
 __debug__
 __when__

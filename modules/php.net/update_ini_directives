@@ -10,7 +10,7 @@ __license__
 ${UPDATE_INI_DIRECTIVES_BASHLIB:-false} || {
     UPDATE_INI_DIRECTIVES_BASHLIB=:
 
-    . <(lrequire sed)
+    . <(lrequire awksed)
     . <(lrequire php.net/ini_directives)
 
     update_ini_directives(){

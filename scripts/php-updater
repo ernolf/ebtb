@@ -11,8 +11,10 @@ __scriptname__
 
 dependencies=(
     "less#less#A terminal pager similar to more"
+# TODO 0 -->
 #    "apt-file#apt-file#Search for files within Debian packages"
 #    "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
+# TODO <-- 0
     "lsb_release#lsb-release#Tool to detect the Linux standard base version"
     "update-the-ca-certificates#ca-certificates#Common CA certificates"
     "curl#curl#Command line file transfer tool with URL syntax"
@@ -21,11 +23,11 @@ dependencies=(
     "ccdiff#ccdiff#Colored Character Diff"
 )
 modules=(
-    today interval basics sed tempfile prompt ansi prefix button fstring exit
-    sort spinner anykey line array httpd sudo php/version php/versions dpkg
-    php/extensions php/sury ask dependency php/fpm php/apache2 vdir integrity
-    dist/os_release php.net/ini_directives $sin/pdiff $sin/merge $sin/diff
-    $sin/tasks $sin/linstalled $sin/help $sin/chfiles
+    today interval basics awksed tempfile prompt ansi prefix button fstring
+    exit sort spinner anykey line array httpd sudo php/version php/versions
+    dpkg php/extensions php/sury ask dependency php/fpm php/apache2 vdir
+    integrity dist/os_release php.net/ini_directives $sin/pdiff $sin/merge
+    $sin/diff $sin/tasks $sin/linstalled $sin/help $sin/chfiles
 )
 __debug__
 __when__
@@ -142,7 +144,7 @@ no_higher_candidate(){ f;pf;echo "The installed PHP version ($PHP_VERSION) is th
 need_ppa(){ need_sury_repo;}
 downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it";}
 
-# TODO 0 -->
+# TODO 2 -->
 list_tasks(){
     echo "explain Show help page"
     echo "check_distrib Check runing distribution (done automaticaly on first run)"
@@ -209,7 +211,7 @@ tasks(){
         done
     done
 }
-# TODO <-- 0
+# TODO <-- 2
 ## void ##
 declare lang=$(echo "$LANG"|cut -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE dpkg_package php_version php_version_old extension_dir fullpath module sort

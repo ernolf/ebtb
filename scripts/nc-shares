@@ -14,7 +14,7 @@ dependencies=(
     "jq#jq#command-line JSON processor"
 )
 modules=(
-    basics sed tempfile ansi prefix exit anykey verbose line array ask sudo
+    basics awksed tempfile ansi prefix exit anykey verbose line array ask sudo
     dependency vdir integrity nc/nextcloud nc/nextcloud_db
     $sin/help $sin/list_shares
 )

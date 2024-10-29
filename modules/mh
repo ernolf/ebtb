@@ -13,7 +13,7 @@ ${MH_BASHLIB:-false} || {
     # for backwards compatibility
     declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire sed)
+    . <(lrequire awksed)
     . <(lrequire tempfile)
 
     if [[ "$lincld" =~ ebtb ]]; then

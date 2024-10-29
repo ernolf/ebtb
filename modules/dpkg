@@ -16,7 +16,7 @@ ${DPKG_BASHLIB:-false} || {
     . <(lrequire button)
     . <(lrequire exit)
     . <(lrequire anykey)
-    . <(lrequire sed)
+    . <(lrequire awksed)
     . <(lrequire fstring)
     . <(lrequire ask)
     . <(lrequire today)

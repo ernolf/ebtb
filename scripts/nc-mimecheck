@@ -30,9 +30,9 @@ deps=(
     "jq#jq#command-line JSON processor"
 )
 modules=(
-    basics sed tempfile ansi prefix button exit anykey verbose line array ask
-    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db $sin/mime_types
-    $sin/help $sin/functions
+    basics awksed tempfile ansi prefix button exit anykey verbose line array
+    ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
+    $sin/mime_types $sin/help $sin/functions
 )
 
 # make module loading quiet if -q or --quiet is passed
