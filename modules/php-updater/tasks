@@ -820,6 +820,7 @@ ${TASKS_BASHLIB:-false} || {
                     anykey
                 fi
                 ;;
+# TODO 1 -->
             pdo_pgsql)
                 echo -n > $xtmp; echo -n > $itmp
                 echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" >> $itmp
@@ -846,6 +847,7 @@ ${TASKS_BASHLIB:-false} || {
                     anykey
                 fi
                 ;;
+# TODO <-- 1
             *)  :
         esac
     }
