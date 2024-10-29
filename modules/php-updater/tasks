@@ -773,16 +773,26 @@ ${TASKS_BASHLIB:-false} || {
                                 echo -e "\n$(R)$line$(N)" >> $itmp
                                 C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
                                 echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-                            elif grep -qswiE "^$key\s*=\s*$val$" "$ext_ini"; then
+                            elif grep -qswiE "^\s*$key\s*=\s*$val\s*$" "$ext_ini"; then
                                 infostring="This directive does not belong in $(C)$php_ini$(W) and is already defined in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W)."
                                 echo -e "\n$(R)$line$(N)" >> $itmp
                                 C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
                                 echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-                            elif oldstring="$(grep -wiE "^\s*[;|#]\s*$key\s*=\s*$val$" "$ext_ini")"; then
+                            elif oldstring="$(grep -wiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
                                 infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W), where it already exists but there it is commented out. It will be removed from $(C)$php_ini$(W) and uncommented in $(C)$ext_ini$(W)."
                                 echo -e "\n$(R)$line$(N)" >> $itmp
                                 C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
                                 echo "sed -Ei 's|^$oldstring$|$line|' '$ext_ini'" >> $xtmp
+                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+# TODO 0 -->
+                            elif ! grep -qswiE "$key\s*=\s*$val" "$ext_ini"; then
+                                infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W) and appendet at the end of $(C)$ext_ini$(W)."
+                                echo -e "\n$(R)$line$(N)" >> $itmp
+                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                                echo "echo >> '$line' '$ext_ini'" >> $xtmp
+                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+# TODO <-- 0
+                            else
                                 echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
                             fi
                         done
