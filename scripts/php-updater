@@ -21,6 +21,7 @@ dependencies=(
     "gpg#gnupg#GNU Privacy Guard"
     "jq#jq#Command-line JSON processor"
     "ccdiff#ccdiff#Colored Character Diff"
+    "sponge#moreutils#additional Unix utilities"
 )
 modules=(
     today interval basics awksed tempfile prompt ansi prefix button fstring
