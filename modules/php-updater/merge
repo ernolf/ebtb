@@ -51,12 +51,11 @@ ${MERGE_BASHLIB:-false} || {
         comm_(){
             is_extension(){ grep -Eqs "^\s*extension\s*=.*" <<< "$1"; }
 
-            local opath npath key val nval
+            local old new opath npath key val nval
             local -i oi ni i j
             local -a osettings nsettings osettings_names nsettings_names diff1_names diff2_names diff1_names_with_values diff2_names_with_values
-
-            [ -n "$2" ] && opath="$2" || opath="$FILE"
-            [ -n "$3" ] && npath="$3" || npath="${FILE//$OLD/$NEW}"
+            old="$2" new="$3" opath="$4"
+            npath="${opath/$old/$new}"
             mapfile -t osettings< <(stripconf "$opath")
             # add the extensions loaded by mods-available to prevent loading multiple times
             mapfile -t nsettings< <(stripconf "$npath"; grep -Ehr "^\s*(zend_)?extension\s*=.*" "/etc/php/$new/mods-available")
@@ -98,11 +97,12 @@ ${MERGE_BASHLIB:-false} || {
             esac
         }
         first_step(){
-            local opath npath key nkey val nval question
+            local old new opkg npkg opath npath key nkey val nval question
             local -a osettings nsettings
             local -i i ni
-            opath="$FILE"
-            npath="${FILE//$OLD/$NEW}"
+            old="$1" new="$2" opkg="$3" opath="$4"
+            npkg="${opkg/$old/$new}"
+            npath="${opath/$old/$new}"
             mapfile -t osettings< <(stripconf "$opath")
             mapfile -t nsettings< <(stripconf "$npath")
             for i in ${!osettings[@]}; do
@@ -113,9 +113,9 @@ ${MERGE_BASHLIB:-false} || {
                     spinner dO " . comparing $npath with $opath ." &
                     if [ "$key" = "$nkey" ]; then
                         nval="$(key_ val "${nsettings[ni]}")"
-                        if [ "${val//$OLD/}" != "${nval//$NEW/}" ]; then
+                        if [ "${val/$old/}" != "${nval/$new/}" ]; then
                             kill_spinner
-                            f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
+                            f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $opath) of $(C)$opkg$(N) in the $(basename $opath) of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
                             defaults_and_changelog "$key"
                             if [[ "${keep[@]}" =~ $key ]]; then
                                 bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set a specific value for this directive, you have to edit the file $(C)$npath$(N) yourself with an editor of your choice. Refer to https://www.php.net/manual/en/errorfunc.configuration.php#ini.$key for further information" 3; N)"
@@ -123,8 +123,8 @@ ${MERGE_BASHLIB:-false} || {
                             else
                                 question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                                 if ask "$question" "$YES"; then
-                                    sed -i "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$OLD/$NEW}|" "$npath"
-                                    echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$OLD/$NEW}\"" 3; N)"
+                                    sed -i "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$old/$new}|" "$npath"
+                                    echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                                 fi
                             fi
                             separator
@@ -157,10 +157,10 @@ ${MERGE_BASHLIB:-false} || {
             local -i last
             key="$1" val="$2" path="$3" last=$4
             # append the val at the end of the section
-            if [ "${npath##*/}" = "php.ini" ]; then
+            if [ "${path##*/}" = "php.ini" ]; then
                 f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
                 section="at the end of the $(bY; section "${key%.*}"; N) section" nl='\n'
-            elif [ "${npath##*.}" = "conf" ]; then
+            elif [ "${path##*.}" = "conf" ]; then
                 f; echo " -$(format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
                 section="under the other environment variables" nl=''
             fi
@@ -187,15 +187,15 @@ ${MERGE_BASHLIB:-false} || {
             fi
             separator
         }
-        first_step
-        local key val ael question opath npath
+        first_step $@
+        local old new opkg npkg opath npath key val ael question
         local -a settings2merge1_ settings2merge2_
         local -i i1 i2 last
-        ael=:
-        opath="$FILE"
-        npath="${FILE//$OLD/$NEW}"
+        old="$1" new="$2" opkg="$3" opath="$4" ael=:
+        npkg="${opkg/$old/$new}"
+        npath="${opath/$old/$new}"
         last=0
-        mapfile -t settings2merge1_< <(comm_ 1)
+        mapfile -t settings2merge1_< <(comm_ 1 "$old" "$new" "$opath")
         for i1 in "${!settings2merge1_[@]}"; do
             spinner dO " . comparing $npath with $opath ." &
             key="$(key_ name "${settings2merge1_[i1]}")"
@@ -205,9 +205,9 @@ ${MERGE_BASHLIB:-false} || {
             if grep -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
                 kill_spinner
                 lnr=$(grep -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | cut -d ":" -f 1)
-                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$opkg$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3; N)"
+                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $opath) of $(C)$opkg$(N) but it $(P)is commented out$(N) in the $(basename $opath) of $(C)$npkg" 3; N)"
                 defaults_and_changelog "$key"
-                question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new $(basename $FILE) as well" 3)"
+                question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new $(basename $opath) as well" 3)"
                 if ask "$question" "$YES"; then
                     sed -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" "$npath"
                     echo "R:$(format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3; N)"
@@ -216,7 +216,7 @@ ${MERGE_BASHLIB:-false} || {
             elif ((last)); then
                 kill_spinner
                 # append the val after the last occurrence
-                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) and $(P)is not set$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3; N)"
+                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $opath) of $(C)$opkg$(N) and $(P)is not set$(N) in the $(basename $opath) of $(C)$npkg" 3; N)"
                 defaults_and_changelog "$key"
                 question="Q:$(format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
                 if ask "$question" "$YES"; then
@@ -245,7 +245,7 @@ ${MERGE_BASHLIB:-false} || {
                 ael=false
             fi
         done
-        mapfile -t settings2merge2_< <(comm_ 2)
+        mapfile -t settings2merge2_< <(comm_ 2 "$old" "$new" "$opath")
         for i2 in "${!settings2merge2_[@]}"; do
             spinner dO " . comparing $npath with $opath ." &
             key="$(key_ name "${settings2merge2_[i2]}")"
@@ -253,9 +253,9 @@ ${MERGE_BASHLIB:-false} || {
             [ "$key" = "" ] && continue
             if grep -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
                 kill_spinner
-                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGOLD" 3; N)"
+                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $opath) of $(C)$npkg$(N) but it $(P)is commented out$(N) in the $(basename $opath) of $(C)$opkg" 3; N)"
                 defaults_and_changelog "$key"
-                question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new $(basename $FILE) as well" 3)"
+                question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new $(basename $opath) as well" 3)"
                 if ask "$question" "$YES"; then
                     sed -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" "$npath"
                     echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3; N)"
