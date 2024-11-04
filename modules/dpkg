@@ -52,8 +52,9 @@ ${DPKG_BASHLIB:-false} || {
     }
 
     apt_file_search(){
-        local fullpath="$1" package
+        local fullpath package
         local -i installed now last_apt_update
+        fullpath="$1"
         now=$(now)
         last_apt_update=$(stat -c %Y /var/lib/apt/lists/partial)
         if installed=$(install_time apt-file); then
