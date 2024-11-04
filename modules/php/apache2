@@ -10,18 +10,6 @@ __license__
 ${APACHE2_BASHLIB:-false} || {
     APACHE2_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire anykey)
-    . <(lrequire fstring)
-    . <(lrequire line)
-    . <(lrequire ask)
-    . <(lrequire php/versions)
-    . <(lrequire php/fpm)
-
     declare -A SAPI_A2
 
     apache2_mpm(){
@@ -39,7 +27,7 @@ ${APACHE2_BASHLIB:-false} || {
     apache2_module(){
         local module
         module="$1"
-        apachectl -M 2>/dev/null|grep -wqs "${module}_module" && return 0 || return 1
+        apachectl -M 2>/dev/null|grep -wqs "${module}_module" # && return 0 || return 1
     }
 
     php_a2module_(){
@@ -62,12 +50,12 @@ ${APACHE2_BASHLIB:-false} || {
         local ver
         ver="$2" quiet="$3"
         case $1 in
-            enable) a2enconf "$quiet" php$ver-fpm
+            enable) a2enconf $quiet php$ver-fpm
                     ;;
-           disable) a2disconf "$quiet" php${ver:-*}-fpm
+           disable) a2disconf $quiet php${ver:-*}-fpm
                     ;;
-           switch2) a2disconf "$quiet" php*-fpm 2>/dev/null
-                    a2enconf "$quiet" php$ver-fpm
+           switch2) a2disconf $quiet php*-fpm 2>/dev/null
+                    a2enconf $quiet php$ver-fpm
         esac
         return $?
     }
@@ -88,187 +76,5 @@ ${APACHE2_BASHLIB:-false} || {
         php_fpm_module_ enable
         php_fpm_conf_ enable "$ver"
         systemctl restart apache2 "php$ver-fpm"
-    }
-
-    php_fpm_sites_available_conf_(){
-        local webserver pool ver_o ver_n conn_regex conn_o conn_n plu
-        local -a conffiles conn_o
-        local -i i c2=20 c3=25
-        webserver="$1" pool="$2" ver_n="$3"
-        conn_n="$(fpm_pool "$ver_n" "$pool")"
-        conn_regex="$(echo "$conn_n" | sed -E 's/(5\.6|7\.[01234]|8\.[0123])/(5\.6|7\.[01234]|8\.[0123])/g')"
-        case $webserver in
-           apache2) mapfile -t conn_o< <(find /etc/apache2/sites-available 2>/dev/null -type f -name "*.conf" -exec grep -Ehors "^[^#]*$conn_regex" {} + | grep -Eos "$conn_regex" | sort -u)
-                    mapfile -t conffiles< <(grep -Elrs "^[^#]*$conn_regex" /etc/apache2/sites-available | grep -E '\.conf$' | sort -u)
-                    ;;
-             nginx) mapfile -t conn_o< <(find /etc/nginx/sites-available 2>/dev/null -type f ! -name "*.backup" -exec grep -Ehors "^[^#]*$conn_regex" {} + | grep -Eos "$conn_regex" | sort -u)
-                    mapfile -t conffiles< <(grep -Elrs "^[^#]*$conn_regex" /etc/nginx/sites-available | grep -Ev '\.backup$' | sort -u)
-                    ;;
-        esac
-        if (( ${#conffiles[@]} )); then
-            separator
-            if (( ${#conffiles[@]} == 1 )); then
-                this='This' be='is' plu=''
-            else
-                this='These' be='are' plu='s'
-            fi
-            o3;pf;echo "The $webserver webserver is proxied to an FPM socket."
-            f
-            if (( ${#conn_o[@]} == 1 )); then
-                if [ "${conn_o[0]}" = "$conn_n" ]; then
-                    o3;pf;echo "this is the socket: $(lG)${conn_o[0]}$(N), nothing to change"
-                    return 0
-                fi
-                o3;pf;echo "this is the old socket: $(lG)${conn_o[0]}";N
-            else
-                o3;O;echo "multiple old sockets detected (will be fixed)";N
-                o3;pf;echo "this are the old sockets: $(lG)${conn_o[@]}";N
-            fi
-            o3;pf;echo "this is the new socket: $(lG)$conn_n";N
-            f
-            pf;echo "$this $be the file$plu containing the socket string:"
-            for i in ${!conffiles[@]}; do
-                o3;pf;C;echo "${conffiles[i]}";N
-            done
-            f
-# TODO 0 -->
-if $verbose; then
-            echo " -$(format_string "This script can replace $(listify Y ${conn_o[@]}) with $(Y)$conn_n$(N) for you, so look exactly what it suggests to do. If it does not look good, simply answer $(button no) and edit the file yourself as you need it." 3)"
-else
-# TODO <-- 0
-            echo " -$(format_string "If you continue here, this script will replace $(listify Y ${conn_o[@]}) with $(Y)$conn_n$(N) for you." 3)"
-# TODO 1 -->
-fi
-# TODO <-- 1
-            f
-            anykey
-            for i in ${!conffiles[@]}; do
-                conffile="${conffiles[i]}"
-# TODO 2 -->
-if $verbose; then
-                separator
-                line '=' P 2/78 b1  # old config
-                line '-' GRAY 2/78
-                os;GRAY;echo "old:$(f;o5)- config-file$(o $c2)-->$(o $c3)$conffile"
-                line '-' GRAY 2/78
-                GRAY;echo -n "-->  begin";line "  -->" GRAY 14
-                cat $conffile
-                GRAY;echo -n "<--   end ";line "  <--" GRAY 14
-                line '=' P 2/78  # new config draft
-                line '-' GRAY 2/78
-                os;GRAY;echo "draft: (not yet written to file)"
-                o5;echo "- config-file$(o $c2)-->$(o $c3)$conffile"
-                line '-' GRAY 2/78
-                GRAY;echo -n "-->  begin";line "  -->" GRAY 14
-                sed -E '/^\s*#/ !s#'$conn_regex'#'$conn_n'#g' $conffile
-                GRAY;echo -n "<--   end ";line "  <--" GRAY 14
-                line '=' P 2/78 a2
-                echo " -$(format_string "$(O)Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter $(N;box yes)." 3)"
-                f
-                if ask "$(qpf)Apply changes to $conffile as suggested" "$YES"; then
-                    sed -E --in-place=.backup '/^\s*#/ !s#'$conn_regex'#'$conn_n'#g' $conffile
-                    line '=' P 2/78 b1
-                    line '-' GRAY 2/78
-                    os;GRAY;echo "new:$(f;o5)- config-file$(o $c2)-->$(o $c3)$conffile"
-                    line '-' GRAY 2/78
-                    GRAY;echo -n "-->  begin";line "  -->" GRAY 14
-                    cat $conffile
-                    GRAY;echo -n "<--   end ";line "  <--" GRAY 14
-                    line '=' P 2/78
-                    os;echo "Changes written to disk."
-                    f
-                    o3;Pbg;echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conffile.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15)"
-                    f
-                    anykey
-                else
-                    o3;C;echo " -$(format_string "$conffile$(N) not changed. You can call this script again or edit $(C)$conffile$(N) with an editor of your choice." 3)"
-                fi
-                separator
-else
-# TODO <-- 2
-                sed -E --in-place=.backup '/^\s*#/ !s#'$conn_regex'#'$conn_n'#g' $conffile
-                o3;Pbg;echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conffile.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
-# TODO 3 -->
-fi
-# TODO <-- 3
-            done
-        else
-            return
-        fi
-    }
-
-    switch_fpm_version(){
-        local webserver
-        populate_httpd_ known
-        populate_httpd_ active
-        if (( ${#HTTPD_KNOWN[@]} >= 1 && ${#HTTPD_ACTIVE[@]} == 1 )) && [[ "${HTTPD_KNOWN[@]}" =~ ${HTTPD_ACTIVE[0]} ]]; then
-            webserver="${HTTPD_ACTIVE[0]}"
-            if (( ${#HTTPD_KNOWN[@]} == 1 )); then
-                infostring="The only detected httpd (webserver) on this machine is $(C)$webserver$(N)"
-            elif (( ${#HTTPD_KNOWN[@]} > 1 )); then
-                modstring="$(listify B ${HTTPD_KNOWN[@]})"
-                infostring="There are multiple httpds (webservers) ($modstring) detected on this machine but only $(C)$webserver$(N) seems to be active."
-            fi
-        fi
-        case $webserver in
-           apache2) o3;echo "$infostring"
-                    apache2_mpm event || return         # this is only for version switch, the modules must already be loaded
-                    apache2_module proxy_fcgi || return # "
-                    apache2_module setenvif || return   # "
-                    ;;
-             nginx) o3;echo "$infostring"
-                    ;;
-                 *) o3;echo "$infostring"
-                    o3;Pbg;echo " - This script can not (yet) switch the php version for this httpd. $(N)"
-                    o3;echo " -$(format_string "$(P)Please consider to give me feedback on the way php is integrated into this web server so that I can add support for ${webserver:-this webserver} in future versions of this script." 6;N)"
-                    exit0
-        esac
-        local ver_o ver_n pool
-        local -a pools_o pools_n
-        ver_n="$1" ver_o="$PHP_VERSION"
-        [ -z "$2" ] || ver_o="$2"
-        mapfile -t pools_n< <(fpm_pool "$ver_n")
-        mapfile -t pools_o< <(fpm_pool "$ver_o")
-        for pool in ${pools_n[@]}; do
-            case $webserver in
-# TODO 4 -->
-#               apache2) if [[ "$pool" =~ " ${pools_o[@]} " && "$pool" == 'www' ]]; then
-# TODO <-- 4
-               apache2) if [ "$pool" == 'www' ]; then
-                            if php_fpm_conf_ switch2 $ver_n -q; then
-                                o3;G;echo "Successfully switched php-fpm conf from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G).";N
-                            else
-                                o3;R;echo "Something went wrong while switching php-fpm from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R).";N
-                            fi
-# TODO 5 -->
-#                        elif [ "$pool" = 'www' ]; then
-#                            php_fpm_conf_ enable $ver_n -q
-# TODO <-- 5
-                        else
-# TODO 6 -->
-            #                [ "$ver_o" = "$ver_n" ] || php_fpm_sites_available_conf_ $pool $ver_o $ver_n
-# TODO <-- 6
-                            php_fpm_sites_available_conf_ $webserver $pool $ver_n
-                        fi
-                        ;;
-                 nginx) php_fpm_sites_available_conf_ $webserver $pool $ver_n
-            esac
-        done
-        systemctl restart $webserver php$ver_n-fpm
-    }
-
-    switch_a2module_version(){
-        apache2_mpm prefork || return      # this is only for version switch, the modules must already be loaded
-        local ver_o ver_n
-        ver_n="$1" ver_o="$PHP_VERSION"
-        [ -z "$2" ] || ver_o="$2"
-# TODO 7 -->
-# TODO !!!! a2 mod php detection
-# TODO <-- 7
-        if a2dismod -q php* && a2enmod -q php$ver_n && systemctl restart apache2; then
-            o3;G;echo "Successfully switched apache2-mod-php from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G).";N
-        else
-            o3;R;echo "Something went wrong while switching apache2-mod-php from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R).";N
-        fi
     }
 }

@@ -25,10 +25,11 @@ dependencies=(
 )
 modules=(
     today interval basics awksed tempfile prompt ansi prefix button fstring
-    exit sort spinner anykey line array httpd sudo php/version php/versions
-    dpkg php/extensions php/sury ask dependency php/fpm php/apache2 vdir
-    integrity dist/os_release php.net/ini_directives $sin/pdiff $sin/merge
-    $sin/diff $sin/tasks $sin/linstalled $sin/help $sin/chfiles
+    exit sort spinner anykey line array httpd sudo php/version php/apache2
+    php/fpm php/versions dpkg php/extensions php/sury ask dependency vdir
+    integrity dist/os_release php.net/ini_directives $sin/inp $sin/pdiff
+    $sin/merge $sin/diff $sin/pool $sin/tasks $sin/linstalled $sin/help
+    $sin/chfiles $sin/switch
 )
 __debug__
 __when__
@@ -83,48 +84,6 @@ my_update_check
 # key_ name and key_ val
 key_(){ case $1 in name)trim "${2%%=*}";;val)trim "${2##*=}";esac;}
 
-install_new_php(){ local old="$1" new="$2" package sapi;local -a packages sapipkgs sapi_not;local -i i
-    apt_need_update
-    if apt-cache show php$new >/dev/null 2>&1;then
-        separator
-# TODO 1 -->
-        # update first?
-        f;echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
-        if ask "$(qpf)Do you want to update the system first " "$NO";then
-            apt-mark hold $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1 # hold php as it is for this step.
-            apt-get dist-upgrade
-            pf;echo "$(lG)system updated$(N)"
-            anykey
-        fi
-# TODO <-- 1
-        apt-mark unhold *php* &>/dev/null
-        command -v needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
-        detect_and_assign_extensions
-        search_candidates_4_extensions_installed_by_admin $old
-        spinner C " . performing thorough review (dry run) of package sources and candidate availability ." &
-        mapfile -t packages< <(packages_diff $old $new)
-        mapfile -t sapipkgs< <(for sapi in $(comm -23 <(p_sort $(phpquery -v $old -S)) <(p_sort $(phpquery -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
-        mapfile -t sapi_not< <(for sapi in $(comm -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(phpquery -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}-"; done)
-        kill_spinner
-        if ((${#packages[@]})); then
-            apt_install_prechecked --yes ${sapipkgs[@]} ${packages[@]} ${sapi_not[@]}
-#            apt_install_prechecked --yes ${sapi_not[@]}
-#            apt_install_prechecked --yes ${packages[@]}
-        fi
-        command -v needrestart >/dev/null&&needrestart -r a
-    else f
-        no_candidate "$new"
-        exit1
-    fi
-    populate_versions_array
-    separator
-    f;echo " -$(format_string "$(P)If everything looks good so far, the migration of the settings from $(C)php-$old$(P) to $(C)php-$new$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
-    f;G;echo "$(prompt;lB) $me$forceflag$(C) $old $new";N
-    f;os;P;echo "to finalize or redo the migration.";N
-    f;echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(C)php-$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3;N)"
-    ask "$(qpf)Proceed with next step" "$YES"&&{ separator;"$me$forceflag" "json=$my_json" $old $new;exit;}||exit0
-}
-
 # messages
 call_help(){ o2;GRAY;echo "You can call the help with:$(o 35;B)$me --help";line '-' dP 2/78;}
 call_me(){ o2;GRAY;echo "You can call this list with:$(o 35;B)$me --list-$1";line '-' dP 2/78 a${2:-1};}
@@ -145,7 +104,7 @@ no_higher_candidate(){ f;pf;echo "The installed PHP version ($PHP_VERSION) is th
 need_ppa(){ need_sury_repo;}
 downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it";}
 
-# TODO 2 -->
+# TODO 1 -->
 list_tasks(){
     echo "explain Show help page"
     echo "check_distrib Check runing distribution (done automaticaly on first run)"
@@ -212,7 +171,7 @@ tasks(){
         done
     done
 }
-# TODO <-- 2
+# TODO <-- 1
 ## void ##
 declare lang=$(echo "$LANG"|cut -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE dpkg_package php_version php_version_old extension_dir fullpath module sort

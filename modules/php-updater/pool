@@ -1,0 +1,87 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${POOL_BASHLIB:-false} || {
+    POOL_BASHLIB=:
+
+    . <(lrequire button)
+    . <(lrequire exit)
+    . <(lrequire anykey)
+    . <(lrequire fstring)
+    . <(lrequire line)
+    . <(lrequire ask)
+    . <(lrequire php/versions)
+    . <(lrequire php/fpm)
+
+    check_fpm_pool_files(){
+        local old new pkgold pkgnew odir ndir ext be plu this
+        local -a ofiles nfiles alt_indexes alt_files pools
+        local -i i www_index alt_index
+        old="$1" new="$2"
+        [[ "$(phpquery -v "$old" -S)" =~ fpm ]] || return # return if no fpm installed for php$old
+        pkgold="php$old-fpm" pkgnew="php$new-fpm"
+        # is installed $pkgold || return
+        odir="$(fpm_include "$old" dir)" ndir="$(fpm_include "$new" dir)"
+        [ -d "$odir" ] || return # for the sake of stability
+        [ -d "$ndir" ] || mkdir -p "$ndir" # If everything is edited by admin, take over his changes ;)
+        nonullglob "$odir/*" && ofiles=($(ls "$odir"))
+        nonullglob "$ndir/*" && nfiles=($(ls "$ndir"))
+        [ "$(fpm_include "$old" ext)" = "$(fpm_include "$new" ext)" ] && ext="$(fpm_include "$old" ext)" || return #
+
+        if (( ${#ofiles[@]} > 1 ));then
+            if [[ "${ofiles[@]}" =~ www.$ext && ! " ${ofiles[@]} " =~ " www.$ext " ]];then
+                for i in ${!ofiles[@]};do
+                    [[ "${ofiles[i]}" =~ www.$ext && ! -f "$ndir/${ofiles[i]}" ]]&&www_index=$i
+                    [[ "${ofiles[i]} " =~ ".$ext " && ! -f "$ndir/${ofiles[i]}" ]]&&alt_indexes+=($i)
+                done
+                if (( ${#alt_indexes[@]} ));then
+                    (( ${#alt_indexes[@]} == 1 ))&&be='was' plu=' a:' this=this||be='were' plu=':s' this=these
+                    for i in ${!alt_indexes[@]};do
+                        alt_index=${alt_indexes[i]}
+                        alt_files+=("${ofiles[alt_index]}")
+                        pools+=("$(grep '^\[' "$odir/${ofiles[alt_index]}")")
+                    done
+                    poolstring="$(listify B ${pools[@]})"
+                    string="The default fpm pool $(B)[www]$(N) for $pkgold is deactivated ($(GRAY)the file $odir/www.$ext has been renamed to $odir/${ofiles[www_index]}$(N)) but${plu%:*} custom created pool${plu#*:} $poolstring $be found"
+                fi
+            else
+                for i in ${!ofiles[@]};do [[ "${ofiles[i]} " =~ ".$ext " && ! -f "$ndir/${ofiles[i]}" ]]&&alt_indexes+=($i);done
+                if (( ${#alt_indexes[@]} ));then
+                    (( ${#alt_indexes[@]} == 1 ))&&be='was' plu=' a:' this=this||be='were' plu=':s' this=these
+                    for i in ${!alt_indexes[@]};do
+                        alt_index=${alt_indexes[i]}
+                        alt_files+=("${ofiles[alt_index]}")
+                        pools+=("$(grep '^\[' "$odir/${ofiles[alt_index]}")")
+                    done
+                    poolstring="$(listify B ${pools[@]})"
+                    string="Beside the default fpm pool $(B)[www]$(N)${plu%:*} custom created pool${plu#*:} $poolstring $be found"
+                fi
+            fi
+            if (( ${#alt_files[@]} ));then
+                separator
+                f;bundle echo " -$(format_string "$string" 3)"
+                if ask "$(qpf)Do you want to migrate $this pool${plu#*:} from $pkgold to $pkgnew" "$YES"; then
+                    if ((www_index));then
+                        mv $ndir/www.$ext $ndir/${ofiles[www_index]}
+                        if [ -f "$ndir/${ofiles[www_index]}" ];then
+                            bundle echo "R:$(format_string "Successfully moved $(C)$ndir/www.$ext$(N) to $(C)$ndir/${ofiles[www_index]}" 3;N)"
+                        fi
+                    fi
+                    for i in ${!alt_files[@]}; do
+                        sed "s/$old/$new/g" "$odir/${alt_files[i]}" > "$ndir/${alt_files[i]}"
+                        if [ -f "$ndir/${alt_files[i]}" ];then
+                            bundle echo "R:$(format_string "Successfully created poolfile $(C)"$ndir/${alt_files[i]}"$(N)" 3;N)"
+                        fi
+                    done
+                    separator
+                fi
+            fi
+        fi
+    }
+}
