@@ -46,7 +46,7 @@ ${TASKS_BASHLIB:-false} || {
                     rm -f "$ini_dir/$mod.ini"
                 done
             fi
-            anykey
+#            anykey
             ext_state cleanup
             ext_state fix
             apt_install_prechecked --yes ${pakages[@]}
@@ -106,6 +106,8 @@ ${TASKS_BASHLIB:-false} || {
                 ask "$(qpf)Do you want to replace $modstring now" "$YES" && { replaced=true;replace_;}
                 separator
             fi
+        else
+            bundle echo "$(xpf;format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
         fi
         $replaced && "$me$forceflag" "json=$my_json" --list-installed-only
     }

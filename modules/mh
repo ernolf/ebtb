@@ -435,7 +435,12 @@ ${MH_BASHLIB:-false} || {
                 mapfile -t pecl_list< <(pecl list 2>&1|sort -u)
                 for i in ${!pecl_list[@]}; do
                     if [[ "$(trim "${pecl_list[i]}")" ]]; then
-                        mh "pecl list $(printf '%02d' $((i+1))): ${pecl_list[i]}"
+                        if [[ "${pecl_list[i]}" =~ Warning ]]; then
+                            mh "pecl list $(printf '%02d' $((i+1))): pecl throws errors."
+                            break
+                        else
+                            mh "pecl list $(printf '%02d' $((i+1))): ${pecl_list[i]}"
+                        fi
                     fi
                 done
             fi

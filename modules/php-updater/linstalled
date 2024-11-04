@@ -206,7 +206,7 @@ ${LINSTALLED_BASHLIB:-false} || {
         if ${supported:-false}; then
             if ((aimct));then
                 ((aimct==1))&&plu='s a:'||plu=':s'
-                echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"
+                bundle echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"
                 replace_aim
                 anykey
             fi
