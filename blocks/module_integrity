@@ -2,8 +2,8 @@
 $rt && {
     [ -f "$lmj" ] || curl -o "$lmj" -A "$(fp)$A" $cargs/$rmj
     jq -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256 2>/dev/null
+    cd $lincld
     tntd=($(
-        cd $lincld
         sha256sum -c --ignore-missing --quiet modules.sha256 2>/dev/null | sed 's/:.*//'
     ))
     ((${#tntd[@]})) && {
@@ -11,5 +11,6 @@ $rt && {
         "$me" "json=$my_json" $my_args
         exit 0
     }
+    cd
 }
 unset -v lcf tntd tm
