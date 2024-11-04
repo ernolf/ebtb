@@ -114,12 +114,12 @@ nc_download_default(){
     version_tag="v$(awk -F\' '/String/{gsub(/ /,"");$2=tolower($2);print $2}' "$NC_DIR/version.php")"
     tempfile=$(tf)
     case "$app_id" in
-      core) url1="$github_raw/server/$version_tag/$file"
+      core) url1="$GITHUB_RAW/server/$version_tag/$file"
             ;;
          *) if is_shipped_ "$app_id"; then
                 path="apps/$app_id/$file"
-                url1="$github_raw/server/$version_tag/apps/$app_id/$file"
-                url2="$github_raw/$app_id/$version_tag/$file"
+                url1="$GITHUB_RAW/server/$version_tag/apps/$app_id/$file"
+                url2="$GITHUB_RAW/$app_id/$version_tag/$file"
             else
                 xml_f="$NC_DIR/apps/$app_id/appinfo/info.xml"
                 repo="$(xmls -v "//info/repository" "$xml_f" | sed '2,$d;s|.git$||1')"

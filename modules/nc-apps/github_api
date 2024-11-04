@@ -26,7 +26,7 @@ ${GITHUB_API_BASHLIB:-false} || {
 
     list_latest(){
         local version key # $1=prefix
-        local -a versions=(${latest_eol[@]} $(github_api "nextcloud/server" "tags" "90")) parts latest_parts
+        local -a versions=(${LATEST_EOL[@]} $(github_api "nextcloud/server" "tags" "90")) parts latest_parts
         local -A latest_versions
         for version in "${versions[@]}"; do
             parts=(${version//./ })

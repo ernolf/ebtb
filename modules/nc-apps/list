@@ -69,8 +69,8 @@ $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
                 done
                 if $is_shipped && (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )); then
                     tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
-                    local rawURLserver=$github_raw/server/$tag/apps/$id/appinfo/info.xml
-                    local rawURLapp=$github_raw/$id/$tag/appinfo/info.xml
+                    local rawURLserver=$GITHUB_RAW/server/$tag/apps/$id/appinfo/info.xml
+                    local rawURLapp=$GITHUB_RAW/$id/$tag/appinfo/info.xml
                     local github_info_xml=$(tf)
                     if (( $(hc sD $bm-$epoch -o $github_info_xml $rawURLserver) == 200 )); then
                         info_xml=$github_info_xml

@@ -149,15 +149,13 @@ update(){ local -a args
     done
 }
 
-declare nc_version_long nc_version nc_key nc_version_string nc_version_tag nc_lowest nc_min_version nc_max_eol nc_master
+declare nc_version_long nc_version nc_key nc_version_string nc_version_tag nc_min_version nc_master
 nc_version_long="$(nc_version_ long "$NC_DIR/version.php")"
 nc_version="$(nc_version_ short "$NC_DIR/version.php")"
 nc_key="$(nc_version_ key "$NC_DIR/version.php")"
 nc_version_string="$(nc_version_ string "$NC_DIR/version.php")"
 nc_version_tag="$(tolower "${nc_version_string// /}")"
-nc_lowest="$(lowest_eol)"
-nc_min_version="$nc_lowest"
-nc_max_eol="$(highest_eol)"
+nc_min_version="${LATEST_EOL[0]}" # this is only prefilled here -> changed by assumed_version module
 
 if echo $(r_db .tables;) | grep -qs "database_created"; then
     database_created=true

@@ -47,7 +47,7 @@ ${APPSTORE_BASHLIB:-false} || {
         if [ "$unit" = "apps" ]; then
             unix_etag="$(r_db "SELECT etag FROM apps WHERE platform = '$p';")" # try to fetch ETag from database
             if [ "$p" != "all" ]; then
-                if [ 0$(v2i "$p") -le 0$(v2i "$nc_max_eol") ]; then
+                if [ 0$(v2i "$p") -le 0$(v2i "${LATEST_EOL[${#LATEST_EOL[@]}-1]}") ]; then
                     if (( $(r_db "SELECT COUNT(*) FROM apps WHERE platform == '$p';") )); then
                         echo reuse:$unix_etag
                         return 0

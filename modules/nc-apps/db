@@ -110,7 +110,7 @@ SQL
     create_database(){
         local -l latest
         local meta version_php version versionstring major minor item
-        rawURL="$github_raw/server"
+        rawURL="$GITHUB_RAW/server"
 
         write_local_ids(){
             local local_applist="$(occ app:list --output=json)"
@@ -169,7 +169,7 @@ SQL
             if [[ "$latest" == *a* || "$latest" == *rc* ]]; then
                 meta="prerelease"
             fi
-            for item in "${latest_eol[@]}"; do
+            for item in "${LATEST_EOL[@]}"; do
                 if [ "$item" = "$version" ]; then
                     meta=eol
                     break
