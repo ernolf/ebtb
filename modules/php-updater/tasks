@@ -116,7 +116,7 @@ ${TASKS_BASHLIB:-false} || {
         spinner C " . searching misconfigurations: unused SAPIs ." &
         populate_pkgs_by_dpkg_array
         if $(is_sapi_true_ cgi) || $(is_sapi_true_ embed) || $(is_sapi_true_ phpdbg); then
-            local unused_sapi
+            local unused_sapi plu be modstring pkgstring
             local -a unused_sapis packages_2_purge
             for unused_sapi in cgi embed phpdbg;do
                 if $(is_sapi_true_ $unused_sapi); then
@@ -125,15 +125,16 @@ ${TASKS_BASHLIB:-false} || {
                 fi
             done
             if (( ${#unused_sapis[@]} == 1 )); then
-                plu='is:' infostring="is a $(B)${unused_sapis[0]}$(N)"
+                plu='is:' be='is a' modstring="$(B)${unused_sapis[0]}$(N)" pkgstring="$(B)${packages_2_purge[@]}$(N)"
             else
-                plu='ese:s' infostring="are $(listify B ${unused_sapis[@]})"
+                plu='ese:s' be='are' modstring="$(listify B ${unused_sapis[@]})" pkgstring="(listify B ${packages_2_purge[@]})"
             fi
+            question="Q:$(format_string "Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} package${plu#*:} $pkgstring now" 3)"
             kill_spinner
-            bundle echo "$(xpf;format_string "There $infostring SAPI${plu#*:} installed on this machine." 3;N)"
-            echo "$(ipf;format_string "In most cases, these SAPIs are installed because of a dependency package. There is not a single use case that requires th${plu%:*} SAPI${plu#*:} to operate an application like Netxcloud. $(Y)Consider removing th${plu%:*} unnecessary SAPI${plu#*:} before updating." 3;N)"
-            echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
-            if ask "$(qpf)Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} now" "$YES"; then
+            bundle echo "$(xpf;format_string "There $be $modstring SAPI${plu#*:} installed on this machine." 3;N)"
+            echo "$(ipf;format_string "In most cases, th${plu%:*} SAPI${plu#*:} get installed because of a dependency package. There is not a single use case that requires th${plu%:*} SAPI${plu#*:} to operate an application like Netxcloud. $(Y)Consider removing th${plu%:*} unnecessary SAPI${plu#*:} before updating." 3;N)"
+            echo " -$(format_string "This script can remove th${plu%:*} $modstring package${plu#*:} in a safe way." 3)"
+            if ask "$question" "$YES"; then
                 apt_purge --yes ${packages_2_purge[@]}
                 "$me$forceflag" "json=$my_json" --list-installed-only
                 anykey
@@ -153,15 +154,15 @@ ${TASKS_BASHLIB:-false} || {
         mapfile -t DEPENDENCY_PKGS< <(comm -12 <(p_sort_trim ${DEPENDENCY_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
         if (( ${#DEPENDENCY_PKGS[@]} )); then
             if ((${#DEPENDENCY_PKGS[@]}==1)); then
-                plu='' this='that' be='is a' modstring="$(B)${DEPENDENCY_PKGS[0]}$(N)"
+                plu='is:' be='is a' modstring="$(B)${DEPENDENCY_PKGS[0]}$(N)"
             else
-                plu='s' this='those' be='are' modstring="$(listify B ${DEPENDENCY_PKGS[@]})"
+                plu='ese:s' be='are' modstring="$(listify B ${DEPENDENCY_PKGS[@]})"
             fi
-            question="Q:$(format_string "Do you want to remove the dependency package$plu $modstring now" 3)"
+            question="Q:$(format_string "Do you want to remove the dependency package${plu#*:} $modstring now" 3)"
             kill_spinner
-            bundle echo "$(xpf;format_string "There $be unnecessary $(O)dependency package$plu$(N) ($modstring) installed on this machine." 3;N)"
-            echo "$(ipf;Y;format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove $this package$plu before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3;N)"
-            echo " -$(format_string "This script can remove $this package$plu in a safe way." 3)"
+            bundle echo "$(xpf;format_string "There $be unnecessary $(O)dependency package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
+            echo "$(ipf;Y;format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove th${plu%:*} package${plu#*:} before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3;N)"
+            echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
             if ask "$question" "$YES"; then
                 apt_remove --yes ${DEPENDENCY_PKGS[@]}
                 "$me$forceflag" "json=$my_json" --list-installed-only
@@ -182,15 +183,15 @@ ${TASKS_BASHLIB:-false} || {
         mapfile -t META_PKGS< <(comm -12 <(p_sort_trim ${META_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
         if (( ${#META_PKGS[@]} )); then
             if ((${#META_PKGS[@]}==1)); then
-                plu='' this='that' be='is a' modstring="$(B)${META_PKGS[0]}$(N)"
+                plu='is:' be='is a' modstring="$(B)${META_PKGS[0]}$(N)"
             else
-                plu='s' this='those' be='are' modstring="$(listify B ${META_PKGS[@]})"
+                plu='ese:s' be='are' modstring="$(listify B ${META_PKGS[@]})"
             fi
-            question="Q:$(format_string "Do you want to remove the meta package$plu $modstring now" 3)"
+            question="Q:$(format_string "Do you want to remove the meta package${plu#*:} $modstring now" 3)"
             kill_spinner
-            bundle echo "$(xpf;format_string "There $be unnecessary $(O)meta package$plu$(N) ($modstring) installed on this machine." 3;N)"
-            echo "$(ipf;Y;format_string "Meta packages do not contain actual software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require these meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove $this package$plu before updating. The removal makes your system more resilient against unintended changes made without your decision." 3;N)"
-            echo " -$(format_string "This script can remove $this package$plu in a safe way." 3)"
+            bundle echo "$(xpf;format_string "There $be unnecessary $(O)meta package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
+            echo "$(ipf;Y;format_string "Meta packages do not contain actual software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require these meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove th${plu%:*} package${plu#*:} before updating. The removal makes your system more resilient against unintended changes made without your decision." 3;N)"
+            echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
             if ask "$question" "$YES"; then
                 apt_remove --yes ${META_PKGS[@]}
                 "$me$forceflag" "json=$my_json" --list-installed-only
@@ -215,7 +216,7 @@ ${TASKS_BASHLIB:-false} || {
                     bundle echo "$(ipf;format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
                     pf;Y;echo "You should either:"
                     f;o 10;bundle echo "$(button 1) - completely remove php*-fpm"
-                    f;o 10;bundle echo "$(button 2) - switch apache2 from libapache2-mod-php to php*-fpm (recommended)"
+                    f;o 10;bundle echo "$(button 2) - switch apache2 from libapache2-mod-php to php*-fpm"
                     f;o 10;bundle echo "$(button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
                     f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
                     cursor_ hide
@@ -234,6 +235,7 @@ ${TASKS_BASHLIB:-false} || {
                             2)  cursor_ show
                                 f
                                 php_a2module_2_fpm "$PHP_VERSION"
+# TODO: migrate php.ini
                                 systemctl restart apache2 php$PHP_VERSION-fpm
                                 "$me$forceflag" "json=$my_json" --list-installed-only
                                 anykey
@@ -242,6 +244,7 @@ ${TASKS_BASHLIB:-false} || {
                             3)  cursor_ show
                                 f
                                 php_a2module_2_fpm "$PHP_VERSION"
+# TODO: migrate php.ini
                                 systemctl restart apache2 php$PHP_VERSION-fpm
                                 apt_remove 'libapache2-mod-php*'
                                 "$me$forceflag" "json=$my_json" --list-installed-only
@@ -276,6 +279,7 @@ ${TASKS_BASHLIB:-false} || {
                             2)  cursor_ show
                                 f
                                 php_fpm_2_a2module $PHP_VERSION
+# TODO: migrate php.ini
                                 systemctl restart apache2
                                 "$me$forceflag" "json=$my_json" --list-installed-only
                                 anykey
@@ -284,6 +288,7 @@ ${TASKS_BASHLIB:-false} || {
                             3)  cursor_ show
                                 f
                                 php_fpm_2_a2module $PHP_VERSION
+# TODO: migrate php.ini
                                 systemctl restart apache2
                                 apt_remove 'php*-fpm'
                                 "$me$forceflag" "json=$my_json" --list-installed-only
@@ -315,6 +320,7 @@ ${TASKS_BASHLIB:-false} || {
                                 f
                                 php_a2module_ disable
                                 php_fpm_module_ enable
+# TODO: migrate php.ini
                                 systemctl restart apache2 php$active_fpm_version-fpm
                                 "$me$forceflag" "json=$my_json" --list-installed-only
                                 anykey
@@ -324,6 +330,7 @@ ${TASKS_BASHLIB:-false} || {
                                 f
                                 php_a2module_ disable
                                 php_fpm_module_ enable
+# TODO: migrate php.ini
                                 systemctl restart apache2 php$active_fpm_version-fpm
                                 apt_remove 'libapache2-mod-php*'
                                 "$me$forceflag" "json=$my_json" --list-installed-only
@@ -367,6 +374,7 @@ ${TASKS_BASHLIB:-false} || {
                             1)  cursor_ show
                                 f
                                 apt_remove 'libapache2-mod-php*'
+                                php_a2module_2_fpm "$PHP_VERSION"
                                 "$me$forceflag" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -374,6 +382,7 @@ ${TASKS_BASHLIB:-false} || {
                             2)  cursor_ show
                                 f
                                 apt_remove 'php*-fpm'
+                                php_fpm_2_a2module $PHP_VERSION
                                 "$me$forceflag" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
