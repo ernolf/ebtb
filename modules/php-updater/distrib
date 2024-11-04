@@ -30,6 +30,17 @@ ${DISTRIB_BASHLIB:-false} || {
         ask "$(qpf)proceed in safe mode" "$NO" && mark_checked unsupported || exit1
     }
 
+    check_systemd(){
+        local pid1
+        pid1="$(ps -p 1 -o comm= 2>/dev/null)"
+        if [[ "$pid1" != 'systemd' ]]; then
+            echo
+            os; R; echo "This system is not started with systemd but instead with $(C)$pid1"
+            os; R; echo "This script depends on systemd to work."; N
+            exit1
+        fi
+    }
+
     check_debian(){
         . <(require dist/debian)
 
@@ -37,6 +48,7 @@ ${DISTRIB_BASHLIB:-false} || {
         call_me debian 2
 
         os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
+        check_systemd
         local ver releasedate eos eol ss
         local -l vercode chan
         case $OS_ID in
@@ -93,6 +105,7 @@ ${DISTRIB_BASHLIB:-false} || {
         call_me ubuntu 2
 
         os; lB; printf '%s' "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename$(GRAY) $(dY)$OS_VERSION_CODENAME$(GRAY)"
+        check_systemd
         local ver vercode2 releasedate lts ss
         local -i eos
         local -l vercode1
