@@ -174,7 +174,7 @@ tasks(){
 # TODO <-- 1
 ## void ##
 declare lang=$(echo "$LANG"|cut -d'_' -f1)
-declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE dpkg_package php_version php_version_old extension_dir fullpath module sort
+declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE
 
 $supported&&apt_need_update
 
@@ -289,10 +289,10 @@ if $supported; then
             remove_dependency_packages
             remove_meta_packages
             kill_spinner
-            check_config $OLD
+            check_config "$OLD"
             declare -a missing_new_packages
             spinner C " . searching for php$NEW packages yet to be installed ." &
-            mapfile -t missing_new_packages< <(packages_diff $OLD $NEW)
+            mapfile -t missing_new_packages< <(packages_diff "$OLD" "$NEW")
             kill_spinner
             if [[ " ${VERSIONS[@]} " =~ " $NEW " ]]; then
                 if ((${#missing_new_packages[@]}));then
@@ -319,7 +319,7 @@ if $supported; then
 
         declare -a c_f_a # changed files array
         spinner C " . searching changed ini- and conf-files for php$OLD to be adapted into php$NEW ." &
-        mapfile -t c_f_a< <(p_nosort $(changed_files_ ini) $(changed_files_ conf))
+        mapfile -t c_f_a< <(p_nosort $(changed_files_ ini "$OLD" "$NEW") $(changed_files_ conf "$OLD" "$NEW"))
         kill_spinner
         if (( ${#c_f_a[@]} )); then
             for FILE in ${c_f_a[@]}; do
@@ -328,20 +328,25 @@ if $supported; then
                 [ -f "$FILE" ]||continue
                 f
                 if [ "$PKG" = "libapache2-mod-php$OLD" ]; then
-                    PKGOLD="$PKG" PKGNEW="${PKG//$OLD/$NEW}"
+                    PKGOLD="$PKG"
+                elif [ "$PKG" = "libphp$OLD-embed" ]; then
+                    PKGOLD="$PKG"
+                elif [ "$PKG" = 'embed' ]; then
+                    PKGOLD="libphp$OLD-embed"
                 else
-                    PKGOLD="php$OLD-$PKG" PKGNEW="php$NEW-$PKG"
+                    PKGOLD="php$OLD-$PKG"
                 fi
+                PKGNEW="${PKGOLD/$OLD/$NEW}"
                 preq="Q:$(P;format_string "Do you want to migrate the values from the$(C) $(basename $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(basename $FILE)$(P) for$(Y) $PKGNEW" 3;N)"
                 if ask "$preq" "$YES";then
-                    merge_settings
+                    merge_settings "$OLD" "$NEW" "$PKGOLD" "$FILE"
                 fi
             done
         fi
-        check_fpm_pool_files
+        check_fpm_pool_files "$OLD" "$NEW"
         declare -a o_c_f_a # other changed files array
         spinner C " . searching other changed files for php$OLD to be adapted into php$NEW ." &
-        mapfile -t o_c_f_a< <(p_nosort $(changed_files_ other))
+        mapfile -t o_c_f_a< <(p_nosort $(changed_files_ other "$OLD" "$NEW"))
         kill_spinner
         if (( ${#o_c_f_a[@]} )); then
             for FILE in ${o_c_f_a[@]}; do
@@ -352,7 +357,7 @@ if $supported; then
         fi
         separator
         echo " -$(format_string "The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
-        f;G;echo "$(prompt;lB) $me$forceflag$(C) $OLD $NEW";N
+        f;G;echo "$(prompt;lB) $me$forceflag$(C) "$OLD" "$NEW"";N
         f;O;echo " -$(format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3;N)"
         f;G;echo "$(prompt;P) $me$forceflag --switch-version";N
         donate_
