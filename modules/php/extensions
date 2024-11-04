@@ -206,7 +206,7 @@ ${EXTENSIONS_BASHLIB:-false} || {
     }
 
     ext_state(){
-        populate_versions_array &
+        populate_versions_array
         local vlpm dir ver mod sapi registry_dir state_dir
         vlpm="/var/lib/php/modules"
         [ -d "$vlpm" ] || return
