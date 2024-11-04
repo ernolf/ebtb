@@ -360,7 +360,13 @@ if $supported; then
         f;G;echo "$(prompt;lB) $me$forceflag$(C) "$OLD" "$NEW"";N
         f;O;echo " -$(format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3;N)"
         f;G;echo "$(prompt;P) $me$forceflag --switch-version";N
-        donate_
+        f;O;echo "  $(format_string "or run it now:" 3;N)"
+        if ask "$(qpf)Do you want to switch the php version now" "$YES"; then
+            $me$forceflag --switch-version
+        else
+            donate_
+        fi
+        exit 0
     else # if [ $# -ne 2 ]; then
         first_brief_help "Brief help:"
         f
