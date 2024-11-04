@@ -2,7 +2,7 @@
 # declare debug variable to enable to switch off spinner:
 declare debug=false
 # begin of debug:
-# debug=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to poceed...";set -x' DEBUG
+# debug=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
 # end of debug:
 # set +x; debug=false; trap - DEBUG; anykey
 
