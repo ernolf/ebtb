@@ -30,7 +30,7 @@ ${LINSTALLED_BASHLIB:-false} || {
 
     list_installed(){
         cursor_ hide
-        local arg sapi quiet only pkg plu fullpath mod pv webserver pkgmod modstring question active_sapi infostring this
+        local arg sapi quiet only pkg plu fullpath mod pv httpd pkgmod
         local -a sockets
         local -i c2 c3 i iim iam ctr aimct
         c2=28 c3=74 aimct=0 SAPI_A2=() SAPI_FPM=()
@@ -97,8 +97,8 @@ ${LINSTALLED_BASHLIB:-false} || {
                 # --> Active SAPI
                 if [ "${sapi%:*}" = 'apache2' ]; then
                     pv="${pkg/libapache2-mod-php/}" # extract version
-                    if systemctl -q is-active apache2; then
-                        if (( $(apachectl -tD DUMP_INCLUDES 2>/dev/null | grep -cE "php${sapi#*:}.(load|conf)") == 2 )); then
+                    if (( ${SERVER_STATUS[apache2]} > 2 )); then
+                        if [[ "${A2CONFFILES[@]}" =~ php${sapi#*:}\.conf && "${A2CONFFILES[@]}" =~ php${sapi#*:}\.load ]]; then
                             SAPI_A2[$pv]='a'
                             lG;echo " <ACTIVE> loaded";N
                         else
@@ -127,46 +127,29 @@ ${LINSTALLED_BASHLIB:-false} || {
                         ;;
                    fpm) pv=${pkg#php}; pv=${pv%-fpm} # extract version
                         if (( ${#sockets[@]} )); then
-                            local -a enabled_webservers
-                            local -A server_status
-                            for webserver in apache2 nginx; do
-                                server_status[$webserver]=0 # "not installed"
-                                if command -v $webserver >/dev/null 2>&1; then
-                                    server_status[$webserver]=1 # "disabled"
-                                    if systemctl is-enabled $webserver >/dev/null 2>&1; then
-                                        enabled_webservers+=($webserver)
-                                        server_status[$webserver]=2 # "enabled & inactive"
-                                        if systemctl is-active $webserver >/dev/null 2>&1; then
-                                            server_status[$webserver]=3 # "enabled & active"
-                                        fi
-                                    fi
-                                fi
-                                (( ${server_status[$webserver]} )) || continue # jump to next server
-                            done
-                            local connected_webserver socket
+                            populate_httpd_ wk_enabled
+                            local connected_httpd socket
                             for i in ${!sockets[@]}; do
-                                connected_webserver=''
+                                connected_httpd=''
                                 socket=${sockets[i]}
-                                if (( ${#enabled_webservers[@]} )); then
-                                    for webserver in ${enabled_webservers[@]}; do
-                                        case $webserver in
-                                            apache2)local -a a2conffiles
-                                                    mapfile -t a2conffiles< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null| tail +2 | awk '{print $NF}')
-                                                    grep -qs "^[^#]*unix:$socket" ${a2conffiles[@]} || continue
+                                if (( ${#WK_HTTPD_ENABLED[@]} )); then
+                                    for httpd in ${WK_HTTPD_ENABLED[@]}; do
+                                        case $httpd in
+                                            apache2)grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
                                                     ;;
-                                            nginx)  grep -qs "^[^#]*unix:$socket" <(nginx -T 2>/dev/null) || continue
+                                            nginx)  grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
                                         esac
-                                        case ${server_status[$webserver]} in
-                                            2)  connected_webserver="$connected_webserver $(N;GRAY)$webserver(inactive)$(N;lG)" ;;
-                                            3)  connected_webserver=" $webserver $connected_webserver"
+                                        case ${SERVER_STATUS["$httpd"]} in
+                                            2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
+                                            3)  connected_httpd=" $httpd $connected_httpd"
                                         esac
                                     done
                                 fi
                                 o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
-                                if [ -z "$connected_webserver" ]; then
+                                if [ -z "$connected_httpd" ]; then
                                     SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
                                 else
-                                    SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_webserver";N
+                                    SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_httpd";N
                                 fi
                             done
                         fi

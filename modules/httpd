@@ -10,9 +10,7 @@ __license__
 ${HTTPD_BASHLIB:-false} || {
     HTTPD_BASHLIB=:
 
-    declare HTTPD_NEXTCLOUD
-    declare -a HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ACTIVE HTTPD_ALL
-
+# TODO 0 -->
     #        apache2     /etc/apache2            /lib/systemd/system/apache2.service
     #        caddy       /etc/caddy              /lib/systemd/system/caddy.service
     #        lghttpd     /etc/lighttpd           /lib/systemd/system/lighttpd.service
@@ -20,67 +18,113 @@ ${HTTPD_BASHLIB:-false} || {
     #        nginx       /etc/nginx              /lib/systemd/system/nginx.service
     #        tntnet      /etc/tntnet             /lib/systemd/system/tntnet.service
     #        yaws        /etc/yaws               /lib/systemd/system/yaws.service
+# TODO <-- 0
+    declare -a A2CONFFILES NGINXCONFFILES HTTPD_NEXTCLOUD HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ENABLED WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ENABLED HTTPD_ACTIVE HTTPD_ALL
+    declare -A SERVER_STATUS=([apache2]=0 [caddy]=0 [lighttpd]=0 [mini_httpd]=0 [nginx]=0 [tntnet]=0 [yaws]=0)
+    mapfile -t A2CONFFILES< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null | tail +2 | awk '{print $NF}')
+    mapfile -t NGINXCONFFILES< <(nginx -T 2>/dev/null)
+    declare httpd
+    for httpd in ${!SERVER_STATUS[@]}; do
+        if command -v "$httpd" &>/dev/null; then
+            SERVER_STATUS["$httpd"]=1 # "known"
+            if systemctl --no-pager --quiet is-enabled "$httpd" &>/dev/null; then
+                SERVER_STATUS["$httpd"]=2 # "enabled & inactive"
+                if systemctl --no-pager --quiet is-active "$httpd" &>/dev/null; then
+                    SERVER_STATUS["$httpd"]=3 # "enabled & active"
+                fi
+            fi
+        fi
+    done
+    unset httpd
 
     detect_httpd(){
-        local httpd p
+        check_() {
+            local p
+            local -a conffiles
+            if [ "$2" = "apache2" ]; then
+                conffiles=("${A2CONFFILES[@]}") # Copy the array values
+            elif [ "$2" = "nginx" ]; then
+                conffiles=("${NGINXCONFFILES[@]}") # Copy the array values
+            fi
+            (( ${#conffiles[@]} )) || return 1
+            for p in $(grep -ER "^\s*(<Directory|root)" "${conffiles[@]}" 2>/dev/null | \
+                awk -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
+                case $1 in
+      nextcloud_server) if find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; &>/dev/null; then
+                            nextcloud_server["$2"]=true
+                        fi
+                        ;;
+   nextcloud_directory) find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; 2>/dev/null
+                        ;;
+                   all) if [ -L "${p%%;*}" ]; then
+                            echo "${p%%;*}->$(readlink -f ${p%%;*}) - ${p##*;}"
+                        else
+                            echo "${p%%;*} - ${p##*;}"
+                        fi
+                        ;;
+                     *) :
+                esac
+            done
+        }
+        local httpd
         local -a wellknown_httpdaemons httpdaemons
-        wellknown_httpdaemons=(apache2 nginx)
-        httpdaemons=(apache2 caddy lighttpd nginx tntnet yaws)
+        local -A nextcloud_server
+        nextcloud_server=([apache2]=false [nginx]=false)
+        wellknown_httpdaemons=(${!nextcloud_server[@]})
+        httpdaemons=(${!SERVER_STATUS[@]})
+        for httpd in ${wellknown_httpdaemons[@]}; do check_ nextcloud_server "$httpd"; done
         case $1 in
-         wk_active) for httpd in ${wellknown_httpdaemons[@]}; do
-                        systemctl --quiet is-active $httpd && echo "$httpd"
-                    done
+          wk_known) for httpd in ${wellknown_httpdaemons[@]}; do (( ${SERVER_STATUS["$httpd"]} )) && echo "$httpd"; done
                     ;;
-          wk_known) for httpd in ${wellknown_httpdaemons[@]}; do
-                        systemctl --no-pager --quiet list-unit-files "$httpd*" >/dev/null 2>&1 && echo "$httpd"
-                    done
+        wk_enabled) for httpd in ${wellknown_httpdaemons[@]}; do (( ${SERVER_STATUS["$httpd"]} > 1 )) && echo "$httpd"; done
                     ;;
-            active) for httpd in ${httpdaemons[@]}; do
-                        systemctl --quiet is-active $httpd && echo "$httpd"
-                    done
+         wk_active) for httpd in ${wellknown_httpdaemons[@]}; do (( ${SERVER_STATUS["$httpd"]} > 2 )) && echo "$httpd"; done
                     ;;
-             known) for httpd in ${httpdaemons[@]}; do
-                        systemctl --no-pager --quiet list-unit-files "$httpd*" >/dev/null 2>&1 && echo "$httpd"
-                    done
+             known) for httpd in ${httpdaemons[@]}; do (( ${SERVER_STATUS["$httpd"]} )) && echo "$httpd"; done
                     ;;
-         nextcloud) for p in $(grep -ER "^\s*(<Directory|root)" /etc 2>/dev/null|awk -F'[>| |;|:]' '/enabled/{gsub(/\/$/,"",$(NF-1));print $1 ";" $(NF-1)}'); do
-                        if find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; &>/dev/null; then
-                            echo "$p" | awk -F'/' '{print $3}'
+           enabled) for httpd in ${httpdaemons[@]}; do (( ${SERVER_STATUS["$httpd"]} > 1 )) && echo "$httpd"; done
+                    ;;
+            active) for httpd in ${httpdaemons[@]}; do (( ${SERVER_STATUS["$httpd"]} > 2 )) && echo "$httpd"; done
+                    ;;
+         nextcloud) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && echo "$httpd"; done
+                    ;;
+            nc-dir) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && check_ nextcloud_directory "$httpd" | sort -u; done
+                    ;;
+               all) for httpd in "${wellknown_httpdaemons[@]}"; do
+                        if "${nextcloud_server["$httpd"]}"; then
+                            echo "$httpd:"
+                            check_ all "$httpd" | sort -u
                         fi
-                    done | sort -u
+                    done
                     ;;
-            nc-dir) for p in $(grep -ER "^\s*(<Directory|root)" /etc 2>/dev/null|awk -F'[>| |;|:]' '/enabled/{gsub(/\/$/,"",$(NF-1));print $1 ";" $(NF-1)}'); do
-                        find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; 2>/dev/null
-                    done | sort -u
-                    ;;
-               all) for p in $(grep -ER "^\s*(<Directory|root)" /etc 2>/dev/null|awk -F'[>| |;|:]' '/enabled/{gsub(/\/$/,"",$(NF-1));print $1 ";" $(NF-1)}'); do
-                        webserver="$(echo "${p%%;*}"|awk -F'/' '{print $3}')"
-                        if [ -e "${p##*;}/occ" ]; then
-                            nextcloud_served_by=$webserver
-                        fi
-                        echo "${p%%;*} - ${p##*;}"
-                    done | sort -u
+                 *) :
         esac
     }
 
     populate_httpd_(){
         case $1 in
-         nextcloud) HTTPD_NEXTCLOUD="$(detect_httpd nextcloud 2>&1)"
+         nextcloud) mapfile -t HTTPD_NEXTCLOUD< <(detect_httpd nextcloud 2>&1)
                     ;;
             nc-dir) mapfile -t HTTPD_NC_DIR< <(detect_httpd nc-dir 2>&1)
                     ;;
           wk_known) mapfile -t WK_HTTPD_KNOWN< <(detect_httpd wk_known 2>&1)
                     ;;
+        wk_enabled) mapfile -t WK_HTTPD_ENABLED< <(detect_httpd wk_enabled 2>&1)
+                    ;;
          wk_active) mapfile -t WK_HTTPD_ACTIVE< <(detect_httpd wk_active 2>&1)
                     ;;
              known) mapfile -t HTTPD_KNOWN< <(detect_httpd known 2>&1)
                     ;;
+           enabled) mapfile -t HTTPD_ENABLED< <(detect_httpd enabled 2>&1)
+                    ;;
             active) mapfile -t HTTPD_ACTIVE< <(detect_httpd active 2>&1)
                     ;;
                all) mapfile -t HTTPD_ALL< <(detect_httpd all 2>&1)
+                    ;;
+                 *) :
         esac
     }
-# TODO 0 -->
+# TODO 1 -->
 # example:
 #    detected_httpd(){
 #        populate_httpd_ known
@@ -89,5 +133,5 @@ ${HTTPD_BASHLIB:-false} || {
 #            echo "${HTTPD_KNOWN[0]}"
 #        fi
 #    }
-# TODO <-- 0
+# TODO <-- 1
 }

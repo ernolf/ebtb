@@ -389,21 +389,21 @@ ${TASKS_BASHLIB:-false} || {
             spinner C " . searching misconfigured SAPIs ." &
             [[ "${SAPI_A2[@]}" =~ a ]] && active_sapi="a2"
             [[ "${SAPI_FPM[@]}" =~ a ]] && { [ "$active_sapi" = "a2" ] && active_sapi="both" || active_sapi="fpm";}
-            populate_httpd_ known
+            populate_httpd_ enabled
             populate_httpd_ active
-            populate_httpd_ wk_known
+            populate_httpd_ wk_enabled
             populate_httpd_ wk_active
-            if (( ${#HTTPD_KNOWN[@]} )); then
-                if (( ${#HTTPD_KNOWN[@]} == ${#WK_HTTPD_KNOWN[@]} )); then
-                    if (( ${#WK_HTTPD_KNOWN[@]} == 1 )); then
-                        webserver="${WK_HTTPD_KNOWN[0]}"
+            if (( ${#HTTPD_ENABLED[@]} )); then
+                if (( ${#HTTPD_ENABLED[@]} == ${#WK_HTTPD_ENABLED[@]} )); then
+                    if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                        webserver="${WK_HTTPD_ENABLED[0]}"
                         infostring="Detected httpd (webserver): $(C)$webserver$(N) (status inactive)"
                         if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
                             infostring="${infostring/inactive/active}"
                         fi
-                    elif (( ${#WK_HTTPD_KNOWN[@]} == 2 )); then
+                    elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
                         webserver=both
-                        modstring="$(listify C ${WK_HTTPD_KNOWN[@]})"
+                        modstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
                         infostring="Detected httpds (webservers): $modstring"
                         if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
                             active_webserver=${WK_HTTPD_ACTIVE[0]}
@@ -413,18 +413,18 @@ ${TASKS_BASHLIB:-false} || {
                             infostring="$infostring, and $active_webserver seem to be active."
                         fi
                     fi
-                elif (( ${#HTTPD_KNOWN[@]} > ${#WK_HTTPD_KNOWN[@]} )); then
-                    if (( ${#WK_HTTPD_KNOWN[@]} == 1 )); then
-                        webserver="${WK_HTTPD_KNOWN[0]}"
-                        modstring="$(listify C ${HTTPD_KNOWN[@]})"
+                elif (( ${#HTTPD_ENABLED[@]} > ${#WK_HTTPD_ENABLED[@]} )); then
+                    if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                        webserver="${WK_HTTPD_ENABLED[0]}"
+                        modstring="$(listify C ${HTTPD_ENABLED[@]})"
                         infostring="Detected httpds (webservers): $modstring. httpd with importance for this script: $(C)$webserver$(N) (status inactive)"
                         if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
                             infostring="${infostring/inactive/active}"
                         fi
-                    elif (( ${#WK_HTTPD_KNOWN[@]} == 2 )); then
+                    elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
                         webserver=both
-                        modstring="$(listify C ${HTTPD_KNOWN[@]})"
-                        modsubstring="$(listify C ${WK_HTTPD_KNOWN[@]})"
+                        modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                        modsubstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
                         infostring="Detected httpds (webservers): $modstring. httpds with importance for this script: $modsubstring"
                         if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
                             active_webserver=${WK_HTTPD_ACTIVE[0]}

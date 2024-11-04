@@ -444,11 +444,13 @@ ${MH_BASHLIB:-false} || {
 
 #        . <(lrequire httpd)
         populate_httpd_ nextcloud
-        mh "nextcloud-httpd: $HTTPD_NEXTCLOUD"
+        for i in "${!HTTPD_NEXTCLOUD[@]}"; do mh "nextcloud-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NEXTCLOUD[i]}"; done
         populate_httpd_ nc-dir
         for i in "${!HTTPD_NC_DIR[@]}"; do mh "nc-dir-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NC_DIR[i]}"; done
         populate_httpd_ known
         for i in "${!HTTPD_KNOWN[@]}"; do mh "known-httpd - $(printf '%02d' $((i+1))): ${HTTPD_KNOWN[i]}"; done
+        populate_httpd_ enabled
+        for i in "${!HTTPD_ENABLED[@]}"; do mh "enabled-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ENABLED[i]}"; done
         populate_httpd_ active
         for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
         populate_httpd_ all
