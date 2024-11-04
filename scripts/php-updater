@@ -205,6 +205,10 @@ case $1 in
         list_installed 'only=:'
         exit 0
         ;;
+    --list-sapi)
+        list_installed_sapi
+        exit 0
+        ;;
     --list-candidates)
         list_candidates
         need_sury_repo
