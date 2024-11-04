@@ -7,9 +7,9 @@ $rt && {
         sha256sum -c --ignore-missing --quiet modules.sha256 2>/dev/null | sed 's/:.*//'
     ))
     ((${#tntd[@]})) && {
-        for i in ${!tntd[@]}; do rm "$lincld/${tntd[i]}"; done
+        for tm in ${tntd[@]}; do rm "$tm"; done
         "$me" "json=$my_json" $my_args
         exit 0
     }
 }
-unset -v lcf tntd
+unset -v lcf tntd tm
