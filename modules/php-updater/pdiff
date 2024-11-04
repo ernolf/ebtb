@@ -32,7 +32,7 @@ ${PDIFF_BASHLIB:-false} || {
             ) | sort -u
         }
 
-        local pkg pvo pvn sapi pkgmod pkg
+        local pkg pvo pvn sapi pkgmod
         local -a eia x1 x2
         local -i i
         pvo="$1" pvn="$2" sapi="$3"

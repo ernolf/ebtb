@@ -24,7 +24,7 @@ ${FIRST_RUN_BASHLIB:-false} || {
             mh "vdir: $1" &
             setvdir v "$1"
             f
-            o2;echo "- $(lG)first run wizard completed successfully.";N
+            o2; echo "- $(lG)first run wizard completed successfully."; N
             f
             $me "json=$my_json" $my_args
             exit 0
@@ -39,18 +39,18 @@ ${FIRST_RUN_BASHLIB:-false} || {
         fi
         if ! $irun2; then
             f
-            o2;GRAY;echo "This step is required once after a new installation or sometimes after an update:";N
+            o2; GRAY; echo "This step is required once after a new installation or sometimes after an update:"; N
         fi
         su_root "for the first run wizard" irun2
         populate_httpd_ nc-dir
         f
-        o2;B;echo "Hello, this is the first run wizard of \"$(Y)$me$(B)\""
+        o2; B; echo "Hello, this is the first run wizard of \"$(Y)$me$(B)\""
         if (( ${#HTTPD_NC_DIR[@]} == 1 )); then
             p="${HTTPD_NC_DIR[0]}"
-            o2;echo "nextcloud installation detected in $(C)$p";N
-            o2;printf "is that correct $(box Y) / $(box n) ($(GRAY)or $(q2q;N)) "
+            o2; echo "nextcloud installation detected in $(C)$p"; N
+            o2; printf "is that correct $(box Y) / $(box n) ($(GRAY)or $(q2q; N)) "
             while :; do
-                read -rsn 1 ans;te1
+                read -rsn 1 ans; te1
                 case ${ans:-y} in
                     q)  exit 0
                         ;;
@@ -63,15 +63,15 @@ ${FIRST_RUN_BASHLIB:-false} || {
             done
         elif (( ${#HTTPD_NC_DIR[@]} > 1 )); then
             line '=' P 2/78 b1
-            o3;B;echo "Detected nextcloud installations"
-            o4;Y;echo "Num$(o $c2)Directory"
+            o3; B; echo "Detected nextcloud installations"
+            o4; Y; echo "Num$(o $c2)Directory"
             line '-' P 2/78
             for i in "${!HTTPD_NC_DIR[@]}"; do
                 p="${HTTPD_NC_DIR[i]}"
-                o3;echo "- $((n+i))$(o $c2)$p"
+                o3; echo "- $((n+i))$(o $c2)$p"
             done
             line '-' P 2/78 a2
-            o2;printf "Enter the corresponding number, $h"
+            o2; printf "Enter the corresponding number, $h"
             while :; do
                 read -rsn 1 num
                 te1
@@ -86,10 +86,10 @@ ${FIRST_RUN_BASHLIB:-false} || {
                         }
                         i="$((num-n))"
                         p="${HTTPD_NC_DIR[i]}"
-                        o2;echo "Your choice: \"$(C)$p$(N)\""
+                        o2; echo "Your choice: \"$(C)$p$(N)\""
                         f
-                        o2;echo "is this the right Nextcloud installation path?"
-                        o2;echo "Press $(box y) for yes, $(box n) for no, $(box h) enter path by hand or $(q2q): "
+                        o2; echo "is this the right Nextcloud installation path?"
+                        o2; echo "Press $(box y) for yes, $(box n) for no, $(box h) enter path by hand or $(q2q): "
                         while :; do
                             read -rsn 1 ans
                             te1
@@ -113,7 +113,7 @@ ${FIRST_RUN_BASHLIB:-false} || {
             done
         fi
         while :; do
-            o2;echo "enter the directory where your Nextcloud is installed ($(C)or $(q2q;N)):";N
+            o2; echo "enter the directory where your Nextcloud is installed ($(C)or $(q2q; N)):"; N
             read -rp "  --> " p
             te1
             [ "${p,}" = "q" ] && exit 0

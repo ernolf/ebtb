@@ -11,7 +11,7 @@ ${MERGE_BASHLIB:-false} || {
     MERGE_BASHLIB=:
 
     # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+    declare -f lrequire &>/dev/null||lrequire(){ require $@; }
 
     . <(lrequire basics)
     . <(lrequire spinner)
@@ -20,16 +20,17 @@ ${MERGE_BASHLIB:-false} || {
     . <(lrequire php.net/ini_directives)
 
     merge_settings(){
-        # Do not touch this directives
-        local -a keep=(error_reporting)
+        local -a keep
+        # Do not touch the directives in this array:
+        keep=(error_reporting)
         defaults_and_changelog(){
             local key default changelog tip
             local -i r=0
             key="$1" tip=''
             if default="$(ini_directives "$key" default)"; then
-                os;GRAY
+                os; GRAY
                 if [ -z "$default" ]; then
-                    echo "this directive has no default value";N
+                    echo "this directive has no default value"; N
                 else
                     echo "the value defaults to $(Cbg)\"$default\"$(N)"
                 fi
@@ -38,17 +39,17 @@ ${MERGE_BASHLIB:-false} || {
                         if grep -iqs "removed" <<< "$changelog"; then
                             tip="\nTIP: $(O)do $(Rbg) not $(O) integrate this directive into the new config if it got removed$(N)" r=1
                         fi
-                        os;GRAY;echo "this is the changelog of this directive:"
-                        os;N;echo -e "- $(Cbg)\"$changelog\"$(N)$tip"
+                        os; GRAY; echo "this is the changelog of this directive:"
+                        os; N; echo -e "- $(Cbg)\"$changelog\"$(N)$tip"
                     fi
                 fi
             else
-                os;GRAY;echo "This script does not have any information about this directive.";N
+                os; GRAY; echo "This script could not find any information about this directive on php.net"; N
             fi
             return $r
         }
         comm_(){
-            is_extension(){ grep -Eqs "^\s*extension\s*=.*" <<< "$1";}
+            is_extension(){ grep -Eqs "^\s*extension\s*=.*" <<< "$1"; }
 
             local opath npath key val nval
             local -i oi ni i j
@@ -58,14 +59,14 @@ ${MERGE_BASHLIB:-false} || {
             [ -n "$3" ] && npath="$3" || npath="${FILE//$OLD/$NEW}"
             mapfile -t osettings< <(stripconf "$opath")
             # add the extensions loaded by mods-available to prevent loading multiple times
-            mapfile -t nsettings< <(stripconf "$npath";grep -Ehr "^\s*(zend_)?extension\s*=.*" "/etc/php/$NEW/mods-available")
+            mapfile -t nsettings< <(stripconf "$npath"; grep -Ehr "^\s*(zend_)?extension\s*=.*" "/etc/php/$new/mods-available")
             # get all settings from the old ini file and store the settings in an array
             for oi in "${!osettings[@]}"; do
-                key="$(key_ name "${osettings[oi]}")";osettings_names+=("$key")
+                key="$(key_ name "${osettings[oi]}")"; osettings_names+=("$key")
             done
             # get all settings from the new ini file and store the settings in an array
             for ni in "${!nsettings[@]}"; do
-                key="$(key_ name "${nsettings[ni]}")";nsettings_names+=("$key")
+                key="$(key_ name "${nsettings[ni]}")"; nsettings_names+=("$key")
             done
             case $1 in
                 1)  # get the settings that are in the old settings array but not in the new settings array
@@ -79,7 +80,7 @@ ${MERGE_BASHLIB:-false} || {
                     for oi in "${!osettings[@]}"; do
                         is_extension "${osettings[oi]}"&&{ val="$(key_ val "${osettings[oi]}")"
                             for ni in "${!nsettings[@]}"; do
-                                is_extension "${nsettings[ni]}"&&{ nval="$(key_ val "${nsettings[ni]}")";[ "$val" = "$nval" ]&&break 2;}
+                                is_extension "${nsettings[ni]}"&&{ nval="$(key_ val "${nsettings[ni]}")"; [ "$val" = "$nval" ]&&break 2; }
                             done
                             diff1_names_with_values+=("extension=$val")
                         }
@@ -114,16 +115,16 @@ ${MERGE_BASHLIB:-false} || {
                         nval="$(key_ val "${nsettings[ni]}")"
                         if [ "${val//$OLD/}" != "${nval//$NEW/}" ]; then
                             kill_spinner
-                            f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) it is $(GRAYbg)\"$nval\"" 3;N)"
+                            f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
                             defaults_and_changelog "$key"
                             if [[ "${keep[@]}" =~ $key ]]; then
-                                bundle echo "$(ipf;format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set a specific value for this directive, you have to edit the file $(C)$npath$(N) yourself with an editor of your choice. Refer to https://www.php.net/manual/en/errorfunc.configuration.php#ini.$key for further information" 3;N)"
+                                bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set a specific value for this directive, you have to edit the file $(C)$npath$(N) yourself with an editor of your choice. Refer to https://www.php.net/manual/en/errorfunc.configuration.php#ini.$key for further information" 3; N)"
                                 anykey
                             else
-                                question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val//$OLD/$NEW}\"" 3;N)"
+                                question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                                 if ask "$question" "$YES"; then
-                                    sed -i "s|^\s*$key.*$|;$key = $nval\n$key = ${val//$OLD/$NEW}|" "$npath"
-                                    echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val//$OLD/$NEW}\"" 3;N)"
+                                    sed -i "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$OLD/$NEW}|" "$npath"
+                                    echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$OLD/$NEW}\"" 3; N)"
                                 fi
                             fi
                             separator
@@ -157,17 +158,17 @@ ${MERGE_BASHLIB:-false} || {
             key="$1" val="$2" path="$3" last=$4
             # append the val at the end of the section
             if [ "${npath##*/}" = "php.ini" ]; then
-                f;echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3;N)"
-                section="at the end of the $(bY;section "${key%.*}";N) section" nl='\n'
+                f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+                section="at the end of the $(bY; section "${key%.*}"; N) section" nl='\n'
             elif [ "${npath##*.}" = "conf" ]; then
-                f;echo " -$(format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3;N)"
+                f; echo " -$(format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
                 section="under the other environment variables" nl=''
             fi
             defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
             question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) $section" 3)"
             if ask "$question" "$defaultanswer"; then
                 sed -i "${last}a\\$nl$key = $val" "$path"
-                echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) at the end of the $(Y;section "${key%.*}";N) section in $(B)$path" 3;N)"
+                echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) at the end of the $(Y; section "${key%.*}"; N) section in $(B)$path" 3; N)"
             fi
             separator
         }
@@ -176,13 +177,13 @@ ${MERGE_BASHLIB:-false} || {
             local key val path ael defaultanswer question
             key="$1" val="$2" path="$3" ael="$4"
             kill_spinner
-            f;echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3;N)"
+            f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
             question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
             if ask "$question" "$defaultanswer"; then
                 ${ael:-false} && echo >> "$path"
                 echo "$key = $val" >> "$path"
-                echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) appended to the end of $(B)$path" 3;N)"
+                echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) appended to the end of $(B)$path" 3; N)"
             fi
             separator
         }
@@ -204,23 +205,23 @@ ${MERGE_BASHLIB:-false} || {
             if grep -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
                 kill_spinner
                 lnr=$(grep -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | cut -d ":" -f 1)
-                f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3;N)"
+                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$opkg$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3; N)"
                 defaults_and_changelog "$key"
                 question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new $(basename $FILE) as well" 3)"
                 if ask "$question" "$YES"; then
-                    sed -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" $npath
-                    echo "R:$(format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3;N)"
+                    sed -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" "$npath"
+                    echo "R:$(format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3; N)"
                 fi
                 separator
             elif ((last)); then
                 kill_spinner
                 # append the val after the last occurrence
-                f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) and $(P)is not set$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3;N)"
+                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGOLD$(N) and $(P)is not set$(N) in the $(basename $FILE) of $(C)$PKGNEW" 3; N)"
                 defaults_and_changelog "$key"
                 question="Q:$(format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
                 if ask "$question" "$YES"; then
                     sed -i "${last}a\\$key = $val" "$npath"
-                    echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) after line $last in $(B)$npath" 3;N)"
+                    echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) after line $last in $(B)$npath" 3; N)"
                 fi
                 separator
             elif [[ "$key" == *"."* ]]; then
@@ -252,12 +253,12 @@ ${MERGE_BASHLIB:-false} || {
             [ "$key" = "" ] && continue
             if grep -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
                 kill_spinner
-                f;echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGOLD" 3;N)"
+                f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the $(basename $FILE) of $(C)$PKGNEW$(N) but it $(P)is commented out$(N) in the $(basename $FILE) of $(C)$PKGOLD" 3; N)"
                 defaults_and_changelog "$key"
                 question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new $(basename $FILE) as well" 3)"
                 if ask "$question" "$YES"; then
-                    sed -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" $npath
-                    echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3;N)"
+                    sed -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" "$npath"
+                    echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3; N)"
                 fi
                 separator
             fi

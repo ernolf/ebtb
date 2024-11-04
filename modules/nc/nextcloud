@@ -11,7 +11,7 @@ ${NEXTCLOUD_BASHLIB:-false} || {
     NEXTCLOUD_BASHLIB=:
 
     # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+    declare -f lrequire &>/dev/null||lrequire(){ require $@; }
 
     . <(lrequire sudo)
     . <(lrequire php/version)
@@ -56,7 +56,8 @@ ${NEXTCLOUD_BASHLIB:-false} || {
 
         jq_filter(){
 # TODO 0 -->
-#            echo "$@"|jq -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
+# as oneliner:
+# echo "$@"|jq -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
 # TODO <-- 0
             echo "$@" | jq -c '[.[] | .[]]
                 | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
@@ -64,7 +65,8 @@ ${NEXTCLOUD_BASHLIB:-false} || {
         }
 
 # TODO 1 -->
-#        C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
+# as oneliner:
+# C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
 # TODO <-- 1
         C2J='<?php
         $c = [];
@@ -100,7 +102,7 @@ ${NEXTCLOUD_BASHLIB:-false} || {
     }
 
     if $AIO; then
-        occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@;}
+        occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@; }
     else
         # detect, if apc is required for cli
         declare phpcli
@@ -110,13 +112,13 @@ ${NEXTCLOUD_BASHLIB:-false} || {
             phpcli="php$(php_ver)"
         fi
         # the occ command call is saved under occ, adapted to the user and environment
-        occ(){ $phpcli -f $NC_DIR/console.php "$@";}
+        occ(){ $phpcli -f $NC_DIR/console.php "$@"; }
         
         if (( $(id -u) )); then
             [ "$(id -un)" != "$NC_USER" ] && su_do "u=NC_USER"
         else
             # you are root
-            occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php "$@";}
+            occ(){ sudo -u $NC_USER $phpcli -f $NC_DIR/console.php "$@"; }
         fi
     fi
 
@@ -125,7 +127,7 @@ ${NEXTCLOUD_BASHLIB:-false} || {
         NC_DATADIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
     elif nc_configkey_exist_ datadirectory; then
         NC_DATADIR="$(nc_configkey datadirectory)"
-    elif [ -d "$NC_DIR/data" ];then
+    elif [ -d "$NC_DIR/data" ]; then
         NC_DATADIR="$NC_DIR/data"
     else
         NC_DATADIR=""
@@ -138,10 +140,13 @@ ${NEXTCLOUD_BASHLIB:-false} || {
 
     nc_version_(){ local version_php="$2"
         case $1 in
-            long)   awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php";;
-            short)  awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php";;
-            key)    awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php";;
-            string) awk -F"'" '/\$OC_VersionString =/{print $2}' "$version_php";;
+            long)   awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php"
+                    ;;
+            short)  awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php"
+                    ;;
+            key)    awk -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php"
+                    ;;
+            string) awk -F"'" '/\$OC_VersionString =/{print $2}' "$version_php"
         esac
     }
 }
