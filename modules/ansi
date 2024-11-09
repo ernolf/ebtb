@@ -39,7 +39,10 @@ SGR=( # SGR (Select Graphic Rendition) parameters
   [INV_]='7'    # invert
   [HIDE_]='8'   # hide
   [X_]='9'      # crossed
-);for p in "${!SGR[@]}";do eval "$p(){ printf '%b' '${SGR[$p]};';}";done
+)
+for p in "${!SGR[@]}"; do
+    eval "$p(){ printf '%b' '${SGR[$p]};';}"
+done
 C=(   # Color codes
   [cBLACK]='0'      #000000 - black (3 bit/8 colors)
   [cR]='1'          #800000 - red (3 bit/8 colors)
@@ -65,7 +68,10 @@ C=(   # Color codes
   [cPHPlight]="$_24;226;228;239"  #e2e4ef - PHP light (24-bit/rgb)
   [cPHPmedium]="$_24;136;146;191" #8892bf - PHP medium (24-bit/rgb)
   [cPHPdark]="$_24;79;91;147"     #4f5b93 - PHP dark (24-bit/rgb)
-);for p in "${!C[@]}";do eval "$p(){ printf '%b' \"\${1:-$FG}${C[$p]};\";}";done
+)
+for p in "${!C[@]}"; do
+    eval "$p(){ printf '%b' \"\${1:-$FG}${C[$p]};\";}"
+done
 CC=(  # Composed Color codes
   [NCbluebg]="$(cWi;cNCblue $BG)"
   [lPHP]="$(cPHPlight;cBLACK $BG)"
@@ -125,7 +131,9 @@ CC=(  # Composed Color codes
 # TODO 0 -->
 # for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';}";done
 # TODO <-- 0
-for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}";done
+for p in "${!CC[@]}"; do
+    eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}"
+done
 unset -v FG BG BFG BBG _8 _24 SGR C CC p
 
 ### ANSI - Cursor handling
