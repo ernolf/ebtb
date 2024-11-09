@@ -191,7 +191,7 @@ need_sury_repo(){
                         mh "adding apt source succeeded"
                         f;os;G;echo "This step was successfull";N
                         anykey
-                        "$me$forceflag" "json=$my_json" --list-candidates
+                        "$me${FLAG[forceflag]}" "json=$my_json" --list-candidates
                     fi
                 fi
             elif ((sury_r == 33)); then # http instead of https
@@ -246,7 +246,7 @@ need_sury_repo(){
                                 anykey
                             fi
                             apt_update
-                            "$me$forceflag" "json=$my_json" --list-candidates
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-candidates
                         else
                             os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
                             anykey
@@ -299,7 +299,7 @@ need_sury_repo(){
                         apt_update
                         os;G;echo "This step was successfull";N
                         anykey
-                        "$me$forceflag" "json=$my_json" --list-candidates
+                        "$me${FLAG[forceflag]}" "json=$my_json" --list-candidates
                     else
                         os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
                         anykey

@@ -54,16 +54,20 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/php-updater-a-script-to-upgrade-php-in-a-safe-way/180215"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+for arg in "$@"; do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
 
-declare help=false force=false forceflag='' needforce=false supported=false unsupported=false nolts=false distrib_to_old=false distrib_to_new=false distrib_unknown=false pager=:;declare -a args=()
+declare key keys="help force forceflag needforce supported unsupported nolts distrib_to_old distrib_to_new distrib_unknown pager"
+declare -A FLAG
+for key in $keys; do FLAG[$key]=false; done; unset -v key keys
+FLAG[forceflag]='' FLAG[pager]=:
+declare -a args=()
 for arg in "$@";do
-    if [ "$arg" = "-h" ]||[ "$arg" = "--help" ];then help=true
-    elif [ "$arg" = "--force" ];then force=true forceflag=' --force'
-    elif [ "$arg" = "--nopager" ]||[ "$arg" = "--no_pager" ]||[ "$arg" = "--no-pager" ];then pager=false
+    if [ "$arg" = "-h" ]||[ "$arg" = "--help" ];then FLAG[help]=true
+    elif [ "$arg" = "--force" ];then FLAG[force]=true FLAG[forceflag]=' --force'
+    elif [ "$arg" = "--nopager" ]||[ "$arg" = "--no_pager" ]||[ "$arg" = "--no-pager" ];then FLAG[pager]=false
     else args+=("$arg");fi
 done;set -- "${args[@]}"&&unset -v args
-$help&&explain
+${FLAG[help]}&&explain
 
 cursor_ hide
 
@@ -73,12 +77,12 @@ cursor_ hide
 su_root "to run this script."
 my_update_check
 [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " distrib_checked " ]]||. <(require $sin/distrib)
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " supported " ]]&&supported=true
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_old " ]]&&{ distrib_to_old=true needforce=true; $force&&supported=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_new " ]]&&{ distrib_to_new=true needforce=true; $force&&supported=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " nolts " ]]&&{ nolts=true needforce=true; $force&&supported=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unknown " ]]&&{ distrib_unknown=true needforce=true; $force&&supported=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unsupported " ]]&&unsupported=true
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " supported " ]]&&FLAG[supported]=true
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_old " ]]&&{ FLAG[distrib_to_old]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_new " ]]&&{ FLAG[distrib_to_new]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " nolts " ]]&&{ FLAG[nolts]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unknown " ]]&&{ FLAG[distrib_unknown]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unsupported " ]]&&FLAG[unsupported]=true
 
 
 # key_ name and key_ val
@@ -176,7 +180,7 @@ tasks(){
 declare lang=$(echo "$LANG"|cut -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE
 
-$supported&&apt_need_update
+${FLAG[supported]}&&apt_need_update
 
 declare verbose prefix
 verbose=false
@@ -187,7 +191,7 @@ echo "${prefix}populating arrays with inventory results.."
 # PACKAGES_INSTALLED_BY_DPKG
 $verbose&&echo "$(pf)Packages installed by dpkg.."
 populate_pkgs_by_dpkg_array
-if $supported; then
+if ${FLAG[supported]}; then
     ext_state cleanup
     ext_state fix
 fi
@@ -219,7 +223,7 @@ case $1 in
         exit 0
         ;;
     --switch-version)
-        $supported && switch_default_version
+        ${FLAG[supported]} && switch_default_version
         exit 0
         ;;
     --list-debian)
@@ -238,11 +242,11 @@ case $1 in
     *)  :
 esac
 
-if $supported && [ $# -eq 2 ] && [ ${#VERSIONS[@]} -gt 1 ];then
+if ${FLAG[supported]} && [ $# -eq 2 ] && [ ${#VERSIONS[@]} -gt 1 ];then
     does_exist_ "${1//php/}" 1 && does_exist_ "${2//php/}" 0 && OLD="${1//php/}" NEW="${2//php/}" || explain
 fi
 
-if $supported; then
+if ${FLAG[supported]}; then
     if [ ${#VERSIONS[@]} -eq 1 ];then
         [ "${VERSIONS[0]}" = "$PHP_VERSION" ]||version_mismatch
         OLD=${VERSIONS[0]}
@@ -357,12 +361,12 @@ if $supported; then
         fi
         separator
         echo " -$(format_string "The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
-        f;G;echo "$(prompt;lB) $me$forceflag$(C) "$OLD" "$NEW"";N
+        f;G;echo "$(prompt;lB) $me${FLAG[forceflag]}$(C) "$OLD" "$NEW"";N
         f;O;echo " -$(format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3;N)"
-        f;G;echo "$(prompt;P) $me$forceflag --switch-version";N
+        f;G;echo "$(prompt;P) $me${FLAG[forceflag]} --switch-version";N
         f;O;echo "  $(format_string "or run it now:" 3;N)"
         if ask "$(qpf)Do you want to switch the php version now" "$YES"; then
-            $me$forceflag --switch-version
+            $me${FLAG[forceflag]} --switch-version
         else
             donate_
         fi
@@ -385,7 +389,7 @@ if $supported; then
         N;f;exit0
     fi
 else
-    f;lB;echo " -$(format_string "Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$($needforce&&echo -n " unless you call it with $(GRAYbg)[ --force ]";N)" 3)"
+    f;lB;echo " -$(format_string "Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$(${FLAG[needforce]}&&echo -n " unless you call it with $(GRAYbg)[ --force ]";N)" 3)"
     f
     anykey
     separator

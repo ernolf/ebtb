@@ -32,7 +32,7 @@ brief_help(){
     os;pf;B;echo "$me$(o 44;dY)Run in interactive mode";N
     os;pf;B;echo "$me --list-installed$(o 44;dY)Detailed information about php on this machine.";N
     f;os;C;echo "Only if multiple PHP versions are installed:";N
-    f;os;pf;B;echo "$me$forceflag \$old \$new"
+    f;os;pf;B;echo "$me${FLAG[forceflag]} \$old \$new"
     if (( ${#VERSIONS[@]} > 1 )); then
         for i in ${!VERSIONS[@]}; do
             pkgct[i]=$(dpkg -l|awk '/^[hiu]i.*php'${VERSIONS[i]}'/{print $2}'|wc -l)
@@ -46,7 +46,7 @@ brief_help(){
             SUGGESTION="$(i_ver "$sugg_old")" || SUGGESTION="$(d_ver "$sugg_old")"
             sugg_new="$SUGGESTION"
         fi
-        o 6;GRAY;echo -n "\ Example: $(dB)$me$forceflag $(C)$sugg_old $sugg_new";N
+        o 6;GRAY;echo -n "\ Example: $(dB)$me${FLAG[forceflag]} $(C)$sugg_old $sugg_new";N
         te
     fi
     o 43;echo "$(dY;format_string "Migrate all settings from $(C)php\$old$(dY) to $(C)php\$new$(dY). $(C)php\$new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44;N)"
@@ -73,7 +73,7 @@ SUDO_MESSAGE
 explain(){
     local cat_or_pager sudo
     prompt>/dev/null&&sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
-    $pager&&{ cat_or_pager='less -R';phplogo 2>/dev/null;}||cat_or_pager='cat'
+    ${FLAG[pager]}&&{ cat_or_pager='less -R';phplogo 2>/dev/null;}||cat_or_pager='cat'
     $cat_or_pager<<EOF
 $(phplogo 2>/dev/null)
 
@@ -271,5 +271,5 @@ $(G;prompt -su;B) $me $(C)--switch-version
 
 EOF
     anykey
-    $pager||phplogo 2>/dev/null
+    ${FLAG[pager]}||phplogo 2>/dev/null
 }

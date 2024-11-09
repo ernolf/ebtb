@@ -109,7 +109,7 @@ replace_aim(){ # replace admin installed modules
     else
         bundle echo "$(xpf;format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
     fi
-    $replaced && "$me$forceflag" "json=$my_json" --list-installed-only
+    $replaced && "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
 }
 
 remove_unused_sapis(){
@@ -136,7 +136,7 @@ remove_unused_sapis(){
         echo " -$(format_string "This script can remove th${plu%:*} $modstring package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_purge --yes ${packages_2_purge[@]}
-            "$me$forceflag" "json=$my_json" --list-installed-only
+            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
             anykey
             return 0
         else
@@ -165,7 +165,7 @@ remove_dependency_packages(){
         echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_remove --yes ${DEPENDENCY_PKGS[@]}
-            "$me$forceflag" "json=$my_json" --list-installed-only
+            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
             anykey
             return 0
         else
@@ -194,7 +194,7 @@ remove_meta_packages(){
         echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_remove --yes ${META_PKGS[@]}
-            "$me$forceflag" "json=$my_json" --list-installed-only
+            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
             anykey
             return 0
         else
@@ -228,7 +228,7 @@ change_sapi(){
                         1)  cursor_ show
                             f
                             apt_remove 'php*-fpm'
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -237,7 +237,7 @@ change_sapi(){
                             php_a2module_2_fpm "$PHP_VERSION"
 # TODO: migrate php.ini
                             systemctl restart apache2 php$PHP_VERSION-fpm
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -247,7 +247,7 @@ change_sapi(){
 # TODO: migrate php.ini
                             systemctl restart apache2 php$PHP_VERSION-fpm
                             apt_remove 'libapache2-mod-php*'
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                     esac
@@ -272,7 +272,7 @@ change_sapi(){
                         1)  cursor_ show
                             f
                             apt_remove 'libapache2-mod-php*'
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -281,7 +281,7 @@ change_sapi(){
                             php_fpm_2_a2module $PHP_VERSION
 # TODO: migrate php.ini
                             systemctl restart apache2
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -291,7 +291,7 @@ change_sapi(){
 # TODO: migrate php.ini
                             systemctl restart apache2
                             apt_remove 'php*-fpm'
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                     esac
@@ -322,7 +322,7 @@ change_sapi(){
                             php_fpm_module_ enable
 # TODO: migrate php.ini
                             systemctl restart apache2 php$active_fpm_version-fpm
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -333,7 +333,7 @@ change_sapi(){
 # TODO: migrate php.ini
                             systemctl restart apache2 php$active_fpm_version-fpm
                             apt_remove 'libapache2-mod-php*'
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -341,7 +341,7 @@ change_sapi(){
                             f
                             php_fpm_2_a2module $PHP_VERSION
                             systemctl restart apache2
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -350,7 +350,7 @@ change_sapi(){
                             php_fpm_2_a2module $PHP_VERSION
                             systemctl restart apache2
                             apt_remove 'php*-fpm'
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                     esac
@@ -375,7 +375,7 @@ change_sapi(){
                             f
                             apt_remove 'libapache2-mod-php*'
                             php_a2module_2_fpm "$PHP_VERSION"
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                             ;;
@@ -383,7 +383,7 @@ change_sapi(){
                             f
                             apt_remove 'php*-fpm'
                             php_fpm_2_a2module $PHP_VERSION
-                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                             anykey
                             return 0
                     esac
@@ -474,7 +474,7 @@ change_sapi(){
                 pf;N;echo "Consider removing the apache2-mod-php SAPI (recommended)";N
                 if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
                     apt_purge 'libapache2-mod-php*'
-                    "$me$forceflag" "json=$my_json" --list-installed-only
+                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                     anykey
                     return 0
                 fi

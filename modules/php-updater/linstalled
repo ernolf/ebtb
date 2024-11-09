@@ -319,12 +319,12 @@ list_installed(){
         line '-' dP 2/78
     fi
     ${quiet:-false} || call_me installed
-#    if ! $quiet && $supported; then
+#    if ! $quiet && ${FLAG[supported]}; then
     f
     ${lonly:-false} && return 0
     ${only:-false} && exit 0 || anykey
 
-    if ${supported:-false}; then
+    if ${FLAG[supported]:-false}; then
         if ((aimct));then
             ((aimct==1))&&plu='s a:'||plu=':s'
             bundle echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"
