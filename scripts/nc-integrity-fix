@@ -247,6 +247,9 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
     db_integritycheck_ clean
     echo
     echo " -$(format_string "You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3;N)"
+    f
+    anykey
+    donate_
 else
     echo
     echo " -$(format_string "This script could not find any integrity warnings to resolve." 3;N)"
