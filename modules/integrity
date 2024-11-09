@@ -7,20 +7,20 @@ __copyright__
 __license__
 #
 
-${INTEGRITY_BASHLIB:-false} || {
-    INTEGRITY_BASHLIB=:
+${INTEGRITY_BASHLIB:-false} && return
+INTEGRITY_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire awksed)
-    . <(lrequire line)
-    . <(lrequire sudo)
-    . <(lrequire vdir)
+. <(lrequire awksed)
+. <(lrequire line)
+. <(lrequire sudo)
+. <(lrequire vdir)
 
 
-    public_key(){
-        cat << PUBLIC_KEY_ASC
+public_key(){
+    cat << PUBLIC_KEY_ASC
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGSXjUIBEADbt4/706Fw6YNHMPwHT+qtq4ZxJCdUclzovEnCvECtylYCK1M5
@@ -52,92 +52,91 @@ YP2ebH/z
 =PJji
 -----END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
-    }
+}
 
-    integrity_check(){
-        local -i r=1
-        local signed key mail aut itf="$(tf)" vtf="$(tf)" vdir ddir shash ehash
-        signed=:
-        key="$(sed -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
-        mail="$(sed -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
-        aut="$(sed -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
-        su_root "to run the integrity check" integrity_check
-        delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$ca_me" "$itf"
-        if [ -n "$vdirname" ]; then
-            vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
-            [ "$vdir" != "$ddir" ] && setvdir v d "$itf"
+integrity_check(){
+    local -i r=1
+    local signed key mail aut itf="$(tf)" vtf="$(tf)" vdir ddir shash ehash
+    signed=:
+    key="$(sed -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
+    mail="$(sed -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
+    aut="$(sed -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
+    su_root "to run the integrity check" integrity_check
+    delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$ca_me" "$itf"
+    if [ -n "$vdirname" ]; then
+        vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
+        [ "$vdir" != "$ddir" ] && setvdir v d "$itf"
+    fi
+    shash="$(sha256sum "$itf" | awk '{print $1}')"
+    ehash="$(tail -n1 "$ca_me" | awk '{print $NF}')"
+    line '=' P 5/75
+    if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
+        . <(lrequire ask)
+        signed=false
+        o5;R;echo "- No sha256sum hash, looks like script has not been signed!"
+        line '-' P 5/75
+    elif [ "$shash" != "$ehash" ]; then
+        o5;R;echo "- Wrong hash, looks like script has been tampered with!"
+        line '-' P 5/75
+    fi
+    gpg --list-keys|grep -qs "$key"||gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key" 2>/dev/null
+    gpg --list-keys|grep -qs "$key"||gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" 2>/dev/null
+    gpg --list-keys|grep -qs "$key"||public_key|gpg --import 2>/dev/null
+    gpg --list-keys|grep -qs "$key"||{
+        . <(lrequire ask)
+        o5;R;echo "- import of public key failed."
+        qpf;ask "Continue at own risk without check?" "$NO"&&{
+            sed -i 's/^v=false$/v=true/' "$ca_me"
+            return 0
+        }
+    }
+    gpg --verify "$ca_me" "$itf">"$vtf" 2>&1
+    r=$?
+    grep "$key" "$vtf"
+    grep "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
+    line '-' P 5/75
+    if (( r )); then
+        o5;R;echo -n "- Integrity check $(blinkR)failed$(R). "
+        if $signed; then
+            echo "The script may have been modified or tampered with!"
+        else
+            echo "This script does not appear to be signed!"
         fi
-        shash="$(sha256sum "$itf" | awk '{print $1}')"
-        ehash="$(tail -n1 "$ca_me" | awk '{print $NF}')"
-        line '=' P 5/75
-        if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
-            . <(lrequire ask)
-            signed=false
-            o5;R;echo "- No sha256sum hash, looks like script has not been signed!"
-            line '-' P 5/75
-        elif [ "$shash" != "$ehash" ]; then
-            o5;R;echo "- Wrong hash, looks like script has been tampered with!"
-            line '-' P 5/75
-        fi
-        gpg --list-keys|grep -qs "$key"||gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key" 2>/dev/null
-        gpg --list-keys|grep -qs "$key"||gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" 2>/dev/null
-        gpg --list-keys|grep -qs "$key"||public_key|gpg --import 2>/dev/null
-        gpg --list-keys|grep -qs "$key"||{
-            . <(lrequire ask)
-            o5;R;echo "- import of public key failed."
-            qpf;ask "Continue at own risk without check?" "$NO"&&{
-                sed -i 's/^v=false$/v=true/' "$ca_me"
+        line '-' P 5/75
+        o5;B;echo "You should run:"
+        o5;GRAY;echo "sudo wget -O $ca_me $my_url"
+        if $signed; then
+            o5;B;echo "to fix this.";N
+        else
+            o5;B;echo "to get a signed version of this script or disable the integrity check.";N
+            qpf;ask "Do you want to disable the integrity check at own risk" "$NO"&&{
+                echo -e "v=true\nnohash" >> "$ca_me"
                 return 0
             }
-        }
-        gpg --verify "$ca_me" "$itf">"$vtf" 2>&1
-        r=$?
-        grep "$key" "$vtf"
-        grep "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
-        line '-' P 5/75
-        if (( r )); then
-            o5;R;echo -n "- Integrity check $(blinkR)failed$(R). "
-            if $signed; then
-                echo "The script may have been modified or tampered with!"
-            else
-                echo "This script does not appear to be signed!"
-            fi
-            line '-' P 5/75
-            o5;B;echo "You should run:"
-            o5;GRAY;echo "sudo wget -O $ca_me $my_url"
-            if $signed; then
-                o5;B;echo "to fix this.";N
-            else
-                o5;B;echo "to get a signed version of this script or disable the integrity check.";N
-                qpf;ask "Do you want to disable the integrity check at own risk" "$NO"&&{
-                    echo -e "v=true\nnohash" >> "$ca_me"
-                    return 0
-                }
-            fi
-        else
-            o5;lG;echo "Integrity check passed. The script is authentic.";N
-            sed -i 's/^v=false$/v=true/' "$ca_me"
         fi
-        line '=' P 5/75
-        return $r
-    }
-
-    run_integrity_check(){
-        if integrity_check; then
-            f;pf;G;echo "Integrity check passed. Please start script again"
-            exit 0
-        else
-            exit1
-        fi
-    }
-
-    if $do_integrity_check; then
-        run_integrity_check
+    else
+        o5;lG;echo "Integrity check passed. The script is authentic.";N
+        sed -i 's/^v=false$/v=true/' "$ca_me"
     fi
-    declare "$(tail -n2 "$ca_me" | head -n1)"
-    if ! "${v:-false}"; then
-        f
-        o5;B;echo "First run, checking integrity:"
-        run_integrity_check
+    line '=' P 5/75
+    return $r
+}
+
+run_integrity_check(){
+    if integrity_check; then
+        f;pf;G;echo "Integrity check passed. Please start script again"
+        exit 0
+    else
+        exit1
     fi
 }
+
+if $do_integrity_check; then
+    run_integrity_check
+fi
+declare "$(tail -n2 "$ca_me" | head -n1)"
+if ! "${v:-false}"; then
+    f
+    o5;B;echo "First run, checking integrity:"
+    run_integrity_check
+fi

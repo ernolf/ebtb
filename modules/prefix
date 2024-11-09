@@ -7,28 +7,27 @@ __copyright__
 __license__
 #
 
-${PREFIX_BASHLIB:-false} || {
-    PREFIX_BASHLIB=:
+${PREFIX_BASHLIB:-false} && return
+PREFIX_BASHLIB=:
 
-    . <(lrequire ansi)
+. <(lrequire ansi)
 
-    # Prefix
-    pf(){
-        printf ' - '
-    }
+# Prefix
+pf(){
+    printf ' - '
+}
 
-    # Exclamation
-    xpf(){
-        R;printf "⚠️$(N):"
-    }
+# Exclamation
+xpf(){
+    R;printf "⚠️$(N):"
+}
 
-    # Information
-    ipf(){
-        printf "I:"
-    }
+# Information
+ipf(){
+    printf "I:"
+}
 
-    # Question
-    qpf(){
-        printf 'Q: '
-    }
+# Question
+qpf(){
+    printf 'Q: '
 }

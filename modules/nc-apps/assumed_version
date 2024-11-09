@@ -7,91 +7,90 @@ __copyright__
 __license__
 #
 
-${ASSUMED_VERSION_BASHLIB:-false} || {
-    ASSUMED_VERSION_BASHLIB=:
+${ASSUMED_VERSION_BASHLIB:-false} && return
+ASSUMED_VERSION_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire $sin/db)
+. <(lrequire $sin/db)
 
 # TODO 0 -->
-    # min_version(){ $(echo $(r_db "SELECT CASE WHEN major = (SELECT MIN(major) FROM versions) THEN platform ELSE NULL END AS result FROM versions;"));}
+# min_version(){ $(echo $(r_db "SELECT CASE WHEN major = (SELECT MIN(major) FROM versions) THEN platform ELSE NULL END AS result FROM versions;"));}
 # TODO <-- 0
-    assumed_version_select(){
-        local major='' query
-        if (( $# )); then
-            major="WHERE major == ${1%%.*}"
-        fi
-        query="SELECT platform FROM versions $major ORDER BY major DESC, minor DESC;"
-        read -ra available_versions < <(r_db "$query")
-        local -i n i version_num selected_index
-        echo "Please select the $2version you want to assume:"
-        while true; do
-          # Display the numbered list of available versions
-            for i in "${!available_versions[@]}"; do
-                echo "$((n + i)). ${available_versions[$i]}"
-            done
-          # Prompt for user input
-            read -rp "Enter the number of the $2version of your choice: " version_num
-          # Validate user input
-            if ! [[ "$version_num" =~ ^[0-9]+$ ]]; then
-                echo "Invalid input. Please enter a valid number."
-                continue
-            fi
-          # Check if the chosen version number is within the valid range
-            if (( version_num < n || version_num >= (n+${#available_versions[@]}) )); then
-                echo "Invalid $2version number. Please choose a number from the list."
-                continue
-            fi
-          # Get the selected backup directory
-            selected_index=$((version_num - n))
-            if [ "$2" = "min_" ]; then
-                nc_min_version="${available_versions[$selected_index]}"
-            else
-                nc_version="${available_versions[$selected_index]}"
-            fi
-            eval echo \"Your choice: \$nc_$2version\"
-            echo "Do you want to assume this as $2version?"
-            anykey
-          # Exit the loop if a valid input is provided
-            break
+assumed_version_select(){
+    local major='' query
+    if (( $# )); then
+        major="WHERE major == ${1%%.*}"
+    fi
+    query="SELECT platform FROM versions $major ORDER BY major DESC, minor DESC;"
+    read -ra available_versions < <(r_db "$query")
+    local -i n i version_num selected_index
+    echo "Please select the $2version you want to assume:"
+    while true; do
+      # Display the numbered list of available versions
+        for i in "${!available_versions[@]}"; do
+            echo "$((n + i)). ${available_versions[$i]}"
         done
-        return 0
-    }
-
-    assumed_version_set(){
-        local cquery query nc_lowest
-        nc_lowest="${LATEST_EOL[0]}"
-        $database_created || create_database
-        if [[ ! ${1%%.*} =~ ^[0-9]+$ ]]; then
-            assumed_version_select
-        elif [ 0${1%%.*} -lt 0${nc_lowest%%.*} ]; then
-            o2;echo "the min version supported by this script is $nc_lowest"
-            if [ "$2" = "min_" ]; then
-                nc_min_version="$nc_lowest"
-            else
-                nc_version="$nc_lowest"
-            fi
-        else
-            cquery="SELECT COUNT(platform) FROM versions WHERE major == ${1%%.*};"
-            query="SELECT platform FROM versions WHERE major == ${1%%.*};"
-            case $(r_db "$cquery") in
-                0)  if [ "$2" = "min_" ]; then
-                        nc_min_version=${1%%.*}.0.0
-                    else
-                        nc_version=${1%%.*}.0.0
-                    fi
-                    ;;
-                1)  if [ "$2" = "min_" ]; then
-                        nc_min_version=$(r_db "$query")
-                    else
-                        nc_version=$(r_db "$query")
-                    fi
-                    ;;
-                *)  assumed_version_select ${1%%.*} $2
-            esac
+      # Prompt for user input
+        read -rp "Enter the number of the $2version of your choice: " version_num
+      # Validate user input
+        if ! [[ "$version_num" =~ ^[0-9]+$ ]]; then
+            echo "Invalid input. Please enter a valid number."
+            continue
         fi
-        return 0
-    }
+      # Check if the chosen version number is within the valid range
+        if (( version_num < n || version_num >= (n+${#available_versions[@]}) )); then
+            echo "Invalid $2version number. Please choose a number from the list."
+            continue
+        fi
+      # Get the selected backup directory
+        selected_index=$((version_num - n))
+        if [ "$2" = "min_" ]; then
+            nc_min_version="${available_versions[$selected_index]}"
+        else
+            nc_version="${available_versions[$selected_index]}"
+        fi
+        eval echo \"Your choice: \$nc_$2version\"
+        echo "Do you want to assume this as $2version?"
+        anykey
+      # Exit the loop if a valid input is provided
+        break
+    done
+    return 0
+}
+
+assumed_version_set(){
+    local cquery query nc_lowest
+    nc_lowest="${LATEST_EOL[0]}"
+    $database_created || create_database
+    if [[ ! ${1%%.*} =~ ^[0-9]+$ ]]; then
+        assumed_version_select
+    elif [ 0${1%%.*} -lt 0${nc_lowest%%.*} ]; then
+        o2;echo "the min version supported by this script is $nc_lowest"
+        if [ "$2" = "min_" ]; then
+            nc_min_version="$nc_lowest"
+        else
+            nc_version="$nc_lowest"
+        fi
+    else
+        cquery="SELECT COUNT(platform) FROM versions WHERE major == ${1%%.*};"
+        query="SELECT platform FROM versions WHERE major == ${1%%.*};"
+        case $(r_db "$cquery") in
+            0)  if [ "$2" = "min_" ]; then
+                    nc_min_version=${1%%.*}.0.0
+                else
+                    nc_version=${1%%.*}.0.0
+                fi
+                ;;
+            1)  if [ "$2" = "min_" ]; then
+                    nc_min_version=$(r_db "$query")
+                else
+                    nc_version=$(r_db "$query")
+                fi
+                ;;
+            *)  assumed_version_select ${1%%.*} $2
+        esac
+    fi
+    return 0
 }

@@ -7,20 +7,19 @@ __copyright__
 __license__
 #
 
-${APP_UPDATE_BASHLIB:-false} || {
-    APP_UPDATE_BASHLIB=:
+${APP_UPDATE_BASHLIB:-false} && return
+APP_UPDATE_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire nc/nextcloud)
+. <(lrequire nc/nextcloud)
 
-    query_updates(){
-        occ app:update -n --no-warnings --allow-unstable --showonly --all | sed -e 's/ new version available: /#/' > $1
-    }
+query_updates(){
+    occ app:update -n --no-warnings --allow-unstable --showonly --all | sed -e 's/ new version available: /#/' > $1
+}
 
-    # do_update_ $1=app-id or --all, $2= --allow-unstable
-    do_update_(){
-        occ app:update --no-interaction --no-warnings $2 $1
-    }
+# do_update_ $1=app-id or --all, $2= --allow-unstable
+do_update_(){
+    occ app:update --no-interaction --no-warnings $2 $1
 }

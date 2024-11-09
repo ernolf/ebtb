@@ -8,14 +8,14 @@ __license__
 #
 
 
-${HELP_BASHLIB:-false} || {
-    HELP_BASHLIB=:
+${HELP_BASHLIB:-false} && return
+HELP_BASHLIB=:
 
-    function print_help(){
-#    . <(require $sin/disclaimer)
-#    disclaimer
+function print_help(){
+#. <(require $sin/disclaimer)
+#disclaimer
 
-        cat <<HELP
+    cat <<HELP
 
   Usage:  $me [-s|--sharetype=(0-13)] -- user|all
           $me -h|--help
@@ -48,6 +48,5 @@ ${HELP_BASHLIB:-false} || {
          $me Max
 
 HELP
-        exit 0
-    }
+    exit 0
 }

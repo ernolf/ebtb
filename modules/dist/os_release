@@ -7,219 +7,217 @@ __copyright__
 __license__
 #
 
-${OS_RELEASE_BASHLIB:-false} || {
-    OS_RELEASE_BASHLIB=:
+${OS_RELEASE_BASHLIB:-false} && return
+OS_RELEASE_BASHLIB=:
 
-    declare -g OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
-    declare -gl OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
+declare -g OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
+declare -gl OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
 
-    source_os_release(){
-        if [ -f /etc/os-release ] || [ -f /usr/lib/os-release ]; then
-            local os_release
-            [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
-            . <(sed 's/^/OS_/g' $os_release)
-        elif command -v lsb_release >/dev/null; then
-            OS_NAME="$(lsb_release -si)"
-            OS_ID="${OS_NAME%% *}"
-            OS_PRETTY_NAME="$(lsb_release -sd)"
-            OS_VERSION_ID="$(lsb_release -sr)"
-            OS_VERSION_CODENAME="$(lsb_release -sc)"
-            OS_VERSION="${OS_PRETTY_NAME/$NAME //} ($OS_VERSION_CODENAME)"
-        fi
-    }
-    source_os_release
+source_os_release(){
+    if [ -f /etc/os-release ] || [ -f /usr/lib/os-release ]; then
+        local os_release
+        [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
+        . <(sed 's/^/OS_/g' $os_release)
+    elif command -v lsb_release >/dev/null; then
+        OS_NAME="$(lsb_release -si)"
+        OS_ID="${OS_NAME%% *}"
+        OS_PRETTY_NAME="$(lsb_release -sd)"
+        OS_VERSION_ID="$(lsb_release -sr)"
+        OS_VERSION_CODENAME="$(lsb_release -sc)"
+        OS_VERSION="${OS_PRETTY_NAME/$NAME //} ($OS_VERSION_CODENAME)"
+    fi
+}
+source_os_release
 
-    check_raspbian(){
-        os;lB;echo "Raspbian OS detected, treat as debian.."
+check_raspbian(){
+    os;lB;echo "Raspbian OS detected, treat as debian.."
+    check_debian
+}
+
+check_linuxmint(){
+    os;lB;echo "Linux Mint OS detected.."
+    if [ "$OS_DEBIAN_CODENAME" != '' ]; then
         check_debian
-    }
+    elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
+        check_ubuntu
+    fi
+}
 
-    check_linuxmint(){
-        os;lB;echo "Linux Mint OS detected.."
-        if [ "$OS_DEBIAN_CODENAME" != '' ]; then
-            check_debian
-        elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
-            check_ubuntu
-        fi
-    }
+check_os_release(){
+#    distinf &
+    echo "$(GRAYbg)   Distribution check..   $(N)"
+    case $OS_ID in
+        ubuntu|debian|raspbian|linuxmint) check_$OS_ID
+        ;;
+        *)  if [ -n "$OS_ID_LIKE" ]; then
+                case ${OS_ID_LIKE%% *} in
+                    debian|ubuntu)
+                        if [ "$OS_DEBIAN_CODENAME" != '' ]; then
+                            check_debian
+                        elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
+                            check_ubuntu
+                        fi
+                        ;;
+                    *)  no_debianoid
+                esac
+            else
+                no_debianoid
+            fi
+    esac
+}
 
-    check_os_release(){
-#        distinf &
-        echo "$(GRAYbg)   Distribution check..   $(N)"
-        case $OS_ID in
-            ubuntu|debian|raspbian|linuxmint) check_$OS_ID
-            ;;
-            *)  if [ -n "$OS_ID_LIKE" ]; then
-                    case ${OS_ID_LIKE%% *} in
-                        debian|ubuntu)
-                            if [ "$OS_DEBIAN_CODENAME" != '' ]; then
-                                check_debian
-                            elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
-                                check_ubuntu
-                            fi
-                            ;;
-                        *)  no_debianoid
-                    esac
-                else
-                    no_debianoid
-                fi
-        esac
-    }
-
-    mark_checked(){
-        sed -i "/^v=\(true\|false\)$/i distrib_checked $*" "$ca_me"
-        f
-        anykey
-    }
-
+mark_checked(){
+    sed -i "/^v=\(true\|false\)$/i distrib_checked $*" "$ca_me"
+    f
+    anykey
 }
 # COMMENT -->
+########################################################
+#    ##### known os-release as examples for developers
 
-##### known os-release as examples for developers
-
-#### Debian
-## common:
+#    #### Debian
+#    ## common:
 #    NAME="Debian GNU/Linux"
 #    ID=debian
-#    HOME_URL="https://www.debian.org/"
-#    SUPPORT_URL="https://www.debian.org/support"
-#    BUG_REPORT_URL="https://bugs.debian.org/"
+#    HOME_URL=https://www.debian.org/
+#    SUPPORT_URL=https://www.debian.org/support
+#    BUG_REPORT_URL=https://bugs.debian.org/
 
-## 10 (buster)
+#    ## 10 (buster)
 #    PRETTY_NAME="Debian GNU/Linux 10 (buster)"
-#    VERSION_ID="10"
+#    VERSION_ID=10
 #    VERSION="10 (buster)"
 #    VERSION_CODENAME=buster
 
-## 11 (bullseye
+#    ## 11 (bullseye
 #    PRETTY_NAME="Debian GNU/Linux 11 (bullseye)"
-#    VERSION_ID="11"
+#    VERSION_ID=11
 #    VERSION="11 (bullseye)"
 #    VERSION_CODENAME=bullseye
 
-## 12 (bookworm)
+#    ## 12 (bookworm)
 #    PRETTY_NAME="Debian GNU/Linux 12 (bookworm)"
-#    VERSION_ID="12"
+#    VERSION_ID=12
 #    VERSION="12 (bookworm)"
 #    VERSION_CODENAME=bookworm
 
 
-### Armbian
-# Armbian 23.8.1 bullseye - like 11 (bullseye)
+#    ### Armbian
+#    # Armbian 23.8.1 bullseye - like 11 (bullseye)
 #    PRETTY_NAME="Armbian 23.8.1 bullseye"
 #    ARMBIAN_PRETTY_NAME="Armbian 23.8.1 bullseye"
-#    VERSION_ID="11"
+#    VERSION_ID=11
 #    VERSION="11 (bullseye)"
 #    VERSION_CODENAME=bullseye
-#    HOME_URL="https://www.armbian.com"
-#    SUPPORT_URL="https://forum.armbian.com"
-#    BUG_REPORT_URL="https://www.armbian.com/bugs"
+#    HOME_URL=https://www.armbian.com
+#    SUPPORT_URL=https://forum.armbian.com
+#    BUG_REPORT_URL=https://www.armbian.com/bugs
 
 
-### Raspbian
-## common:
+#    ### Raspbian
+#    ## common:
 #    NAME="Raspbian GNU/Linux"
 #    ID=raspbian
 #    ID_LIKE=debian
-#    HOME_URL="http://www.raspbian.org/"
-#    SUPPORT_URL="http://www.raspbian.org/RaspbianForums"
-#    BUG_REPORT_URL="http://www.raspbian.org/RaspbianBugs"
+#    HOME_URL=http://www.raspbian.org/
+#    SUPPORT_URL=http://www.raspbian.org/RaspbianForums
+#    BUG_REPORT_URL=http://www.raspbian.org/RaspbianBugs
 
-## 10 (buster)
+#    ## 10 (buster)
 #    PRETTY_NAME="Raspbian GNU/Linux 10 (buster)"
-#    VERSION_ID="10"
+#    VERSION_ID=10
 #    VERSION="10 (buster)"
 #    VERSION_CODENAME=buster
 
-## 11 (bullseye)
+#    ## 11 (bullseye)
 #    PRETTY_NAME="Raspbian GNU/Linux 11 (bullseye)"
-#    VERSION_ID="11"
+#    VERSION_ID=11
 #    VERSION="11 (bullseye)"
 #    VERSION_CODENAME=bullseye
 
 
-### Ubuntu
-## common:
-#    NAME="Ubuntu"
+#    ### Ubuntu
+#    ## common:
+#    NAME=Ubuntu
 #    ID=ubuntu
 #    ID_LIKE=debian
-#    HOME_URL="https://www.ubuntu.com/"
-#    SUPPORT_URL="https://help.ubuntu.com/"
-#    BUG_REPORT_URL="https://bugs.launchpad.net/ubuntu/"
-#    PRIVACY_POLICY_URL="https://www.ubuntu.com/legal/terms-and-policies/privacy-policy"
+#    HOME_URL=https://www.ubuntu.com/
+#    SUPPORT_URL=https://help.ubuntu.com/
+#    BUG_REPORT_URL=https://bugs.launchpad.net/ubuntu/
+#    PRIVACY_POLICY_URL=https://www.ubuntu.com/legal/terms-and-policies/privacy-policy
 
-## 20.04 (focal)
+#    ## 20.04 (focal)
 #    PRETTY_NAME="Ubuntu 20.04.6 LTS"
-#    VERSION_ID="20.04"
+#    VERSION_ID=20.04
 #    VERSION="20.04.6 LTS (Focal Fossa)"
 #    VERSION_CODENAME=focal
 #    UBUNTU_CODENAME=focal
 
-## 22.04 (jammy)
+#    ## 22.04 (jammy)
 #    PRETTY_NAME="Ubuntu 22.04.4 LTS"
-#    VERSION_ID="22.04"
+#    VERSION_ID=22.04
 #    VERSION="22.04.4 LTS (Jammy Jellyfish)"
 #    VERSION_CODENAME=jammy
 #    UBUNTU_CODENAME=jammy
 
-## 23.10 (mantic)
+#    ## 23.10 (mantic)
 #    PRETTY_NAME="Ubuntu 23.10"
-#    VERSION_ID="23.10"
+#    VERSION_ID=23.10
 #    VERSION="23.10 (Mantic Minotaur)"
 #    VERSION_CODENAME=mantic
 #    UBUNTU_CODENAME=mantic
 #    LOGO=ubuntu-logo
 
-## 24.04
-#    PRETTY_NAME="Ubuntu 24.04 LTS
-#    (PRETTY_NAME="Ubuntu Noble Numbat (development branch)")
-#    VERSION_ID="24.04"
+#    ## 24.04
+#    PRETTY_NAME="Ubuntu 24.04 LTS"
+#    (PRETTY_NAME="Ubuntu Noble Numbat (development branch)"
+#    VERSION_ID=24.04
 #    VERSION="24.04 LTS (Noble Numbat)"
 #    VERSION_CODENAME=noble
 #    UBUNTU_CODENAME=noble
 #    LOGO=ubuntu-logo
 
 
-### LinuxMint
-## common:
+#    ### LinuxMint
+#    ## common:
 #    ID=linuxmint
-#    HOME_URL="https://www.linuxmint.com/"
-#    SUPPORT_URL="https://forums.linuxmint.com/"
-#    BUG_REPORT_URL="http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/"
-#    PRIVACY_POLICY_URL="https://www.linuxmint.com/"
+#    HOME_URL=https://www.linuxmint.com/
+#    SUPPORT_URL=https://forums.linuxmint.com/
+#    BUG_REPORT_URL=http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/
+#    PRIVACY_POLICY_URL=https://www.linuxmint.com/
 
-## 21.1 (Vera)
+#    ## 21.1 (Vera)
 #    NAME="Linux Mint"
 #    PRETTY_NAME="Linux Mint 21.1"
-#    VERSION_ID="21.1"
+#    VERSION_ID=21.1
 #    VERSION="21.1 (Vera)"
 #    ID_LIKE="ubuntu debian"
 #    VERSION_CODENAME=vera
 #    UBUNTU_CODENAME=jammy
 
-## 21.3 (Virginia)
+#    ## 21.3 (Virginia)
 #    NAME="Linux Mint"
 #    PRETTY_NAME="Linux Mint 21.3"
-#    VERSION_ID="21.3"
+#    VERSION_ID=21.3
 #    VERSION="21.3 (Virginia)"
 #    ID_LIKE="ubuntu debian"
 #    VERSION_CODENAME=virginia
 #    UBUNTU_CODENAME=jammy
 
-## LMDE (Linux Mint Debian Edition)
-## 5 (elsie)
-#    NAME="LMDE"
+#    ## LMDE (Linux Mint Debian Edition)
+#    ## 5 (elsie)
+#    NAME=LMDE
 #    PRETTY_NAME="LMDE 5 (elsie)"
-#    VERSION_ID="5"
+#    VERSION_ID=5
 #    VERSION="5 (elsie)"
 #    VERSION_CODENAME=elsie
 #    ID_LIKE=debian
 #    DEBIAN_CODENAME=bullseye
 
-## 6 (faye)
-#    NAME="LMDE"
+#    ## 6 (faye)
+#    NAME=LMDE
 #    PRETTY_NAME="LMDE 6 (faye)"
-#    VERSION_ID="6"
+#    VERSION_ID=6
 #    VERSION="6 (faye)"
 #    VERSION_CODENAME=faye
 #    ID_LIKE=debian
@@ -229,228 +227,244 @@ ${OS_RELEASE_BASHLIB:-false} || {
 #    /etc/lsb-release: DISTRIB_ID=LinuxMint DISTRIB_RELEASE=5 DISTRIB_CODENAME=elsie DISTRIB_DESCRIPTION="LMDE 5 Elsie"
 
 
-### Alpine Linux
-## common:
+#    ### Alpine Linux
+#    ## common:
 #    NAME="Alpine Linux"
 #    ID=alpine
-#    HOME_URL="https://alpinelinux.org/"
-#    BUG_REPORT_URL="https://gitlab.alpinelinux.org/alpine/aports/-/issues"
+#    HOME_URL=https://alpinelinux.org/
+#    BUG_REPORT_URL=https://gitlab.alpinelinux.org/alpine/aports/-/issues
 
-## 3.19.1
+#    ## 3.19.1
 #    PRETTY_NAME="Alpine Linux v3.19"
 #    VERSION_ID=3.19.1
 
 #    lsb_release -a: Distributor ID: Alpine Description: Alpine Linux v3.19 Release: 3.19.1 Codename: n/a
 
-## 3.20.3
+#    ## 3.20.3
 #    VERSION_ID=3.20.3
 #    PRETTY_NAME=Alpine Linux v3.20
 
 
-#### Suse
+#    #### Suse
 
-### openSuse Leap
-## common:
+#    ### openSuse Leap
+#    ## common:
 #    NAME="openSUSE Leap"
-#    ID="opensuse-leap"
+#    ID=opensuse-leap
 #    ID_LIKE="suse opensuse"
-#    ANSI_COLOR="0;32"
-#    CPE_NAME="cpe:/o:opensuse:leap:15.5"
-#    BUG_REPORT_URL="https://bugs.opensuse.org"
-#    HOME_URL="https://www.opensuse.org/"
-#    DOCUMENTATION_URL="https://en.opensuse.org/Portal:Leap"
-#    LOGO="distributor-logo-Leap"
+#    ANSI_COLOR=0;32
+#    CPE_NAME=cpe:/o:opensuse:leap:15.5
+#    BUG_REPORT_URL=https://bugs.opensuse.org
+#    HOME_URL=https://www.opensuse.org/
+#    DOCUMENTATION_URL=https://en.opensuse.org/Portal:Leap
+#    LOGO=distributor-logo-Leap
 
-## 15.5
+#    ## 15.5
 #    PRETTY_NAME="openSUSE Leap 15.5"
-#    VERSION="15.5"
-#    VERSION_ID="15.5"
+#    VERSION=15.5
+#    VERSION_ID=15.5
 
-### SUSE Linux Enterprise Server
-## common:
-#    NAME="SLES"
-#    ID="sles"
-#    ID_LIKE="suse"
-#    ANSI_COLOR="0;32"
-#    CPE_NAME="cpe:/o:suse:sles:15:sp5"
-#    DOCUMENTATION_URL="https://documentation.suse.com/"
+#    ### SUSE Linux Enterprise Server
+#    ## common:
+#    NAME=SLES
+#    ID=sles
+#    ID_LIKE=suse
+#    ANSI_COLOR=0;32
+#    CPE_NAME=cpe:/o:suse:sles:15:sp5
+#    DOCUMENTATION_URL=https://documentation.suse.com/
 
-## 15.5
+#    ## 15.5
 #    PRETTY_NAME="SUSE Linux Enterprise Server 15 SP5"
-#    VERSION="15-SP5"
-#    VERSION_ID="15.5"
+#    VERSION=15-SP5
+#    VERSION_ID=15.5
 
 
-#### Red Hat / CentOS / Fedora
-### RHEL
-## common:
+#    #### Red Hat / CentOS / Fedora
+#    ### RHEL
+#    ## common:
 #    NAME="Red Hat Enterprise Linux"
-#    ID="rhel"
-#    ID_LIKE="fedora"
-#    HOME_URL="https://www.redhat.com/"
-#    DOCUMENTATION_URL="https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8"
-#    BUG_REPORT_URL="https://bugzilla.redhat.com/"
+#    ID=rhel
+#    ID_LIKE=fedora
+#    HOME_URL=https://www.redhat.com/
+#    DOCUMENTATION_URL=https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8
+#    BUG_REPORT_URL=https://bugzilla.redhat.com/
 #    REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 8"
 #    REDHAT_BUGZILLA_PRODUCT_VERSION=8.9
 #    REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
-#    REDHAT_SUPPORT_PRODUCT_VERSION="8.9"
+#    REDHAT_SUPPORT_PRODUCT_VERSION=8.9
 
-## 8.9
+#    ## 8.9
 #    PRETTY_NAME="Red Hat Enterprise Linux 8.9 (Ootpa)"
-#    VERSION_ID="8.9"
+#    VERSION_ID=8.9
 #    VERSION="8.9 (Ootpa)"
-#    PLATFORM_ID="platform:el8"
-#    ANSI_COLOR="0;31"
-#    CPE_NAME="cpe:/o:redhat:enterprise_linux:8::baseos"
+#    PLATFORM_ID=platform:el8
+#    ANSI_COLOR=0;31
+#    CPE_NAME=cpe:/o:redhat:enterprise_linux:8::baseos
 
-###CentOS
-#    NAME="CentOS Stream"
-#    VERSION="9"
-#    ID="centos"
+#    ###CentOS
+#    NAME="CentOS Linux"
+#    VERSION="7 (Core)"
+#    ID=centos
 #    ID_LIKE="rhel fedora"
-#    VERSION_ID="9"
-#    PLATFORM_ID="platform:el9"
+#    VERSION_ID=7
+#    PRETTY_NAME="CentOS Linux 7 (Core)"
+#    ANSI_COLOR=0;31
+#    CPE_NAME=cpe:/o:centos:centos:7
+#    HOME_URL=https://www.centos.org/
+#    BUG_REPORT_URL=https://bugs.centos.org/
+#    CENTOS_MANTISBT_PROJECT=CentOS-7
+#    CENTOS_MANTISBT_PROJECT_VERSION=7
+#    REDHAT_SUPPORT_PRODUCT=centos
+#    REDHAT_SUPPORT_PRODUCT_VERSION=7
+
+#    NAME="CentOS Stream"
+#    VERSION=9
+#    ID=centos
+#    ID_LIKE="rhel fedora"
+#    VERSION_ID=9
+#    PLATFORM_ID=platform:el9
 #    PRETTY_NAME="CentOS Stream 9"
-#    ANSI_COLOR="0;31"
-#    LOGO="fedora-logo-icon"
-#    CPE_NAME="cpe:/o:centos:centos:9"
-#    HOME_URL="https://centos.org/"
-#    BUG_REPORT_URL="https://bugzilla.redhat.com/"
+#    ANSI_COLOR=0;31
+#    LOGO=fedora-logo-icon
+#    CPE_NAME=cpe:/o:centos:centos:9
+#    HOME_URL=https://centos.org/
+#    BUG_REPORT_URL=https://bugzilla.redhat.com/
 #    REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux 9"
 #    REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
 
-### Almalinux
-## common:
-#    NAME="AlmaLinux"
-#    ID="almalinux"
+#    ### Almalinux
+#    ## common:
+#    NAME=AlmaLinux
+#    ID=almalinux
 #    ID_LIKE="rhel centos fedora"
-#    ANSI_COLOR="0;34"
-#    LOGO="fedora-logo-icon"
-#    HOME_URL="https://almalinux.org/"
-#    DOCUMENTATION_URL="https://wiki.almalinux.org/"
-#    BUG_REPORT_URL="https://bugs.almalinux.org/"
-#    REDHAT_SUPPORT_PRODUCT="AlmaLinux"
+#    ANSI_COLOR=0;34
+#    LOGO=fedora-logo-icon
+#    HOME_URL=https://almalinux.org/
+#    DOCUMENTATION_URL=https://wiki.almalinux.org/
+#    BUG_REPORT_URL=https://bugs.almalinux.org/
+#    REDHAT_SUPPORT_PRODUCT=AlmaLinux
 
-## 8.9
+#    ## 8.9
 #    PRETTY_NAME="AlmaLinux 8.9 (Midnight Oncilla)"
 #    VERSION="8.9 (Midnight Oncilla)"
-#    VERSION_ID="8.9"
-#    PLATFORM_ID="platform:el8"
-#    CPE_NAME="cpe:/o:almalinux:almalinux:8::baseos"
-#    ALMALINUX_MANTISBT_PROJECT="AlmaLinux-8"
-#    ALMALINUX_MANTISBT_PROJECT_VERSION="8.9"
-#    REDHAT_SUPPORT_PRODUCT_VERSION="8.9"
+#    VERSION_ID=8.9
+#    PLATFORM_ID=platform:el8
+#    CPE_NAME=cpe:/o:almalinux:almalinux:8::baseos
+#    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-8
+#    ALMALINUX_MANTISBT_PROJECT_VERSION=8.9
+#    REDHAT_SUPPORT_PRODUCT_VERSION=8.9
 
-## 9.3
+#    ## 9.3
 #    PRETTY_NAME="AlmaLinux 9.3 (Shamrock Pampas Cat)"
 #    VERSION="9.3 (Shamrock Pampas Cat)"
-#    VERSION_ID="9.3"
-#    PLATFORM_ID="platform:el9"
-#    ANSI_COLOR="0;34"
-#    LOGO="fedora-logo-icon"
-#    CPE_NAME="cpe:/o:almalinux:almalinux:9::baseos"
-#    ALMALINUX_MANTISBT_PROJECT="AlmaLinux-9"
-#    ALMALINUX_MANTISBT_PROJECT_VERSION="9.3"
-#    REDHAT_SUPPORT_PRODUCT="AlmaLinux"
-#    REDHAT_SUPPORT_PRODUCT_VERSION="9.3"
+#    VERSION_ID=9.3
+#    PLATFORM_ID=platform:el9
+#    ANSI_COLOR=0;34
+#    LOGO=fedora-logo-icon
+#    CPE_NAME=cpe:/o:almalinux:almalinux:9::baseos
+#    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-9
+#    ALMALINUX_MANTISBT_PROJECT_VERSION=9.3
+#    REDHAT_SUPPORT_PRODUCT=AlmaLinux
+#    REDHAT_SUPPORT_PRODUCT_VERSION=9.3
 
 
-### Rocky Linux
-## common:
+#    ### Rocky Linux
+#    ## common:
 #    NAME="Rocky Linux"
-#    ID="rocky"
+#    ID=rocky
 #    ID_LIKE="rhel centos fedora"
-#    ANSI_COLOR="0;32"
-#    LOGO="fedora-logo-icon"
-#    HOME_URL="https://rockylinux.org/"
-#    BUG_REPORT_URL="https://bugs.rockylinux.org/"
+#    ANSI_COLOR=0;32
+#    LOGO=fedora-logo-icon
+#    HOME_URL=https://rockylinux.org/
+#    BUG_REPORT_URL=https://bugs.rockylinux.org/
 
-## 9.3
+#    ## 9.3
 #    VERSION="9.3 (Blue Onyx)"
-#    VERSION_ID="9.3"
-#    PLATFORM_ID="platform:el9"
+#    VERSION_ID=9.3
+#    PLATFORM_ID=platform:el9
 #    PRETTY_NAME="Rocky Linux 9.3 (Blue Onyx)"
-#    CPE_NAME="cpe:/o:rocky:rocky:9::baseos"
-#    SUPPORT_END="2032-05-31"
-#    ROCKY_SUPPORT_PRODUCT="Rocky-Linux-9"
-#    ROCKY_SUPPORT_PRODUCT_VERSION="9.3"
+#    CPE_NAME=cpe:/o:rocky:rocky:9::baseos
+#    SUPPORT_END=2032-05-31
+#    ROCKY_SUPPORT_PRODUCT=Rocky-Linux-9
+#    ROCKY_SUPPORT_PRODUCT_VERSION=9.3
 #    REDHAT_SUPPORT_PRODUCT="Rocky Linux"
-#    REDHAT_SUPPORT_PRODUCT_VERSION="9.3"
+#    REDHAT_SUPPORT_PRODUCT_VERSION=9.3
 
-## Oracle
+#    ## Oracle
 #    NAME="Oracle Linux Server"
-#    VERSION="8.6"
-#    ID="ol"
-#    ID_LIKE="fedora"
-#    VARIANT="Server"
-#    VARIANT_ID="server"
-#    VERSION_ID="8.6"
-#    PLATFORM_ID="platform:el8"
+#    VERSION=8.6
+#    ID=ol
+#    ID_LIKE=fedora
+#    VARIANT=Server
+#    VARIANT_ID=server
+#    VERSION_ID=8.6
+#    PLATFORM_ID=platform:el8
 #    PRETTY_NAME="Oracle Linux Server 8.6"
-#    ANSI_COLOR="0;31"
-#    CPE_NAME="cpe:/o:oracle:linux:8:6:server"
-#    HOME_URL="https://linux.oracle.com/"
-#    BUG_REPORT_URL="https://bugzilla.oracle.com/"
-#    ORACLE_BUGZILLA_PRODUCT="Oracle Linux 8"
+#    ANSI_COLOR=0;31
+#    CPE_NAME=cpe:/o:oracle:linux:8:6:server
+#    HOME_URL=https://linux.oracle.com/
+#    BUG_REPORT_URL=https://bugzilla.oracle.com/
+#    ORACLE_BUGZILLA_PRODUCT=Oracle Linux 8
 #    ORACLE_BUGZILLA_PRODUCT_VERSION=8.6
 #    ORACLE_SUPPORT_PRODUCT="Oracle Linux"
 #    ORACLE_SUPPORT_PRODUCT_VERSION=8.6
 
-### Arch
+#    ### Arch
 
 #    NAME="Arch Linux"
 #    PRETTY_NAME="Arch Linux"
 #    ID=arch
 #    BUILD_ID=rolling
-#    ANSI_COLOR="38;2;23;147;209"
-#    HOME_URL="https://archlinux.org/"
-#    DOCUMENTATION_URL="https://wiki.archlinux.org/"
-#    SUPPORT_URL="https://bbs.archlinux.org/"
-#    BUG_REPORT_URL="https://gitlab.archlinux.org/groups/archlinux/-/issues"
-#    PRIVACY_POLICY_URL="https://terms.archlinux.org/docs/privacy-policy/"
+#    ANSI_COLOR=38;2;23;147;209
+#    HOME_URL=https://archlinux.org/
+#    DOCUMENTATION_URL=https://wiki.archlinux.org/
+#    SUPPORT_URL=https://bbs.archlinux.org/
+#    BUG_REPORT_URL=https://gitlab.archlinux.org/groups/archlinux/-/issues
+#    PRIVACY_POLICY_URL=https://terms.archlinux.org/docs/privacy-policy/
 #    LOGO=archlinux-logo
 
-### ALT Server
+#    ### ALT Server
 
 #    NAME="ALT Server"
-#    VERSION="10.2"
+#    VERSION=10.2
 #    ID=altlinux
 #    VERSION_ID=10.2
 #    PRETTY_NAME="ALT Server 10.2 (Mendelevium)"
-#    ANSI_COLOR="1;33"
-#    CPE_NAME="cpe:/o:alt:server:10.2"
+#    ANSI_COLOR=1;33
+#    CPE_NAME=cpe:/o:alt:server:10.2
 #    BUILD_ID="ALT Server 10.0"
-#    HOME_URL="https://basealt.ru/"
-#    BUG_REPORT_URL="https://bugs.altlinux.org/"
+#    HOME_URL=https://basealt.ru/
+#    BUG_REPORT_URL=https://bugs.altlinux.org/
 
-### Slakware
+#    ### Slakware
 
 #    NAME=Slackware
-#    VERSION="15.0"
+#    VERSION=15.0
 #    ID=slackware
 #    VERSION_ID=15.0
 #    PRETTY_NAME="Slackware 15.0 x86_64 (post 15.0 -current)"
-#    ANSI_COLOR="0;34"
-#    CPE_NAME="cpe:/o:slackware:slackware_linux:15.0"
-#    HOME_URL="http://slackware.com/"
-#    SUPPORT_URL="http://www.linuxquestions.org/questions/slackware-14/"
-#    BUG_REPORT_URL="http://www.linuxquestions.org/questions/slackware-14/"
+#    ANSI_COLOR=0;34
+#    CPE_NAME=cpe:/o:slackware:slackware_linux:15.0
+#    HOME_URL=http://slackware.com/
+#    SUPPORT_URL=http://www.linuxquestions.org/questions/slackware-14/
+#    BUG_REPORT_URL=http://www.linuxquestions.org/questions/slackware-14/
 #    VERSION_CODENAME=current
 
 
-#    OS_NAME             # "Ubuntu"                           "Debian GNU/Linux"                 "Raspbian GNU/Linux"               "LMDE"                             "Alpine Linux"
-#    OS_ID               #  ubuntu                             debian                             raspbian                           linuxmint                          alpine
-#    OS_ID_LIKE          #  debian                                                                debian                             debian
-#    OS_PRETTY_NAME      # "Ubuntu 22.04.4 LTS"               "Debian GNU/Linux 12 (bookworm)"   "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"                    "Alpine Linux v3.19"
-#    OS_VERSION          # "22.04.4 LTS (Jammy Jellyfish)"    "12 (bookworm)"                     11 (bullseye)                     "6 (faye)"
-#    OS_VERSION_ID       #  22.04                              12                                 11                                 6                                  3.19.1
-#    OS_VERSION_CODENAME #  jammy                              bookworm                           bullseye                           faye
-#    OS_UBUNTU_CODENAME  #  jammy
-#    OS_DEBIAN_CODENAME  #                                                                                                           bookworm
+#    OS_NAME              Ubuntu                         "Debian GNU/Linux"               "Raspbian GNU/Linux"                LMDE                "Alpine Linux"
+#    OS_ID                ubuntu                          debian                           raspbian                           linuxmint            alpine
+#    OS_ID_LIKE           debian                                                           debian                             debian
+#    OS_PRETTY_NAME      "Ubuntu 22.04.4 LTS"            "Debian GNU/Linux 12 (bookworm)" "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"      "Alpine Linux v3.19"
+#    OS_VERSION          "22.04.4 LTS (Jammy Jellyfish)" "12 (bookworm)"                   11 (bullseye)                     "6 (faye)"
+#    OS_VERSION_ID        22.04                           12                               11                                 6                    3.19.1
+#    OS_VERSION_CODENAME  jammy                           bookworm                         bullseye                           faye
+#    OS_UBUNTU_CODENAME   jammy
+#    OS_DEBIAN_CODENAME                                                                                                       bookworm
 
-#    OS_NAME             # "Ubuntu"                           "Debian GNU/Linux"                  Raspbian                          "LMDE"                             "Alpine Linux"
-#    OS_ID               #  ubuntu                             debian                             raspbian                           lmde                               alpine
-#    OS_PRETTY_NAME      # "Ubuntu 22.04.4 LTS"               "Debian GNU/Linux 12 (bookworm)"   "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"                    "Alpine Linux v3.19"
-#    OS_VERSION_ID       #  22.04                              12                                 11                                 6                                  3.19.1
-#    OS_VERSION_CODENAME #  jammy                              bookworm                           bullseye                           faye
-#    OS_VERSION          # "22.04.4 LTS (Jammy Jellyfish)"    "12 (bookworm)"                    "GNU/Linux 11 (bullseye)"          "6 (faye)"
+#    OS_NAME              Ubuntu                         "Debian GNU/Linux"                Raspbian                           LMDE                "Alpine Linux"
+#    OS_ID                ubuntu                          debian                           raspbian                           lmde                 alpine
+#    OS_PRETTY_NAME      "Ubuntu 22.04.4 LTS"            "Debian GNU/Linux 12 (bookworm)" "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"      "Alpine Linux v3.19"
+#    OS_VERSION_ID        22.04                           12                               11                                 6                    3.19.1
+#    OS_VERSION_CODENAME  jammy                           bookworm                         bullseye                           faye
+#    OS_VERSION          "22.04.4 LTS (Jammy Jellyfish)" "12 (bookworm)"                  "GNU/Linux 11 (bullseye)"          "6 (faye)"
+

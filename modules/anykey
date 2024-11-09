@@ -7,41 +7,39 @@ __copyright__
 __license__
 #
 
-${ANYKEY_BASHLIB:-false} || {
-    ANYKEY_BASHLIB=:
+${ANYKEY_BASHLIB:-false} && return
+ANYKEY_BASHLIB=:
 
-    anykey(){
-        local p aim
-        local -l choice
-        aim="$1"
-        if ${ANSI_BASHLIB:-false} && ${BUTTON_BASHLIB:-false} && ${EXIT_BASHLIB:-false}; then
-            local -l cursor_status
-            if [ -f "$CURSOR" ]; then
-                cursor_status="$(< "$CURSOR")"
-            else
-                cursor_status=''
-            fi
-            p="Press $(lG)any key$(N) to ${aim:-continue}$(GRAY) or $(q2q;N)"
-            cursor_ hide
-            read -rsn 1 -p "$p"  choice
-            cursor_ ${cursor_status:-show}
-            if [ "$choice" = "q" ]; then
-                f
-                exit0
-            else
-                te1
-            fi
+anykey(){
+    local p aim
+    local -l choice
+    aim="$1"
+    if ${ANSI_BASHLIB:-false} && ${BUTTON_BASHLIB:-false} && ${EXIT_BASHLIB:-false}; then
+        local -l cursor_status
+        if [ -f "$CURSOR" ]; then
+            cursor_status="$(< "$CURSOR")"
         else
-            unset ANYKEY_BASHLIB
-            p="Press any key to continue or 'q' to quit "
-            read -rsn 1 -p "$p" choice
-            if [ "$choice" = "q" ]; then
-                echo
-                exit
-            else
-                echo
-            fi
+            cursor_status=''
         fi
-    }
+        p="Press $(lG)any key$(N) to ${aim:-continue}$(GRAY) or $(q2q;N)"
+        cursor_ hide
+        read -rsn 1 -p "$p"  choice
+        cursor_ ${cursor_status:-show}
+        if [ "$choice" = "q" ]; then
+            f
+            exit0
+        else
+            te1
+        fi
+    else
+        unset ANYKEY_BASHLIB
+        p="Press any key to continue or 'q' to quit "
+        read -rsn 1 -p "$p" choice
+        if [ "$choice" = "q" ]; then
+            echo
+            exit
+        else
+            echo
+        fi
+    fi
 }
-

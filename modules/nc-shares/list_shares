@@ -7,109 +7,108 @@ __copyright__
 __license__
 #
 
-${LIST_SHARES_BASHLIB:-false} || {
-    LIST_SHARES_BASHLIB=:
+${LIST_SHARES_BASHLIB:-false} && return
+LIST_SHARES_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire nc/nextcloud_db)
+. <(lrequire nc/nextcloud_db)
 
-    function list_shares(){
-        html=false
-        $html && H="--html" || H=""
-        database_call $H
+function list_shares(){
+    html=false
+    $html && H="--html" || H=""
+    database_call $H
 
-        d_echo "DB_STRG: \"$DB_STRG\""
+    d_echo "DB_STRG: \"$DB_STRG\""
 
-        local USER USER_ID SHARE_TYPE TOKEN QUERY
-        USER=" uid_initiator AS initiator," USER_ID="$*"
-        [ "$USER_ID" = all ] || USER=""
+    local USER USER_ID SHARE_TYPE TOKEN QUERY
+    USER=" uid_initiator AS initiator," USER_ID="$*"
+    [ "$USER_ID" = all ] || USER=""
 
-      # share_type from lib/private/Share/Constants.php
+  # share_type from lib/private/Share/Constants.php
 
-        if [ ${sharetype:=3} -eq 3 ]; then
-            SHARE_TYPE="" TOKEN="token AS \"/s/-token\","
-        else
-            SHARE_TYPE="CONCAT(share_with, "
-            case $sharetype in
-                 0) SHARE_TYPE="share_with"                 ;;
-                 1) SHARE_TYPE="$SHARE_TYPE'[Group]')"      ;;
-                 2) SHARE_TYPE="$SHARE_TYPE'[userGroup]')"  ;;
-                 4) SHARE_TYPE="$SHARE_TYPE'[userGroup]')"  ;;
-                 5) SHARE_TYPE="$SHARE_TYPE'[Contact]')"    ;;
-                 6) SHARE_TYPE="$SHARE_TYPE'[remote]')"     ;;
-                 7) SHARE_TYPE="$SHARE_TYPE'[Circle]')"     ;;
-                 8) SHARE_TYPE="$SHARE_TYPE'[Guest]')"      ;;
-                 9) SHARE_TYPE="$SHARE_TYPE'[remoteGroup]')";;
-                10) SHARE_TYPE="$SHARE_TYPE'[Room]')"       ;;
-                11) SHARE_TYPE="$SHARE_TYPE'[userRoom]')"   ;;
-                12) SHARE_TYPE="$SHARE_TYPE'[userRoom]')"   ;;
-                13) SHARE_TYPE="$SHARE_TYPE'[userDeck]')"
-            esac
-            SHARE_TYPE="$SHARE_TYPE AS share_with, "
-            TOKEN="item_source AS \"/f/-token\","
-        fi
+    if [ ${sharetype:=3} -eq 3 ]; then
+        SHARE_TYPE="" TOKEN="token AS \"/s/-token\","
+    else
+        SHARE_TYPE="CONCAT(share_with, "
+        case $sharetype in
+             0) SHARE_TYPE="share_with"                 ;;
+             1) SHARE_TYPE="$SHARE_TYPE'[Group]')"      ;;
+             2) SHARE_TYPE="$SHARE_TYPE'[userGroup]')"  ;;
+             4) SHARE_TYPE="$SHARE_TYPE'[userGroup]')"  ;;
+             5) SHARE_TYPE="$SHARE_TYPE'[Contact]')"    ;;
+             6) SHARE_TYPE="$SHARE_TYPE'[remote]')"     ;;
+             7) SHARE_TYPE="$SHARE_TYPE'[Circle]')"     ;;
+             8) SHARE_TYPE="$SHARE_TYPE'[Guest]')"      ;;
+             9) SHARE_TYPE="$SHARE_TYPE'[remoteGroup]')";;
+            10) SHARE_TYPE="$SHARE_TYPE'[Room]')"       ;;
+            11) SHARE_TYPE="$SHARE_TYPE'[userRoom]')"   ;;
+            12) SHARE_TYPE="$SHARE_TYPE'[userRoom]')"   ;;
+            13) SHARE_TYPE="$SHARE_TYPE'[userDeck]')"
+        esac
+        SHARE_TYPE="$SHARE_TYPE AS share_with, "
+        TOKEN="item_source AS \"/f/-token\","
+    fi
 
-        local grpfldr_id thisgrpfldr sed_string
-        if is_app_enabled groupfolders && [ -d "$NC_DATADIR/__groupfolders" ]; then
-            for grpfldr_id in `ls $NC_DATADIR/__groupfolders* | grep [0-9]`; do
-                thisgrpfldr="$(db_raw_exec_ "SELECT mount_point FROM ${DB_PREF}group_folders WHERE folder_id = $grpfldr_id")"
-                sed_string="${sed_string};s@__groupfolders/${grpfldr_id}@/${thisgrpfldr}@g"
-                d_echo "sed_string: \"$sed_string\""
-            done
-        fi
+    local grpfldr_id thisgrpfldr sed_string
+    if is_app_enabled groupfolders && [ -d "$NC_DATADIR/__groupfolders" ]; then
+        for grpfldr_id in `ls $NC_DATADIR/__groupfolders* | grep [0-9]`; do
+            thisgrpfldr="$(db_raw_exec_ "SELECT mount_point FROM ${DB_PREF}group_folders WHERE folder_id = $grpfldr_id")"
+            sed_string="${sed_string};s@__groupfolders/${grpfldr_id}@/${thisgrpfldr}@g"
+            d_echo "sed_string: \"$sed_string\""
+        done
+    fi
 
-      # permissions from lib/public/Constants.php
+  # permissions from lib/public/Constants.php
 
-      # using case statement for if-else branching
-        QUERY="SELECT id, $DB_UT2TS AS \"share_time......\",$USER$SHARE_TYPE
-        item_type AS type,
-        CONCAT_WS(',',
-            CASE WHEN password IS NOT NULL THEN 'pw' ELSE NULL END,
-            CASE (permissions & 1) WHEN 1 THEN 'r' ELSE NULL END,
-            CASE (permissions & 2) WHEN 2 THEN 'u' ELSE NULL END,
-            CASE (permissions & 4) WHEN 4 THEN 'c' ELSE NULL END,
-            CASE (permissions & 8) WHEN 8 THEN 'd' ELSE NULL END,
-            CASE (permissions & 16) WHEN 16 THEN 's' ELSE NULL END
-        ) AS permissions,
-        $TOKEN
-        (SELECT path FROM ${DB_PREF}filecache WHERE ${DB_PREF}filecache.fileid = ${DB_PREF}share.file_source) AS path
-        FROM ${DB_PREF}share
-        WHERE share_type = ${sharetype}"
+  # using case statement for if-else branching
+    QUERY="SELECT id, $DB_UT2TS AS \"share_time......\",$USER$SHARE_TYPE
+    item_type AS type,
+    CONCAT_WS(',',
+        CASE WHEN password IS NOT NULL THEN 'pw' ELSE NULL END,
+        CASE (permissions & 1) WHEN 1 THEN 'r' ELSE NULL END,
+        CASE (permissions & 2) WHEN 2 THEN 'u' ELSE NULL END,
+        CASE (permissions & 4) WHEN 4 THEN 'c' ELSE NULL END,
+        CASE (permissions & 8) WHEN 8 THEN 'd' ELSE NULL END,
+        CASE (permissions & 16) WHEN 16 THEN 's' ELSE NULL END
+    ) AS permissions,
+    $TOKEN
+    (SELECT path FROM ${DB_PREF}filecache WHERE ${DB_PREF}filecache.fileid = ${DB_PREF}share.file_source) AS path
+    FROM ${DB_PREF}share
+    WHERE share_type = ${sharetype}"
 
-        if [ "$USER_ID" = "all" ]; then
-            query="$QUERY ORDER BY uid_initiator, id"
-        else
-            query="$QUERY AND uid_initiator = '$USER_ID' ORDER BY id"
-        fi
+    if [ "$USER_ID" = "all" ]; then
+        query="$QUERY ORDER BY uid_initiator, id"
+    else
+        query="$QUERY AND uid_initiator = '$USER_ID' ORDER BY id"
+    fi
 
-        d_echo "query: \"$query\""
+    d_echo "query: \"$query\""
 # TODO 0 -->
-    #        printf -v runtime "%(%F_%R_)T" # declare runtime variable
-    #        tmp_file=$(tf) targetdir="/nc/dat/data/ich/files" targetfile="$targetdir/${basename_me}_$runtime$@.pdf"
-    #        d_echo "tmp_file: $tmp_file"
-    #        d_echo "targetfile: $targetfile"
-    #        eval $DB_STRG $DB_EXEC\"$query\" | sed "s\ files/\ /\g$sed_string" | tidy -indent -quiet -wrap 0 -f /dev/null -o $tmp_file
-    #        eval $DB_STRG $H $DB_EXEC\"$query\" | tidy -indent -quiet -wrap 0 -f /dev/null | sed "s\<td>files/\<td>/\g$sed_string" > $tmp_file
+#        printf -v runtime "%(%F_%R_)T" # declare runtime variable
+#        tmp_file=$(tf) targetdir="/nc/dat/data/ich/files" targetfile="$targetdir/${basename_me}_$runtime$@.pdf"
+#        d_echo "tmp_file: $tmp_file"
+#        d_echo "targetfile: $targetfile"
+#        eval $DB_STRG $DB_EXEC\"$query\" | sed "s\ files/\ /\g$sed_string" | tidy -indent -quiet -wrap 0 -f /dev/null -o $tmp_file
+#        eval $DB_STRG $H $DB_EXEC\"$query\" | tidy -indent -quiet -wrap 0 -f /dev/null | sed "s\<td>files/\<td>/\g$sed_string" > $tmp_file
 
-    #    anykey
+#    anykey
 
-    #        mv $tmp_file $tmp_file.html
-    #        soffice --headless --convert-to pdf $tmp_file.html
+#        mv $tmp_file $tmp_file.html
+#        soffice --headless --convert-to pdf $tmp_file.html
 
-    #    anykey
+#    anykey
 
-    #        mv $tmp_file.pdf "$targetfile"
+#        mv $tmp_file.pdf "$targetfile"
 
-    #    anykey
+#    anykey
 
-    #        $occ files:scan -vvv --path="$targetfile"
-    #    exit
+#        $occ files:scan -vvv --path="$targetfile"
+#    exit
 # TODO <-- 0
-        db_exec_ "$query" | column -t -s $'\t' | sed "s\ files/\ /\g$sed_string"
+    db_exec_ "$query" | column -t -s $'\t' | sed "s\ files/\ /\g$sed_string"
 # TODO 1 -->
-    #    pipe_h2t "$DB_STRG $DB_EXEC" "$query"
+#    pipe_h2t "$DB_STRG $DB_EXEC" "$query"
 # TODO <-- 1
-    }
 }

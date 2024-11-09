@@ -7,128 +7,127 @@ __copyright__
 __license__
 #
 
-${AWKSED_BASHLIB:-false} || {
-    AWKSED_BASHLIB=:
+${AWKSED_BASHLIB:-false} && return
+AWKSED_BASHLIB=:
 
 # awk
-    # NOTE: sponge is part of moreutils
-    awk_remove_trailing_empty_lines(){
-        local infile="$1"
-        awk '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" | sponge "$infile"
-    }
+# NOTE: sponge is part of moreutils
+awk_remove_trailing_empty_lines(){
+    local infile="$1"
+    awk '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" | sponge "$infile"
+}
 
-    # radicaly delete duplicate lines
-    uniq_lines(){
-        local infile="$1"
-        awk '!seen[$0]++' "$infile" | sponge "$infile"
-    }
+# radicaly delete duplicate lines
+uniq_lines(){
+    local infile="$1"
+    awk '!seen[$0]++' "$infile" | sponge "$infile"
+}
 
-    # delete duplicate empty lines, keep single empty lines
-    uniq_empty_lines(){
-        local infile="$1"
-        awk 'NF || prev { print; prev = NF }' "$infile" | sponge "$infile" \
-        && remove_trailing_empty_lines "$infile"
-    }
+# delete duplicate empty lines, keep single empty lines
+uniq_empty_lines(){
+    local infile="$1"
+    awk 'NF || prev { print; prev = NF }' "$infile" | sponge "$infile" \
+    && remove_trailing_empty_lines "$infile"
+}
 
-    # delete duplicate lines, keep single empty lines INSIDE the file, remove empty lines at the end of the file
-    dedup_lines(){
-        local infile="$1"
-        awk '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" | sponge "$infile" \
-        && remove_trailing_empty_lines "$infile"
-    }
+# delete duplicate lines, keep single empty lines INSIDE the file, remove empty lines at the end of the file
+dedup_lines(){
+    local infile="$1"
+    awk '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" | sponge "$infile" \
+    && remove_trailing_empty_lines "$infile"
+}
 
 # sed
-    remove_trailing_empty_lines(){
-        local infile="$1"
-        sed -i ':a;N;$!ba;s/\n*$//' $infile
-    }
+remove_trailing_empty_lines(){
+    local infile="$1"
+    sed -i ':a;N;$!ba;s/\n*$//' $infile
+}
 
-    # delete from $pattern to end without deleting the line containing $pattern
-    delafter(){
-        local pattern="$1" infile="$2" outfile="$3"
-        case ${outfile:--i} in
-            -i) sed -i -n "0,/$pattern/p" "$infile"
-                ;;
-             *) sed -n "0,/$pattern/p" "$infile" > "$outfile"
-        esac
-    }
+# delete from $pattern to end without deleting the line containing $pattern
+delafter(){
+    local pattern="$1" infile="$2" outfile="$3"
+    case ${outfile:--i} in
+        -i) sed -i -n "0,/$pattern/p" "$infile"
+            ;;
+         *) sed -n "0,/$pattern/p" "$infile" > "$outfile"
+    esac
+}
 
-    # delete from $pattern to end including the line containing $pattern
-    delp2ei(){
-        local pattern="$1" infile="$2" outfile="$3"
-        case ${outfile:--i} in
-            -i) sed -i -n "/$pattern/q;p" "$infile"
-                ;;
-             *) sed -n "/$pattern/q;p" "$infile" > "$outfile"
-        esac
-    }
-    del_from_x_to_end_including(){ delp2ei "$@";}
+# delete from $pattern to end including the line containing $pattern
+delp2ei(){
+    local pattern="$1" infile="$2" outfile="$3"
+    case ${outfile:--i} in
+        -i) sed -i -n "/$pattern/q;p" "$infile"
+            ;;
+         *) sed -n "/$pattern/q;p" "$infile" > "$outfile"
+    esac
+}
+del_from_x_to_end_including(){ delp2ei "$@";}
 
-    # search for lines containing pattern1 and pattern2 and delete those lines and everything in between.
-    delx2yi(){
-        local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
-        case ${outfile:--i} in
-            -i) sed -i "/$pattern1/,/$pattern2/d" "$infile"
-                ;;
-             *) sed "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
-        esac
-    }
-    del_from_x_to_y_including(){ delx2yi "$@";}
+# search for lines containing pattern1 and pattern2 and delete those lines and everything in between.
+delx2yi(){
+    local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
+    case ${outfile:--i} in
+        -i) sed -i "/$pattern1/,/$pattern2/d" "$infile"
+            ;;
+         *) sed "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
+    esac
+}
+del_from_x_to_y_including(){ delx2yi "$@";}
 
-    # only delete the lines in between pattern1 and pattern2, remain those lines containg the patterns untouched.
-    delx2y(){
-        local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
-        case ${outfile:--i} in
-            -i) sed -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
-                ;;
-             *) sed "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
-        esac
-    }
-    del_from_x_to_y(){ delx2y "$@";}
+# only delete the lines in between pattern1 and pattern2, remain those lines containg the patterns untouched.
+delx2y(){
+    local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
+    case ${outfile:--i} in
+        -i) sed -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
+            ;;
+         *) sed "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
+    esac
+}
+del_from_x_to_y(){ delx2y "$@";}
 
-    # delete all lines from the beginning until & including the line containing pattern "p".
-    delb2pi(){
-        local pattern="$1" infile="$2" outfile="$3"
-        case ${outfile:--i} in
-            -i) sed -i "1,/$pattern/d" "$infile"
-                ;;
-             *) sed "1,/$pattern/d" "$infile" > "$outfile"
-        esac
-    }
-    del_from_begin_to_y_including(){ delb2pi "$@";}
+# delete all lines from the beginning until & including the line containing pattern "p".
+delb2pi(){
+    local pattern="$1" infile="$2" outfile="$3"
+    case ${outfile:--i} in
+        -i) sed -i "1,/$pattern/d" "$infile"
+            ;;
+         *) sed "1,/$pattern/d" "$infile" > "$outfile"
+    esac
+}
+del_from_begin_to_y_including(){ delb2pi "$@";}
 
-    # delete all lines from the beginning until the line containing pattern, remain the line containing pattern untouched.
-    delb2p(){
-        local pattern="$1" infile="$2" outfile="$3"
-        case ${outfile:--i} in
-            -i) sed -i "1,/$pattern/{/$pattern/!d;}" "$infile"
-                ;;
-             *) sed "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
-        esac
-    }
-    del_from_begin_to_y(){ delb2p "$@";}
+# delete all lines from the beginning until the line containing pattern, remain the line containing pattern untouched.
+delb2p(){
+    local pattern="$1" infile="$2" outfile="$3"
+    case ${outfile:--i} in
+        -i) sed -i "1,/$pattern/{/$pattern/!d;}" "$infile"
+            ;;
+         *) sed "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
+    esac
+}
+del_from_begin_to_y(){ delb2p "$@";}
 
-    # trim "$1" from leading and trailing spaces
-    trim(){
-        sed 's/^\s*//; s/\s*$//' <<< "$1"
-    }
+# trim "$1" from leading and trailing spaces
+trim(){
+    sed 's/^\s*//; s/\s*$//' <<< "$1"
+}
 
-    # stripconf php.ini, exclude pattern: comment marker ';', #, empty lines and '['
-    stripconf(){
-        sed -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
-    }
+# stripconf php.ini, exclude pattern: comment marker ';', #, empty lines and '['
+stripconf(){
+    sed -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
+}
 
-    # remove single and double  quotes from begin and end of line $1
-    unquote() {
-        sed -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
-    }
+# remove single and double  quotes from begin and end of line $1
+unquote() {
+    sed -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
+}
 
-    # remove ansi color codes
-    noansi(){
-        sed -re 's/⚠️/!/g;s/\x1B\[[0-9;?]*[a-zA-Z]//g' <<< "$*"
-    }
+# remove ansi color codes
+noansi(){
+    sed -re 's/⚠️/!/g;s/\x1B\[[0-9;?]*[a-zA-Z]//g' <<< "$*"
+}
 
-    urldecode(){
-        echo -n "${*//+/ }" | sed 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | xargs -0 printf
-    }
+urldecode(){
+    echo -n "${*//+/ }" | sed 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | xargs -0 printf
 }

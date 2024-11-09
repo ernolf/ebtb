@@ -7,27 +7,27 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} || {
-    HELP_BASHLIB=:
+${HELP_BASHLIB:-false} && return
+HELP_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire nc/nextcloud_logo)
+. <(lrequire nc/nextcloud_logo)
 
-    print_help(){
-        # for backwards compatibilty
-        if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
-            declare upinf="$updateinfo"
-        fi
+print_help(){
+    # for backwards compatibilty
+    if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+        declare upinf="$updateinfo"
+    fi
 
-        local bak=false s
-        if (($(backups|wc -l)));then bak=true
-            r_b(){ echo "$(f)    $me restore_backup";}
-            [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
-        else r_b(){ :;}
-        fi
-        cat <<HELP
+    local bak=false s
+    if (($(backups|wc -l)));then bak=true
+        r_b(){ echo "$(f)    $me restore_backup";}
+        [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
+    else r_b(){ :;}
+    fi
+    cat <<HELP
 $(nextcloud_logo)
 
  $(line = P 81)
@@ -77,11 +77,10 @@ $(nextcloud_logo)
                 verify the integrity of this script with signature
 
 HELP
-        $bak&&cat<<BACKUP;exit 0
+    $bak&&cat<<BACKUP;exit 0
     restore_backup
                 restore an older version of this script from backup
                 ($(backups|wc -l) backup$s available, you must be root)
 
 BACKUP
-    }
 }

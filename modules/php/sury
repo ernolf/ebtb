@@ -7,271 +7,285 @@ __copyright__
 __license__
 #
 
-${SURY_BASHLIB:-false} || {
-    SURY_BASHLIB=:
+${SURY_BASHLIB:-false} && return
+SURY_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
-    . <(lrequire tempfile)
-    . <(lrequire fstring)
-    . <(lrequire dpkg)
-    . <(lrequire dist/os_release)
+. <(lrequire basics)
+. <(lrequire tempfile)
+. <(lrequire fstring)
+. <(lrequire dpkg)
+. <(lrequire dist/os_release)
 
-    sury(){
-        # return codes:
-        # 0 = OK: 1 or more correct apt sources
-        # 33 = OK but 1 or more wrong protocol (http instead of https)
-        # 34 = OK but 1 or more wrong architecture
-        #   35 = 33 and 34
-        # 36 = 1 or more wrong suite (apt source codename)
-        #   37 = 36 and 33
-        #   38 = 36 and 34
-        #   39 = 36, 33 and 34
-        # 40 = 1 or more wrong suit AND wrong protocol
-        #   41 = 40 and 33
-        #   42 = 40 and 34
-        #   43 = 40, 33 and 34
-        #   44 = 40 and 36
-        #   45 = 40, 36 and 33
-        #   46 = 40, 36, 33 and 34
-        # 48 = 1 or more wrong apt source (debian <-> ubuntu)
-        # 32 = No sury repo detected
-        # 64 = Not-OK
-        # 128 = unknown distributor
-        local -i r=128 i
-        local -l id codename wrong_codename architecture aptsource wrong_aptsource asu asd return
-        local -a architectures aptsources
-        asu='ppa.launchpadcontent.net_ondrej_php_ubuntu_' # aptsource ubuntu
-        asd='packages.sury.org_php_' # aptsource debian
+sury(){
+    # return codes:
+    # 0 = OK: 1 or more correct apt sources
+    # 33 = OK but 1 or more wrong protocol (http instead of https)
+    # 34 = OK but 1 or more wrong architecture
+    #   35 = 33 and 34
+    # 36 = 1 or more wrong suite (apt source codename)
+    #   37 = 36 and 33
+    #   38 = 36 and 34
+    #   39 = 36, 33 and 34
+    # 40 = 1 or more wrong suit AND wrong protocol
+    #   41 = 40 and 33
+    #   42 = 40 and 34
+    #   43 = 40, 33 and 34
+    #   44 = 40 and 36
+    #   45 = 40, 36 and 33
+    #   46 = 40, 36, 33 and 34
+    # 48 = 1 or more wrong apt source (debian <-> ubuntu)
+    # 32 = No sury repo detected
+    # 64 = Not-OK
+    # 128 = unknown distributor
+    local -i r=128 i
+    local -l id codename wrong_codename architecture aptsource wrong_aptsource asu asd return
+    local -a architectures aptsources
+    asu='ppa.launchpadcontent.net_ondrej_php_ubuntu_' # aptsource ubuntu
+    asd='packages.sury.org_php_' # aptsource debian
 
-        if [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " sury " ]]; then
-            id="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF-1)}')"
-            codename="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF)}')"
-            case $id in
-                ubuntu) aptsource="$asu" wrong_aptsource="$asd" ;;
-                debian) aptsource="$asd" wrong_aptsource="$asu"
-            esac
-        else
-            codename="$OS_VERSION_CODENAME"
-            case $OS_ID in
-                ubuntu) aptsource="$asu" wrong_aptsource="$asd"
-                        ;;
-       debian|raspbian) aptsource="$asd" wrong_aptsource="$asu"
-                        ;;
-                     *) if [ -n "$OS_ID_LIKE" ]; then
-                            case ${OS_ID_LIKE% *} in
-                                debian)
-                                    if [ -n $OS_DEBIAN_CODENAME ]; then
-                                        aptsource="$asd" wrong_aptsource="$asu" codename="$OS_DEBIAN_CODENAME"
-                                    elif [ -n $OS_UBUNTU_CODENAME ]; then
-                                        aptsource="$asu" wrong_aptsource="$asd" codename="$OS_UBUNTU_CODENAME"
-                                    fi
-                                    ;;
-                                ubuntu)
-                                    if [ -n $OS_UBUNTU_CODENAME ]; then
-                                        aptsource="$asu" wrong_aptsource="$asd" codename="$OS_UBUNTU_CODENAME"
-                                    fi
-                                    ;;
-                                *)  aptsource='' r=128 return="unknown distributor $OS_ID"
-                            esac
-                        else
-                            aptsource='' wrong_aptsource='' r=128 return="unknown distributor $OS_ID"
-                        fi
-            esac
-        fi
-
-        if command -v dpkg >/dev/null; then
-            architecture="$(dpkg --print-architecture )"
-            mapfile -t architectures< <(p_sort $architecture $(dpkg --print-foreign-architectures 2>/dev/null))
-            if [ -d /var/lib/apt/lists ] && [ -n "$aptsource" ]; then
-                # apt sources
-                mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_Packages.*$//;s/-deb.*$//;s/_dists_/_/;s/_binary-/_/')")
-                if (( ${#aptsources[@]} )); then
-                    if (( ${#aptsources[@]} == 1 )); then
-                        if [[ "${aptsources[0]}" =~ $aptsource${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
-                            r=0 return="OK"
-                        elif [[ "${aptsources[0]}" =~ ${aptsource//content/}${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
-                            r=33 return="OK but http instead of https"
-                        elif [[ "${aptsources[0]}" =~ $aptsource${codename}_main_ ]]; then
-                            r=34 return="OK but wrong architekture"
-                        elif [[ "${aptsources[0]}" =~ $aptsource ]]; then
-                            r=36 return="wrong - apt source for ${aptsources[0]#$aptsource} instead of $codename"
-                        elif [[ "${aptsources[0]}" =~ ${aptsource//content/} ]]; then
-                            r=40 return="wrong - apt source for ${aptsources[0]#$aptsource} instead of $codename, http instead of https"
-                        elif [[ "${aptsources[0]}" =~ $wrong_aptsource || "${aptsources[0]}" =~ ${wrong_aptsource//content/} ]]; then
-                            r=48 return="wrong - apt source for wrong distribution"
-                        else
-                            r=32 return="No sury repo detected"
-                        fi
+    if [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " sury " ]]; then
+        id="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF-1)}')"
+        codename="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF)}')"
+        case $id in
+            ubuntu) aptsource="$asu" wrong_aptsource="$asd" ;;
+            debian) aptsource="$asd" wrong_aptsource="$asu"
+        esac
+    else
+        codename="$OS_VERSION_CODENAME"
+        case $OS_ID in
+            ubuntu) aptsource="$asu" wrong_aptsource="$asd"
+                    ;;
+   debian|raspbian) aptsource="$asd" wrong_aptsource="$asu"
+                    ;;
+                 *) if [ -n "$OS_ID_LIKE" ]; then
+                        case ${OS_ID_LIKE% *} in
+                            debian)
+                                if [ -n $OS_DEBIAN_CODENAME ]; then
+                                    aptsource="$asd" wrong_aptsource="$asu" codename="$OS_DEBIAN_CODENAME"
+                                elif [ -n $OS_UBUNTU_CODENAME ]; then
+                                    aptsource="$asu" wrong_aptsource="$asd" codename="$OS_UBUNTU_CODENAME"
+                                fi
+                                ;;
+                            ubuntu)
+                                if [ -n $OS_UBUNTU_CODENAME ]; then
+                                    aptsource="$asu" wrong_aptsource="$asd" codename="$OS_UBUNTU_CODENAME"
+                                fi
+                                ;;
+                            *)  aptsource='' r=128 return="unknown distributor $OS_ID"
+                        esac
                     else
-                        return="multi" r=32
-                        local wrong_protocol=false wrong_architecture=false wrong_suite=false wrong_suite_protocol=false wrong_distrib=false
-                        for i in ${!aptsources[@]}; do
-                            if [[ "${aptsources[i]}" =~ $aptsource${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
-                                ((r>31))&&r+=-32
-                                return="$return - $((i+1)) = OK"
-                            elif [[ "${aptsources[i]}" =~ ${aptsource//content/}${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
-                                $wrong_protocol||r+=1 return="$return - $((i+1)) = OK but http instead of https"
-                                wrong_protocol=true
-                            elif [[ "${aptsources[i]}" =~ $aptsource${codename}_main_ ]]; then
-                                $wrong_architecture||r+=2 return="OK but wrong architekture"
-                                wrong_architecture=true
-                            elif [[ "${aptsources[i]}" =~ $aptsource ]]; then
-                                wrong_codename="$(echo ${aptsources[i]//_/ }|awk '{print $(NF-2)}')"
-                                $wrong_suite||r+=4 return="$return - $((i+1)) = wrong - apt source for $wrong_codename instead of $codename"
-                                wrong_suite=true
-                            elif [[ "${aptsources[i]}" =~ ${aptsource//content/} ]]; then
-                                $wrong_suite_protocol||r+=8 return="$return - $((i+1)) = wrong - apt source for ${aptsources[i]#$aptsource} instead of $codename, http instead of https"
-                                wrong_suite_protocol=true
-                            elif [[ "${aptsources[i]}" =~ $wrong_aptsource || "${aptsources[i]}" =~ ${wrong_aptsource//content/} ]]; then
-                                $wrong_distrib||r+=16 return="$return - $((i+1)) = wrong - apt source for wrong distribution"
-                                wrong_distrib=true
+                        aptsource='' wrong_aptsource='' r=128 return="unknown distributor $OS_ID"
+                    fi
+        esac
+    fi
+
+    if command -v dpkg >/dev/null; then
+        architecture="$(dpkg --print-architecture )"
+        mapfile -t architectures< <(p_sort $architecture $(dpkg --print-foreign-architectures 2>/dev/null))
+        if [ -d /var/lib/apt/lists ] && [ -n "$aptsource" ]; then
+            # apt sources
+            mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_Packages.*$//;s/-deb.*$//;s/_dists_/_/;s/_binary-/_/')")
+            if (( ${#aptsources[@]} )); then
+                if (( ${#aptsources[@]} == 1 )); then
+                    if [[ "${aptsources[0]}" =~ $aptsource${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
+                        r=0 return="OK"
+                    elif [[ "${aptsources[0]}" =~ ${aptsource//content/}${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
+                        r=33 return="OK but http instead of https"
+                    elif [[ "${aptsources[0]}" =~ $aptsource${codename}_main_ ]]; then
+                        r=34 return="OK but wrong architekture"
+                    elif [[ "${aptsources[0]}" =~ $aptsource ]]; then
+                        r=36 return="wrong - apt source for ${aptsources[0]#$aptsource} instead of $codename"
+                    elif [[ "${aptsources[0]}" =~ ${aptsource//content/} ]]; then
+                        r=40 return="wrong - apt source for ${aptsources[0]#$aptsource} instead of $codename, http instead of https"
+                    elif [[ "${aptsources[0]}" =~ $wrong_aptsource || "${aptsources[0]}" =~ ${wrong_aptsource//content/} ]]; then
+                        r=48 return="wrong - apt source for wrong distribution"
+                    else
+                        r=32 return="No sury repo detected"
+                    fi
+                else
+                    return="multi" r=32
+                    local wrong_protocol=false wrong_architecture=false wrong_suite=false wrong_suite_protocol=false wrong_distrib=false
+                    for i in ${!aptsources[@]}; do
+                        if [[ "${aptsources[i]}" =~ $aptsource${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
+                            ((r>31))&&r+=-32
+                            return="$return - $((i+1)) = OK"
+                        elif [[ "${aptsources[i]}" =~ ${aptsource//content/}${codename}_main_($(echo ${architectures[@]}|tr ' ' '|')) ]]; then
+                            $wrong_protocol||r+=1 return="$return - $((i+1)) = OK but http instead of https"
+                            wrong_protocol=true
+                        elif [[ "${aptsources[i]}" =~ $aptsource${codename}_main_ ]]; then
+                            $wrong_architecture||r+=2 return="OK but wrong architekture"
+                            wrong_architecture=true
+                        elif [[ "${aptsources[i]}" =~ $aptsource ]]; then
+                            wrong_codename="$(echo ${aptsources[i]//_/ }|awk '{print $(NF-2)}')"
+                            $wrong_suite||r+=4 return="$return - $((i+1)) = wrong - apt source for $wrong_codename instead of $codename"
+                            wrong_suite=true
+                        elif [[ "${aptsources[i]}" =~ ${aptsource//content/} ]]; then
+                            $wrong_suite_protocol||r+=8 return="$return - $((i+1)) = wrong - apt source for ${aptsources[i]#$aptsource} instead of $codename, http instead of https"
+                            wrong_suite_protocol=true
+                        elif [[ "${aptsources[i]}" =~ $wrong_aptsource || "${aptsources[i]}" =~ ${wrong_aptsource//content/} ]]; then
+                            $wrong_distrib||r+=16 return="$return - $((i+1)) = wrong - apt source for wrong distribution"
+                            wrong_distrib=true
+                        fi
+                    done
+                    if [ "$return" = "multi" ]; then
+                        r=32 return="No sury repo detected"
+                    fi
+                fi
+            else
+                r=64 return='Not-OK'
+            fi
+        fi
+    fi
+    printf "$return"
+    return $r
+}
+
+fix_yourself_if_fails(){ local string
+    string="If this step fails, you should fix it yourself please. Do not run this step multiple times then. If it doesn't work after one attempt, it won't work on the second and subsequent attempts either. It will propably be fixed though in a future version of this script, so you can run this script again at a later time to try again if it fails now."
+    GRAY;echo "  $(format_string "$string" 3;N)"
+}
+
+need_sury_repo(){
+    local sury_return id codename wrong_codename asu asd aptsource wrong_aptsource http_aptsource hhtp_token https_token aptsource_file success
+    local -i sury_r i
+    local -a aptsource_files successes
+    asu='https://ppa.launchpadcontent.net/ondrej/php/ubuntu'
+    asd='https://packages.sury.org/php'
+    sury_return="$(sury)"
+    sury_r=$?
+    if [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " sury " ]]; then # OS is supported!
+        id="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF-1)}')"
+        codename="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF)}')"
+        case $id in
+            ubuntu) aptsource="$asu" wrong_aptsource="$asd"
+                    http_aptsource='http://ppa.launchpad.net/ondrej/php/ubuntu'
+                    http_token='http://ppa.launchpad.net/'
+                    https_token='https://ppa.launchpadcontent.net/';;
+            debian) aptsource="$asd" wrong_aptsource="$asu"
+        esac
+        if ((sury_r)); then # NOT 0
+            if ((sury_r == 32)); then # no sury repo
+                list_apt_sources
+                f;os;GRAY;echo "r=$sury_r, $sury_return";N
+                f;echo " -$(format_string "$(Y)Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3;N)"
+                f;os;GRAY;echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details.";N;f
+                os;echo "This script can add the right repo to your apt sources."
+                fix_yourself_if_fails
+                if ask "$(qpf)Do you want to add sury repo now" "$YES"; then
+                    switch_php_to_ $PHP_VERSION
+                    if min_version apt 2.4; then
+                        add_repository_deb822 "$id" "$codename"
+                    else
+                        add_repository "$id" "$codename"
+                    fi
+                    sury_return="$(sury)"
+                    sury_r=$?
+                    if ((sury_r == 32)); then # still no sury repo
+                        mh "adding apt source failed"
+                        f;os;R;echo "Unfortunately this step was not successfull. Please add the apt source yourself.";N
+                        anykey
+                    else
+                        mh "adding apt source succeeded"
+                        f;os;G;echo "This step was successfull";N
+                        anykey
+                        "$me$forceflag" "json=$my_json" --list-candidates
+                    fi
+                fi
+            elif ((sury_r == 33)); then # http instead of https
+                list_apt_sources
+                f;os;GRAY;echo "r=$sury_r, $sury_return";N
+                f;echo " -$(format_string "Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)http://ppa.launchpad.net/..$(N) is used instead of $(B)https://ppa.launchpadcontent.net/.." 3;N)"
+                if min_version apt 2.0; then
+                    echo "  $(format_string "$(Y)Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)http://ppa.launchpad.net$(N) with $(B)https://ppa.launchpadcontent.net$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
+                    f;os;echo "This script can replace the http URIs with the new https URIs for you."
+                    fix_yourself_if_fails
+                    if ask "$(qpf)Do you want to replace http URIs with https URIs now" "$YES"; then
+                        switch_php_to_ $PHP_VERSION
+                        for aptsource_file in /etc/apt/sources.list.d/*\.{list,sources}; do
+                            if [ -f "$aptsource_file" ]; then
+                                if grep -Eqs "^(deb|URIs).*$http_token" "$aptsource_file"; then
+                                    aptsource_files+=("$aptsource_file")
+                                    successes+=(false)
+                                fi
                             fi
                         done
-                        if [ "$return" = "multi" ]; then
-                            r=32 return="No sury repo detected"
+                        if (( ${#aptsource_files[@]} )); then
+                            for i in ${!aptsource_files[@]}; do
+                                if [ "${aptsource_files[0]##*.}" = 'list' ]; then
+                                    sed -i "/^deb.*launchpad\.net/ { h; s/^/# /; p; g; s/http:/https:/; s/launchpad.net/launchpadcontent.net/; }" "${aptsource_files[i]}"
+                                elif [ "${aptsource_files[0]##*.}" = 'sources' ]; then
+                                    sed -i "/^URIs:.*launchpad\.net/ { h; s/^/# /; p; g; s/http:/https:/; s/launchpad.net/launchpadcontent.net/; }" "${aptsource_files[i]}"
+                                fi
+                                if grep -Eqs "^(deb|URIs).*$http_token" "${aptsource_files[i]}"; then
+                                    mh "replacing $http_token with $https_token in ${aptsource_files[i]} failed"
+                                else
+                                    mh "replacing $http_token with $https_token in ${aptsource_files[i]} succeeded"
+                                    successes[i]=true
+                                fi
+                            done
+                        fi
+                        if [[ "${successes[@]}" =~ true ]]; then
+                            os;G;echo "This step was successfull on this file(s):"
+                            for i in ${!successes[@]}; do
+                                if ${successes[i]}; then
+                                    os;pf;C;echo "${aptsource_files[i]}"
+                                fi;N
+                                anykey
+                            done
+                            if [[ "${successes[@]}" =~ false ]]; then
+                                os;R;echo "Unfortunately this step was not successfull on this file(s):"
+                                for i in ${!successes[@]}; do
+                                    if ! ${successes[i]}; then
+                                        os;pf;P;echo "${aptsource_files[i]}"
+                                    fi
+                                done
+                                os;R;echo "Please fix it yourself.";N
+                                anykey
+                            fi
+                            apt_update
+                            "$me$forceflag" "json=$my_json" --list-candidates
+                        else
+                            os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
+                            anykey
                         fi
                     fi
                 else
-                    r=64 return='Not-OK'
+                    os;echo "but this is normal on $codename, since the version of this OS is extremely old."
                 fi
-            fi
-        fi
-        printf "$return"
-        return $r
-    }
+            elif ((sury_r == 36)); then # apt source for ${aptsources[i]#$aptsource} instead of $codename"
+                wrong_codename=$(echo "$sury_return"|awk '{print $(NF-3)}')
+                list_apt_sources
+                f;os;GRAY;echo "r=$sury_r, $sury_return";N
+                f;echo "  $(format_string "Ondřej Surý's repo is added to the apt sopurces but for $wrong_codename instead of $codename. You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
+                f;os;echo "This script can replace $wrong_codename with $codename  in sury apt-source file for you."
+                fix_yourself_if_fails
+                if ask "$(qpf)Do you want to replace $wrong_codename with $codename in sury apt-source file now" "$YES"; then
+                    success=false
+                    switch_php_to_ $PHP_VERSION
+                    for aptsource_file in /etc/apt/sources.list.d/*\.list; do
+                        if [ -f "$aptsource_file" ]; then
+                            if grep -q "^[^#].*$aptsource.*$wrong_codename" "$aptsource_file"; then
 
-    fix_yourself_if_fails(){ local string
-        string="If this step fails, you should fix it yourself please. Do not run this step multiple times then. If it doesn't work after one attempt, it won't work on the second and subsequent attempts either. It will propably be fixed though in a future version of this script, so you can run this script again at a later time to try again if it fails now."
-        GRAY;echo "  $(format_string "$string" 3;N)"
-    }
+                                sed -i "/^[^#].*${aptsource//\//\\/}.*$wrong_codename/ { h; s/^/# /; p; g; s/$wrong_codename/$codename/; }" "$aptsource_file"
 
-    need_sury_repo(){
-        local sury_return id codename wrong_codename asu asd aptsource wrong_aptsource http_aptsource hhtp_token https_token aptsource_file success
-        local -i sury_r i
-        local -a aptsource_files successes
-        asu='https://ppa.launchpadcontent.net/ondrej/php/ubuntu'
-        asd='https://packages.sury.org/php'
-        sury_return="$(sury)"
-        sury_r=$?
-        if [[ " $(tail -n3 "$ca_me"|head -n1) " =~ " sury " ]]; then # OS is supported!
-            id="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF-1)}')"
-            codename="$(tail -n3 "$ca_me"|head -n1|awk '{print $(NF)}')"
-            case $id in
-                ubuntu) aptsource="$asu" wrong_aptsource="$asd"
-                        http_aptsource='http://ppa.launchpad.net/ondrej/php/ubuntu'
-                        http_token='http://ppa.launchpad.net/'
-                        https_token='https://ppa.launchpadcontent.net/';;
-                debian) aptsource="$asd" wrong_aptsource="$asu"
-            esac
-            if ((sury_r)); then # NOT 0
-                if ((sury_r == 32)); then # no sury repo
-                    list_apt_sources
-                    f;os;GRAY;echo "r=$sury_r, $sury_return";N
-                    f;echo " -$(format_string "$(Y)Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3;N)"
-                    f;os;GRAY;echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details.";N;f
-                    os;echo "This script can add the right repo to your apt sources."
-                    fix_yourself_if_fails
-                    if ask "$(qpf)Do you want to add sury repo now" "$YES"; then
-                        switch_php_to_ $PHP_VERSION
-                        if min_version apt 2.4; then
-                            add_repository_deb822 "$id" "$codename"
-                        else
-                            add_repository "$id" "$codename"
-                        fi
-                        sury_return="$(sury)"
-                        sury_r=$?
-                        if ((sury_r == 32)); then # still no sury repo
-                            mh "adding apt source failed"
-                            f;os;R;echo "Unfortunately this step was not successfull. Please add the apt source yourself.";N
-                            anykey
-                        else
-                            mh "adding apt source succeeded"
-                            f;os;G;echo "This step was successfull";N
-                            anykey
-                            "$me$forceflag" "json=$my_json" --list-candidates
-                        fi
-                    fi
-                elif ((sury_r == 33)); then # http instead of https
-                    list_apt_sources
-                    f;os;GRAY;echo "r=$sury_r, $sury_return";N
-                    f;echo " -$(format_string "Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)http://ppa.launchpad.net/..$(N) is used instead of $(B)https://ppa.launchpadcontent.net/.." 3;N)"
-                    if min_version apt 2.0; then
-                        echo "  $(format_string "$(Y)Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)http://ppa.launchpad.net$(N) with $(B)https://ppa.launchpadcontent.net$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
-                        f;os;echo "This script can replace the http URIs with the new https URIs for you."
-                        fix_yourself_if_fails
-                        if ask "$(qpf)Do you want to replace http URIs with https URIs now" "$YES"; then
-                            switch_php_to_ $PHP_VERSION
-                            for aptsource_file in /etc/apt/sources.list.d/*\.{list,sources}; do
-                                if [ -f "$aptsource_file" ]; then
-                                    if grep -Eqs "^(deb|URIs).*$http_token" "$aptsource_file"; then
-                                        aptsource_files+=("$aptsource_file")
-                                        successes+=(false)
-                                    fi
-                                fi
-                            done
-                            if (( ${#aptsource_files[@]} )); then
-                                for i in ${!aptsource_files[@]}; do
-                                    if [ "${aptsource_files[0]##*.}" = 'list' ]; then
-                                        sed -i "/^deb.*launchpad\.net/ { h; s/^/# /; p; g; s/http:/https:/; s/launchpad.net/launchpadcontent.net/; }" "${aptsource_files[i]}"
-                                    elif [ "${aptsource_files[0]##*.}" = 'sources' ]; then
-                                        sed -i "/^URIs:.*launchpad\.net/ { h; s/^/# /; p; g; s/http:/https:/; s/launchpad.net/launchpadcontent.net/; }" "${aptsource_files[i]}"
-                                    fi
-                                    if grep -Eqs "^(deb|URIs).*$http_token" "${aptsource_files[i]}"; then
-                                        mh "replacing $http_token with $https_token in ${aptsource_files[i]} failed"
-                                    else
-                                        mh "replacing $http_token with $https_token in ${aptsource_files[i]} succeeded"
-                                        successes[i]=true
-                                    fi
-                                done
-                            fi
-                            if [[ "${successes[@]}" =~ true ]]; then
-                                os;G;echo "This step was successfull on this file(s):"
-                                for i in ${!successes[@]}; do
-                                    if ${successes[i]}; then
-                                        os;pf;C;echo "${aptsource_files[i]}"
-                                    fi;N
-                                    anykey
-                                done
-                                if [[ "${successes[@]}" =~ false ]]; then
-                                    os;R;echo "Unfortunately this step was not successfull on this file(s):"
-                                    for i in ${!successes[@]}; do
-                                        if ! ${successes[i]}; then
-                                            os;pf;P;echo "${aptsource_files[i]}"
-                                        fi
-                                    done
-                                    os;R;echo "Please fix it yourself.";N
-                                    anykey
-                                fi
-                                apt_update
-                                "$me$forceflag" "json=$my_json" --list-candidates
-                            else
-                                os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
-                                anykey
-                            fi
-                        fi
-                    else
-                        os;echo "but this is normal on $codename, since the version of this OS is extremely old."
-                    fi
-                elif ((sury_r == 36)); then # apt source for ${aptsources[i]#$aptsource} instead of $codename"
-                    wrong_codename=$(echo "$sury_return"|awk '{print $(NF-3)}')
-                    list_apt_sources
-                    f;os;GRAY;echo "r=$sury_r, $sury_return";N
-                    f;echo "  $(format_string "Ondřej Surý's repo is added to the apt sopurces but for $wrong_codename instead of $codename. You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
-                    f;os;echo "This script can replace $wrong_codename with $codename  in sury apt-source file for you."
-                    fix_yourself_if_fails
-                    if ask "$(qpf)Do you want to replace $wrong_codename with $codename in sury apt-source file now" "$YES"; then
-                        success=false
-                        switch_php_to_ $PHP_VERSION
-                        for aptsource_file in /etc/apt/sources.list.d/*\.list; do
-                            if [ -f "$aptsource_file" ]; then
                                 if grep -q "^[^#].*$aptsource.*$wrong_codename" "$aptsource_file"; then
-
-                                    sed -i "/^[^#].*${aptsource//\//\\/}.*$wrong_codename/ { h; s/^/# /; p; g; s/$wrong_codename/$codename/; }" "$aptsource_file"
-
-                                    if grep -q "^[^#].*$aptsource.*$wrong_codename" "$aptsource_file"; then
+                                    mh "replacing $wrong_codename with $codename in $aptsource_file failed"
+                                else
+                                    mh "replacing $wrong_codename with $codename in $aptsource_file succeeded"
+                                    success=true
+                                fi
+                            fi
+                        fi
+                    done
+                    for aptsource_file in /etc/apt/sources.list.d/*\.sources; do
+                        if [ -f "$aptsource_file" ]; then
+                            if ! grep -q "^Enabled: no$" "$aptsource_file"; then
+                                if grep -q "^URIs: $aptsource$" "$aptsource_file" && grep -q "^Ŝuites: $wrong_codename$" "$aptsource_file"; then
+                                    sed -i "s/^Ŝuites: $wrong_codename$/Suites $codename/" "$aptsource_file"
+                                    if grep -q "^Ŝuites: $wrong_codename$" "$aptsource_file"; then
                                         mh "replacing $wrong_codename with $codename in $aptsource_file failed"
                                     else
                                         mh "replacing $wrong_codename with $codename in $aptsource_file succeeded"
@@ -279,46 +293,32 @@ ${SURY_BASHLIB:-false} || {
                                     fi
                                 fi
                             fi
-                        done
-                        for aptsource_file in /etc/apt/sources.list.d/*\.sources; do
-                            if [ -f "$aptsource_file" ]; then
-                                if ! grep -q "^Enabled: no$" "$aptsource_file"; then
-                                    if grep -q "^URIs: $aptsource$" "$aptsource_file" && grep -q "^Ŝuites: $wrong_codename$" "$aptsource_file"; then
-                                        sed -i "s/^Ŝuites: $wrong_codename$/Suites $codename/" "$aptsource_file"
-                                        if grep -q "^Ŝuites: $wrong_codename$" "$aptsource_file"; then
-                                            mh "replacing $wrong_codename with $codename in $aptsource_file failed"
-                                        else
-                                            mh "replacing $wrong_codename with $codename in $aptsource_file succeeded"
-                                            success=true
-                                        fi
-                                    fi
-                                fi
-                            fi
-                        done
-                        if $sucess; then
-                            apt_update
-                            os;G;echo "This step was successfull";N
-                            anykey
-                            "$me$forceflag" "json=$my_json" --list-candidates
-                        else
-                            os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
-                            anykey
                         fi
+                    done
+                    if $sucess; then
+                        apt_update
+                        os;G;echo "This step was successfull";N
+                        anykey
+                        "$me$forceflag" "json=$my_json" --list-candidates
+                    else
+                        os;R;echo "Unfortunately this step was not successfull. Please fix it yourself.";N
+                        anykey
                     fi
                 fi
-
-            else # = 0, means everything is OK
-                list_apt_sources
-                f;os;GRAY;echo "r=$sury_r, $sury_return";N
             fi
-        else
-            os;Y;echo "There exists no Ondřej Surý repo for your OS version";N
-            os;GRAY;echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details.";N;f
-        fi
-    }
 
-    ubuntu_key_asc(){
-        cat << PUBLIC_KEY_ASC
+        else # = 0, means everything is OK
+            list_apt_sources
+            f;os;GRAY;echo "r=$sury_r, $sury_return";N
+        fi
+    else
+        os;Y;echo "There exists no Ondřej Surý repo for your OS version";N
+        os;GRAY;echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details.";N;f
+    fi
+}
+
+ubuntu_key_asc(){
+    cat << PUBLIC_KEY_ASC
 xo0ESX35nAEEALKDCUDVXvmW9n+T/+3G1DnTpoWh9/1xNaz/RrUH6fQKhHr568F8
 hfnZP/2CGYVYkW9hxP9LVW9IDvzcmnhgIwK+ddeaPZqh3T/FM4OTA7Q78HSvR81m
 Jpf2iMLm/Zvh89ZsmP2sIgZuARiaHo8lxoTSLtmKXsM3FsJVlusyewHfABEBAAHN
@@ -336,20 +336,20 @@ zN/qGe3xy0bibOaC4T2TcbZPSAVP855ahNbLAdqkyfAutiEWcKZmQpR9qNh4482k
 =3DzI
 -----END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
-    }
+}
 
-    ubuntu_key(){
-        cat << PUBLIC_KEY
+ubuntu_key(){
+    cat << PUBLIC_KEY
 
  -----BEGIN PGP PUBLIC KEY BLOCK-----
  .
 $(ubuntu_key_asc|sed 's/^/ /g')
 
 PUBLIC_KEY
-    }
+}
 
-    debian_key_asc(){
-        cat << PUBLIC_KEY_ASC
+debian_key_asc(){
+    cat << PUBLIC_KEY_ASC
 xsDNBFyPb58BDADTDlJLrGJktWDaUT0tFohjFxy/lL2GcVYp4zB981MWIDC0aIQZ
 ERfUZRaq/ov/LG3F0UhkvouCNrnXiFaKRCeNG52pQM0P/p3gmIOoPO4/jF0o3SK1
 Aapf/NaKTh3EgeYYCnVKuxdXGqyu1JT4qfztsmUGmODzxVr+/YJLP54jrCUgI3lj
@@ -457,41 +457,41 @@ zgGtPj/bMFg=
 =FhGb
 -----END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
-    }
+}
 
-    debian_key(){
-        cat << PUBLIC_KEY
+debian_key(){
+    cat << PUBLIC_KEY
 
  -----BEGIN PGP PUBLIC KEY BLOCK-----
  .
 $(debian_key_asc|sed 's/^/ /g')
 
 PUBLIC_KEY
-    }
+}
 
-    get_ubuntu_key_deb_url() {
-        local codename=$1 version url curl_output matches
-        version="${UBUNTU_VERSIONS[$codename]}"
-        url='https://ppa.launchpadcontent.net/ondrej/php/ubuntu/pool/main/d/debsuryorg-archive-keyring/'
-        curl_output=$(tf)
-        curl -so $curl_output $url
-        matches=$(grep -oE '<a href="([^"]*ubuntu'$version'[^"]*\.deb)">' "$curl_output")
-        if [ -n "$matches" ]; then
-            echo "$url$(echo "$matches" | awk -F\" '{print $2}')"
-        fi
-    }
+get_ubuntu_key_deb_url() {
+    local codename=$1 version url curl_output matches
+    version="${UBUNTU_VERSIONS[$codename]}"
+    url='https://ppa.launchpadcontent.net/ondrej/php/ubuntu/pool/main/d/debsuryorg-archive-keyring/'
+    curl_output=$(tf)
+    curl -so $curl_output $url
+    matches=$(grep -oE '<a href="([^"]*ubuntu'$version'[^"]*\.deb)">' "$curl_output")
+    if [ -n "$matches" ]; then
+        echo "$url$(echo "$matches" | awk -F\" '{print $2}')"
+    fi
+}
 
-    # package is eather php, apache2 nginx
-    sources_list_deb822(){
-        ((rte))||{ local -i rte; printf -v rte "%(%s)T" -2;}
-        local id="$1" codename="$2" package="$3" architecture aptsource_url
-        architecture="$(dpkg --print-architecture)"
-        case $id in
-            ubuntu) aptsource_url="https://ppa.launchpadcontent.net/ondrej/$package/ubuntu/"
-                    ;;
-            debian) aptsource_url="https://packages.sury.org/$package/"
-        esac
-        cat << DEB822
+# package is eather php, apache2 nginx
+sources_list_deb822(){
+    ((rte))||{ local -i rte; printf -v rte "%(%s)T" -2;}
+    local id="$1" codename="$2" package="$3" architecture aptsource_url
+    architecture="$(dpkg --print-architecture)"
+    case $id in
+        ubuntu) aptsource_url="https://ppa.launchpadcontent.net/ondrej/$package/ubuntu/"
+                ;;
+        debian) aptsource_url="https://packages.sury.org/$package/"
+    esac
+    cat << DEB822
 ## $package repository list
 # created $(date -d @$rte "+%F %R %Z") by ernolfs $bm script
 # https://global-social.net/script/$bm
@@ -508,71 +508,70 @@ Architectures: $architecture
 Signed-By: $(${id}_key)
 DEB822
 
-    }
+}
 
-    # add_repository $1=ubuntu or debian, $2=codename, $3=package (defaults to php)
-    add_repository(){
-        local -l id codename package gpgfile
-        local -i count=0
-        id="$1" codename="$2" package="${3:-php}"
-        gpgfile='/etc/apt/trusted.gpg.d/ondrey-sury.asc'
-        echo -e "-----BEGIN PGP PUBLIC KEY BLOCK-----\n" > $gpgfile
-        ${id}_key_asc >>  $gpgfile
-        case $id in
-            debian) deb_line="deb https://packages.sury.org/$package/ $codename main"
-                    ;;
-            ubuntu) deb_line="deb https://ppa.launchpadcontent.net/ondrej/$package/ubuntu/ $codename main"
-        esac
-        echo "$deb_line" > /etc/apt/sources.list.d/ondrej-sury_$package.list
-        apt_update
-        populate_can_array
-    }
+# add_repository $1=ubuntu or debian, $2=codename, $3=package (defaults to php)
+add_repository(){
+    local -l id codename package gpgfile
+    local -i count=0
+    id="$1" codename="$2" package="${3:-php}"
+    gpgfile='/etc/apt/trusted.gpg.d/ondrey-sury.asc'
+    echo -e "-----BEGIN PGP PUBLIC KEY BLOCK-----\n" > $gpgfile
+    ${id}_key_asc >>  $gpgfile
+    case $id in
+        debian) deb_line="deb https://packages.sury.org/$package/ $codename main"
+                ;;
+        ubuntu) deb_line="deb https://ppa.launchpadcontent.net/ondrej/$package/ubuntu/ $codename main"
+    esac
+    echo "$deb_line" > /etc/apt/sources.list.d/ondrej-sury_$package.list
+    apt_update
+    populate_can_array
+}
 
-    # add_repository $1=ubuntu or debian, $2=codename, $3=package (defaults to php)
-    add_repository_deb822(){
-        local -l id codename package
+# add_repository $1=ubuntu or debian, $2=codename, $3=package (defaults to php)
+add_repository_deb822(){
+    local -l id codename package
 # TODO 0 -->
-#        local -a supported_suites
-#        id="$(lsb_release -si)" codename="$(lsb_release -sc)"
+#    local -a supported_suites
+#    id="$(lsb_release -si)" codename="$(lsb_release -sc)"
 # TODO <-- 0
-        id="$1" codename="$2" package="${3:-php}"
+    id="$1" codename="$2" package="${3:-php}"
 # TODO 1 -->
-#        supported_suites=($(supported_suites_ $id))
+#    supported_suites=($(supported_suites_ $id))
 # TODO <-- 1
-        sources_list_deb822 $id $codename $package > /etc/apt/sources.list.d/ondrej-sury_$package.sources
-        apt_update
-        populate_can_array
-    }
+    sources_list_deb822 $id $codename $package > /etc/apt/sources.list.d/ondrej-sury_$package.sources
+    apt_update
+    populate_can_array
+}
 
-    supported_suites_(){
-        ((rte))||{ local -i rte; printf -v rte "%(%s)T" -2;}
-        local url outfile exclude suite architecture date_str
-        local -i timestamp
-        local -a existing_suites
-        local -A last_modified
-        outfile=$(tf)
-        architecture="$(dpkg --print-architecture)"
-        case $1 in
-            ubuntu) url='https://ppa.launchpadcontent.net/ondrej/php/ubuntu/dists/' exclude='ondrej'
-            ;;
-            debian) url='https://packages.sury.org/php/dists/' exclude='\.\.'
-        esac
-        curl -so $outfile $url
-        mapfile -t existing_suites< <(grep -oP '(?<=href=")[^"]+(?=/")' "$outfile" | grep -v "$exclude")
-        for suite in "${existing_suites[@]}";do
-            date_str="$(grep "$suite" "$outfile" | grep -oP '\d{4}-\d{2}-\d{2}.*\d{2}:\d{2}|\d{2}-[A-Za-z]{3}-\d{4}.*\d{2}:\d{2}')"
-            if [[ -n "$date_str" ]]; then
-                timestamp=$(date -d "$date_str" "+%s")
-                last_modified["$suite"]=$timestamp
+supported_suites_(){
+    ((rte))||{ local -i rte; printf -v rte "%(%s)T" -2;}
+    local url outfile exclude suite architecture date_str
+    local -i timestamp
+    local -a existing_suites
+    local -A last_modified
+    outfile=$(tf)
+    architecture="$(dpkg --print-architecture)"
+    case $1 in
+        ubuntu) url='https://ppa.launchpadcontent.net/ondrej/php/ubuntu/dists/' exclude='ondrej'
+        ;;
+        debian) url='https://packages.sury.org/php/dists/' exclude='\.\.'
+    esac
+    curl -so $outfile $url
+    mapfile -t existing_suites< <(grep -oP '(?<=href=")[^"]+(?=/")' "$outfile" | grep -v "$exclude")
+    for suite in "${existing_suites[@]}";do
+        date_str="$(grep "$suite" "$outfile" | grep -oP '\d{4}-\d{2}-\d{2}.*\d{2}:\d{2}|\d{2}-[A-Za-z]{3}-\d{4}.*\d{2}:\d{2}')"
+        if [[ -n "$date_str" ]]; then
+            timestamp=$(date -d "$date_str" "+%s")
+            last_modified["$suite"]=$timestamp
+        fi
+    done
+    rm $outfile
+    for suite in "${!last_modified[@]}"; do
+        if (( $((rte - ${last_modified[$suite]})) < 3600000 )); then
+            if ! curl -s $url$suite/Release | grep -qs "d41d8cd98f00b204e9800998ecf8427e\s*0 main/binary-$architecture/Packages"; then
+                echo "$suite"
             fi
-        done
-        rm $outfile
-        for suite in "${!last_modified[@]}"; do
-            if (( $((rte - ${last_modified[$suite]})) < 3600000 )); then
-                if ! curl -s $url$suite/Release | grep -qs "d41d8cd98f00b204e9800998ecf8427e\s*0 main/binary-$architecture/Packages"; then
-                    echo "$suite"
-                fi
-            fi
-        done
-    }
+        fi
+    done
 }

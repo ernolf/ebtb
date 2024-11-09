@@ -7,51 +7,50 @@ __copyright__
 __license__
 #
 
-${LAST_BASHLIB:-false} || {
-    LAST_BASHLIB=:
+${LAST_BASHLIB:-false} && return
+LAST_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire nc/nextcloud_db)
+. <(lrequire nc/nextcloud_db)
 
-    nc_last(){
-        database_call
-        local query
+nc_last(){
+    database_call
+    local query
 
-        group_query(){
-            case $DB_TYPE in
-                my) echo "
-                    SELECT $1.uid,
-                        COALESCE($DB_U2T(CAST(p.configvalue AS integer)), 'never') AS last_login
-                    FROM $DB_PREF$1 $1
-                    LEFT JOIN ${DB_PREF}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
-                    ;;
-                pg) echo "
-                    SELECT $1.uid,
-                        CASE WHEN p.configvalue = 'never' THEN NULL
-                        ELSE $DB_U2T(CAST(p.configvalue AS integer))
-                        END AS last_login
-                    FROM $DB_PREF$1 $1
-                    LEFT JOIN ${DB_PREF}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
-            esac
-        }
-
-        if is_app_enabled guests; then
-            query="
-            SELECT uid, last_login
-            FROM (
-                $(group_query users)
-            UNION ALL
-                $(group_query guests_users)
-            ) combined
-            ORDER BY
-                CASE WHEN last_login = 'never' THEN 1 ELSE 0 END, last_login DESC"
-        else
-            query="$(group_query users)
-            ORDER BY
-                CASE WHEN p.configvalue IS NULL THEN 1 ELSE 0 END, p.configvalue DESC"
-        fi
-        db_exec_ "$query"
+    group_query(){
+        case $DB_TYPE in
+            my) echo "
+                SELECT $1.uid,
+                    COALESCE($DB_U2T(CAST(p.configvalue AS integer)), 'never') AS last_login
+                FROM $DB_PREF$1 $1
+                LEFT JOIN ${DB_PREF}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
+                ;;
+            pg) echo "
+                SELECT $1.uid,
+                    CASE WHEN p.configvalue = 'never' THEN NULL
+                    ELSE $DB_U2T(CAST(p.configvalue AS integer))
+                    END AS last_login
+                FROM $DB_PREF$1 $1
+                LEFT JOIN ${DB_PREF}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
+        esac
     }
+
+    if is_app_enabled guests; then
+        query="
+        SELECT uid, last_login
+        FROM (
+            $(group_query users)
+        UNION ALL
+            $(group_query guests_users)
+        ) combined
+        ORDER BY
+            CASE WHEN last_login = 'never' THEN 1 ELSE 0 END, last_login DESC"
+    else
+        query="$(group_query users)
+        ORDER BY
+            CASE WHEN p.configvalue IS NULL THEN 1 ELSE 0 END, p.configvalue DESC"
+    fi
+    db_exec_ "$query"
 }

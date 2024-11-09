@@ -7,196 +7,197 @@ __copyright__
 __license__
 #
 
-${MIME_TYPES_BASHLIB:-false} || {
-    MIME_TYPES_BASHLIB=:
+${MIME_TYPES_BASHLIB:-false} && return
+MIME_TYPES_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire ansi)
-    . <(lrequire basics)
+. <(lrequire ansi)
+. <(lrequire basics)
 
-    declare -a mime_ext_regex_image=(
-      "image/jpeg:.jpg:^.*\.(jpe?g)$"
-      "image/jp2:.jp2:^.*\.(jp[2x]|j2k)$"
-      "image/png:.png:^.*\.(png)$"
-      "image/bmp:.bmp:^.*\.(bmp)$"
-      "image/x-bmp:.bmp:^.*\.(bmp)$"
-      "image/x-ms-bmp:.bmp:^.*\.(bmp)$"
-      "image/gif:.gif:^.*\.(gif)$"
-      "image/tiff:.tif:^.*\.(tiff?)$"
-      "image/tiff-fx:.tif:^.*\.(tiff?)$"
-      "image/svg+xml:.svg:^.*\.(svg)$"
-      "image/x-xcf:.xcf:^.*\.(xcf)$"
-      "image/x-icon:.ico:^.*\.(ico)$"
-      "image/vnd.microsoft.icon:.ico:^.*\.(ico)$"
-      "image/x-icns:.icns:^.*\.(icns)$"
-      "image/webp:.webp:^.*\.(webp)$"
-      "image/vnd.adobe.photoshop:.psd:^.*\.(psd)$"
-      "image/x-photoshop:.psd:^.*\.(psd)$"
-      "image/vnd.djvu:.djvu:^.*\.(djvu)$"
-      "image/vnd.djvu+multipage:.djvu:^.*\.(djvu)$"
-      "image/x-djvu:.djvu:^.*\.(djvu)$"
-      "image/x-canon-cr2:.cr2:^.*\.(cr2)$"
-      "image/x-canon-crw:.crw:^.*\.(crw)$"
-      "image/x-fuji-raf:.raf:^.*\.(raf)$"
-      "image/x-kodak-dcr:.dcr:^.*\.(dcr)$"
-      "image/x-kodak-k25:.k25:^.*\.(k25)$"
-      "image/x-kodak-kdc:.kdc:^.*\.(kdc)$"
-      "image/x-minolta-mrw:.mrw:^.*\.(mrw)$"
-      "image/x-nikon-nef:.nef:^.*\.(nef)$"
-      "image/x-nikon-nrw:.nrw:^.*\.(nrw)$"
-      "image/x-olympus-orf:.orf:^.*\.(orf)$"
-      "image/x-panasonic-raw:.raw:^.*\.(raw)$"
-      "image/x-pentax-pef:.pef:^.*\.(pef)$"
-      "image/x-samsung-srw:.srw:^.*\.(srw)$"
-      "image/x-sony-arw:.arw:^.*\.(arw)$"
-      "image/x-sony-sr2:.sr2:^.*\.(sr2)$"
-      "image/x-sony-srf:.srf:^.*\.(srf)$"
-      "image/heic:.heic:^.*\.(hei[cf])$"
-      "image/heic-sequence:.heic:^.*\.(hei[cf])$"
-      "image/heif:.heic:^.*\.(hei[cf])$"
-    )
+declare -a mime_ext_regex_image mime_ext_regex_video mime_ext_regex_audio mime_ext_regex_text mime_ext_regex_array
 
-    declare -a mime_ext_regex_video=(
-      "video/3gpp:.3gp:^.*\.(3gp)$"
-      "video/3gpp2:.3g2:^.*\.(3g2)$"
-      "video/h261:.h261:^.*\.(h261)$"
-      "video/h263:.h263:^.*\.(h263)$"
-      "video/h264:.h264:^.*\.(h264)$"
-      "video/jpeg:.jpgv:^.*\.(jpgv)$"
-      "video/jpm:.jpm:^.*\.(jpg?m)$"
-      "video/mj2:.mj2:^.*\.(mjp?2)$"
-      "video/mp2t:.ts:^.*\.(m?ts)$"
-      "video/mp4:.mp4:^.*\.(mp4v?|m4v)$"
-      "video/mpeg:.mpg:^.*\.(mpe?g?|vob)$"
-      "video/ogg:.ogv:^.*\.(ogv)$"
-      "video/quicktime:.mov:^.*\.(mov)$"
-      "video/vnd.dvb.file:.dvb:^.*\.(dvb)$"
-      "video/vnd.fvt:.fvt:^.*\.(fvt)$"
-      "video/vnd.mpegurl:.mxu:^.*\.(m[x4]u)$"
-      "video/vnd.ms-playready.media.pyv:.pyv:^.*\.(pyv)$"
-      "video/webm:.webm:^.*\.(webm)$"
-      "video/x-f4v:.f4v:^.*\.(f4v)$"
-      "video/x-fli:.fli:^.*\.(fli)$"
-      "video/x-flv:.flv:^.*\.(flv|f4f)$"
-      "video/x-m4v:.m4v:^.*\.(m4v|mp4)$"
-      "video/x-matroska:.mkv:^.*\.(mk[vs]|mk3d)$"
-      "video/x-mng:.mng:^.*\.(mng)$"
-      "video/x-ms-asf:.asf:^.*\.(as[fx])$"
-      "video/x-ms-vob:.vob:^.*\.(vob)$"
-      "video/x-ms-wm:.wm:^.*\.(wm)$"
-      "video/x-ms-wmv:.wmv:^.*\.(wmv)$"
-      "video/x-ms-wmx:.wmx:^.*\.(wmx)$"
-      "video/x-ms-wvx:.wvx:^.*\.(wvx)$"
-      "video/x-msvideo:.avi:^.*\.(avi)$"
-      "video/x-sgi-movie:.movie:^.*\.(movie)$"
-    )
+mime_ext_regex_image=(
+  "image/jpeg:.jpg:^.*\.(jpe?g)$"
+  "image/jp2:.jp2:^.*\.(jp[2x]|j2k)$"
+  "image/png:.png:^.*\.(png)$"
+  "image/bmp:.bmp:^.*\.(bmp)$"
+  "image/x-bmp:.bmp:^.*\.(bmp)$"
+  "image/x-ms-bmp:.bmp:^.*\.(bmp)$"
+  "image/gif:.gif:^.*\.(gif)$"
+  "image/tiff:.tif:^.*\.(tiff?)$"
+  "image/tiff-fx:.tif:^.*\.(tiff?)$"
+  "image/svg+xml:.svg:^.*\.(svg)$"
+  "image/x-xcf:.xcf:^.*\.(xcf)$"
+  "image/x-icon:.ico:^.*\.(ico)$"
+  "image/vnd.microsoft.icon:.ico:^.*\.(ico)$"
+  "image/x-icns:.icns:^.*\.(icns)$"
+  "image/webp:.webp:^.*\.(webp)$"
+  "image/vnd.adobe.photoshop:.psd:^.*\.(psd)$"
+  "image/x-photoshop:.psd:^.*\.(psd)$"
+  "image/vnd.djvu:.djvu:^.*\.(djvu)$"
+  "image/vnd.djvu+multipage:.djvu:^.*\.(djvu)$"
+  "image/x-djvu:.djvu:^.*\.(djvu)$"
+  "image/x-canon-cr2:.cr2:^.*\.(cr2)$"
+  "image/x-canon-crw:.crw:^.*\.(crw)$"
+  "image/x-fuji-raf:.raf:^.*\.(raf)$"
+  "image/x-kodak-dcr:.dcr:^.*\.(dcr)$"
+  "image/x-kodak-k25:.k25:^.*\.(k25)$"
+  "image/x-kodak-kdc:.kdc:^.*\.(kdc)$"
+  "image/x-minolta-mrw:.mrw:^.*\.(mrw)$"
+  "image/x-nikon-nef:.nef:^.*\.(nef)$"
+  "image/x-nikon-nrw:.nrw:^.*\.(nrw)$"
+  "image/x-olympus-orf:.orf:^.*\.(orf)$"
+  "image/x-panasonic-raw:.raw:^.*\.(raw)$"
+  "image/x-pentax-pef:.pef:^.*\.(pef)$"
+  "image/x-samsung-srw:.srw:^.*\.(srw)$"
+  "image/x-sony-arw:.arw:^.*\.(arw)$"
+  "image/x-sony-sr2:.sr2:^.*\.(sr2)$"
+  "image/x-sony-srf:.srf:^.*\.(srf)$"
+  "image/heic:.heic:^.*\.(hei[cf])$"
+  "image/heic-sequence:.heic:^.*\.(hei[cf])$"
+  "image/heif:.heic:^.*\.(hei[cf])$"
+)
 
-    declare -a mime_ext_regex_audio=(
-      "audio/aac:.aac:^.*\.(aac)$"
-      "audio/aiff:.aif:^.*\.(aiff?)$"
-      "audio/alac:.m4a:^.*\.(m4a)$"
-      "audio/amr:.amr:^.*\.(amr)$"
-      "audio/basic:.au:^.*\.(au|snd)$"
-      "audio/flac:.flac:^.*\.(flac)$"
-      "audio/mid:.mid:^.*\.(mid|i[0-9]l)$"
-      "audio/midi:.mid:^.*\.(mid|i[0-9]l)$"
-      "audio/mp3:.mp3:^.*\.(mp3)$"
-      "audio/mp4:.m4a:^.*\.(m4a)$"
-      "audio/mpeg:.mp3:^.*\.(mp3)$"
-      "audio/ogg:.ogg:^.*\.(og[ga])$"
-      "audio/s3m:.s3m:^.*\.(s3m)$"
-      "audio/silk:.sil:^.*\.(sil)$"
-      "audio/vnd.wave:.wav:^.*\.(wave?)$"
-      "audio/webm:.weba:^.*\.(weba)$"
-      "audio/wav:.wav:^.*\.(wave?)$"
-      "audio/x-aac:.aac:^.*\.(aac)$"
-      "audio/x-aiff:.aif:^.*\.(aiff?)$"
-      "audio/x-flac:.flac:^.*\.(flac)$"
-      "audio/x-m4a:.m4a:^.*\.(m4a)$"
-      "audio/x-mid:.mid:^.*\.(mid|i[0-9]l)$"
-      "audio/x-midi:.mid:^.*\.(mid|i[0-9]l)$"
-      "audio/x-mod:.mod:^.*\.(mod)$"
-      "audio/x-mp3:.mp3:^.*\.(mp3)$"
-      "audio/x-mp4:.m4a:^.*\.(m4a)$"
-      "audio/x-mpeg:.mp3:^.*\.(mp3)$"
-      "audio/x-ms-wma:.wma:^.*\.(wma)$"
-      "audio/x-musepack:.mpc:^.*\.(mpc)$"
-      "audio/x-opus+ogg:.opus:^.*\.(opus|og[ga])$"
-      "audio/x-s3m:.s3m:^.*\.(s3m)$"
-      "audio/x-scpls:.pls:^.*\.(pls)$"
-      "audio/x-vorbis:.ogg:^.*\.(og[ga])$"
-      "audio/x-vorbis+ogg:.ogg:^.*\.(og[ga])$"
-      "audio/x-wav:.wav:^.*\.(wave?)$"
-      "audio/x-xm:.xm:^.*\.(xm)$"
-    )
+mime_ext_regex_video=(
+  "video/3gpp:.3gp:^.*\.(3gp)$"
+  "video/3gpp2:.3g2:^.*\.(3g2)$"
+  "video/h261:.h261:^.*\.(h261)$"
+  "video/h263:.h263:^.*\.(h263)$"
+  "video/h264:.h264:^.*\.(h264)$"
+  "video/jpeg:.jpgv:^.*\.(jpgv)$"
+  "video/jpm:.jpm:^.*\.(jpg?m)$"
+  "video/mj2:.mj2:^.*\.(mjp?2)$"
+  "video/mp2t:.ts:^.*\.(m?ts)$"
+  "video/mp4:.mp4:^.*\.(mp4v?|m4v)$"
+  "video/mpeg:.mpg:^.*\.(mpe?g?|vob)$"
+  "video/ogg:.ogv:^.*\.(ogv)$"
+  "video/quicktime:.mov:^.*\.(mov)$"
+  "video/vnd.dvb.file:.dvb:^.*\.(dvb)$"
+  "video/vnd.fvt:.fvt:^.*\.(fvt)$"
+  "video/vnd.mpegurl:.mxu:^.*\.(m[x4]u)$"
+  "video/vnd.ms-playready.media.pyv:.pyv:^.*\.(pyv)$"
+  "video/webm:.webm:^.*\.(webm)$"
+  "video/x-f4v:.f4v:^.*\.(f4v)$"
+  "video/x-fli:.fli:^.*\.(fli)$"
+  "video/x-flv:.flv:^.*\.(flv|f4f)$"
+  "video/x-m4v:.m4v:^.*\.(m4v|mp4)$"
+  "video/x-matroska:.mkv:^.*\.(mk[vs]|mk3d)$"
+  "video/x-mng:.mng:^.*\.(mng)$"
+  "video/x-ms-asf:.asf:^.*\.(as[fx])$"
+  "video/x-ms-vob:.vob:^.*\.(vob)$"
+  "video/x-ms-wm:.wm:^.*\.(wm)$"
+  "video/x-ms-wmv:.wmv:^.*\.(wmv)$"
+  "video/x-ms-wmx:.wmx:^.*\.(wmx)$"
+  "video/x-ms-wvx:.wvx:^.*\.(wvx)$"
+  "video/x-msvideo:.avi:^.*\.(avi)$"
+  "video/x-sgi-movie:.movie:^.*\.(movie)$"
+)
 
-    declare -a mime_ext_regex_text=(
+mime_ext_regex_audio=(
+  "audio/aac:.aac:^.*\.(aac)$"
+  "audio/aiff:.aif:^.*\.(aiff?)$"
+  "audio/alac:.m4a:^.*\.(m4a)$"
+  "audio/amr:.amr:^.*\.(amr)$"
+  "audio/basic:.au:^.*\.(au|snd)$"
+  "audio/flac:.flac:^.*\.(flac)$"
+  "audio/mid:.mid:^.*\.(mid|i[0-9]l)$"
+  "audio/midi:.mid:^.*\.(mid|i[0-9]l)$"
+  "audio/mp3:.mp3:^.*\.(mp3)$"
+  "audio/mp4:.m4a:^.*\.(m4a)$"
+  "audio/mpeg:.mp3:^.*\.(mp3)$"
+  "audio/ogg:.ogg:^.*\.(og[ga])$"
+  "audio/s3m:.s3m:^.*\.(s3m)$"
+  "audio/silk:.sil:^.*\.(sil)$"
+  "audio/vnd.wave:.wav:^.*\.(wave?)$"
+  "audio/webm:.weba:^.*\.(weba)$"
+  "audio/wav:.wav:^.*\.(wave?)$"
+  "audio/x-aac:.aac:^.*\.(aac)$"
+  "audio/x-aiff:.aif:^.*\.(aiff?)$"
+  "audio/x-flac:.flac:^.*\.(flac)$"
+  "audio/x-m4a:.m4a:^.*\.(m4a)$"
+  "audio/x-mid:.mid:^.*\.(mid|i[0-9]l)$"
+  "audio/x-midi:.mid:^.*\.(mid|i[0-9]l)$"
+  "audio/x-mod:.mod:^.*\.(mod)$"
+  "audio/x-mp3:.mp3:^.*\.(mp3)$"
+  "audio/x-mp4:.m4a:^.*\.(m4a)$"
+  "audio/x-mpeg:.mp3:^.*\.(mp3)$"
+  "audio/x-ms-wma:.wma:^.*\.(wma)$"
+  "audio/x-musepack:.mpc:^.*\.(mpc)$"
+  "audio/x-opus+ogg:.opus:^.*\.(opus|og[ga])$"
+  "audio/x-s3m:.s3m:^.*\.(s3m)$"
+  "audio/x-scpls:.pls:^.*\.(pls)$"
+  "audio/x-vorbis:.ogg:^.*\.(og[ga])$"
+  "audio/x-vorbis+ogg:.ogg:^.*\.(og[ga])$"
+  "audio/x-wav:.wav:^.*\.(wave?)$"
+  "audio/x-xm:.xm:^.*\.(xm)$"
+)
+
+mime_ext_regex_text=(
 # TODO 0 -->
-    #    "text/plain:.txt:^.*\.(te?xt)$"
-    #    "text/plain:.conf:^.*\.(conf)$"
-    #    "text/plain:.cfg:^.*\.(cfg)$"
-    #    "text/plain:.rc:^.*\.(rc)$"
-    #    "text/plain:.ini:^.*\.(ini)$"
-    #    "text/plain:.properties:^.*\.(properties)$"
+#    "text/plain:.txt:^.*\.(te?xt)$"
+#    "text/plain:.conf:^.*\.(conf)$"
+#    "text/plain:.cfg:^.*\.(cfg)$"
+#    "text/plain:.rc:^.*\.(rc)$"
+#    "text/plain:.ini:^.*\.(ini)$"
+#    "text/plain:.properties:^.*\.(properties)$"
 # TODO <-- 0
-        "text/html:.html:^.*\.(html?)$"
-        "text/css:.css:^.*\.(css)$"
-        "text/javascript:.js:^.*\.(js)$"
-        "text/json:.json:^.*\.(json)$"
-        "application/json:.json:^.*\.(json)$"
-        "text/xml:.xml:^.*\.(xml|aup)$"
-        "application/xml:.xml:^.*\.(xml|aup|mpd)$"
-        "text/xhtml+xml:.xhtml:^.*\.(xhtml?)$"
-        "application/xhtml+xml:.xhtml:^.*\.(xhtml?)$"
-        "application/pdf:.pdf:^.*\.(pdf)$"
-    )
+    "text/html:.html:^.*\.(html?)$"
+    "text/css:.css:^.*\.(css)$"
+    "text/javascript:.js:^.*\.(js)$"
+    "text/json:.json:^.*\.(json)$"
+    "application/json:.json:^.*\.(json)$"
+    "text/xml:.xml:^.*\.(xml|aup)$"
+    "application/xml:.xml:^.*\.(xml|aup|mpd)$"
+    "text/xhtml+xml:.xhtml:^.*\.(xhtml?)$"
+    "application/xhtml+xml:.xhtml:^.*\.(xhtml?)$"
+    "application/pdf:.pdf:^.*\.(pdf)$"
+)
 
-    declare -a mime_ext_regex_array=(
-      "${mime_ext_regex_image[@]}"
-      "${mime_ext_regex_video[@]}"
-      "${mime_ext_regex_audio[@]}"
-      "${mime_ext_regex_text[@]}"
-    )
+mime_ext_regex_array=(
+  "${mime_ext_regex_image[@]}"
+  "${mime_ext_regex_video[@]}"
+  "${mime_ext_regex_audio[@]}"
+  "${mime_ext_regex_text[@]}"
+)
 
-    # list_mimes $(echo "${mime_ext_regex_array[@]}")
-    list_mimes(){
-     ## declarations
-        local title="$1" column mers IFS;shift
-      # "m" stands for mime, "e" stands for ext(ension) and "r" stands for regex
-        local -a m_e_r_array=($@) columns=(m=Mimetype e=Extension r=Regex) a
-        for column in ${columns[@]};do
-            local $column
-          # "ml_*" stands for max length
-            local -i ml_${column%=*}=$(printf ${column#*=}|wc -c)
-        done
-     ## calculate column width
-      # "mers" stands for mime:ext:regex-string
-        for mers in "${m_e_r_array[@]}";do
-            IFS=":" read -ra a <<< "$mers"
-          # "l_*" stands for length
-            local -i l_m=${#a[0]};((l_m>ml_m))&&ml_m=$l_m
-            local -i l_e=${#a[1]};((l_e>ml_e))&&ml_e=$l_e
-            local -i l_r=${#a[2]};((l_r>ml_r))&&ml_r=$l_r
-        done
-        local line_m=$(printf "%0.s-" $(seq 1 $((ml_m+2))))
-        local line_e=$(printf "%0.s-" $(seq 1 $((ml_e+2))))
-        local line_r=$(printf "%0.s-" $(seq 1 $((ml_r+2))))
-        local line="$(o4)+$line_m+$line_e+$line_r+"
-      # echo output
-        if [ "$title" = "all" ];then
-            f;echo "$(pf;o)all supported mimetypes:"
-        else
-            f;echo "$(pf;o)supported $title mimetypes:"
-        fi
-        echo "$line"
-        o4;printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" $m $e $r
-        echo "$line"
-        for mers in "${m_e_r_array[@]}";do
-            IFS=":" read -ra a <<< "$mers"
-            o4;printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" ${a[0]} ${a[1]} ${a[2]}
-        done
-        echo "$line";echo
-    }
+# list_mimes $(echo "${mime_ext_regex_array[@]}")
+list_mimes(){
+ ## declarations
+    local title="$1" column mers IFS;shift
+  # "m" stands for mime, "e" stands for ext(ension) and "r" stands for regex
+    local -a m_e_r_array=($@) columns=(m=Mimetype e=Extension r=Regex) a
+    for column in ${columns[@]};do
+        local $column
+      # "ml_*" stands for max length
+        local -i ml_${column%=*}=$(printf ${column#*=}|wc -c)
+    done
+ ## calculate column width
+  # "mers" stands for mime:ext:regex-string
+    for mers in "${m_e_r_array[@]}";do
+        IFS=":" read -ra a <<< "$mers"
+      # "l_*" stands for length
+        local -i l_m=${#a[0]};((l_m>ml_m))&&ml_m=$l_m
+        local -i l_e=${#a[1]};((l_e>ml_e))&&ml_e=$l_e
+        local -i l_r=${#a[2]};((l_r>ml_r))&&ml_r=$l_r
+    done
+    local line_m=$(printf "%0.s-" $(seq 1 $((ml_m+2))))
+    local line_e=$(printf "%0.s-" $(seq 1 $((ml_e+2))))
+    local line_r=$(printf "%0.s-" $(seq 1 $((ml_r+2))))
+    local line="$(o4)+$line_m+$line_e+$line_r+"
+  # echo output
+    if [ "$title" = "all" ];then
+        f;echo "$(pf;o)all supported mimetypes:"
+    else
+        f;echo "$(pf;o)supported $title mimetypes:"
+    fi
+    echo "$line"
+    o4;printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" $m $e $r
+    echo "$line"
+    for mers in "${m_e_r_array[@]}";do
+        IFS=":" read -ra a <<< "$mers"
+        o4;printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" ${a[0]} ${a[1]} ${a[2]}
+    done
+    echo "$line";echo
 }

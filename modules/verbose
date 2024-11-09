@@ -7,36 +7,35 @@ __copyright__
 __license__
 #
 
-${VERBOSE_BASHLIB:-false} || {
-    VERBOSE_BASHLIB=:
+${VERBOSE_BASHLIB:-false} && return
+VERBOSE_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire anykey)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire anykey)
 
-    # error handling
-    error(){
-        if ! ${quiet:-false}; then
-            R; echo "ERROR: $*$(N)" >&2
-            exit1
-        fi
-    }
+# error handling
+error(){
+    if ! ${quiet:-false}; then
+        R; echo "ERROR: $*$(N)" >&2
+        exit1
+    fi
+}
 
-    # verbose-echo
-    v_echo(){
-        if ${verbose:-false}; then
-            R; echo "VERBOSE:$(N) $*"
-        fi
-    }
+# verbose-echo
+v_echo(){
+    if ${verbose:-false}; then
+        R; echo "VERBOSE:$(N) $*"
+    fi
+}
 
-    # verbose-echo
-    d_echo(){
-        if ${debug:-false}; then
-            R; echo "DEBUG:$(N) $*"
-            anykey
-        fi
-    }
+# verbose-echo
+d_echo(){
+    if ${debug:-false}; then
+        R; echo "DEBUG:$(N) $*"
+        anykey
+    fi
 }

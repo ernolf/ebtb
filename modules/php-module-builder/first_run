@@ -7,79 +7,78 @@ __copyright__
 __license__
 #
 
-${FIRST_RUN_BASHLIB:-false} || {
-    FIRST_RUN_BASHLIB=:
+${FIRST_RUN_BASHLIB:-false} && return
+FIRST_RUN_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
-    . <(lrequire ansi)
-    . <(lrequire vdir)
-    . <(lrequire ask)
-    . <(lrequire $sin/disclaimer)
+. <(lrequire basics)
+. <(lrequire ansi)
+. <(lrequire vdir)
+. <(lrequire ask)
+. <(lrequire $sin/disclaimer)
 
-    # First run wizzard runs allways and only if occ could not be found in NC_DIR #
-    first_run(){
-        disclaimer
+# First run wizzard runs allways and only if occ could not be found in NC_DIR #
+first_run(){
+    disclaimer
 
-        register_project_dir(){
-            mh "vdir: $*" &
-            local flags=""
-            [ -d "$*" ] || mkdir -p "$*"
-            setvdir v "$*"
-            f;o2;echo "- $(lG)first run wizard completed successfully.";N;f
-            $force && flags="--force";$remove && flags="$flags --remove"
-            $me "json=$my_json" $php_version $module $flags
-            exit 0
-        }
+    register_project_dir(){
+        mh "vdir: $*" &
+        local flags=""
+        [ -d "$*" ] || mkdir -p "$*"
+        setvdir v "$*"
+        f;o2;echo "- $(lG)first run wizard completed successfully.";N;f
+        $force && flags="--force";$remove && flags="$flags --remove"
+        $me "json=$my_json" $php_version $module $flags
+        exit 0
+    }
 
-        local yn="$(N)[$(lG)Y$(N)/$(R)n$(N)] " q="$(B)(or $(N)[$(P)q$(N)] $(B)to quit)$(N)" p
-        local -l choice
+    local yn="$(N)[$(lG)Y$(N)/$(R)n$(N)] " q="$(B)(or $(N)[$(P)q$(N)] $(B)to quit)$(N)" p
+    local -l choice
 
-        f
-        o2;GRAY;echo "This step is required once after a new installation, sometimes after an update"
-        o2;echo "or if$(N) --firstrun $(GRAY)was passed:"
-        f
-        o2;B;echo "Hello, this is the first run wizard of$(N) \"$(Y)$me$(N)\""
-        while :; do
-            if $remove; then
-                o2;B;echo "enter the directory where the$(N) \"$(Y)$project$(N)\" $(B)directory resides $q"
+    f
+    o2;GRAY;echo "This step is required once after a new installation, sometimes after an update"
+    o2;echo "or if$(N) --firstrun $(GRAY)was passed:"
+    f
+    o2;B;echo "Hello, this is the first run wizard of$(N) \"$(Y)$me$(N)\""
+    while :; do
+        if $remove; then
+            o2;B;echo "enter the directory where the$(N) \"$(Y)$project$(N)\" $(B)directory resides $q"
+            read -rp "  --> " p
+            [ "$(tlwr $p)" = "q" ] && exit 0
+            local dir="$(echo "$p" | sed 's/\"//g')"
+            [ -d "$dir/$project" ] && register_project_dir "$dir"
+            [ -d "$dir" ] && echo "$(o2;B)\"$(Y)$dir$(B)\" is an existing directory but it does not contain a subdirectory \"$project\""
+        else
+            o2;B;echo "enter the directory where you want to create the$(N) \"$(Y)$project$(N)\" $(B)directory or where"
+            o2;echo "you already have an older version of$(N) \"$(Y)$project$(N)\" $q"
+            o2;GRAY;echo "a suggestion would be$(N) /root/projects $(GRAY)but you can choose any other location here";N
+            while :;do
                 read -rp "  --> " p
                 [ "$(tlwr $p)" = "q" ] && exit 0
-                local dir="$(echo "$p" | sed 's/\"//g')"
-                [ -d "$dir/$project" ] && register_project_dir "$dir"
-                [ -d "$dir" ] && echo "$(o2;B)\"$(Y)$dir$(B)\" is an existing directory but it does not contain a subdirectory \"$project\""
-            else
-                o2;B;echo "enter the directory where you want to create the$(N) \"$(Y)$project$(N)\" $(B)directory or where"
-                o2;echo "you already have an older version of$(N) \"$(Y)$project$(N)\" $q"
-                o2;GRAY;echo "a suggestion would be$(N) /root/projects $(GRAY)but you can choose any other location here";N
-                while :;do
-                    read -rp "  --> " p
-                    [ "$(tlwr $p)" = "q" ] && exit 0
-                    local dir="$(echo "${p//\"/}" | sed 's/\"//g')"
-                    if [ -z "$dir" ]; then te0; continue
-                    elif [ -d "$dir/$project" ]; then register_project_dir "$dir"
-                    elif [ -d "$dir" ]; then
-                        o2;B;echo "\"$(Y)$dir$(B)\" is an existing directory"
-                        prompt="$(o2)do you want to create the \"$(Y)$project$(N)\"$(B) dir inside?  $yn$q "
-                    else
-                        o2;B;echo "\"$(Y)$dir$(B)\" is not an existing directory"
-                        prompt="$(o2;B)do you want to create?  $yn$q "
-                    fi
-                    firstloop=true
-                    while :; do
-                        read -rsn 1 -p "$prompt" choice
-                        case ${choice:-y} in
-                            q)  f;exit 0                                                ;;
-                            y)  register_project_dir "$dir"                             ;;
-                            n)  te1;o2;B;echo "enter the directory please $q:";N;break  ;;
-                            *)  $firstloop && { firstloop=false;f;}
-                                te0;o2;B;echo "please enter $yn$q"
-                        esac
-                    done
+                local dir="$(echo "${p//\"/}" | sed 's/\"//g')"
+                if [ -z "$dir" ]; then te0; continue
+                elif [ -d "$dir/$project" ]; then register_project_dir "$dir"
+                elif [ -d "$dir" ]; then
+                    o2;B;echo "\"$(Y)$dir$(B)\" is an existing directory"
+                    prompt="$(o2)do you want to create the \"$(Y)$project$(N)\"$(B) dir inside?  $yn$q "
+                else
+                    o2;B;echo "\"$(Y)$dir$(B)\" is not an existing directory"
+                    prompt="$(o2;B)do you want to create?  $yn$q "
+                fi
+                firstloop=true
+                while :; do
+                    read -rsn 1 -p "$prompt" choice
+                    case ${choice:-y} in
+                        q)  f;exit 0                                                ;;
+                        y)  register_project_dir "$dir"                             ;;
+                        n)  te1;o2;B;echo "enter the directory please $q:";N;break  ;;
+                        *)  $firstloop && { firstloop=false;f;}
+                            te0;o2;B;echo "please enter $yn$q"
+                    esac
                 done
-            fi
-        done
-    }
+            done
+        fi
+    done
 }

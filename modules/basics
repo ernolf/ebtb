@@ -7,91 +7,90 @@ __copyright__
 __license__
 #
 
-${BASICS_BASHLIB:-false} || {
-    BASICS_BASHLIB=:
+${BASICS_BASHLIB:-false} && return
+BASICS_BASHLIB=:
 
-    declare invi="Invalid input."
+declare invi="Invalid input."
 
-    # Empty spaces
-    es(){
-        printf "%*s" $1 ' '
-    }; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}
+# Empty spaces
+es(){
+    printf "%*s" $1 ' '
+}; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}
 
-    # tolower
-    tlwr(){
-        printf %s "${*,,}"
-    }
-    tolower(){
-        printf %s "${*,,}"
-    }
+# tolower
+tlwr(){
+    printf %s "${*,,}"
+}
+tolower(){
+    printf %s "${*,,}"
+}
 
-    # printf not sorted line by line
-    p_nosort(){
-        printf '%s\n' "$@"
-    }
+# printf not sorted line by line
+p_nosort(){
+    printf '%s\n' "$@"
+}
 
-    # printf not sorted line by line
-    p_nosort_trim(){
-        if [[ "$(trim "$@")" ]]; then
-            p_nosort "$@"
-        fi
-    }
+# printf not sorted line by line
+p_nosort_trim(){
+    if [[ "$(trim "$@")" ]]; then
+        p_nosort "$@"
+    fi
+}
 
-    # printf sorted and remove duplicates
-    p_sort(){
-        printf '%s\n' "$@" | sort -u
-    }
+# printf sorted and remove duplicates
+p_sort(){
+    printf '%s\n' "$@" | sort -u
+}
 
-    # printf sorted and remove duplicates
-    p_sort_trim(){
-        if [[ "$(trim "$@")" ]]; then
-            p_sort "$@"
-        fi
-    }
+# printf sorted and remove duplicates
+p_sort_trim(){
+    if [[ "$(trim "$@")" ]]; then
+        p_sort "$@"
+    fi
+}
 
-    # printf sorted and remove duplicates reverse order
-    p_rsort(){
-        printf '%s\n' "$@" | sort -ru
-    }
+# printf sorted and remove duplicates reverse order
+p_rsort(){
+    printf '%s\n' "$@" | sort -ru
+}
 
-    # printf sorted and remove duplicates reverse order
-    p_rsort_trim(){
-        if [[ "$(trim "$@")" ]]; then
-            p_rsort "$@"
-        fi
-    }
+# printf sorted and remove duplicates reverse order
+p_rsort_trim(){
+    if [[ "$(trim "$@")" ]]; then
+        p_rsort "$@"
+    fi
+}
 
-    # version to integer
-    v2i(){
-        awk '{print $1*1000000000+$2*1000000+$3*1000+$4}' <<< "${1//./ }"
-    }
+# version to integer
+v2i(){
+    awk '{print $1*1000000000+$2*1000000+$3*1000+$4}' <<< "${1//./ }"
+}
 
-    # htmldecode
-    htmldecode(){
-        php -r "echo html_entity_decode('$*');"
-    }
+# htmldecode
+htmldecode(){
+    php -r "echo html_entity_decode('$*');"
+}
 
-    # no nullglob
-    nonullglob(){
-        local -a glob_expanded=($1)
-        [ "${glob_expanded[0]}" = "$1" ] && return 1 || return 0
-    }
+# no nullglob
+nonullglob(){
+    local -a glob_expanded=($1)
+    [ "${glob_expanded[0]}" = "$1" ] && return 1 || return 0
+}
 
-    # check if bool
-    boolean(){
-        if grep -qswiE "(on|1)" <<< "$1"; then
-            echo -n 'true'
-            return 0
-        elif grep -qswiE "(off|0)" <<< "$1"; then
-            echo -n 'false'
-            return 0
-        fi
-        return 1
-    }
+# check if bool
+boolean(){
+    if grep -qswiE "(on|1)" <<< "$1"; then
+        echo -n 'true'
+        return 0
+    elif grep -qswiE "(off|0)" <<< "$1"; then
+        echo -n 'false'
+        return 0
+    fi
+    return 1
+}
 
-    # escape $, [, ], ( and ) for grep -E
-    # a great bash include!
-    escaped(){
-        printf '%q' "$@"
-    }
+# escape $, [, ], ( and ) for grep -E
+# a great bash include!
+escaped(){
+    printf '%q' "$@"
 }

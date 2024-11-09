@@ -7,57 +7,60 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} || {
-    HELP_BASHLIB=:
+${HELP_BASHLIB:-false} && return
+HELP_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire ansi)
-    . <(lrequire line)
-    . <(lrequire prompt)
-    . <(lrequire fstring)
-    . <(lrequire php/logo)
+. <(lrequire ansi)
+. <(lrequire line)
+. <(lrequire prompt)
+. <(lrequire fstring)
+. <(lrequire php/logo)
 
-    brief_help(){
-        local sugg_old sugg_new
-        local -i index_of_php_version_with_most_packages index_of_php_version_with_second_most_packages
-        local -a pkgct isort
+brief_help(){
+    local sugg_old sugg_new
+    local -i index_of_php_version_with_most_packages index_of_php_version_with_second_most_packages
+    local -a pkgct isort
+    f
+    if (( $# )); then
+        pf;echo "$*"
         f
-        if (( $# )); then
-            pf;echo "$*"
-            f
+    fi
+    os;pf;B;echo "$me --help$(o 44;dY)Detailed explanation";N
+    os;pf;B;echo "$me$(o 44;dY)Run in interactive mode";N
+    os;pf;B;echo "$me --list-installed$(o 44;dY)Detailed information about php on this machine.";N
+    f;os;C;echo "Only if multiple PHP versions are installed:";N
+    f;os;pf;B;echo "$me$forceflag \$old \$new"
+    if (( ${#VERSIONS[@]} > 1 )); then
+        for i in ${!VERSIONS[@]}; do
+            pkgct[i]=$(dpkg -l|awk '/^[hiu]i.*php'${VERSIONS[i]}'/{print $2}'|wc -l)
+        done
+        isort=($(bubble_sort ${pkgct[@]})) # version with most packages:
+        index_of_php_version_with_most_packages="${isort[0]}"
+        index_of_php_version_with_second_most_packages="${isort[1]}"
+        sugg_old="${VERSIONS[index_of_php_version_with_most_packages]}"
+        sugg_new=${VERSIONS[index_of_php_version_with_second_most_packages]}
+        if ! [[ "$sugg_new" ]]; then
+            SUGGESTION="$(i_ver "$sugg_old")" || SUGGESTION="$(d_ver "$sugg_old")"
+            sugg_new="$SUGGESTION"
         fi
-        os;pf;B;echo "$me --help$(o 44;dY)Detailed explanation";N
-        os;pf;B;echo "$me$(o 44;dY)Run in interactive mode";N
-        os;pf;B;echo "$me --list-installed$(o 44;dY)Detailed information about php on this machine.";N
-        f;os;C;echo "Only if multiple PHP versions are installed:";N
-        os;pf;B;echo "$me$forceflag \$old \$new$(o 44;dY)Migrate all settings from $(C)php\$old$(dY) to $(C)php\$new";N
-        if (( ${#VERSIONS[@]} > 1 )); then
-            for i in ${!VERSIONS[@]}; do
-                pkgct[i]=$(dpkg -l|awk '/^[hiu]i.*php'${VERSIONS[i]}'/{print $2}'|wc -l)
-            done
-            isort=($(bubble_sort ${pkgct[@]})) # version with most packages:
-            index_of_php_version_with_most_packages="${isort[0]}"
-            index_of_php_version_with_second_most_packages="${isort[1]}"
-            sugg_old="${VERSIONS[index_of_php_version_with_most_packages]}"
-            sugg_new=${VERSIONS[index_of_php_version_with_second_most_packages]}
-            if ! [[ "$sugg_new" ]]; then
-                SUGGESTION="$(i_ver "$sugg_old")" || SUGGESTION="$(d_ver "$sugg_old")"
-                sugg_new="$SUGGESTION"
-            fi
-            o 7;GRAY;echo "\ Example: $(o 20;dB)$me$forceflag $(C)$sugg_old $sugg_new";N
-            o 7;echo " -$(W;format_string "If your active (latest) PHP version has not been updated by this script, you should run it this way to ensure that all required extensions once installed for the old version are also installed for the new version." 10;N)"
-        fi
-        os;pf;B;echo "$me --switch-version$(o 44;dY)switch default php version interactively";N
-    }
+        o 6;GRAY;echo -n "\ Example: $(dB)$me$forceflag $(C)$sugg_old $sugg_new";N
+        te
+    fi
+    o 43;echo "$(dY;format_string "Migrate all settings from $(C)php\$old$(dY) to $(C)php\$new$(dY). $(C)php\$new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44;N)"
+    o 43;echo "$(dY;format_string "Important: $(C)php\$old$(dY) should be the best-configured PHP version on your system. $(C)php\$new$(dY) will be configured based on $(C)php\$old$(dY)’s setup, so $(C)php\$old$(dY) doesn’t have to be the active version!" 44;N)"
+    o 43;echo "$(W;format_string "Tip: If your active (latest) PHP version has not been installed/updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 44;N)"
+    f;os;pf;B;echo "$me --switch-version$(o 44;dY)switch default php version interactively";N
+}
 
-    first_brief_help(){
-        echo " -$(Pbg;format_string "Important:$(P) The first run of this script must be done in interactive mode (without any arguments), some important checks are performed to ensure that the system get prepared for an update." 3;N)"
-        brief_help "$*"
-    }
+first_brief_help(){
+    echo " -$(Pbg;format_string "Important:$(P) The first run of this script must be done in interactive mode (without any arguments), some important checks are performed to ensure that the system get prepared for an update." 3;N)"
+    brief_help "$*"
+}
 
-    sudo_message(){
+sudo_message(){
     cat <<SUDO_MESSAGE
   $(W)You accessed this page as user $(B)root.
  $(format_string "$(W)All examples provided here are presented as if you were always running as root. However, if you're running as an unprivileged user, you'll need to specify sudo here and there. That's why sudo is still displayed here in gray color: ($(GRAY)sudo$(W)) where needed if you're not root." 2 W)
@@ -65,13 +68,13 @@ ${HELP_BASHLIB:-false} || {
 $(separator dP)
 
 SUDO_MESSAGE
-    }
+}
 
-    explain(){
-        local cat_or_pager sudo
-        prompt>/dev/null&&sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
-        $pager&&{ cat_or_pager='less -R';phplogo 2>/dev/null;}||cat_or_pager='cat'
-        $cat_or_pager<<EOF
+explain(){
+    local cat_or_pager sudo
+    prompt>/dev/null&&sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
+    $pager&&{ cat_or_pager='less -R';phplogo 2>/dev/null;}||cat_or_pager='cat'
+    $cat_or_pager<<EOF
 $(phplogo 2>/dev/null)
 
  $(line = P 81)
@@ -267,8 +270,6 @@ $(G;prompt -su;B) $me $(C)--switch-version
   $(C)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
 
 EOF
-        anykey
-        $pager||phplogo 2>/dev/null
-    }
+    anykey
+    $pager||phplogo 2>/dev/null
 }
-

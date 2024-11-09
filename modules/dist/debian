@@ -7,81 +7,82 @@ __copyright__
 __license__
 #
 
-${DEBIAN_BASHLIB:-false} || {
-    DEBIAN_BASHLIB=:
+${DEBIAN_BASHLIB:-false} && return
+DEBIAN_BASHLIB=:
 
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire line)
-    . <(lrequire interval)
-    . <(lrequire php/sury)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire line)
+. <(lrequire interval)
+. <(lrequire php/sury)
 
-    declare -A DEBIAN_VERSIONS_DATA DEBIAN_VERSIONS
+declare -A DEBIAN_VERSIONS_DATA DEBIAN_VERSIONS
 
-    DEBIAN_VERSIONS_DATA=(
-        [sid]="Sid;unstable;RR;-;-" # Roling release
-        [14]="Forky;futuretesting;TBA;TBA;TBA" # To be anounced
-        [13]="Trixie;testing;TBA;TBA;TBA"
-        [12]="Bookworm;stable;1686355200;1781136000;1845936000" # deb.sury.org
-        [11]="Bullseye;oldstable;1628899200;1723680000;1788134400" # deb.sury.org
-        [10]="Buster;oldoldstable;1562371200;1662768000;1719705600" # deb.sury.org
-        [09]="Stretch;obsolete;1497657600;1595030400;1656547200"
-    )
+# https://wiki.debian.org/DebianReleases
 
-    DEBIAN_VERSIONS=(
-        [sid]="sid"
-        [forky]="14"
-        [trixie]="13"
-        [bookworm]="12"
-        [bullseye]="11"
-        [buster]="10"
-        [stretch]="9"
-        [jessie]="8"
-        [wheezy]="7"
-        [squeeze]="6.0"
-        [lenny]="5.0"
-        [etch]="4.0"
-        [sarge]="3.1"
-        [woody]="3.0"
-        [potato]="2.2"
-        [slink]="2.1"
-        [hamm]="2.0"
-        [bo]="1.3"
-        [rex]="1.2"
-        [buzz]="1.1"
-    )
+DEBIAN_VERSIONS_DATA=(
+    [sid]="Sid;unstable;RR;-;-" # Roling release
+    [14]="Forky;futuretesting;TBA;TBA;TBA" # To be anounced
+    [13]="Trixie;testing;TBA;TBA;TBA"
+    [12]="Bookworm;stable;1686355200;1781049600;1845936000"
+    [11]="Bullseye;oldstable;1628899200;1723593600;1788134400"
+    [10]="Buster;oldoldstable;1562371200;1662768000;1719705600"
+    [09]="Stretch;obsolete;1497657600;1595030400;1656547200"
+)
 
-    list_supported_debian(){
+DEBIAN_VERSIONS=(
+    [sid]="sid"
+    [forky]="14"
+    [trixie]="13" # https://www.debian.org/releases/trixie/
+    [bookworm]="12" # https://www.debian.org/releases/bookworm/
+    [bullseye]="11" # https://www.debian.org/releases/bullseye/
+    [buster]="10" # https://www.debian.org/releases/buster/
+    [stretch]="9" # https://www.debian.org/releases/stretch/
+    [jessie]="8" # https://www.debian.org/releases/jessie/
+    [wheezy]="7" # https://www.debian.org/releases/wheezy/
+    [squeeze]="6.0"
+    [lenny]="5.0"
+    [etch]="4.0"
+    [sarge]="3.1"
+    [woody]="3.0"
+    [potato]="2.2"
+    [slink]="2.1"
+    [hamm]="2.0"
+    [bo]="1.3"
+    [rex]="1.2"
+    [buzz]="1.1"
+)
 
-        local -i c2=10 c3=20 c4=34 c5=73
-        local eos eol sus ver ss
-        local -l vercode chan
-        sus="$(supported_suites_ debian)"
+list_supported_debian(){
 
-        line '=' P 2/78 b1
+    local -i c2=10 c3=20 c4=34 c5=73
+    local eos eol sus ver ss
+    local -l vercode chan
+    sus="$(supported_suites_ debian)"
 
-        o2;B;echo "This is a list of recent debian versions for your information.";N
-        Y;o2;echo "Version$(o $c2)Codename$(o $c3)Channel$(o $c4)End of LTS support$(o $((c5 - 5)))sury-php-repo";N
-        line '-' dP 2/78
+    line '=' P 2/78 b1
 
-        for ver in $(p_rsort ${!DEBIAN_VERSIONS_DATA[@]});do
-            read -r vercode chan releasedate eos eol <<<${DEBIAN_VERSIONS_DATA[$ver]//;/ }
+    o2;B;echo "This is a list of recent debian versions for your information.";N
+    Y;o2;echo "Version$(o $c2)Codename$(o $c3)Channel$(o $c4)End of LTS support$(o $((c5 - 5)))sury-php-repo";N
+    line '-' dP 2/78
 
-            [[ "$sus" =~ $vercode ]]&&ss="$(check OK)"||ss="$(check NOK)"
-            if [ $releasedate = "RR" ];then o3;GRAY
-                echo "$(o $c2)$vercode$(o $c3)$chan$(o $c4)Rolling release$(o $c5)$ss";N
-            elif [ $eol = "TBA" ];then o3;G
-                echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)To be anounced$(o $c5)$ss";N
-            elif [ $today -le $eos ]&&[ $today -le $eol ];then o3;lG
-                echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
-            elif [ $today -le $eol ];then o3;G
-                echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
-            else o3;GRAY
-                echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
-            fi
+    for ver in $(p_rsort ${!DEBIAN_VERSIONS_DATA[@]});do
+        read -r vercode chan releasedate eos eol <<<${DEBIAN_VERSIONS_DATA[$ver]//;/ }
 
-        done
+        [[ "$sus" =~ $vercode ]]&&ss="$(check OK)"||ss="$(check NOK)"
+        if [ $releasedate = "RR" ];then o3;GRAY
+            echo "$(o $c2)$vercode$(o $c3)$chan$(o $c4)Rolling release$(o $c5)$ss";N
+        elif [ $eol = "TBA" ];then o3;G
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)To be anounced$(o $c5)$ss";N
+        elif [ $today -le $eos ]&&[ $today -le $eol ];then o3;lG
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
+        elif [ $today -le $eol ];then o3;G
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
+        else o3;GRAY
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
+        fi
 
-        line '-' dP 2/78
-    }
+    done
+
+    line '-' dP 2/78
 }

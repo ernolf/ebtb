@@ -7,11 +7,10 @@ __copyright__
 __license__
 #
 
-${XML_BASHLIB:-false} || {
-    XML_BASHLIB=:
+${XML_BASHLIB:-false} && return
+XML_BASHLIB=:
 
-    # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
-    xmls(){
-        xmlstarlet sel -B -t "$@"
-    }
+# xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
+xmls(){
+    xmlstarlet sel -B -t "$@"
 }

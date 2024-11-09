@@ -7,243 +7,241 @@ __copyright__
 __license__
 #
 
-${EXTENSIONS_BASHLIB:-false} || {
-    EXTENSIONS_BASHLIB=:
+${EXTENSIONS_BASHLIB:-false} && return
+EXTENSIONS_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
-    . <(lrequire ansi)
-    . <(lrequire array)
-    . <(lrequire dpkg)
-    . <(lrequire php/versions)
-    [ "$sin" = 'php-updater' ] && . <(require php/sury)
+. <(lrequire basics)
+. <(lrequire ansi)
+. <(lrequire array)
+. <(lrequire dpkg)
+. <(lrequire php/versions)
+[ "$sin" = 'php-updater' ] && . <(require php/sury)
 
-    declare -a PKGS_BY_DPKG EXTS_ADMIN DEPENDENCY_PKGS META_PKGS
-    declare -A SAPIS 2>/dev/null
+declare -a PKGS_BY_DPKG EXTS_ADMIN DEPENDENCY_PKGS META_PKGS
+declare -A SAPIS 2>/dev/null
 
-    SAPIS=(
-        [apache2]="libapache2-mod-php@VER@"
-        [fpm]="php@VER@-fpm"
-        [cli]="php@VER@-cli"
-        [cgi]="php@VER@-cgi"
-        [embed]="libphp@VER@-embed"
-        [phpdbg]="php@VER@-phpdbg"
-    )
+SAPIS=(
+    [apache2]="libapache2-mod-php@VER@"
+    [fpm]="php@VER@-fpm"
+    [cli]="php@VER@-cli"
+    [cgi]="php@VER@-cgi"
+    [embed]="libphp@VER@-embed"
+    [phpdbg]="php@VER@-phpdbg"
+)
 
-    detect_installed_by_dpkg(){
-        local e
-        local -a P PE
-        local -i i
-        mapfile -t P< <(dpkg -l|awk '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}'|sort)
-        mapfile -t PE< <(apt-mark showmanual '*php*'|sed 's/$/:m/';apt-mark showauto '*php*'|sed 's/$/:a/')
-        mapfile -t PE< <(p_sort ${PE[@]})
-        for i in ${!P[@]}; do
-            e=${PE[i]#*:}
-            echo "${P[i]}" | awk -F'/' '{print$1"/"$2"/"$3"/"substr($4,1,1)"'$e'/"$5}'
-        done
-    }
+detect_installed_by_dpkg(){
+    local e
+    local -a P PE
+    local -i i
+    mapfile -t P< <(dpkg -l|awk '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}'|sort)
+    mapfile -t PE< <(apt-mark showmanual '*php*'|sed 's/$/:m/';apt-mark showauto '*php*'|sed 's/$/:a/')
+    mapfile -t PE< <(p_sort ${PE[@]})
+    for i in ${!P[@]}; do
+        e=${PE[i]#*:}
+        echo "${P[i]}" | awk -F'/' '{print$1"/"$2"/"$3"/"substr($4,1,1)"'$e'/"$5}'
+    done
+}
 
-    populate_pkgs_by_dpkg_array(){
-        mapfile -t PKGS_BY_DPKG< <(detect_installed_by_dpkg)
-    }
+populate_pkgs_by_dpkg_array(){
+    mapfile -t PKGS_BY_DPKG< <(detect_installed_by_dpkg)
+}
 
-    populate_dependency_pkgs_array(){
-        DEPENDENCY_PKGS=()
-        populate_pkgs_by_dpkg_array
-        for i in "${!PKGS_BY_DPKG[@]}"; do
-            pkg="${PKGS_BY_DPKG[i]%%/*}"
-            if extension_is_ dependency "$pkg"; then
-                rdepends -q "$pkg"||DEPENDENCY_PKGS+=("$pkg")
+populate_dependency_pkgs_array(){
+    DEPENDENCY_PKGS=()
+    populate_pkgs_by_dpkg_array
+    for i in "${!PKGS_BY_DPKG[@]}"; do
+        pkg="${PKGS_BY_DPKG[i]%%/*}"
+        if extension_is_ dependency "$pkg"; then
+            rdepends -q "$pkg"||DEPENDENCY_PKGS+=("$pkg")
+        fi
+    done
+}
+
+populate_meta_pkgs_array(){
+    META_PKGS=()
+    populate_pkgs_by_dpkg_array
+    for i in "${!PKGS_BY_DPKG[@]}"; do
+        pkg="${PKGS_BY_DPKG[i]%%/*}"
+        if extension_is_ meta "$pkg"; then
+            rdepends -q "$pkg"||META_PKGS+=("$pkg")
+        fi
+    done
+}
+
+detect_extensions_in_(){
+    local -a files valid_files
+    local -i i
+    mapfile -t files< <(find "$1" -type f -name "*\.so");((${#files[@]}))||return 1
+    for i in ${!files[@]}; do
+        file "${files[i]}" | grep -q "shared object" && valid_files+=("${files[i]}")
+    done
+    ((${#valid_files[@]})) || return 1
+    p_sort "${valid_files[@]}"
+}
+
+extension_dir_of_(){
+    local php_version extension_dir
+    php_version=$1
+    if extension_dir="$(php$php_version -i 2>/dev/null | awk '/^extension_dir/ {print $NF}')"; then
+        if [ -d "$extension_dir" ]; then
+            echo "$extension_dir"
+            return
+        fi
+    fi
+    echo "/usr/lib/php/$(a_fld EXISTING ';' "$php_version" 2)"
+}
+
+extension_include_dir_of_(){
+    local php_version include_dir
+    php_version=$1
+    echo "/usr/include/php/$(a_fld EXISTING ';' "$php_version" 2)/ext"
+}
+
+detect_and_assign_extensions(){
+    local php_version extension_dir dpkg_package
+    local -i i
+    local -a EXTS_ALL EXTS_DPKG
+    spinner C " . detect extensions ." &
+    for php_version in ${VERSIONS[@]}; do
+        extension_dir="$(extension_dir_of_ $php_version)"
+        mapfile -t EXTS_ALL< <(p_nosort ${EXTS_ALL[@]};detect_extensions_in_ $extension_dir)
+    done
+    kill_spinner
+    spinner C " . assign extensions ." &
+    for i in ${!PKGS_BY_DPKG[@]}; do
+        dpkg_package=${PKGS_BY_DPKG[i]%%/*}
+        declare -ga ${dpkg_package//[.-]/_}
+        mapfile -t "${dpkg_package//[.-]/_}"< <(dpkg -L $dpkg_package|grep "\.so$")
+        mapfile -t EXTS_DPKG< <(p_nosort ${EXTS_DPKG[@]};dpkg -L $dpkg_package|grep "\.so$"|sort)
+    done
+    # EXTENSIONS_INSTALLED_BY_ADMIN
+    $verbose && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
+    mapfile -t EXTS_ADMIN< <(comm -23 <(p_sort ${EXTS_ALL[@]}) <(p_sort ${EXTS_DPKG[@]}))
+    mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
+    kill_spinner
+}
+
+# EIBY4_=EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
+# C4EIBY4_=CANDIDATES_FOR_EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
+# versions_iterate search_candidates_4_extensions_installed_by_admin
+search_candidates_4_extensions_installed_by_admin(){
+    local php_version sort extension_dir fullpath module package
+    local -i i
+    sort=false php_version="$1"
+    spinner C " . searching packaged versions for php$php_version extensions not installed by dpkg ." &
+    declare -ga EIBY4_${php_version//./}
+    declare -ga C4EIBY4_${php_version//./}
+    extension_dir="$(extension_dir_of_ $php_version)"
+    for i in ${!EXTS_ADMIN[@]}; do
+        fullpath="${EXTS_ADMIN[i]}"
+        module="${fullpath##*/}"
+        if [ "${fullpath%/*}" = "$extension_dir" ];then
+            sort=true
+            eval EIBY4_${php_version//./}\+\=\(\"${module%%.*}\"\)
+            package="php$php_version-${module%%.*}"
+            apt_exist "$package" && eval C4EIBY4_${php_version//./}\+\=\(\"$package:${module%%.*}\"\)
+        fi
+    done
+    $sort && mapfile -t "EIBY4_${php_version//./}"< <(eval p_sort \${EIBY4_${php_version//./}[@]})
+    kill_spinner
+}
+
+extension_is_(){
+    local pkg ver sapi
+    local -i i r=1
+    pkg="$2"
+    case $1 in
+        known)
+            echo "$pkg"|grep -Eqsw "php-(amqplib|auth-sasl|bacon-qr-code|cas|codecoverage|codesniffer|common|constant-time|crypt-gpg|dapphp-radius|dasprid-enum|date|db|deepcopy|directory-scanner|dompdf|dragonmantank-cron-expression|easyrdf|email-validator|fdomdocument|fig-link-util|file-iterator|font-lib|fpdf|fxsl|geos|geshi|getallheaders|getid3|guestfs|hamcrest|htmlawed|htmlpurifier|httpful|icinga|image-text|invoker|json-schema|klogger|log|lorenzo-pinky|luasandbox|mail|mail-mime|malkusch-lock|mapi|mariadb-mysql-kbs|masterminds-html5|mdb2|mf2|mikey179-vfsstream|mime-type|monolog|mythtv|netscape-bookmark-parser|nikic-fast-route|nrk-predis|nyholm-psr7|opis-closure|patchwork-utf8|pclzip|pda-pheanstalk|pear|php-gettext|phpoption|predis|proxy-manager|pubsubhubbub-publisher|ramsey-uuid|random-compat|react-promise|remctl|roundcube-rtf-html-php|sass|seclib|shellcommand|sql-formatter|swiftmailer|tcpdf|thrift|timer|token-stream|tokenizer|validate|vlucas-phpdotenv|webmozart-assert|wikidiff2|xajax|zeroc-ice)" && return 0
+            echo "$pkg"|grep -Eqsw "php-http-(httplug|interop-http-factory-tests|message-factory|promise|psr7-integration-tests|request|request2|webdav-server)" && return 0
+            echo "$pkg"|grep -Eqsw "php(ab|cpd|dox|ldapadmin|liteadmin|lideadmin-themes|loc|md|myadmin|pgadmin|qrcode|sysinfo|webcounter|webcounter-extra)" && return 0
+            echo "$pkg"|grep -Eqs "php-(async-aws-|cache-|composer-|console-|doctrine-|finder-|gettext-|google-|guzzlehttp-|leage-|letodms-|mdb2-|mock|net-|parse|phar-io-|phpdocumentor-|phpmyadmin-|phpsec|phpstan-|psr-[cehls]|sabre-|services-|text-|tijsverkoyen-|xml-|zend-|zeta-)" && return 0
+            echo "$pkg"|grep -Eqsw "libphp-(adodb|jabber|jpgraph|jpgraph-examples|phpmailer|serialization-perl|simplepie|snoopy)" && return 0
+            echo "$pkg"|grep -Eqs "(dh|elpa|golang-github|gosa-plugin|icinga|kdevelop|libawl|libjs|libmarkdown|libnusoap|libow|libownet|libsparkline|mlmmj|newrelic|python3|slbackup|weechat|zabbix-frontend)-php" && return 0
+            echo "$pkg"|grep -Eqs "(cake|simplesaml)php" && return 0
+            echo "$pkg"|grep -Eqsw "(pkg-php-tools|uphpmvault)" && return 0
+            echo "$pkg"|grep -Eqs "(arthurhoaro|pdlib|cephposix|libphpy|symfony|twig|phpunit)" && return 0
+            return 1
+            ;;
+        dependency)
+            env LC_MESSAGES=C dpkg-query -f'${Description}' -W $pkg 2>/dev/null | grep -iqsw "this package is a dependency package" && return $?
+            if [[ "$pkg" =~ php- ]]; then
+                env LC_MESSAGES=C dpkg-query -f'${Depends}' -W $pkg 2>/dev/null | grep -Eiqsw "$PHPVREGEX-${pkg#php-}$" && return $?
             fi
-        done
-    }
+            return 1
+            ;;
+        meta)
+            env LC_MESSAGES=C dpkg-query -f'${binary:Synopsis}' -W $pkg 2>/dev/null | grep -iqs "metapackage"
+            return $?
+            ;;
+        sapi)
+            for i in ${!VERSIONS[@]}; do
+                ver=${VERSIONS[i]}
+                for sapi in $(phpquery -v $ver -S); do
+                    if [ "$pkg" = "${SAPIS[$sapi]/@VER@/$ver}" ]; then
+                        r=0
+                        echo "$sapi:$ver"
+                    fi
+                done
+            done
+            return $r
+    esac
+}
 
-    populate_meta_pkgs_array(){
-        META_PKGS=()
-        populate_pkgs_by_dpkg_array
-        for i in "${!PKGS_BY_DPKG[@]}"; do
-            pkg="${PKGS_BY_DPKG[i]%%/*}"
-            if extension_is_ meta "$pkg"; then
-                rdepends -q "$pkg"||META_PKGS+=("$pkg")
-            fi
-        done
-    }
-
-    detect_extensions_in_(){
-        local -a files valid_files
-        local -i i
-        mapfile -t files< <(find "$1" -type f -name "*\.so");((${#files[@]}))||return 1
-        for i in ${!files[@]}; do
-            file "${files[i]}" | grep -q "shared object" && valid_files+=("${files[i]}")
-        done
-        ((${#valid_files[@]})) || return 1
-        p_sort "${valid_files[@]}"
-    }
-
-    extension_dir_of_(){
-        local php_version extension_dir
-        php_version=$1
-        if extension_dir="$(php$php_version -i 2>/dev/null | awk '/^extension_dir/ {print $NF}')"; then
-            if [ -d "$extension_dir" ]; then
-                echo "$extension_dir"
+is_sapi_true_(){
+    local pkg sapi
+    for pkg in "${PKGS_BY_DPKG[@]%%/*}"; do
+        sapi=''
+        if sapi=$(extension_is_ sapi "$pkg"); then
+            if [ "${sapi%:*}" = "$1" ];then
+                echo true
                 return
             fi
         fi
-        echo "/usr/lib/php/$(a_fld EXISTING ';' "$php_version" 2)"
-    }
+    done
+    echo false
+}
 
-    extension_include_dir_of_(){
-        local php_version include_dir
-        php_version=$1
-        echo "/usr/include/php/$(a_fld EXISTING ';' "$php_version" 2)/ext"
-    }
-
-    detect_and_assign_extensions(){
-        local php_version extension_dir dpkg_package
-        local -i i
-        local -a EXTS_ALL EXTS_DPKG
-        spinner C " . detect extensions ." &
-        for php_version in ${VERSIONS[@]}; do
-            extension_dir="$(extension_dir_of_ $php_version)"
-            mapfile -t EXTS_ALL< <(p_nosort ${EXTS_ALL[@]};detect_extensions_in_ $extension_dir)
-        done
-        kill_spinner
-        spinner C " . assign extensions ." &
-        for i in ${!PKGS_BY_DPKG[@]}; do
-            dpkg_package=${PKGS_BY_DPKG[i]%%/*}
-            declare -ga ${dpkg_package//[.-]/_}
-            mapfile -t "${dpkg_package//[.-]/_}"< <(dpkg -L $dpkg_package|grep "\.so$")
-            mapfile -t EXTS_DPKG< <(p_nosort ${EXTS_DPKG[@]};dpkg -L $dpkg_package|grep "\.so$"|sort)
-        done
-        # EXTENSIONS_INSTALLED_BY_ADMIN
-        $verbose && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
-        mapfile -t EXTS_ADMIN< <(comm -23 <(p_sort ${EXTS_ALL[@]}) <(p_sort ${EXTS_DPKG[@]}))
-        mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
-        kill_spinner
-    }
-
-    # EIBY4_=EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
-    # C4EIBY4_=CANDIDATES_FOR_EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
-    # versions_iterate search_candidates_4_extensions_installed_by_admin
-    search_candidates_4_extensions_installed_by_admin(){
-        local php_version sort extension_dir fullpath module package
-        local -i i
-        sort=false php_version="$1"
-        spinner C " . searching packaged versions for php$php_version extensions not installed by dpkg ." &
-        declare -ga EIBY4_${php_version//./}
-        declare -ga C4EIBY4_${php_version//./}
-        extension_dir="$(extension_dir_of_ $php_version)"
-        for i in ${!EXTS_ADMIN[@]}; do
-            fullpath="${EXTS_ADMIN[i]}"
-            module="${fullpath##*/}"
-            if [ "${fullpath%/*}" = "$extension_dir" ];then
-                sort=true
-                eval EIBY4_${php_version//./}\+\=\(\"${module%%.*}\"\)
-                package="php$php_version-${module%%.*}"
-                apt_exist "$package" && eval C4EIBY4_${php_version//./}\+\=\(\"$package:${module%%.*}\"\)
-            fi
-        done
-        $sort && mapfile -t "EIBY4_${php_version//./}"< <(eval p_sort \${EIBY4_${php_version//./}[@]})
-        kill_spinner
-    }
-
-    extension_is_(){
-        local pkg ver sapi
-        local -i i r=1
-        pkg="$2"
-        case $1 in
-            known)
-                echo "$pkg"|grep -Eqsw "php-(amqplib|auth-sasl|bacon-qr-code|cas|codecoverage|codesniffer|common|constant-time|crypt-gpg|dapphp-radius|dasprid-enum|date|db|deepcopy|directory-scanner|dompdf|dragonmantank-cron-expression|easyrdf|email-validator|fdomdocument|fig-link-util|file-iterator|font-lib|fpdf|fxsl|geos|geshi|getallheaders|getid3|guestfs|hamcrest|htmlawed|htmlpurifier|httpful|icinga|image-text|invoker|json-schema|klogger|log|lorenzo-pinky|luasandbox|mail|mail-mime|malkusch-lock|mapi|mariadb-mysql-kbs|masterminds-html5|mdb2|mf2|mikey179-vfsstream|mime-type|monolog|mythtv|netscape-bookmark-parser|nikic-fast-route|nrk-predis|nyholm-psr7|opis-closure|patchwork-utf8|pclzip|pda-pheanstalk|pear|php-gettext|phpoption|predis|proxy-manager|pubsubhubbub-publisher|ramsey-uuid|random-compat|react-promise|remctl|roundcube-rtf-html-php|sass|seclib|shellcommand|sql-formatter|swiftmailer|tcpdf|thrift|timer|token-stream|tokenizer|validate|vlucas-phpdotenv|webmozart-assert|wikidiff2|xajax|zeroc-ice)" && return 0
-                echo "$pkg"|grep -Eqsw "php-http-(httplug|interop-http-factory-tests|message-factory|promise|psr7-integration-tests|request|request2|webdav-server)" && return 0
-                echo "$pkg"|grep -Eqsw "php(ab|cpd|dox|ldapadmin|liteadmin|lideadmin-themes|loc|md|myadmin|pgadmin|qrcode|sysinfo|webcounter|webcounter-extra)" && return 0
-                echo "$pkg"|grep -Eqs "php-(async-aws-|cache-|composer-|console-|doctrine-|finder-|gettext-|google-|guzzlehttp-|leage-|letodms-|mdb2-|mock|net-|parse|phar-io-|phpdocumentor-|phpmyadmin-|phpsec|phpstan-|psr-[cehls]|sabre-|services-|text-|tijsverkoyen-|xml-|zend-|zeta-)" && return 0
-                echo "$pkg"|grep -Eqsw "libphp-(adodb|jabber|jpgraph|jpgraph-examples|phpmailer|serialization-perl|simplepie|snoopy)" && return 0
-                echo "$pkg"|grep -Eqs "(dh|elpa|golang-github|gosa-plugin|icinga|kdevelop|libawl|libjs|libmarkdown|libnusoap|libow|libownet|libsparkline|mlmmj|newrelic|python3|slbackup|weechat|zabbix-frontend)-php" && return 0
-                echo "$pkg"|grep -Eqs "(cake|simplesaml)php" && return 0
-                echo "$pkg"|grep -Eqsw "(pkg-php-tools|uphpmvault)" && return 0
-                echo "$pkg"|grep -Eqs "(arthurhoaro|pdlib|cephposix|libphpy|symfony|twig|phpunit)" && return 0
-                return 1
-                ;;
-            dependency)
-                env LC_MESSAGES=C dpkg-query -f'${Description}' -W $pkg 2>/dev/null | grep -iqsw "this package is a dependency package" && return $?
-                if [[ "$pkg" =~ php- ]]; then
-                    env LC_MESSAGES=C dpkg-query -f'${Depends}' -W $pkg 2>/dev/null | grep -Eiqsw "${phpvregex}-${pkg#php-}$" && return $?
+ext_state(){
+    populate_versions_array
+    local vlpm dir ver mod sapi registry_dir state_dir
+    vlpm="/var/lib/php/modules"
+    [ -d "$vlpm" ] || return
+    nonullglob "$vlpm/*" || return
+    case $1 in
+        cleanup)
+            for dir in $vlpm/*; do
+                if [ -d "$dir" ]; then
+                    [[ "${VERSIONS[@]}" =~ ${dir##*/} ]] || rm -fr "$dir"
                 fi
-                return 1
-                ;;
-            meta)
-                env LC_MESSAGES=C dpkg-query -f'${binary:Synopsis}' -W $pkg 2>/dev/null | grep -iqs "metapackage"
-                return $?
-                ;;
-            sapi)
-                for i in ${!VERSIONS[@]}; do
-                    ver=${VERSIONS[i]}
+            done
+            return
+            ;;
+        fix)
+            for mod in $(dpkg -l | awk '/^[hiu]i\s+[^\s]*'$PHPVREGEX'/{print $2}'); do
+                for ver in ${VERSIONS[@]}; do
+                    [ "${mod%-*}" = "php$ver" ] && mod="${mod#*-}" || continue
+                    registry_dir="$vlpm/$ver/registry"
+                    [ -d "$registry_dir" ] || mkdir -p "$registry_dir"
                     for sapi in $(phpquery -v $ver -S); do
-                        if [ "$pkg" = "${SAPIS[$sapi]/@VER@/$ver}" ]; then
-                            r=0
-                            echo "$sapi:$ver"
+                        state_dir="$vlpm/$ver/$sapi"
+                        if [ -f "$state_dir/enabled_by_admin/$mod" ]; then
+                            rm "$state_dir/enabled_by_admin/$mod"
+                            [ -d "$state_dir/enabled_by_maint" ] || mkdir -p "$state_dir/enabled_by_maint"
+                            touch "$state_dir/enabled_by_maint/$mod"
+                            [ -f "$registry_dir/$mod" ] || touch "$registry_dir/$mod"
                         fi
                     done
                 done
-                return $r
-        esac
-    }
-
-    is_sapi_true_(){
-        local pkg sapi
-        for pkg in "${PKGS_BY_DPKG[@]%%/*}"; do
-            sapi=''
-            if sapi=$(extension_is_ sapi "$pkg"); then
-                if [ "${sapi%:*}" = "$1" ];then
-                    echo true
-                    return
-                fi
-            fi
-        done
-        echo false
-    }
-
-    ext_state(){
-        populate_versions_array
-        local vlpm dir ver mod sapi registry_dir state_dir
-        vlpm="/var/lib/php/modules"
-        [ -d "$vlpm" ] || return
-        nonullglob "$vlpm/*" || return
-        case $1 in
-            cleanup)
-                for dir in $vlpm/*; do
-                    if [ -d "$dir" ]; then
-                        [[ "${VERSIONS[@]}" =~ ${dir##*/} ]] || rm -fr "$dir"
-                    fi
-                done
-                return
-                ;;
-            fix)
-                for mod in $(dpkg -l | awk '/^[hiu]i\s+[^\s]*'$phpvregex'/{print $2}'); do
-                    for ver in ${VERSIONS[@]}; do
-                        [ "${mod%-*}" = "php$ver" ] && mod="${mod#*-}" || continue
-                        registry_dir="$vlpm/$ver/registry"
-                        [ -d "$registry_dir" ] || mkdir -p "$registry_dir"
-                        for sapi in $(phpquery -v $ver -S); do
-                            state_dir="$vlpm/$ver/$sapi"
-                            if [ -f "$state_dir/enabled_by_admin/$mod" ]; then
-                                rm "$state_dir/enabled_by_admin/$mod"
-                                [ -d "$state_dir/enabled_by_maint" ] || mkdir -p "$state_dir/enabled_by_maint"
-                                touch "$state_dir/enabled_by_maint/$mod"
-                                [ -f "$registry_dir/$mod" ] || touch "$registry_dir/$mod"
-                            fi
-                        done
-                    done
-                done
-                ;;
-            purge)
-                mod="$2" ver="$3"
-                [[ "$ver" ]] && vlpm=$vlpm/$ver
-                [ -d "$vlpm" ] || return
-                find $vlpm -type f -name "$mod" -empty -delete
-        esac
-    }
-
+            done
+            ;;
+        purge)
+            mod="$2" ver="$3"
+            [[ "$ver" ]] && vlpm=$vlpm/$ver
+            [ -d "$vlpm" ] || return
+            find $vlpm -type f -name "$mod" -empty -delete
+    esac
 }

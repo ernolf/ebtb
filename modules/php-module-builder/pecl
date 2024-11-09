@@ -7,41 +7,40 @@ __copyright__
 __license__
 #
 
-${PECL_BASHLIB:-false} || {
-    PECL_BASHLIB=:
+${PECL_BASHLIB:-false} && return
+PECL_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire exit)
+. <(lrequire exit)
 
-    pecl_download(){
-        local chan download_output file_name
-        if (( $# )); then
-            chan="$1"
-        else
-            chan="$module"
-        fi
+pecl_download(){
+    local chan download_output file_name
+    if (( $# )); then
+        chan="$1"
+    else
+        chan="$module"
+    fi
 
-        pecl channel-update pecl.php.net
+    pecl channel-update pecl.php.net
 
-        download_output=$(pecl download $chan 2>&1)
-        file_name=$(echo "$download_output" | grep -oP '(?<=File ).*(?= downloaded)' | xargs basename)
+    download_output=$(pecl download $chan 2>&1)
+    file_name=$(echo "$download_output" | grep -oP '(?<=File ).*(?= downloaded)' | xargs basename)
 
-        if [ -f "$file_name" ]; then
-            lG; echo "- download of $file_name successfull"
-        else
-            R; echo "- download of $file_name failed"
-            exit1
-        fi
+    if [ -f "$file_name" ]; then
+        lG; echo "- download of $file_name successfull"
+    else
+        R; echo "- download of $file_name failed"
+        exit1
+    fi
 
-        if tar -xzf $file_name; then
-            B; echo "- entering directory \"${file_name%.*}\""
-            cd ${file_name%.*}
-        else
-            R; echo "- unpacking failed"
-            exit1
-        fi
-        N
-    }
+    if tar -xzf $file_name; then
+        B; echo "- entering directory \"${file_name%.*}\""
+        cd ${file_name%.*}
+    else
+        R; echo "- unpacking failed"
+        exit1
+    fi
+    N
 }

@@ -7,29 +7,28 @@ __copyright__
 __license__
 #
 
-${TEMPFILE_BASHLIB:-false} || {
-    TEMPFILE_BASHLIB=:
+${TEMPFILE_BASHLIB:-false} && return
+TEMPFILE_BASHLIB=:
 
-    # tempfile creation $1=u (--dry-run)
-    [ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
+# tempfile creation $1=u (--dry-run)
+[ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
 
-    tf(){
-        local arg t u='' chmod=''
-        for arg in $@; do
-            case $arg in
-                u)  u=u ;;
-          666|777)  chmod=$arg
-            esac
-        done
-        t="$(mktemp -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
+tf(){
+    local arg t u='' chmod=''
+    for arg in $@; do
+        case $arg in
+            u)  u=u ;;
+      666|777)  chmod=$arg
+        esac
+    done
+    t="$(mktemp -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
 # TODO 0 -->
-#        t="$(mktemp -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
+#    t="$(mktemp -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
 # TODO <-- 0
-        if [ -z "$u" ]; then
-            if [ -n "$chmod" ]; then
-                chmod $chmod "$t"
-            fi
+    if [ -z "$u" ]; then
+        if [ -n "$chmod" ]; then
+            chmod $chmod "$t"
         fi
-        echo "$t"
-    }
+    fi
+    echo "$t"
 }

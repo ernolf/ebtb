@@ -7,51 +7,50 @@ __copyright__
 __license__
 #
 
-${EXIT_BASHLIB:-false} || {
-    EXIT_BASHLIB=:
+${EXIT_BASHLIB:-false} && return
+EXIT_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
-    . <(lrequire ansi)
+. <(lrequire basics)
+. <(lrequire ansi)
 
-    exit0(){
-        G; echo "exiting script."
-        N; echo "generous? run '$me --donate'"
-        N; exit 0
-    }
-
-    exit1(){
-        R; echo "exiting…"
-        N; exit 1
-    }
-
-    # define a trap to clean up the temporary file
-    exit_trap(){
-        [ -f "$spinner_pid_file" ] && kill_spinner
-        ${local_server:-false} && ls_ stop
-        nonullglob "$TMPDIR/${bm}$$_*" && (rm -f $TMPDIR/${bm}$$_*) 2>/dev/null
-        nonullglob "$TMPDIR/${bm:-$$}_*" && (rm -f $TMPDIR/${bm:-$$}_*) 2>/dev/null
-        ansi_reset
-    }
-
-    interrupted(){
-        if [ -z "$bm" ]; then
-            return 0
-        else
-            te1; Yi; echo "TRAP: interrupted by sig$1"
-            if [ -f "$spinner_pid_file" ]; then
-                te1; Yi; echo "TRAP: - spinner killed"
-            fi
-            if nonullglob "$TMPDIR/${bm}_*"; then
-                te1; Yi; echo "TRAP: - temporary files removed"
-            fi
-            exit1
-        fi
-    }
-
-    trap 'exit_trap' EXIT
-    trap 'interrupted INT' INT
-    trap 'interrupted TERM' TERM
+exit0(){
+    G; echo "exiting script."
+    N; echo "generous? run '$me --donate'"
+    N; exit 0
 }
+
+exit1(){
+    R; echo "exiting…"
+    N; exit 1
+}
+
+# define a trap to clean up the temporary file
+exit_trap(){
+    [ -f "$spinner_pid_file" ] && kill_spinner
+    ${local_server:-false} && ls_ stop
+    nonullglob "$TMPDIR/${bm}$$_*" && (rm -f $TMPDIR/${bm}$$_*) 2>/dev/null
+    nonullglob "$TMPDIR/${bm:-$$}_*" && (rm -f $TMPDIR/${bm:-$$}_*) 2>/dev/null
+    ansi_reset
+}
+
+interrupted(){
+    if [ -z "$bm" ]; then
+        return 0
+    else
+        te1; Yi; echo "TRAP: interrupted by sig$1"
+        if [ -f "$spinner_pid_file" ]; then
+            te1; Yi; echo "TRAP: - spinner killed"
+        fi
+        if nonullglob "$TMPDIR/${bm}_*"; then
+            te1; Yi; echo "TRAP: - temporary files removed"
+        fi
+        exit1
+    fi
+}
+
+trap 'exit_trap' EXIT
+trap 'interrupted INT' INT
+trap 'interrupted TERM' TERM

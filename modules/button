@@ -7,60 +7,59 @@ __copyright__
 __license__
 #
 
-${BUTTON_BASHLIB:-false} || {
-    BUTTON_BASHLIB=:
+${BUTTON_BASHLIB:-false} && return
+BUTTON_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire ansi)
+. <(lrequire ansi)
 
-    buttonize(){
-        local oldcolor
-        oldcolor="$(cat $COLOR 2>/dev/null)"
-        GRAYbg
-        printf '%s' '['
-        case $1 in
-            OK) GGRAYbg
-                ;;
-           NOK) RGRAYbg
-        esac
-        printf '%s' "$2"
-        GRAYbg
-        printf '%s' ']'
-        ${oldcolor:-N}
-    }
+buttonize(){
+    local oldcolor
+    oldcolor="$(cat $COLOR 2>/dev/null)"
+    GRAYbg
+    printf '%s' '['
+    case $1 in
+        OK) GGRAYbg
+            ;;
+       NOK) RGRAYbg
+    esac
+    printf '%s' "$2"
+    GRAYbg
+    printf '%s' ']'
+    ${oldcolor:-N}
+}
 
-    button(){
-        case $1 in
-          no|q) buttonize NOK "$1"
-                ;;
-             *) buttonize OK "$1"
-        esac
-    }
+button(){
+    case $1 in
+      no|q) buttonize NOK "$1"
+            ;;
+         *) buttonize OK "$1"
+    esac
+}
 
-    box(){
-        case $1 in
-          no|q) buttonize NOK " $1 "
-                ;;
-             *) buttonize OK " $1 "
-        esac
-    }
+box(){
+    case $1 in
+      no|q) buttonize NOK " $1 "
+            ;;
+         *) buttonize OK " $1 "
+    esac
+}
 
-    check(){
-        [[ " OK NOK " =~ " $1 " ]]||return
-        case $1 in
-            OK) buttonize OK '✔️'
-                ;;
-           NOK) buttonize NOK '✖️'
-        esac
-    }
+check(){
+    [[ " OK NOK " =~ " $1 " ]]||return
+    case $1 in
+        OK) buttonize OK '✔️'
+            ;;
+       NOK) buttonize NOK '✖️'
+    esac
+}
 
-    q2q(){
-        printf '%s' "$(box q) to quit"
-    }
+q2q(){
+    printf '%s' "$(box q) to quit"
+}
 
-    r2r(){
-        printf '%s' "$(box r) to return"
-    }
+r2r(){
+    printf '%s' "$(box r) to return"
 }

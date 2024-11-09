@@ -7,27 +7,26 @@ __copyright__
 __license__
 #
 
-${PROMPT_BASHLIB:-false} || {
-    PROMPT_BASHLIB=:
+${PROMPT_BASHLIB:-false} && return
+PROMPT_BASHLIB=:
 
-    prompt(){
-        local -i r=0
-        if (( $(id -u) )); then
-            if [[ "$(id -Gn) " =~ " sudo " ]]; then
-                echo -n "$USER@${HOSTNAME:-hostname}:~$"
-            elif [ "$1" = "-su" ]; then
-                echo -n "user_with_sudo_rights@${HOSTNAME:-hostname}:~$"
-            else
-                echo -n "$USER@${HOSTNAME:-hostname}:~$"
-            fi
+prompt(){
+    local -i r=0
+    if (( $(id -u) )); then
+        if [[ "$(id -Gn) " =~ " sudo " ]]; then
+            echo -n "$USER@${HOSTNAME:-hostname}:~$"
+        elif [ "$1" = "-su" ]; then
+            echo -n "user_with_sudo_rights@${HOSTNAME:-hostname}:~$"
         else
-            if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" = 'root' ]; then
-                echo -n "root@${HOSTNAME:-hostname}:~#"
-                r=1
-            else
-                echo -n "$SUDO_USER@${HOSTNAME:-hostname}:~$"
-            fi
+            echo -n "$USER@${HOSTNAME:-hostname}:~$"
         fi
-        return $r
-    }
+    else
+        if [ -z "$SUDO_USER" ] || [ "$SUDO_USER" = 'root' ]; then
+            echo -n "root@${HOSTNAME:-hostname}:~#"
+            r=1
+        else
+            echo -n "$SUDO_USER@${HOSTNAME:-hostname}:~$"
+        fi
+    fi
+    return $r
 }

@@ -7,312 +7,335 @@ __copyright__
 __license__
 #
 
-${LINSTALLED_BASHLIB:-false} || {
-    LINSTALLED_BASHLIB=:
+${LINSTALLED_BASHLIB:-false} && return
+LINSTALLED_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire anykey)
-    . <(lrequire fstring)
-    . <(lrequire spinner)
-    . <(lrequire line)
-    . <(lrequire array)
-    . <(lrequire ask)
-    . <(lrequire httpd)
-    . <(lrequire php/versions)
-    . <(lrequire php/extensions)
-    . <(lrequire php/apache2)
-    . <(lrequire php/fpm)
-    . <(lrequire $sin/tasks)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire anykey)
+. <(lrequire fstring)
+. <(lrequire spinner)
+. <(lrequire line)
+. <(lrequire array)
+. <(lrequire ask)
+. <(lrequire httpd)
+. <(lrequire php/versions)
+. <(lrequire php/extensions)
+. <(lrequire php/apache2)
+. <(lrequire php/fpm)
+. <(lrequire $sin/tasks)
 
-    list_installed_sapi(){
-        cursor_ hide
-        local sapi pkg fullpath pv httpd modstring
-        local -a sockets
-        local -i c2 c3 i
-        c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
-        populate_pkgs_by_dpkg_array
-        populate_httpd_ active
+list_installed_sapi(){
+    cursor_ hide
+    local sapi pkg fullpath pv httpd modstring
+    local -a sockets
+    local -i c2 c3 i
+    c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
+    populate_pkgs_by_dpkg_array
+    populate_httpd_ active
 
-        for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
+    for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
 
-        for pkg in "${PKGS_BY_DPKG[@]%%/*}"; do
-            if [[ "$pkg" =~ libapache2-mod-$phpvregex ]]; then
-                SAPI_A2[${pkg#libapache2-mod-php}]='installed'
-            elif [[ "$pkg" =~ $phpvregex-fpm ]]; then
-                pkg=${pkg#php}
-                SAPI_FPM[${pkg%-fpm}]='installed'
+    for pkg in "${PKGS_BY_DPKG[@]%%/*}"; do
+        if [[ "$pkg" =~ libapache2-mod-$PHPVREGEX ]]; then
+            SAPI_A2[${pkg#libapache2-mod-php}]='installed'
+        elif [[ "$pkg" =~ $PHPVREGEX-fpm ]]; then
+            pkg=${pkg#php}
+            SAPI_FPM[${pkg%-fpm}]='installed'
+        fi
+    done
+    if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && (( ${#SAPI_A2[@]} )); then
+        if ! apache2_mpm prefork; then
+            modstring="$(listify C $(p_sort ${!SAPI_A2[@]}))"
+            bundle echo "$(xpf;format_string "$(R)The Apache2handler libapache2-mod-php is installed$(N) for $modstring, $(R)but the mpm_prefork module required by this SAPI is not loaded, so this SAPI is effectively inactive." 3;N)"
+            if apache2_mpm event; then
+                bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3;N)"
             fi
-        done
-        if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && (( ${#SAPI_A2[@]} )); then
-            if ! apache2_mpm prefork; then
-                modstring="$(listify C $(p_sort ${!SAPI_A2[@]}))"
-                bundle echo "$(xpf;format_string "$(R)The Apache2handler libapache2-mod-php is installed$(N) for $modstring, $(R)but the mpm_prefork module required by this SAPI is not loaded, so this SAPI is effectively inactive." 3;N)"
-                if apache2_mpm event; then
-                    bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3;N)"
-                fi
-                f
-            fi
-            for pv in $(p_sort ${!SAPI_A2[@]}); do
-                pkg="libapache2-mod-php$pv"
-                Y;echo "$(pf)$pkg";N
-                fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
-                o5;fO;echo -n "\\apache2handler$(O) $fullpath";N
-                if (( ${SERVER_STATUS[apache2]} > 2 )); then
-                    if [[ "${A2CONFFILES[@]}" =~ php$pv.conf && "${A2CONFFILES[@]}" =~ php$pv.load ]]; then
-                        SAPI_A2[$pv]='a'
-                        o $c3;lG;echo " <ACTIVE> loaded";N
-                    else
-                        SAPI_A2[$pv]='i'
-                        o $c3;W;echo " <<INACTIVE";N
-                    fi
-                else
-                    o $c3;W;W;echo " <<INACTIVE";N
-                fi
-            done
             f
         fi
-        if (( ${#SAPI_FPM[@]} )); then
-            if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && ! apache2_mpm event; then
-                modstring="$(listify C $(p_sort ${!SAPI_FPM[@]}))"
-                bundle echo "$(xpf;format_string "$(R)The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3;N)"
-                bundle echo "  $(format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3;N)"
-                if apache2_mpm prefork; then
-                    bundle echo "$(ipf;format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the API" 3;N)"
-                    bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3;N)"
+        for pv in $(p_sort ${!SAPI_A2[@]}); do
+            pkg="libapache2-mod-php$pv"
+            Y;echo "$(pf)$pkg";N
+            fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
+            o5;fO;echo -n "\\apache2handler$(O) $fullpath";N
+            if (( ${SERVER_STATUS[apache2]} > 2 )); then
+                if [[ "${A2CONFFILES[@]}" =~ php$pv.conf && "${A2CONFFILES[@]}" =~ php$pv.load ]]; then
+                    SAPI_A2[$pv]='a'
+                    o $c3;lG;echo " <ACTIVE> loaded";N
                 else
-                    bundle echo "$(ipf;format_string "$(Yi)But since the mpm_prefork module is not loaded either, I will try to load the required modules for fpm to work.." 3;N)"
-                    php_fpm_module_ enable
-                fi
-                f
-            fi
-            for pv in $(p_sort ${!SAPI_FPM[@]}); do
-                sockets=()
-                pkg="php$pv-fpm"
-                sockets=($(ss -lx | awk '/'$pkg'/{print $5}'))
-                Y;echo "$(pf)$pkg";N
-                if (( ${#sockets[@]} )); then
-                    populate_httpd_ wk_enabled
-                    local connected_httpd socket
-                    for i in ${!sockets[@]}; do
-                        connected_httpd=''
-                        socket=${sockets[i]}
-                        if (( ${#WK_HTTPD_ENABLED[@]} )); then
-                            for httpd in ${WK_HTTPD_ENABLED[@]}; do
-                                case $httpd in
-                                    apache2)grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
-                                            ;;
-                                    nginx)  grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
-                                esac
-                                case ${SERVER_STATUS["$httpd"]} in
-                                    2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
-                                    3)  connected_httpd=" $httpd $connected_httpd"
-                                esac
-                            done
-                        fi
-                        o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
-                        if [ -z "$connected_httpd" ]; then
-                            SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
-                        else
-                            SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_httpd";N
-                        fi
-                    done
-                fi
-            done
-        fi
-    }
-
-    list_installed(){
-        cursor_ hide
-        local arg sapi quiet only pkg plu fullpath mod pv httpd pkgmod
-        local -a sockets
-        local -i c2 c3 i iim iam ctr aimct
-        c2=28 c3=74 aimct=0 SAPI_A2=() SAPI_FPM=()
-        quiet=false only=false
-        detect_and_assign_extensions
-        iam=${#EXTS_ADMIN[@]}
-        ((iam)) && versions_iterate search_candidates_4_extensions_installed_by_admin
-        for arg in "$@"; do local "$arg";done;unset arg
-        line '=' P 2/78 b1
-        o2;B;echo "actual PHP related packages installed and managed by dpkg";N
-        R;o;echo "X$(o5;Y)Package$(o $c2)Version$(o $c3)Status";N
-        line '-' dP 2/78
-        for i in "${!PKGS_BY_DPKG[@]}"; do
-            pkg="${PKGS_BY_DPKG[i]%%/*}" sapi='' sockets=()
-            if extension_is_ known "$pkg"; then
-                o2;pf
-            elif sapi=$(extension_is_ sapi "$pkg"); then
-                sockets=($(ss -lx | awk '/'$pkg'/{print $5}'))
-                O;printf "SAPI ";N
-            elif [[ "$pkg" =~ $phpvregex- ]]; then
-                o2;pf
-            elif extension_is_ dependency "$pkg"; then
-                if rdepends -q "$pkg"; then
-                    o2;pf;
-                else
-#                    DEPENDENCY_PKGS+=("$pkg")
-                    R;printf "DEP  ";N
-                fi
-            elif extension_is_ meta "$pkg"; then
-                if rdepends -q "$pkg"; then
-                    o2;pf
-                else
-#                    META_PKGS+=("$pkg")
-                    dR;printf "META ";N
+                    SAPI_A2[$pv]='i'
+                    o $c3;W;echo " <<INACTIVE";N
                 fi
             else
-                o2;pf
+                o $c3;W;W;echo " <<INACTIVE";N
             fi
-            Y;printf "$pkg";o $c2;GRAY;echo "${PKGS_BY_DPKG[i]}" | awk -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}';N
-    # --> included modules
-            iim=$(eval printf \${#${pkg//[.-]/_}[@]})
-            if ((iim)); then
-                if [ "${sapi%:*}" = 'apache2' ]; then
-                    fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
-                    o5;fO;echo -n "\\apache2handler$(O) $fullpath";N
+        done
+        f
+    elif (( ${#SAPI_FPM[@]} )); then
+        if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && ! apache2_mpm event; then
+            modstring="$(listify C $(p_sort ${!SAPI_FPM[@]}))"
+            bundle echo "$(xpf;format_string "$(R)The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3;N)"
+            bundle echo "  $(format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3;N)"
+            if apache2_mpm prefork; then
+                bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3;N)"
+                if (( ${#SAPI_A2[@]} )); then
+                    bundle echo "$(ipf;format_string "$(Yi)Apache2handler (libapache2-mod-php) is installed for version $(listify C ${!SAPI_A2})" 3;N)"
+                    bundle echo "$(ipf;format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the API" 3;N)"
                 else
-                    o5;dY;echo -n "\\included module"
-                    if ((iim>1)); then
-                        printf 's: ';ctr=24
-                    else
-                        printf ": ";ctr=23
+                    bundle echo "$(ipf;format_string "$(Yi)But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3;N)"
+                    php_a2module_ disable
+                    php_fpm_module_ enable
+                    systemctl restart apache2
+                fi
+            else
+                bundle echo "$(ipf;format_string "$(Yi)But since the mpm_prefork module is not loaded either, I will try to load the mpm_event_module and other required modules for fpm to work.." 3;N)"
+                php_fpm_module_ enable
+                systemctl restart apache2
+            fi
+            f
+        fi
+        for pv in $(p_sort ${!SAPI_FPM[@]}); do
+            sockets=()
+            pkg="php$pv-fpm"
+            sockets=($(ss -lx | awk '/'$pkg'/{print $5}'))
+            Y;echo "$(pf)$pkg";N
+            if (( ${#sockets[@]} )); then
+                populate_httpd_ wk_enabled
+                local connected_httpd socket
+                for i in ${!sockets[@]}; do
+                    connected_httpd=''
+                    socket=${sockets[i]}
+                    if (( ${#WK_HTTPD_ENABLED[@]} )); then
+                        for httpd in ${WK_HTTPD_ENABLED[@]}; do
+                            case $httpd in
+                               apache2) if apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )); then
+                                            grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
+                                        else
+                                            continue
+                                        fi
+                                        ;;
+                                 nginx) if nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )); then
+                                            grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
+                                        else
+                                            continue
+                                        fi
+                            esac
+                            case ${SERVER_STATUS["$httpd"]} in
+                                2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
+                                3)  connected_httpd=" $httpd $connected_httpd"
+                            esac
+                        done
                     fi
-                    o $ctr;C
-                    for i in $(eval echo "\${!${pkg//[.-]/_}[@]}"); do
-                        ((ctr<78)) || { ctr=7;f;o $ctr;}
-                        fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[i\]\}\")
-                        mod="${fullpath##*/}"
-                        mod="${mod%.so} "
-                        printf "$mod"
-                        ctr=$((ctr+${#mod}))
-                    done
-                    N;f
-                fi # <--
-                # --> Active SAPI
-                if [ "${sapi%:*}" = 'apache2' ]; then
-                    pv="${pkg/libapache2-mod-php/}" # extract version
-                    if (( ${SERVER_STATUS[apache2]} > 2 )); then
-                        if [[ "${A2CONFFILES[@]}" =~ php${sapi#*:}\.conf && "${A2CONFFILES[@]}" =~ php${sapi#*:}\.load ]]; then
-                            SAPI_A2[$pv]='a'
-                            lG;echo " <ACTIVE> loaded";N
-                        else
-                            SAPI_A2[$pv]='i'
-                            W;echo " <<INACTIVE";N
-                        fi
+                    o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
+                    if [ -z "$connected_httpd" ]; then
+                        SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
                     else
+                        SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_httpd";N
+                    fi
+                done
+            fi
+        done
+    fi
+}
+
+list_installed(){
+    cursor_ hide
+    local arg sapi quiet only pkg plu fullpath mod pv httpd pkgmod
+    local -a sockets
+    local -i c2 c3 i iim iam ctr aimct
+    c2=28 c3=74 aimct=0 SAPI_A2=() SAPI_FPM=()
+    quiet=false only=false
+    detect_and_assign_extensions
+    iam=${#EXTS_ADMIN[@]}
+    ((iam)) && versions_iterate search_candidates_4_extensions_installed_by_admin
+    for arg in "$@"; do local "$arg";done;unset arg
+    line '=' P 2/78 b1
+    o2;B;echo "actual PHP related packages installed and managed by dpkg";N
+    R;o;echo "X$(o5;Y)Package$(o $c2)Version$(o $c3)Status";N
+    line '-' dP 2/78
+    for i in "${!PKGS_BY_DPKG[@]}"; do
+        pkg="${PKGS_BY_DPKG[i]%%/*}" sapi='' sockets=()
+        if extension_is_ known "$pkg"; then
+            o2;pf
+        elif sapi=$(extension_is_ sapi "$pkg"); then
+            sockets=($(ss -lx | awk '/'$pkg'/{print $5}'))
+            O;printf "SAPI ";N
+        elif [[ "$pkg" =~ $PHPVREGEX- ]]; then
+            o2;pf
+        elif extension_is_ dependency "$pkg"; then
+            if rdepends -q "$pkg"; then
+                o2;pf;
+            else
+#                DEPENDENCY_PKGS+=("$pkg")
+                R;printf "DEP  ";N
+            fi
+        elif extension_is_ meta "$pkg"; then
+            if rdepends -q "$pkg"; then
+                o2;pf
+            else
+#                META_PKGS+=("$pkg")
+                dR;printf "META ";N
+            fi
+        else
+            o2;pf
+        fi
+        Y;printf "$pkg";o $c2;GRAY;echo "${PKGS_BY_DPKG[i]}" | awk -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}';N
+# --> included modules
+        iim=$(eval printf \${#${pkg//[.-]/_}[@]})
+        if ((iim)); then
+            if [ "${sapi%:*}" = 'apache2' ]; then
+                fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
+                o5;fO;echo -n "\\apache2handler$(O) $fullpath";N
+            else
+                o5;dY;echo -n "\\included module"
+                if ((iim>1)); then
+                    printf 's: ';ctr=24
+                else
+                    printf ": ";ctr=23
+                fi
+                o $ctr;C
+                for i in $(eval echo "\${!${pkg//[.-]/_}[@]}"); do
+                    ((ctr<78)) || { ctr=7;f;o $ctr;}
+                    fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[i\]\}\")
+                    mod="${fullpath##*/}"
+                    mod="${mod%.so} "
+                    printf "$mod"
+                    ctr=$((ctr+${#mod}))
+                done
+                N;f
+            fi # <--
+            # --> Active SAPI
+            if [ "${sapi%:*}" = 'apache2' ]; then
+                pv="${pkg/libapache2-mod-php/}" # extract version
+                if (( ${SERVER_STATUS[apache2]} > 2 )); then
+                    if [[ "${A2CONFFILES[@]}" =~ php${sapi#*:}\.conf && "${A2CONFFILES[@]}" =~ php${sapi#*:}\.load ]]; then
+                        SAPI_A2[$pv]='a'
+                        lG;echo " <ACTIVE> loaded";N
+                    else
+                        SAPI_A2[$pv]='i'
                         W;echo " <<INACTIVE";N
                     fi
+                else
+                    W;echo " <<INACTIVE";N
                 fi
-            else
-                case "${sapi%:*}" in
-                   cli) o5;fO;echo -n "\\php binary$(O) /usr/bin/php${sapi#*:}";N
-                        if [ "$(readlink -e $(command -v php))" = "/usr/bin/php${sapi#*:}" ]; then
-                            lG;echo " <ACTIVE> linked to generic /usr/bin/php";N
-                        else
-                            W;echo " <<INACTIVE not linked";N
-                        fi
-                        ;;
-                phpdbg) o5;fO;echo -n "\\phpdbg binary$(O) /usr/bin/phpdbg${sapi#*:}";N
-                        if [ "$(readlink -e $(command -v phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
-                            lG;echo " <ACTIVE> linked to generic /usr/bin/phpdbg";N
-                        else
-                            W;echo " <<INACTIVE not linked";N
-                        fi
-                        ;;
-                   fpm) pv=${pkg#php}; pv=${pv%-fpm} # extract version
-                        if (( ${#sockets[@]} )); then
-                            populate_httpd_ wk_enabled
-                            local connected_httpd socket
-                            for i in ${!sockets[@]}; do
-                                connected_httpd=''
-                                socket=${sockets[i]}
-                                if (( ${#WK_HTTPD_ENABLED[@]} )); then
-                                    for httpd in ${WK_HTTPD_ENABLED[@]}; do
-                                        case $httpd in
-                                            apache2)grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
-                                                    ;;
-                                            nginx)  grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
-                                        esac
-                                        case ${SERVER_STATUS["$httpd"]} in
-                                            2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
-                                            3)  connected_httpd=" $httpd $connected_httpd"
-                                        esac
-                                    done
-                                fi
-                                o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
-                                if [ -z "$connected_httpd" ]; then
-                                    SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
-                                else
-                                    SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_httpd";N
-                                fi
-                            done
-                        fi
-                        ;;
-                    *)  :
-                esac
-            fi # <-- included modules
-        done # --> admin modules
-        if (( iam )); then
-            (( iam == 1 )) && plu='' || plu='s'
-            line '-' dP 2/78
-            o2;B;echo "actual PHP pecl extension$plu $(R)NOT$(B) installed and managed by dpkg"
-            line '-' dP 2/78
-            for pv in ${VERSIONS[@]}; do
-                eval iam=\${#EIBY4_${pv//./}[@]}
-                if (( iam )); then
-                    (( iam == 1 )) || plu='s'
-                    o2;pf;Y;printf "php$pv$(f;o5;dY)\\module$plu installed by admin: "
-                    C; for i in $(eval echo \${!EIBY4_${pv//./}[@]}); do
-                        printf "$(eval echo \"\${EIBY4_${pv//./}[i]}\") "
-                    done; N; f
-                fi
-                eval iam=\${#C4EIBY4_${pv//./}[@]}
-                if (( iam )); then
-                    (( iam == 1 )) && plu='s a:' || plu=':s'
-                    line '-' P 5/75
-                    o5;B;echo "for this $(Y)php$pv$(B) module${plu#*:} installed by admin there exist${plu%:*} packaged version${plu#*:}:$(N)"
-                    line '-' P 5/75
-                    for i in $(eval echo \${!C4EIBY4_${pv//./}[@]}); do
-#                        [ "$pv" = "$PHP_VERSION" ] && (( aimct++ ))
-                        (( aimct++ ))
-                        pkgmod="$(eval echo \"\${C4EIBY4_${pv//./}[i]}\")"
-                        pkg=${pkgmod%:*} mod=${pkgmod#*:}
-                        o5;pf;C;echo "$mod$(line ' ' Cbg $((c2-1))/51 a0;o $c2;Cbg)$pkg$(N)"
-                    done
-                fi
-            done
-        fi # <--
-        line '-' dP 2/78
-        o2;Y;echo "Status:$(o 9;pf;W)First letter (Desired Action):$(o 45;pf)Second letter (Package Status):";N
-        o 12;GRAY;echo "u=Unknown $(W)-$(GRAY) i=Install $(W)-$(GRAY) h=Hold$(o 48)a=Automatic $(W)-$(GRAY) m=Manual";N
-        line '-' dP 2/78
-        if (( ${#VERSIONS[@]} > 1 )); then
-            o2;Yi;echo "You can switch the $(lG)<ACTIVE>$(Yi) and $(lG)<CONNECTED>$(Yi) version with:"
-            o 35;B;echo "$me --switch-version"
-            line '-' dP 2/78
-        fi
-        ${quiet:-false} || call_me installed
-    #    if ! $quiet && $supported; then
-        f
-        ${lonly:-false} && return 0
-        ${only:-false} && exit 0 || anykey
-
-        if ${supported:-false}; then
-            if ((aimct));then
-                ((aimct==1))&&plu='s a:'||plu=':s'
-                bundle echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"
-                replace_aim
-                anykey
             fi
-            remove_unused_sapis
-            change_sapi
-            remove_dependency_packages
-            remove_meta_packages
-            kill_spinner
-            versions_iterate check_config
+        else
+            case "${sapi%:*}" in
+               cli) o5;fO;echo -n "\\php binary$(O) /usr/bin/php${sapi#*:}";N
+                    if [ "$(readlink -e $(command -v php))" = "/usr/bin/php${sapi#*:}" ]; then
+                        lG;echo " <ACTIVE> linked to generic /usr/bin/php";N
+                    else
+                        W;echo " <<INACTIVE not linked";N
+                    fi
+                    ;;
+            phpdbg) o5;fO;echo -n "\\phpdbg binary$(O) /usr/bin/phpdbg${sapi#*:}";N
+                    if [ "$(readlink -e $(command -v phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
+                        lG;echo " <ACTIVE> linked to generic /usr/bin/phpdbg";N
+                    else
+                        W;echo " <<INACTIVE not linked";N
+                    fi
+                    ;;
+               fpm) pv=${pkg#php}; pv=${pv%-fpm} # extract version
+                    if (( ${#sockets[@]} )); then
+                        populate_httpd_ wk_enabled
+                        local connected_httpd socket
+                        for i in ${!sockets[@]}; do
+                            connected_httpd=''
+                            socket=${sockets[i]}
+                            if (( ${#WK_HTTPD_ENABLED[@]} )); then
+                                for httpd in ${WK_HTTPD_ENABLED[@]}; do
+                                    case $httpd in
+                                       apache2) if apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )); then
+                                                    grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
+                                                else
+                                                    continue
+                                                fi
+                                                ;;
+                                         nginx) if nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )); then
+                                                    grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
+                                                else
+                                                    continue
+                                                fi
+                                    esac
+                                    case ${SERVER_STATUS["$httpd"]} in
+                                        2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
+                                        3)  connected_httpd=" $httpd $connected_httpd"
+                                    esac
+                                done
+                            fi
+                            o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
+                            if [ -z "$connected_httpd" ]; then
+                                SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
+                            else
+                                SAPI_FPM[$pv]='a';lG;echo " <CONNECTED>$connected_httpd";N
+                            fi
+                        done
+                    fi
+                    ;;
+                *)  :
+            esac
+        fi # <-- included modules
+    done # --> admin modules
+    if (( iam )); then
+        (( iam == 1 )) && plu='' || plu='s'
+        line '-' dP 2/78
+        o2;B;echo "actual PHP pecl extension$plu $(R)NOT$(B) installed and managed by dpkg"
+        line '-' dP 2/78
+        for pv in ${VERSIONS[@]}; do
+            eval iam=\${#EIBY4_${pv//./}[@]}
+            if (( iam )); then
+                (( iam == 1 )) || plu='s'
+                o2;pf;Y;printf "php$pv$(f;o5;dY)\\module$plu installed by admin: "
+                C; for i in $(eval echo \${!EIBY4_${pv//./}[@]}); do
+                    printf "$(eval echo \"\${EIBY4_${pv//./}[i]}\") "
+                done; N; f
+            fi
+            eval iam=\${#C4EIBY4_${pv//./}[@]}
+            if (( iam )); then
+                (( iam == 1 )) && plu='s a:' || plu=':s'
+                line '-' P 5/75
+                o5;B;echo "for this $(Y)php$pv$(B) module${plu#*:} installed by admin there exist${plu%:*} packaged version${plu#*:}:$(N)"
+                line '-' P 5/75
+                for i in $(eval echo \${!C4EIBY4_${pv//./}[@]}); do
+#                    [ "$pv" = "$PHP_VERSION" ] && (( aimct++ ))
+                    (( aimct++ ))
+                    pkgmod="$(eval echo \"\${C4EIBY4_${pv//./}[i]}\")"
+                    pkg=${pkgmod%:*} mod=${pkgmod#*:}
+                    o5;pf;C;echo "$mod$(line ' ' Cbg $((c2-1))/51 a0;o $c2;Cbg)$pkg$(N)"
+                done
+            fi
+        done
+    fi # <--
+    line '-' dP 2/78
+    o2;Y;echo "Status:$(o 9;pf;W)First letter (Desired Action):$(o 45;pf)Second letter (Package Status):";N
+    o 12;GRAY;echo "u=Unknown $(W)-$(GRAY) i=Install $(W)-$(GRAY) h=Hold$(o 48)a=Automatic $(W)-$(GRAY) m=Manual";N
+    line '-' dP 2/78
+    if (( ${#VERSIONS[@]} > 1 )); then
+        o2;Yi;echo "You can switch the $(lG)<ACTIVE>$(Yi) and $(lG)<CONNECTED>$(Yi) version with:"
+        o 35;B;echo "$me --switch-version"
+        line '-' dP 2/78
+    fi
+    ${quiet:-false} || call_me installed
+#    if ! $quiet && $supported; then
+    f
+    ${lonly:-false} && return 0
+    ${only:-false} && exit 0 || anykey
+
+    if ${supported:-false}; then
+        if ((aimct));then
+            ((aimct==1))&&plu='s a:'||plu=':s'
+            bundle echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3;N)"
+            replace_aim
+            anykey
         fi
-    }
+        remove_unused_sapis
+        change_sapi
+        remove_dependency_packages
+        remove_meta_packages
+        kill_spinner
+        versions_iterate check_config
+    fi
 }

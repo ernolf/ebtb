@@ -7,193 +7,192 @@ __copyright__
 __license__
 #
 
-${DB_BASHLIB:-false} || {
-    DB_BASHLIB=:
+${DB_BASHLIB:-false} && return
+DB_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire $sin/github_api)
-    . <(lrequire nc/nextcloud)
+. <(lrequire $sin/github_api)
+. <(lrequire nc/nextcloud)
 
-    # used (globaly) by database:
-    declare runtime_etag="$rte.000000"
-    declare database_created=false
-    declare appstore_dir="$TMPDIR/nc-appstore-tmp"
-    declare db="$appstore_dir/apps.db"
-    declare -p db_sleep >/dev/null 2>&1 || declare -r db_sleep=0.1
-    declare -p db_max_attempts >/dev/null 2>&1 || declare -ri db_max_attempts=10
+# used (globaly) by database:
+declare runtime_etag="$rte.000000"
+declare database_created=false
+declare appstore_dir="$TMPDIR/nc-appstore-tmp"
+declare db="$appstore_dir/apps.db"
+declare -p db_sleep >/dev/null 2>&1 || declare -r db_sleep=0.1
+declare -p db_max_attempts >/dev/null 2>&1 || declare -ri db_max_attempts=10
 
-    jsontf(){
-        local t
-        t="$(mktemp -p $appstore_dir -t json_data_XXXXXXXXXXXX)"
-        chown "$NC_USER":"$NC_USER" "$t"
-        chmod 666 "$t"
-        echo "$t"
-    }
+jsontf(){
+    local t
+    t="$(mktemp -p $appstore_dir -t json_data_XXXXXXXXXXXX)"
+    chown "$NC_USER":"$NC_USER" "$t"
+    chmod 666 "$t"
+    echo "$t"
+}
 
-    delete_db(){
-        rm -rf "$appstore_dir"
-    }
+delete_db(){
+    rm -rf "$appstore_dir"
+}
 
-    rebuild_db(){
-        delete_db
-        database_created=false
-        echo "database and json object files deleted"
-        anykey
-    }
+rebuild_db(){
+    delete_db
+    database_created=false
+    echo "database and json object files deleted"
+    anykey
+}
 
-    # initialise the SQLite-database-file, in case it does not exist
-    init_db(){ [ -d "$appstore_dir" ]||{ mkdir -m 1777 "$appstore_dir";chown "$NC_USER":"$NC_USER" "$appstore_dir";}
-        sqlite3 "$db" <<SQL&&chmod 666 "$db"
-        CREATE TABLE IF NOT EXISTS versions (platform TEXT PRIMARY KEY, major INTEGER, minor INTEGER, version TEXT, versionstring TEXT, tag TEXT, meta TEXT);
-        CREATE TABLE IF NOT EXISTS shipped (platform TEXT PRIMARY KEY, json_data BLOB);
-        CREATE TABLE IF NOT EXISTS categories (etag TEXT, lang TEXT, json_data TEXT);
-        CREATE TABLE IF NOT EXISTS app_ids (section TEXT PRIMARY KEY, etag TEXT, ids BLOB);
-        CREATE TABLE IF NOT EXISTS app_lists (section TEXT PRIMARY KEY, etag TEXT, json_data TEXT);
-        CREATE TABLE IF NOT EXISTS apps (platform TEXT PRIMARY KEY, etag TEXT, json_data_file TEXT);
-        CREATE TABLE IF NOT EXISTS filtered_apps (id INTEGER PRIMARY KEY AUTOINCREMENT, platform TEXT, lang TEXT, etag TEXT, json_data_file TEXT, UNIQUE(platform, lang));
+# initialise the SQLite-database-file, in case it does not exist
+init_db(){ [ -d "$appstore_dir" ]||{ mkdir -m 1777 "$appstore_dir";chown "$NC_USER":"$NC_USER" "$appstore_dir";}
+    sqlite3 "$db" <<SQL&&chmod 666 "$db"
+    CREATE TABLE IF NOT EXISTS versions (platform TEXT PRIMARY KEY, major INTEGER, minor INTEGER, version TEXT, versionstring TEXT, tag TEXT, meta TEXT);
+    CREATE TABLE IF NOT EXISTS shipped (platform TEXT PRIMARY KEY, json_data BLOB);
+    CREATE TABLE IF NOT EXISTS categories (etag TEXT, lang TEXT, json_data TEXT);
+    CREATE TABLE IF NOT EXISTS app_ids (section TEXT PRIMARY KEY, etag TEXT, ids BLOB);
+    CREATE TABLE IF NOT EXISTS app_lists (section TEXT PRIMARY KEY, etag TEXT, json_data TEXT);
+    CREATE TABLE IF NOT EXISTS apps (platform TEXT PRIMARY KEY, etag TEXT, json_data_file TEXT);
+    CREATE TABLE IF NOT EXISTS filtered_apps (id INTEGER PRIMARY KEY AUTOINCREMENT, platform TEXT, lang TEXT, etag TEXT, json_data_file TEXT, UNIQUE(platform, lang));
 SQL
-    }
-    # function to read the database
-    r_db(){
-        local -i db_attempts="$db_max_attempts"
-        while ((db_attempts)); do
-            ((db_attempts--))
-            sqlite3 "$db" "$1" 2>/dev/null && break || sleep "$db_sleep"
-        done
-    }
+}
+# function to read the database
+r_db(){
+    local -i db_attempts="$db_max_attempts"
+    while ((db_attempts)); do
+        ((db_attempts--))
+        sqlite3 "$db" "$1" 2>/dev/null && break || sleep "$db_sleep"
+    done
+}
 
-    # function to write in the database
-    w_db(){
-        local table="$1" arg fields
-        shift
-        local -a values=()
-        for arg in "$@"; do
-            values+=(\'$arg\')
-        done
-        fields="$(r_db "PRAGMA table_info($table);" | awk -F\| '{print $2}' | paste -sd, - | sed 's/id,//')"
-        local -i db_attempts=$db_max_attempts
-        while ((db_attempts)); do
-            ((db_attempts--))
-            sqlite3 "$db" <<SQL 2>/dev/null && break || sleep "$db_sleep"
-            BEGIN;
-            INSERT OR REPLACE INTO $table ($fields)
-            VALUES ($(IFS=,;echo "${values[*]}"));
-            COMMIT;
+# function to write in the database
+w_db(){
+    local table="$1" arg fields
+    shift
+    local -a values=()
+    for arg in "$@"; do
+        values+=(\'$arg\')
+    done
+    fields="$(r_db "PRAGMA table_info($table);" | awk -F\| '{print $2}' | paste -sd, - | sed 's/id,//')"
+    local -i db_attempts=$db_max_attempts
+    while ((db_attempts)); do
+        ((db_attempts--))
+        sqlite3 "$db" <<SQL 2>/dev/null && break || sleep "$db_sleep"
+        BEGIN;
+        INSERT OR REPLACE INTO $table ($fields)
+        VALUES ($(IFS=,;echo "${values[*]}"));
+        COMMIT;
 SQL
-        done
-    }
+    done
+}
 
-    # function to write file2blob into the database
-    w_f2b_db(){
-        local table="$1" arg fields
-        shift
-        local -a values
-        for arg in "$@"; do
-            [ -s "$arg" ] && arg=$(file2blob $arg)
-            values+=(\'$arg\')
-        done
-        fields="$(r_db "PRAGMA table_info($table);" | awk -F\| '{print $2}' | paste -sd, -)"
-        local -i db_attempts=$db_max_attempts
-        while ((db_attempts)); do
-            ((db_attempts--))
-            sqlite3 "$db" <<SQL 2>/dev/null && break || sleep "$db_sleep"
-            BEGIN;
-            INSERT OR REPLACE INTO $table ($fields)
-            VALUES ($(IFS=,;echo "${values[*]}"));
-            COMMIT;
+# function to write file2blob into the database
+w_f2b_db(){
+    local table="$1" arg fields
+    shift
+    local -a values
+    for arg in "$@"; do
+        [ -s "$arg" ] && arg=$(file2blob $arg)
+        values+=(\'$arg\')
+    done
+    fields="$(r_db "PRAGMA table_info($table);" | awk -F\| '{print $2}' | paste -sd, -)"
+    local -i db_attempts=$db_max_attempts
+    while ((db_attempts)); do
+        ((db_attempts--))
+        sqlite3 "$db" <<SQL 2>/dev/null && break || sleep "$db_sleep"
+        BEGIN;
+        INSERT OR REPLACE INTO $table ($fields)
+        VALUES ($(IFS=,;echo "${values[*]}"));
+        COMMIT;
 SQL
-        done
+    done
+}
+
+create_database(){
+    local -l latest
+    local meta version_php version versionstring major minor item
+    rawURL="$GITHUB_RAW/server"
+
+    write_local_ids(){
+        local local_applist="$(occ app:list --output=json)"
+        w_db 'app_lists' 'local' "$runtime_etag" "$local_applist" & local -i job_id=$!
+        local local_ids="$(echo "$local_applist" | jq -r '.enabled + .disabled|keys_unsorted[]' | base64 -w 0)"
+        w_db 'app_ids' 'local' "$runtime_etag" "$local_ids"
+        wait "$job_id"
     }
 
-    create_database(){
-        local -l latest
-        local meta version_php version versionstring major minor item
-        rawURL="$GITHUB_RAW/server"
+    write_appstore_ids(){
+        local platform="$1"
+        appstore "platform=$platform" 'ids' 'map(.id)|.[]'
+    }
 
-        write_local_ids(){
-            local local_applist="$(occ app:list --output=json)"
-            w_db 'app_lists' 'local' "$runtime_etag" "$local_applist" & local -i job_id=$!
-            local local_ids="$(echo "$local_applist" | jq -r '.enabled + .disabled|keys_unsorted[]' | base64 -w 0)"
-            w_db 'app_ids' 'local' "$runtime_etag" "$local_ids"
-            wait "$job_id"
-        }
-
-        write_appstore_ids(){
-            local platform="$1"
-            appstore "platform=$platform" 'ids' 'map(.id)|.[]'
-        }
-
-        database_created(){
-            sqlite3 "$db" "CREATE TABLE IF NOT EXISTS database_created (runtime_etag TEXT PRIMARY KEY);"
-        }
+    database_created(){
+        sqlite3 "$db" "CREATE TABLE IF NOT EXISTS database_created (runtime_etag TEXT PRIMARY KEY);"
+    }
 
 # TODO 0 -->
 #TODO: create tests if up to date
-#        [ -f "$db" ] && return 0
+#    [ -f "$db" ] && return 0
 # TODO <-- 0
-        if $bgjobs; then
-            GRAY;echo " . . . . . . . . . . . . . . .  create  database  . . . . . . . . . . . . . . .";N
-            $pager || spinner &
-        fi
-        init_db
+    if $bgjobs; then
+        GRAY;echo " . . . . . . . . . . . . . . .  create  database  . . . . . . . . . . . . . . .";N
+        $pager || spinner &
+    fi
+    init_db
 
-        if $bgjobs; then
-            write_appstore_ids 'all' & local job_ids="$!"
-            write_local_ids & job_ids="$job_ids $!"
-        else
-            write_appstore_ids 'all'
-            write_local_ids
-        fi
+    if $bgjobs; then
+        write_appstore_ids 'all' & local job_ids="$!"
+        write_local_ids & job_ids="$job_ids $!"
+    else
+        write_appstore_ids 'all'
+        write_local_ids
+    fi
 
-        for latest in $(list_latest) master; do
-            meta="stable"
+    for latest in $(list_latest) master; do
+        meta="stable"
 
 # TODO 1 -->
 # TODO Possible fix for wrong github labels:
-#        case $latest in
-#            v28.0.0rc1) version="28.0.0.7" versionstring="28.0.0 RC1";;
-#            *)
+#    case $latest in
+#        v28.0.0rc1) version="28.0.0.7" versionstring="28.0.0 RC1";;
+#        *)
 # TODO <-- 1
-            version_php="$(tf)"
-            curl -so "$version_php" "$rawURL/$latest/version.php"
-            version="$(nc_version_ short $version_php)"
-            versionstring="$(nc_version_ string $version_php)"
+        version_php="$(tf)"
+        curl -so "$version_php" "$rawURL/$latest/version.php"
+        version="$(nc_version_ short $version_php)"
+        versionstring="$(nc_version_ string $version_php)"
 # TODO 2 -->
-#        esac
+#    esac
 # TODO <-- 2
 
-            local -a parts=(${version//./ })
-            major="${parts[0]}" minor="${parts[1]}"
-            if [[ "$latest" == *a* || "$latest" == *rc* ]]; then
-                meta="prerelease"
-            fi
-            for item in "${LATEST_EOL[@]}"; do
-                if [ "$item" = "$version" ]; then
-                    meta=eol
-                    break
-                fi
-            done
-            if $bgjobs; then
-                write_appstore_ids "$version" & job_ids="$job_ids $!"
-                w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta" & job_ids="$job_ids $!"
-                w_db shipped "$version" "$(curl -s "$rawURL/$latest/core/shipped.json" | jq -c '.' | base64 -w 0)" & job_ids="$job_ids $!"
-            else
-                write_appstore_ids "$version"
-                w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta"
-                w_db shipped "$version" "$(curl -s "$rawURL/$latest/core/shipped.json" | jq -c '.' | base64 -w 0)"
+        local -a parts=(${version//./ })
+        major="${parts[0]}" minor="${parts[1]}"
+        if [[ "$latest" == *a* || "$latest" == *rc* ]]; then
+            meta="prerelease"
+        fi
+        for item in "${LATEST_EOL[@]}"; do
+            if [ "$item" = "$version" ]; then
+                meta=eol
+                break
             fi
         done
-        database_created && w_db database_created $runtime_etag && database_created=true
         if $bgjobs; then
-            wait $job_ids
-            if $pager; then
-                echo "  database   created"
-                line '=' N 80
-            else
-                kill_spinner
-            fi
+            write_appstore_ids "$version" & job_ids="$job_ids $!"
+            w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta" & job_ids="$job_ids $!"
+            w_db shipped "$version" "$(curl -s "$rawURL/$latest/core/shipped.json" | jq -c '.' | base64 -w 0)" & job_ids="$job_ids $!"
+        else
+            write_appstore_ids "$version"
+            w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta"
+            w_db shipped "$version" "$(curl -s "$rawURL/$latest/core/shipped.json" | jq -c '.' | base64 -w 0)"
         fi
-    }
+    done
+    database_created && w_db database_created $runtime_etag && database_created=true
+    if $bgjobs; then
+        wait $job_ids
+        if $pager; then
+            echo "  database   created"
+            line '=' N 80
+        else
+            kill_spinner
+        fi
+    fi
 }

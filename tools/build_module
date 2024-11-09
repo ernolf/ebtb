@@ -47,6 +47,8 @@ done
 
 delp2ei "# COMMENT -->" $output_module
 
+sed -i '/^# TODO/d' $output_module
+
 tempfile=$(mktemp)
 
 # Replace placeholders with their actual contents

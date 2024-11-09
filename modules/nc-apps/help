@@ -7,40 +7,40 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} || {
-    HELP_BASHLIB=:
+${HELP_BASHLIB:-false} && return
+HELP_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire php/version)
-    . <(lrequire nc/nextcloud_logo)
-    . <(lrequire $sin/l10n)
+. <(lrequire php/version)
+. <(lrequire nc/nextcloud_logo)
+. <(lrequire $sin/l10n)
 
-    print_help(){
-        # for backwards compatibilty
-        if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
-            declare upinf="$updateinfo"
-        fi
+print_help(){
+    # for backwards compatibilty
+    if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+        declare upinf="$updateinfo"
+    fi
 
-        local bak=false s htf=$(tf) cat_or_pager
-        case "${1:---pager}" in
-            --cat)  cat_or_pager='cat' ;;
-          --pager)  cat_or_pager='less -R'
-                    nextcloud_logo
-        esac
-        if (($(backups|wc -l)));then bak=true
-            r_b(){ echo -e "\n    $me restore_backup";}
-            [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
-        else r_b(){ :;}
-        fi
-        local phpversionoption=""
-        local -a alternative_php_versions=($(php_ver alternatives))
-        if ((${#alternative_php_versions[@]})); then
-            phpversionoption=" [ --php=PHP-VERSION ]"
-        fi
+    local bak=false s htf=$(tf) cat_or_pager
+    case "${1:---pager}" in
+        --cat)  cat_or_pager='cat' ;;
+      --pager)  cat_or_pager='less -R'
+                nextcloud_logo
+    esac
+    if (($(backups|wc -l)));then bak=true
+        r_b(){ echo -e "\n    $me restore_backup";}
+        [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
+    else r_b(){ :;}
+    fi
+    local phpversionoption=""
+    local -a alternative_php_versions=($(php_ver alternatives))
+    if ((${#alternative_php_versions[@]})); then
+        phpversionoption=" [ --php=PHP-VERSION ]"
+    fi
 
-        cat<<HELP >>$htf
+    cat<<HELP >>$htf
 $(nextcloud_logo)
 
 
@@ -139,15 +139,15 @@ $(nextcloud_logo)
    --markdown               list as markdown table code
 
 HELP
-        if ((${#alternative_php_versions[@]})); then
-            local plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
-            cat << --PHP >>$htf
+    if ((${#alternative_php_versions[@]})); then
+        local plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
+        cat << --PHP >>$htf
    --php=PHP-VERSION        use another installed php version for updates. Possible (installed) PHP-VERSION$plural: $(echo "${alternative_php_versions[@]}")
                             example: --php=${alternative_php_versions[0]}
 
 --PHP
-        fi
-        cat <<HELP >>$htf
+    fi
+    cat <<HELP >>$htf
     *) NC-VER = only 2 digits
 
    --version=NC-VER*)       simulates an assumed nextcloud version instead of actual installed real nextcloud version.
@@ -161,8 +161,8 @@ HELP
    integrity_check          Verify the integrity of this script with signature
 
 HELP
-        if $bak;then
-            cat <<BACKUP >>$htf
+    if $bak;then
+        cat <<BACKUP >>$htf
    restore_backup           restore an older version of this script from backup
                             ($(backups|wc -l) backup$s available, you must be root)
 
@@ -205,7 +205,6 @@ BACKUP
    $(W)... many many more (hidden) features....$(N)
 
 EXAMPLES
-        $cat_or_pager $htf
-        exit 0
-    }
+    $cat_or_pager $htf
+    exit 0
 }

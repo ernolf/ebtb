@@ -7,73 +7,72 @@ __copyright__
 __license__
 #
 
-${PATCH_BASHLIB:-false} || {
-    PATCH_BASHLIB=:
+${PATCH_BASHLIB:-false} && return
+PATCH_BASHLIB=:
 
-    patch_84() {
-        local include_dirs files file headers header found dir alt_header
+patch_84() {
+    local include_dirs files file headers header found dir alt_header
 
-        # Get the PHP include directories (retrieved from php-config) and sort by length (longest first)
-        include_dirs=$(php-config$php_version --includes | sed 's/-I//g' | tr ' ' '\n' | awk '{ print length, $0 }' | sort -nr | cut -d" " -f2-)
+    # Get the PHP include directories (retrieved from php-config) and sort by length (longest first)
+    include_dirs=$(php-config$php_version --includes | sed 's/-I//g' | tr ' ' '\n' | awk '{ print length, $0 }' | sort -nr | cut -d" " -f2-)
 
-        # Find all source files that include PHP headers
-        files=$(grep -rl '#include [<"]' --include="*.c" --include="*.h" .)
+    # Find all source files that include PHP headers
+    files=$(grep -rl '#include [<"]' --include="*.c" --include="*.h" .)
 
-        # Loop through each file to verify header paths
-        for file in $files; do
+    # Loop through each file to verify header paths
+    for file in $files; do
 
-            # Check for occurrences of php_rand.h and rename them to php_random.h
-            sed -i 's|#include [<"]\(.*\)/php_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_rand.h to php_random.h in $file"
-            sed -i 's|#include [<"]\(.*\)/php_mt_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_mt_rand.h to php_random.h in $file"
+        # Check for occurrences of php_rand.h and rename them to php_random.h
+        sed -i 's|#include [<"]\(.*\)/php_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_rand.h to php_random.h in $file"
+        sed -i 's|#include [<"]\(.*\)/php_mt_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_mt_rand.h to php_random.h in $file"
 
-            # Replace php_rand() with php_mt_rand() in the source file https://github.com/php/php-src/commit/8cf8751533aa37479f8f2e229e407e9bf6025237
-            sed -i 's/php_rand(/php_mt_rand(/g' "$file" && echo "Correcting php_rand() to php_mt_rand() in $file"
+        # Replace php_rand() with php_mt_rand() in the source file https://github.com/php/php-src/commit/8cf8751533aa37479f8f2e229e407e9bf6025237
+        sed -i 's/php_rand(/php_mt_rand(/g' "$file" && echo "Correcting php_rand() to php_mt_rand() in $file"
 
-            # Replace deprecated PHP string functions with the new ones
-            sed -i 's/php_strtoupper(/zend_str_toupper(/g' "$file" && echo "Correcting php_strtoupper() to zend_str_toupper() in $file"
-            sed -i 's/php_string_toupper(/zend_string_toupper(/g' "$file" && echo "Correcting php_string_toupper() to zend_string_toupper() in $file"
-            sed -i 's/php_strtolower(/zend_str_tolower(/g' "$file" && echo "Correcting php_strtolower() to zend_str_tolower() in $file"
-            sed -i 's/php_string_tolower(/zend_string_tolower(/g' "$file" && echo "Correcting php_string_tolower() to zend_string_tolower() in $file"
+        # Replace deprecated PHP string functions with the new ones
+        sed -i 's/php_strtoupper(/zend_str_toupper(/g' "$file" && echo "Correcting php_strtoupper() to zend_str_toupper() in $file"
+        sed -i 's/php_string_toupper(/zend_string_toupper(/g' "$file" && echo "Correcting php_string_toupper() to zend_string_toupper() in $file"
+        sed -i 's/php_strtolower(/zend_str_tolower(/g' "$file" && echo "Correcting php_strtolower() to zend_str_tolower() in $file"
+        sed -i 's/php_string_tolower(/zend_string_tolower(/g' "$file" && echo "Correcting php_string_tolower() to zend_string_tolower() in $file"
 
-            # Find all included headers in the source file
-            headers=$(grep -o '#include <[^>]\+>' "$file" | sed 's/#include <\(.*\)>/\1/')
+        # Find all included headers in the source file
+        headers=$(grep -o '#include <[^>]\+>' "$file" | sed 's/#include <\(.*\)>/\1/')
 
-            # Check each header file if it exists in one of the PHP include directories
-            for header in $headers; do
-                found=false
+        # Check each header file if it exists in one of the PHP include directories
+        for header in $headers; do
+            found=false
+            for dir in $include_dirs; do
+                if [[ -f "$dir/$header" ]]; then
+                    found=true
+                    break
+                fi
+            done
+
+            # If not found in the default path, try to find it in alternative directories
+            if ! $found; then
+                # Search in all directories for the header
                 for dir in $include_dirs; do
-                    if [[ -f "$dir/$header" ]]; then
-                        found=true
+                    alt_header=$(find "$dir" -name "$(basename "$header")" -print -quit)
+                    if [[ -n "$alt_header" ]]; then
+                        echo "Correcting $header to ${alt_header#$dir/} in $file"
+                        sed -i "s|#include <$header>|#include <${alt_header#$dir/}>|" "$file"
                         break
                     fi
                 done
-
-                # If not found in the default path, try to find it in alternative directories
-                if ! $found; then
-                    # Search in all directories for the header
-                    for dir in $include_dirs; do
-                        alt_header=$(find "$dir" -name "$(basename "$header")" -print -quit)
-                        if [[ -n "$alt_header" ]]; then
-                            echo "Correcting $header to ${alt_header#$dir/} in $file"
-                            sed -i "s|#include <$header>|#include <${alt_header#$dir/}>|" "$file"
-                            break
-                        fi
-                    done
-                fi
-            done
+            fi
         done
-    }
+    done
+}
 
-    patch_code() {
-        case $php_version in
-            8.4) patch_84
-        esac
-    }
+patch_code() {
+    case $php_version in
+        8.4) patch_84
+    esac
+}
 
-    patch_m4(){
-        if [ -n "$m4_patch" ]; then
-            B;echo "- patching config.m4";N
-            sed -i "$m4_patch" config.m4
-        fi
-    }
+patch_m4(){
+    if [ -n "$m4_patch" ]; then
+        B;echo "- patching config.m4";N
+        sed -i "$m4_patch" config.m4
+    fi
 }

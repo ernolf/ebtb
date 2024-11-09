@@ -7,122 +7,122 @@ __copyright__
 __license__
 #
 
-${ASK_BASHLIB:-false} || {
-    ASK_BASHLIB=:
+${ASK_BASHLIB:-false} && return
+ASK_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
-    . <(lrequire ansi)
-    . <(lrequire prefix)
-    . <(require mh)
+. <(lrequire basics)
+. <(lrequire ansi)
+. <(lrequire prefix)
+. <(lrequire awksed)
+. <(require mh)
 
-    # ask handling
-    declare YES NO Yes No
-    YES="$(lG)yes$(N)"
-    NO="$(R)no$(N)"
-    Yes="[$(lG)y$(N)]es"
-    No="[$(R)n$(N)]o"
+# ask handling
+declare YES NO Yes No
+YES="$(lG)yes$(N)"
+NO="$(R)no$(N)"
+Yes="[$(lG)y$(N)]es"
+No="[$(R)n$(N)]o"
 # TODO 0 -->
-    #YES="[$(lG)y$(N)]es"
-    #NO="[$(R)n$(N)]o"
+#YES="[$(lG)y$(N)]es"
+#NO="[$(R)n$(N)]o"
 # TODO <-- 0
 
-    flat(){
-        echo "$1" | sed -e 's/\[//' -e 's/\]//'
-    }
+flat(){
+    echo "$1" | sed -e 's/\[//' -e 's/\]//'
+}
 
-    abrv(){
-        echo "$1" | sed -e 's/.*\[//' -e 's/\].*//'
-    }
+abrv(){
+    echo "$1" | sed -e 's/.*\[//' -e 's/\].*//'
+}
 
 # TODO 1 -->
-    #spacefrom(){ echo "$1"|sed 's/[^[:space:]].*//';}
+#spacefrom(){ echo "$1"|sed 's/[^[:space:]].*//';}
 
 # TODO <-- 1
-    first_idx(){
-        local str="$1" qpref="$(qpf)"
-        local -i i=0
-        # remove the prefix (qpref) from the beginning of the string.
-        str="${str/#$qpref/$(printf '%*s' "${#qpref}" '')}"
-        # iterates through the characters of the modified string
-        # and print the index of the first non-space character.
-        while (( i < ${#str} )); do
-            char="${str:$i:1}"
-            [ "$char" = " " ] || {
-                echo "$i"
-                return
-            }
-            ((i++))
-        done
-        # if the entire string consists of spaces, prints the length of the string.
-        echo "${#str}"
-    }
+first_idx(){
+    local str="$1" qpref="$(qpf)"
+    local -i i=0
+    # remove the prefix (qpref) from the beginning of the string.
+    str="${str/#$qpref/$(printf '%*s' "${#qpref}" '')}"
+    # iterates through the characters of the modified string
+    # and print the index of the first non-space character.
+    while (( i < ${#str} )); do
+        char="${str:$i:1}"
+        [ "$char" = " " ] || {
+            echo "$i"
+            return
+        }
+        ((i++))
+    done
+    # if the entire string consists of spaces, prints the length of the string.
+    echo "${#str}"
+}
 
-    # $1 Question, $2 Default Answer, $3 Answer that returns 0 (true), $4 Answer that returns 1 (false)
-    ask(){
-        local question d_answer yes no noansi_question_lastline noansi_d_answer noansi_yes noansi_no newline cursor
-        local -l answer
-        local -i lll lda ly ln ml fidx=$(first_idx "$question") r
-        question="$1"
-        d_answer="$2"
-        mh "$(noansi "$question")" &
-        [ -z "$3" ] && yes="$Yes" || yes="$3"
-        [ -z "$4" ] && no="$No" || no="$4"
-        noansi_question_lastline="$(noansi "${question##*\\n}")"
-        noansi_d_answer="$(noansi "$d_answer")"
-        noansi_yes="$(noansi "$yes")"
-        noansi_no="$(noansi "$no")"
-        lll=${#noansi_question_lastline}
-        lda=${#noansi_d_answer}
-        ly=${#noansi_yes}
-        ln=${#noansi_no}
-        if grep -qsw 'hide' "$CURSOR"; then
-            cursor='hide'
+# $1 Question, $2 Default Answer, $3 Answer that returns 0 (true), $4 Answer that returns 1 (false)
+ask(){
+    local question d_answer yes no noansi_question_lastline noansi_d_answer noansi_yes noansi_no newline cursor
+    local -l answer
+    local -i lll lda ly ln ml fidx=$(first_idx "$question") r
+    question="$1"
+    d_answer="$2"
+    mh "$(noansi "$question")"
+    [ -z "$3" ] && yes="$Yes" || yes="$3"
+    [ -z "$4" ] && no="$No" || no="$4"
+    noansi_question_lastline="$(noansi "${question##*\\n}")"
+    noansi_d_answer="$(noansi "$d_answer")"
+    noansi_yes="$(noansi "$yes")"
+    noansi_no="$(noansi "$no")"
+    lll=${#noansi_question_lastline}
+    lda=${#noansi_d_answer}
+    ly=${#noansi_yes}
+    ln=${#noansi_no}
+    if grep -qsw 'hide' "$CURSOR"; then
+        cursor='hide'
+    else
+        cursor='show'
+    fi
+    if (( $(($(tput cols)-23)) < 65 )); then
+        ml=65
+    else
+        ml=$(($(tput cols)-23))
+    fi
+    if (( $(( lll + lda + ly + ln )) > ml )); then
+        newline="$(f;o $fidx;N)Make your choice: "
+    else
+        newline="$(N) "
+    fi
+    cursor_ show
+    while :; do
+        printf "$question?$newline($yes or $no) [$d_answer]: "
+        read -r answer
+        mh "A: ${answer:="$noansi_d_answer"}"
+        if [ "$answer" = "$(flat "${noansi_yes,,}")" ] || [ "$answer" = "$(abrv "${noansi_yes,,}")" ]; then
+            r=0
+            break
+        elif [ "$answer" = "$(flat "${noansi_no,,}")" ] || [ "$answer" = "$(abrv "${noansi_no,,}")" ]; then
+            r=1
+            break
         else
-            cursor='show'
+            o $fidx
+            echo "- Please answer $(flat "$noansi_yes") ($(abrv "$noansi_yes")) or $(flat "$noansi_no") ($(abrv "$noansi_no"))."
         fi
-        if (( $(($(tput cols)-23)) < 65 )); then
-            ml=65
-        else
-            ml=$(($(tput cols)-23))
-        fi
-        if (( $(( lll + lda + ly + ln )) > ml )); then
-            newline="$(f;o $fidx;N)Make your choice: "
-        else
-            newline="$(N) "
-        fi
-        cursor_ show
-        while :; do
-            printf "$question?$newline($yes or $no) [$d_answer]: "
-            read -r answer
-            mh "A: ${answer:="$noansi_d_answer"}"
-            if [ "$answer" = "$(flat "${noansi_yes,,}")" ] || [ "$answer" = "$(abrv "${noansi_yes,,}")" ]; then
-                r=0
-                break
-            elif [ "$answer" = "$(flat "${noansi_no,,}")" ] || [ "$answer" = "$(abrv "${noansi_no,,}")" ]; then
-                r=1
-                break
-            else
-                o $fidx
-                echo "- Please answer $(flat "$noansi_yes") ($(abrv "$noansi_yes")) or $(flat "$noansi_no") ($(abrv "$noansi_no"))."
-            fi
-        done
-        cursor_ $cursor
-        return $r
-    }
+    done
+    cursor_ $cursor
+    return $r
+}
 
-    bundle(){
-        local hauler
-        local -a payload
-        hauler="$1"
-        shift
-        haul "$hauler $@" # &
+bundle(){
+    local hauler
+    local -a payload
+    hauler="$1"
+    shift
+    haul "$hauler $@"
 # TODO 2 -->
-#        sleep 1
+#    sleep 1
 # TODO <-- 2
-        mapfile -t payload< <($hauler "$@" 2>&1)
-        for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
-    }
+    mapfile -t payload< <($hauler "$@" 2>&1)
+    for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
 }

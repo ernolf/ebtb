@@ -7,21 +7,21 @@ __copyright__
 __license__
 #
 
-${DISCLAIMER_BASHLIB:-false} || {
-    DISCLAIMER_BASHLIB=:
+${DISCLAIMER_BASHLIB:-false} && return
+DISCLAIMER_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire anykey)
-    . <(lrequire php/logo)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire anykey)
+. <(lrequire php/logo)
 
-    disclaimer(){
-        clear
-        phplogo
-        cat << DISCLAIMER
+disclaimer(){
+    clear
+    phplogo
+    cat << DISCLAIMER
 
   Disclaimer
   ==========
@@ -46,6 +46,5 @@ ${DISCLAIMER_BASHLIB:-false} || {
   https://help.nextcloud.com/t/nextcloud-28-with-php8-3-on-debian-ubuntu-missing-modules-solution/174766
 
 DISCLAIMER
-        anykey
-    }
+    anykey
 }

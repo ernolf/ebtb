@@ -7,45 +7,46 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} || {
-    HELP_BASHLIB=:
+${HELP_BASHLIB:-false} && return
+HELP_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire ansi)
+. <(lrequire ansi)
 
-    # help information
-    try_help(){
-        echo "try $(B)$me -h$(N) for help";f
-        exit 1
-    }
+# help information
+try_help(){
+    echo "try $(B)$me -h$(N) for help";f
+    exit 1
+}
 
-    print_help(){
-        # for backwards compatibilty
-        if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
-            declare upinf="$updateinfo"
-        fi
+print_help(){
+    # for backwards compatibilty
+    if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
+        declare upinf="$updateinfo"
+    fi
 
-        local opts
-        opts="[ -r ] [ --detector=detector ] [ -d | --dryrun ] [ -v | --verbose ]"
-        if (( $(backups | wc -l) )); then bak=true
-            r_b(){
-                f
-                echo "    $me restore_backup"
-            }
-            if (( $(backups | wc -l) > 1 )); then
-                s=s
-            else
-                s=""
-            fi
+    local opts
+    opts="[ -r ] [ --detector=detector ] [ -d | --dryrun ] [ -v | --verbose ]"
+    if (( $(backups | wc -l) )); then
+        bak=true
+        r_b(){
+            f
+            echo "    $me restore_backup"
+        }
+        if (( $(backups | wc -l) > 1 )); then
+            s=s
         else
-            r_b(){
-                :
-            }
+            s=""
         fi
+    else
+        r_b(){
+            :
+        }
+    fi
 
-        cat <<HELP
+    cat <<HELP
 
   $me - version $version $upinf
 
@@ -133,7 +134,6 @@ HELP
                             ($(backups|wc -l) backup$s available, you must be root)
 
 BACKUP
-        fi
-        exit 0
-    }
+    fi
+    exit 0
 }

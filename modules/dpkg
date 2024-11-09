@@ -7,284 +7,283 @@ __copyright__
 __license__
 #
 
-${DPKG_BASHLIB:-false} || {
-    DPKG_BASHLIB=:
+${DPKG_BASHLIB:-false} && return
+DPKG_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire anykey)
-    . <(lrequire awksed)
-    . <(lrequire fstring)
-    . <(lrequire ask)
-    . <(lrequire today)
-    . <(lrequire php/versions)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire anykey)
+. <(lrequire awksed)
+. <(lrequire fstring)
+. <(lrequire ask)
+. <(lrequire today)
+. <(lrequire php/versions)
 
-    apt_update(){
-        spinner C " .  resynchronizing the APT package index files  ." &
-        apt-get -q2 update
-        kill_spinner
-    }
+apt_update(){
+    spinner C " .  resynchronizing the APT package index files  ." &
+    apt-get -q2 update
+    kill_spinner
+}
 
-    # returns true if last apt-* update is done more than $1=int (defaults to 4) hours ago
-    apt_need_update(){
-        if [ $(($(($(now)-$(stat -c %Y /var/lib/apt/lists/partial)))/3600)) -gt ${1:-4} ]; then
-            f
-            echo " -$(format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
-            if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
-            apt_update
-            else
-                te0;te0;te0
-            fi
+# returns true if last apt-* update is done more than $1=int (defaults to 4) hours ago
+apt_need_update(){
+    if [ $(($(($(now)-$(stat -c %Y /var/lib/apt/lists/partial)))/3600)) -gt ${1:-4} ]; then
+        f
+        echo " -$(format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
+        if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
+        apt_update
+        else
+            te0;te0;te0
         fi
-    }
+    fi
+}
 
-    install_time(){
-        local pkg
-        pkg="$1"
-        if grep -qs " install $pkg" /var/log/dpkg.log; then
-            date -d "$(awk '/ install '$pkg'/ {date=$1 " " $2} END{print date}' /var/log/dpkg.log)" "+%s"
-            return 0
-        fi
-        return 1
-    }
+install_time(){
+    local pkg
+    pkg="$1"
+    if grep -qs " install $pkg" /var/log/dpkg.log; then
+        date -d "$(awk '/ install '$pkg'/ {date=$1 " " $2} END{print date}' /var/log/dpkg.log)" "+%s"
+        return 0
+    fi
+    return 1
+}
 
-    apt_file_search(){
-        local fullpath package
-        local -i installed now last_apt_update
-        fullpath="$1"
-        now=$(now)
-        last_apt_update=$(stat -c %Y /var/lib/apt/lists/partial)
-        if installed=$(install_time apt-file); then
-            if (( $(( now - installed )) < $(( now - last_apt_update )) )); then
-                apt-get update -q2 2>&1 >/dev/null
-            fi
-        elif (( $(( $(( now - last_apt_update )) / 3600 )) > 4 )); then
+apt_file_search(){
+    local fullpath package
+    local -i installed now last_apt_update
+    fullpath="$1"
+    now=$(now)
+    last_apt_update=$(stat -c %Y /var/lib/apt/lists/partial)
+    if installed=$(install_time apt-file); then
+        if (( $(( now - installed )) < $(( now - last_apt_update )) )); then
             apt-get update -q2 2>&1 >/dev/null
         fi
-        package=$(apt-file -l search "$fullpath" 2>/dev/null) || return $?
-        printf "$package"
-        mh "apt-file -l search $fullpath -> $package" &
-        return 0
-    }
+    elif (( $(( $(( now - last_apt_update )) / 3600 )) > 4 )); then
+        apt-get update -q2 2>&1 >/dev/null
+    fi
+    package=$(apt-file -l search "$fullpath" 2>/dev/null) || return $?
+    printf "$package"
+    mh "apt-file -l search $fullpath -> $package" &
+    return 0
+}
 
-    apt_exist(){
-        local -a pkgnames
-        mapfile -t pkgnames< <(env LC_MESSAGES=C apt-cache pkgnames "$1")
-        [[ " ${pkgnames[@]} " =~ " $1 " ]] || return 1
-        env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "has no installation candidate" && return 1
-        env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "Unable to locate package" && return 1
-        env LC_MESSAGES=C apt-cache policy "$1" 2>&1 | grep -qs "Candidate: (none)" && return 1
-        env LC_MESSAGES=C apt-get -qqs install "$1" &>/dev/null
-    }
+apt_exist(){
+    local -a pkgnames
+    mapfile -t pkgnames< <(env LC_MESSAGES=C apt-cache pkgnames "$1")
+    [[ " ${pkgnames[@]} " =~ " $1 " ]] || return 1
+    env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "has no installation candidate" && return 1
+    env LC_MESSAGES=C apt-get -qqs install "$1" 2>&1 | grep -qs "Unable to locate package" && return 1
+    env LC_MESSAGES=C apt-cache policy "$1" 2>&1 | grep -qs "Candidate: (none)" && return 1
+    env LC_MESSAGES=C apt-get -qqs install "$1" &>/dev/null
+}
 
-    apt_install(){
-        apt_need_update
-        local p ps yes=" -y"
-        ${step:-false} && yes=""
-        mh "apt-get$yes install $@" &
-        for p in $@; do
-            dpkg -l | grep -wqs "$p" || ps="$ps $p"
-            if (( $(echo "$ps" | wc -w) )); then
-                mh "apt-get$yes install $ps" &
-                apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $ps
-                (( $? )) && exit1
+apt_install(){
+    apt_need_update
+    local p ps yes=" -y"
+    ${step:-false} && yes=""
+    mh "apt-get$yes install $@" &
+    for p in $@; do
+        dpkg -l | grep -wqs "$p" || ps="$ps $p"
+        if (( $(echo "$ps" | wc -w) )); then
+            mh "apt-get$yes install $ps" &
+            apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $ps
+            (( $? )) && exit1
+        fi
+    done
+    ${step:-false} && anykey
+}
+
+apt_install_prechecked(){
+    prechecked "$@" &
+    local yes=''
+    if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
+        yes=' -y'
+        shift
+    fi
+    apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@||{ echo "  $(Pbg) something went wrong $(N)";f;exit1;}
+}
+
+apt_remove(){
+    removed "$@" &
+    local yes=''
+    if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
+        yes=' -y'
+        shift
+    fi
+    switch_php_to_ $PHP_VERSION
+    apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@
+}
+
+apt_purge(){
+    purged "$@" &
+    local yes=''
+    if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
+        yes=' -y'
+        shift
+    fi
+    switch_php_to_ $PHP_VERSION
+    apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@
+}
+
+
+rdepends(){
+    local quiet glob
+    if [ "$1" = '-q' ]; then
+        quiet='true'
+        shift
+    else
+        quiet='false'
+    fi
+    glob="$1"
+    if "$quiet"; then
+        (( $(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | wc -l) - 1 )) # && return 0 || return 1
+    else
+        env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | awk '{print $2}'
+    fi
+}
+
+apt_rdepends(){
+    local glob package
+    glob="$1"
+    for package in $(dpkg -l|awk '/^[hiu]i\s+[^\s]*'$glob'/{print $2}'); do
+        apt-rdepends -r --follow=Depends --show=Depends --state-follow=Installed --state-show=Installed $package 2>/dev/null|awk '/Reverse/ {print $3}'
+    done | sort -u
+}
+
+# this is very slow but acurate
+rdependency_tree(){
+    local package pkg_main pkg_sub pkg_sub_sub
+    local -a depending_main depending_sub
+    package="$1"
+    mapfile -t depending_main< <(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove $package | awk '{print $2}')
+    if (( ${#depending_main[@]} > 1 )); then
+        echo "$package is required by:"
+        for pkg_main in ${depending_main[@]}; do
+            echo -n " - $pkg_main "
+            mapfile -t depending_sub< <(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove $pkg_main | awk '{print $2}')
+            if (( ${#depending_sub[@]} > 1 )); then
+                echo "- which is required by:"
+                for pkg_sub in ${depending_sub[@]}; do
+                    echo "    - $pkg_sub"
+                done
+            else
+                echo "(not required by any other package)"
             fi
         done
-        ${step:-false} && anykey
+    else
+        echo "$package is not required by any other package"
+    fi
+}
+
+rdep_tree(){
+    rdep(){
+        local pkg
+        local -a rdeps rdep
+        pkg=$1
+        mapfile -t rdeps< <(apt-cache rdepends $pkg)
+        mapfile -t rdep< <(comm -12 <(p_sort ${installed[@]}) <(p_sort ${rdeps[@]}))
+        mapfile -t rdep< <(comm -23 <(p_sort ${rdep[@]}) <(p_sort $pkg))
+        (( ${#rdep[@]} ))&&p_sort ${rdep[@]}
     }
-
-    apt_install_prechecked(){
-        prechecked "$@" &
-        local yes=''
-        if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
-            yes=' -y'
-            shift
-        fi
-        apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@||{ echo "  $(Pbg) something went wrong $(N)";f;exit1;}
-    }
-
-    apt_remove(){
-        removed "$@" &
-        local yes=''
-        if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
-            yes=' -y'
-            shift
-        fi
-        switch_php_to_ $PHP_VERSION
-        apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@
-    }
-
-    apt_purge(){
-        purged "$@" &
-        local yes=''
-        if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
-            yes=' -y'
-            shift
-        fi
-        switch_php_to_ $PHP_VERSION
-        apt-get$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@
-    }
-
-
-    rdepends(){
-        local quiet glob
-        if [ "$1" = '-q' ]; then
-            quiet='true'
-            shift
-        else
-            quiet='false'
-        fi
-        glob="$1"
-        if "$quiet"; then
-            (( $(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | wc -l) - 1 )) # && return 0 || return 1
-        else
-            env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" 2> /dev/null | awk '{print $2}'
-        fi
-    }
-
-    apt_rdepends(){
-        local glob package
-        glob="$1"
-        for package in $(dpkg -l|awk '/^[hiu]i\s+[^\s]*'$glob'/{print $2}'); do
-            apt-rdepends -r --follow=Depends --show=Depends --state-follow=Installed --state-show=Installed $package 2>/dev/null|awk '/Reverse/ {print $3}'
-        done | sort -u
-    }
-
-    # this is very slow but acurate
-    rdependency_tree(){
-        local package pkg_main pkg_sub pkg_sub_sub
-        local -a depending_main depending_sub
-        package="$1"
-        mapfile -t depending_main< <(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove $package | awk '{print $2}')
-        if (( ${#depending_main[@]} > 1 )); then
-            echo "$package is required by:"
-            for pkg_main in ${depending_main[@]}; do
-                echo -n " - $pkg_main "
-                mapfile -t depending_sub< <(env LC_MESSAGES=C apt-get --ignore-hold --allow-change-held-packages -s -q2 remove $pkg_main | awk '{print $2}')
-                if (( ${#depending_sub[@]} > 1 )); then
-                    echo "- which is required by:"
-                    for pkg_sub in ${depending_sub[@]}; do
-                        echo "    - $pkg_sub"
-                    done
-                else
-                    echo "(not required by any other package)"
-                fi
+    local package rdependency
+    local -a installed rdepends rrdepends
+    local -i i ii depth
+    package=$1
+    mapfile -t installed< <(dpkg -l|awk '/^[hiu]i\s+[^\s]/{print $2}')
+    mapfile -t rdepends< <(rdep $package)
+    if (( ${#rdepends[@]} )); then
+        echo "$package has ${#rdepend[@]} reverse dependencies:"
+        while :; do
+            depth=" - "
+            for i in ${!rdepend[@]}; do
+                rdependency="${rdepend[i]}"
+                echo -n "$depth$rdependency "
+                    mapfile -t rrdepends< <(rdep $rdependency)
+                    if (( ${#rrdepends[@]} )); then
+                        echo "- which is required by:"
+                        for ii in ${!rrdepends[@]}; do
+                            rrdependency="${rrdepends[ii]}"
+                            echo "    - $rrdependency"
+                        done
+                    else
+                        echo "(not required by any other package)"
+                        break
+                    fi
             done
-        else
-            echo "$package is not required by any other package"
-        fi
-    }
+        done
+    else
+        echo "$package is not required by any other package"
+    fi
+}
 
-    rdep_tree(){
-        rdep(){
-            local pkg
-            local -a rdeps rdep
-            pkg=$1
-            mapfile -t rdeps< <(apt-cache rdepends $pkg)
-            mapfile -t rdep< <(comm -12 <(p_sort ${installed[@]}) <(p_sort ${rdeps[@]}))
-            mapfile -t rdep< <(comm -23 <(p_sort ${rdep[@]}) <(p_sort $pkg))
-            (( ${#rdep[@]} ))&&p_sort ${rdep[@]}
-        }
-        local package rdependency
-        local -a installed rdepends rrdepends
-        local -i i ii depth
-        package=$1
-        mapfile -t installed< <(dpkg -l|awk '/^[hiu]i\s+[^\s]/{print $2}')
-        mapfile -t rdepends< <(rdep $package)
-        if (( ${#rdepends[@]} )); then
-            echo "$package has ${#rdepend[@]} reverse dependencies:"
-            while :; do
-                depth=" - "
-                for i in ${!rdepend[@]}; do
-                    rdependency="${rdepend[i]}"
-                    echo -n "$depth$rdependency "
-                        mapfile -t rrdepends< <(rdep $rdependency)
-                        if (( ${#rrdepends[@]} )); then
-                            echo "- which is required by:"
-                            for ii in ${!rrdepends[@]}; do
-                                rrdependency="${rrdepends[ii]}"
-                                echo "    - $rrdependency"
-                            done
-                        else
-                            echo "(not required by any other package)"
-                            break
-                        fi
-                done
-            done
-        else
-            echo "$package is not required by any other package"
-        fi
-    }
+## PHP related:
+# $1=grep -E search string: "ph(ar|p)"
+# $2=modus manual/auto
+# $3=old: 8.1
+# $4=new: 8.2
+set_selections(){
+    local regex modus old new mf
+    regex="$1" modus="$2" old="$3" new="$4"
+    apt-mark unhold *php* >/dev/null 2>&1
+    [ "$modus" = "manual" ] && mf=auto
+    [ "$modus" = "auto" ] && mf=manual
+    update-alternatives --get-selections | grep -E "$regex" |  sed -E "s/$mf/$modus/;s/$old/$new/" | update-alternatives --set-selections >/dev/null 2>&1
+}
 
-    ## PHP related:
-    # $1=grep -E search string: "ph(ar|p)"
-    # $2=modus manual/auto
-    # $3=old: 8.1
-    # $4=new: 8.2
-    set_selections(){
-        local regex modus old new mf
-        regex="$1" modus="$2" old="$3" new="$4"
-        apt-mark unhold *php* >/dev/null 2>&1
-        [ "$modus" = "manual" ] && mf=auto
-        [ "$modus" = "auto" ] && mf=manual
-        update-alternatives --get-selections | grep -E "$regex" |  sed -E "s/$mf/$modus/;s/$old/$new/" | update-alternatives --set-selections >/dev/null 2>&1
-    }
+min_version(){
+    local bin="$1" min="$2"
+    dpkg --compare-versions "$($bin --version 2>/dev/null | grep -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
+}
 
-    min_version(){
-        local bin="$1" min="$2"
-        dpkg --compare-versions "$($bin --version 2>/dev/null | grep -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
-    }
+# switch all findable php related packages to manual
+# if $1 and $2 are given, then change from $1 to $2
+# $1=old: 8.1
+# $2=new: 8.2
+switch_php(){
+    set_selections "ph(ar|p)" "manual" "$1" "$2"
+}
 
-    # switch all findable php related packages to manual
-    # if $1 and $2 are given, then change from $1 to $2
-    # $1=old: 8.1
-    # $2=new: 8.2
-    switch_php(){
-        set_selections "ph(ar|p)" "manual" "$1" "$2"
-    }
-
-    # switch all findable php related packages to manual Version $1 if $1 exists
-    switch_php_to_(){
-        apt-mark manual $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
-        set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
+# switch all findable php related packages to manual Version $1 if $1 exists
+switch_php_to_(){
+    apt-mark manual $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
+    set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
 # TODO 0 -->
-#        apt-mark hold $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
+#    apt-mark hold $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
 # TODO <-- 0
-    }
+}
 
-    list_apt_sources(){
-        local plu
-        local -i i
-        local -a foreign_architectures aptsources apturls aptsourcesfiles
+list_apt_sources(){
+    local plu
+    local -i i
+    local -a foreign_architectures aptsources apturls aptsourcesfiles
 
-        mapfile -t foreign_architectures< <(dpkg --print-foreign-architectures 2>&1)
-        if (( ${#foreign_architectures[@]} )); then
-            f;o2;B;echo "This is a list of the supported architectures on this machine for your information:";N
-            o2;pf;GRAY;echo "main architecture: $(dpkg --print-architecture 2>&1)";N
-            (( ${#foreign_architectures[@]} > 1 ))&&plu='s'||plu=''
-            for i in ${!foreign_architectures[@]}; do o2;pf;GRAY;echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}";N; done
-        else
-            f;o2;B;echo "This is the supported architecture on this machine for your information:";N
-            o2;pf;GRAY;echo "architecture: $(dpkg --print-architecture 2>&1)";N
-        fi
+    mapfile -t foreign_architectures< <(dpkg --print-foreign-architectures 2>&1)
+    if (( ${#foreign_architectures[@]} )); then
+        f;o2;B;echo "This is a list of the supported architectures on this machine for your information:";N
+        o2;pf;GRAY;echo "main architecture: $(dpkg --print-architecture 2>&1)";N
+        (( ${#foreign_architectures[@]} > 1 ))&&plu='s'||plu=''
+        for i in ${!foreign_architectures[@]}; do o2;pf;GRAY;echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}";N; done
+    else
+        f;o2;B;echo "This is the supported architecture on this machine for your information:";N
+        o2;pf;GRAY;echo "architecture: $(dpkg --print-architecture 2>&1)";N
+    fi
 
-        f;o2;B;echo "This is a list of the effective apt sources on this machine for your information:";N
-        # apt sources
-        if [ -d /var/lib/apt/lists ]; then
-            mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_Packages.*$//;s/-deb.*$//;s/_dists_/ /;s/_binary-/ /')")
-            for i in ${!aptsources[@]}; do o2;pf;GRAY;echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|sed 's/\(.*\)\/\(.*\)/\1 \2/')";N; done
+    f;o2;B;echo "This is a list of the effective apt sources on this machine for your information:";N
+    # apt sources
+    if [ -d /var/lib/apt/lists ]; then
+        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_Packages.*$//;s/-deb.*$//;s/_dists_/ /;s/_binary-/ /')")
+        for i in ${!aptsources[@]}; do o2;pf;GRAY;echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|sed 's/\(.*\)\/\(.*\)/\1 \2/')";N; done
 
-        f;o2;B;echo "This is a list of the files containing the apt sources for your information:";N
-        # apt sources files
-            mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_dists.*$//')")
+    f;o2;B;echo "This is a list of the files containing the apt sources for your information:";N
+    # apt sources files
+        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;ls *Packages|sed 's/_dists.*$//')")
 # TODO 1 -->
-    #        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|grep -v ':\s*#'|grep -E "*.(list|sources)\:"|awk -F':' '{print $1}'; done))
+#    mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|grep -v ':\s*#'|grep -E "*.(list|sources)\:"|awk -F':' '{print $1}'; done))
 # TODO <-- 1
-            mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|awk -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
-            for i in ${!aptsourcesfiles[@]}; do o2;pf;GRAY;echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}";N; done
-        fi
-    }
+        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do grep -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|awk -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
+        for i in ${!aptsourcesfiles[@]}; do o2;pf;GRAY;echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}";N; done
+    fi
 }

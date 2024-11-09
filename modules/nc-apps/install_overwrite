@@ -7,124 +7,123 @@ __copyright__
 __license__
 #
 
-${INSTALL_OVERWRITE_BASHLIB:-false} || {
-    INSTALL_OVERWRITE_BASHLIB=:
+${INSTALL_OVERWRITE_BASHLIB:-false} && return
+INSTALL_OVERWRITE_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire xml)
-    . <(lrequire spinner)
-    . <(lrequire nc/nextcloud)
+. <(lrequire xml)
+. <(lrequire spinner)
+. <(lrequire nc/nextcloud)
 
-    install_overwrite(){
+install_overwrite(){
 
-        list_apps_4_array(){
-            local app xml_f max
-            for app in $(occ app:list --shipped=false --output=json | jq  -r '.enabled | keys | sort []'); do
-                xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
-                max=$(xmls -v "//nextcloud/@max-version" "$xml_f" | sed '2,$d')
-                if [ -z "$max" ] || (( ${max%%.*} >= ${nc_version%%.*} )); then
-                    continue
-                fi
-                echo $app >> $1
-            done
-            unset -v app xml_f max
-        }
-
-        replace_array(){
-            if $app_install_overwrite_exists; then
-                if (( counter )); then
-                    sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/c\\" -e "$aioa" $configfile
-                else
-                    sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/d" "$configfile"
-                fi
-            else
-                sed $@ '$s/^);$/'"$aioa"'\n&/' "$configfile"
+    list_apps_4_array(){
+        local app xml_f max
+        for app in $(occ app:list --shipped=false --output=json | jq  -r '.enabled | keys | sort []'); do
+            xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
+            max=$(xmls -v "//nextcloud/@max-version" "$xml_f" | sed '2,$d')
+            if [ -z "$max" ] || (( ${max%%.*} >= ${nc_version%%.*} )); then
+                continue
             fi
-        }
+            echo $app >> $1
+        done
+        unset -v app xml_f max
+    }
 
-        [ "$1" = "-u" ] && do_update_ $2 --all
-
-        local file configfile="$NC_DIR/config/config.php" app_install_overwrite_exists=false
-        if grep -qsw "'app_install_overwrite'" $NC_DIR/config/*config.php; then
-            app_install_overwrite_exists=true
-            for file in $NC_DIR/config/*config.php; do
-                if [ "$file" = "$configfile" ]; then
-                    continue
-                elif grep -qs "[[:space:]]*'app_install_overwrite'" $file; then
-                    configfile=$file
-                    break
-                fi
-            done
+    replace_array(){
+        if $app_install_overwrite_exists; then
+            if (( counter )); then
+                sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/c\\" -e "$aioa" $configfile
+            else
+                sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/d" "$configfile"
+            fi
+        else
+            sed $@ '$s/^);$/'"$aioa"'\n&/' "$configfile"
         fi
-        unset -v file
+    }
 
-        local app array_content
-        local -i counter=0 job_id c2=8 c3=24 c4=30
-        GRAY;echo ". . . . . . . .  building  new  'app_install_overwrite'  array  . . . . . . . .";N
-        spinner &
-        local apps_in_array_tf=$(tf)
-        list_apps_4_array $apps_in_array_tf & job_id=$!
-        wait $job_id
-        while read -r app; do
-            array_content+="    $counter => '$app',\\n"
-            ((counter++))
-        done < $apps_in_array_tf
-        kill_spinner
-        # Create the array content with proper formatting
-        local aioa=$(printf "  'app_install_overwrite' =>\\\\n  array (\\\\n%s  )," "$array_content")
-        unset -v app s_pid job_id apps_in_array_tf array_content
+    [ "$1" = "-u" ] && do_update_ $2 --all
 
-        if $app_install_overwrite_exists || ((counter)); then
-            # old config
+    local file configfile="$NC_DIR/config/config.php" app_install_overwrite_exists=false
+    if grep -qsw "'app_install_overwrite'" $NC_DIR/config/*config.php; then
+        app_install_overwrite_exists=true
+        for file in $NC_DIR/config/*config.php; do
+            if [ "$file" = "$configfile" ]; then
+                continue
+            elif grep -qs "[[:space:]]*'app_install_overwrite'" $file; then
+                configfile=$file
+                break
+            fi
+        done
+    fi
+    unset -v file
+
+    local app array_content
+    local -i counter=0 job_id c2=8 c3=24 c4=30
+    GRAY;echo ". . . . . . . .  building  new  'app_install_overwrite'  array  . . . . . . . .";N
+    spinner &
+    local apps_in_array_tf=$(tf)
+    list_apps_4_array $apps_in_array_tf & job_id=$!
+    wait $job_id
+    while read -r app; do
+        array_content+="    $counter => '$app',\\n"
+        ((counter++))
+    done < $apps_in_array_tf
+    kill_spinner
+    # Create the array content with proper formatting
+    local aioa=$(printf "  'app_install_overwrite' =>\\\\n  array (\\\\n%s  )," "$array_content")
+    unset -v app s_pid job_id apps_in_array_tf array_content
+
+    if $app_install_overwrite_exists || ((counter)); then
+        # old config
+        line '-' GRAY 80
+
+        o2;GRAY;echo "old:$(f;o $c2)- config-file$(o $c3)-->$(o $c4)$configfile"
+        line '-' GRAY 80
+        GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
+
+        cat $configfile
+
+        GRAY;printf '<--   end '; line '  <--' GRAY 14
+        line '=' N 80
+        # new config draft
+        line '-' GRAY 80
+        o2;GRAY;echo "draft: (not yet written to file)$(f;o $c2)- config-file$(o $c3)-->$(o $c4)$configfile"
+        line '-' GRAY 80
+        GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
+
+        replace_array -e
+
+        GRAY;printf '<--   end '; line '  <--' GRAY 14
+        line '=' N 80 a2
+        o2;W;echo "Nothing has been written to file yet."
+        o2;W;echo "If everything looks as desired and expected and you want to apply the changes"
+        o2;W;echo "exactly as shown here, then please enter the entire word $(Gbg)[ yes ]$(W), all other"
+        o2;W;read -rp "entries will abort the script and leave your configfile unchanged " choice
+        line '=' N 80 b1
+        # new config final
+        if [ "$choice" = 'yes' ]; then
+
+            replace_array -i -e
+
             line '-' GRAY 80
-
-            o2;GRAY;echo "old:$(f;o $c2)- config-file$(o $c3)-->$(o $c4)$configfile"
+            o2;GRAY;echo "new:$(f;o $c2)- config-file$(o $c3)-->$(o $c4)$configfile"
             line '-' GRAY 80
             GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
 
             cat $configfile
 
-            GRAY;printf '<--   end '; line '  <--' GRAY 14
+            printf '<--   end '; line '  <--' GRAY 14
             line '=' N 80
-            # new config draft
-            line '-' GRAY 80
-            o2;GRAY;echo "draft: (not yet written to file)$(f;o $c2)- config-file$(o $c3)-->$(o $c4)$configfile"
-            line '-' GRAY 80
-            GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
-
-            replace_array -e
-
-            GRAY;printf '<--   end '; line '  <--' GRAY 14
-            line '=' N 80 a2
-            o2;W;echo "Nothing has been written to file yet."
-            o2;W;echo "If everything looks as desired and expected and you want to apply the changes"
-            o2;W;echo "exactly as shown here, then please enter the entire word $(Gbg)[ yes ]$(W), all other"
-            o2;W;read -rp "entries will abort the script and leave your configfile unchanged " choice
-            line '=' N 80 b1
-            # new config final
-            if [ "$choice" = 'yes' ]; then
-
-                replace_array -i -e
-
-                line '-' GRAY 80
-                o2;GRAY;echo "new:$(f;o $c2)- config-file$(o $c3)-->$(o $c4)$configfile"
-                line '-' GRAY 80
-                GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
-
-                cat $configfile
-
-                printf '<--   end '; line '  <--' GRAY 14
-                line '=' N 80
-                echo -e "=$(o 79)=\n=$(o $c2)Done!$(o 79)=\n=$(o 79)="
-            else
-                echo -e "=$(o 79)=\n=$(o $c2)Nothing changed, exiting$(o 79)=\n=$(o 79)="
-            fi
-            line '=' N 80
+            echo -e "=$(o 79)=\n=$(o $c2)Done!$(o 79)=\n=$(o 79)="
         else
-            pf;echo "No unsupported apps activated and no 'app_install_overwrite' array detected."
-            pf;echo "Nothing to ad or to remove."
+            echo -e "=$(o 79)=\n=$(o $c2)Nothing changed, exiting$(o 79)=\n=$(o 79)="
         fi
-    }
+        line '=' N 80
+    else
+        pf;echo "No unsupported apps activated and no 'app_install_overwrite' array detected."
+        pf;echo "Nothing to ad or to remove."
+    fi
 }

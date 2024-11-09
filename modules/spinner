@@ -7,96 +7,95 @@ __copyright__
 __license__
 #
 
-${SPINNER_BASHLIB:-false} || {
-    SPINNER_BASHLIB=:
+${SPINNER_BASHLIB:-false} && return
+SPINNER_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire exit)
+. <(lrequire exit)
 
-    declare spinner_pid_file
-    spinner_pid_file="$TMPDIR/${bm}-spinner.pid"
+declare spinner_pid_file
+spinner_pid_file="$TMPDIR/${bm}-spinner.pid"
 
-    # Function to display the spinning animation
-    spinner(){
-        ${debug:-false} && return 0
-        [ -f "$spinner_pid_file" ] && return 0
-        local cursor_status color spinr spinl
-        local -i L R prog dir pos marg
-        echo $BASHPID > $spinner_pid_file
-        cursor_status=''
-        if [ -f "$CURSOR" ]; then
-            if grep -qsw 'hide' "$CURSOR"; then
-                cursor_status='hide'
-            fi
+# Function to display the spinning animation
+spinner(){
+    ${debug:-false} && return 0
+    [ -f "$spinner_pid_file" ] && return 0
+    local cursor_status color spinr spinl
+    local -i L R prog dir pos marg
+    echo $BASHPID > $spinner_pid_file
+    cursor_status=''
+    if [ -f "$CURSOR" ]; then
+        if grep -qsw 'hide' "$CURSOR"; then
+            cursor_status='hide'
         fi
-        color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
-        L=0 prog=0 dir=1
+    fi
+    color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
+    L=0 prog=0 dir=1
 
-        if (( $(tput cols) > 87 )); then
-            marg=10
-        elif (( 87 > $(tput cols) && $(tput cols) > 77  )); then
-            marg=$(( $(tput cols) - 77 ))
+    if (( $(tput cols) > 87 )); then
+        marg=10
+    elif (( 87 > $(tput cols) && $(tput cols) > 77  )); then
+        marg=$(( $(tput cols) - 77 ))
+    else
+        marg=0
+    fi
+
+    if (( $(tput cols) < 77 )); then
+        R=77
+    else
+        R=$(( $(tput cols) - marg ))
+    fi
+
+    shift
+    pos=$L
+    cursor_ hide
+    echo "$cursor_status" > "$CURSOR"
+    $color
+    (($#))&&echo "$@"
+    while :; do
+        (( pos += dir ))
+        (( prog ++ ))
+        (( prog %= 4 ))
+        if (( pos > R )); then
+            dir=-1
+            (( pos = R ))
+        elif (( pos < L )); then
+            dir=1
+            (( pos = L ))
+        fi
+        if (( dir == -1 )); then
+            printf "\r%-${pos}s %s %${dir}s" "" "${spinl:$prog:1}" ""
         else
-            marg=0
+            printf "\r%-${pos}s %s %s" "" "${spinr:$prog:1}" ""
         fi
+        sleep 0.03
+    done
+    N
+}
 
-        if (( $(tput cols) < 77 )); then
-            R=77
-        else
-            R=$(( $(tput cols) - marg ))
+# kill and clean up  spinner:
+kill_spinner(){
+    ${debug:-false} && return 0
+    local -i ct=0
+    until [ -f "$spinner_pid_file" ]; do
+        (( ct > 500 )) && return 0
+        (( ct++ ))
+        sleep 0.0001
+    done
+    local cursor
+    local -i pid
+    pid="$(cat "$spinner_pid_file")"
+    cursor='show'
+    if [ -f "$CURSOR" ]; then
+        if grep -qsw 'hide' "$CURSOR"; then
+            cursor='hide'
         fi
-
-        shift
-        pos=$L
-        cursor_ hide
-        echo "$cursor_status" > "$CURSOR"
-        $color
-        (($#))&&echo "$@"
-        while :; do
-            (( pos += dir ))
-            (( prog ++ ))
-            (( prog %= 4 ))
-            if (( pos > R )); then
-                dir=-1
-                (( pos = R ))
-            elif (( pos < L )); then
-                dir=1
-                (( pos = L ))
-            fi
-            if (( dir == -1 )); then
-                printf "\r%-${pos}s %s %${dir}s" "" "${spinl:$prog:1}" ""
-            else
-                printf "\r%-${pos}s %s %s" "" "${spinr:$prog:1}" ""
-            fi
-            sleep 0.03
-        done
-        N
-    }
-
-    # kill and clean up  spinner:
-    kill_spinner(){
-        ${debug:-false} && return 0
-        local -i ct=0
-        until [ -f "$spinner_pid_file" ]; do
-            (( ct > 500 )) && return 0
-            (( ct++ ))
-            sleep 0.0001
-        done
-        local cursor
-        local -i pid
-        pid="$(cat "$spinner_pid_file")"
-        cursor='show'
-        if [ -f "$CURSOR" ]; then
-            if grep -qsw 'hide' "$CURSOR"; then
-                cursor='hide'
-            fi
-        fi
-        kill $pid >/dev/null 2>&1
-        te0
-        N
-        cursor_ "$cursor"
-        rm -f "$spinner_pid_file"
-    }
+    fi
+    kill $pid >/dev/null 2>&1
+    te0
+    N
+    cursor_ "$cursor"
+    rm -f "$spinner_pid_file"
 }

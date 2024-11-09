@@ -7,186 +7,185 @@ __copyright__
 __license__
 #
 
-${VERSIONS_BASHLIB:-false} || {
-    VERSIONS_BASHLIB=:
+${VERSIONS_BASHLIB:-false} && return
+VERSIONS_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire interval)
-    . <(lrequire line)
-    . <(lrequire array)
-    . <(lrequire php/sury)
+. <(lrequire interval)
+. <(lrequire line)
+. <(lrequire array)
+. <(lrequire php/sury)
 
-    declare -g PHP_VERSION phpvregex
-    declare -ga EXISTING VERSIONS CAN
-    phpvregex='php(5\.6|7\.[01234]|8\.[01234])'
+declare -g PHP_VERSION PHPVREGEX
+declare -ga EXISTING VERSIONS CAN
+PHPVREGEX='php(5\.6|[78]\.[01234])'
 
-    no_php(){
-        f;R
-        pf;echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
-        if [[ " php-module-builder php-module-builder-test " =~ " $bm " ]]; then
-            os;echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
-            os;echo "You should at least install the package php\$version-cli first"
-            exit0
-        elif [[ " php-updater php-updater-test " =~ " $bm " ]]; then
-            os;echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
-            N
-            anykey
-            explain
-        fi
-    }
+no_php(){
+    f;R
+    pf;echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
+    if [[ " php-module-builder php-module-builder-test " =~ " $bm " ]]; then
+        os;echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
+        os;echo "You should at least install the package php\$version-cli first"
+        exit0
+    elif [[ " php-updater php-updater-test " =~ " $bm " ]]; then
+        os;echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
+        N
+        anykey
+        explain
+    fi
+}
 
-    command -v php >/dev/null 2>&1 && PHP_VERSION="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
+command -v php >/dev/null 2>&1 && PHP_VERSION="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
 
-    existing_php_versions(){
-        cat <<PHP_VERSIONS
-        8.4;20240924;1861833600;1830211200
-        8.3;20230831;1830211200;1767139200
-        8.2;20220829;1798675200;1735603200
-        8.1;20210902;1767139200;1700870400
-        8.0;20200930;1669420800;1700956800
-        7.4;20190902;1638054000;1669590000
-        7.3;20180731;1607209200;1638745200
-        7.2;20170718;1575068400;1606690800
-        7.1;20160303;1543618800;1575154800
-        7.0;20151012;1512255600;1543791600
-        5.6;20131226;1484780400;1546210800
-        5.5;20121212;1436479200;1468101600
-        5.4;20100525;1410645600;1442181600
-        5.3;20090626;1407967200
-        5.2;20041225_20060613;1294268400
-        5.1;20041225_20050922;1156370400
-        5.0;20031224_20040412;1125871200
-        4.4;20020918;1218060000
-        4.3;20020918;1112220000
-        4.2;20010901;1031263200
-        4.1;20010901;1015887600
-        4.0;19990421;993247200
-        3.0;0;971992800
+existing_php_versions(){
+    cat <<PHP_VERSIONS
+    8.4;20240924;1861833600;1830211200
+    8.3;20230831;1830211200;1767139200
+    8.2;20220829;1798675200;1735603200
+    8.1;20210902;1767139200;1700870400
+    8.0;20200930;1669420800;1700956800
+    7.4;20190902;1638054000;1669590000
+    7.3;20180731;1607209200;1638745200
+    7.2;20170718;1575068400;1606690800
+    7.1;20160303;1543618800;1575154800
+    7.0;20151012;1512255600;1543791600
+    5.6;20131226;1484780400;1546210800
+    5.5;20121212;1436479200;1468101600
+    5.4;20100525;1410645600;1442181600
+    5.3;20090626;1407967200
+    5.2;20041225_20060613;1294268400
+    5.1;20041225_20050922;1156370400
+    5.0;20031224_20040412;1125871200
+    4.4;20020918;1218060000
+    4.3;20020918;1112220000
+    4.2;20010901;1031263200
+    4.1;20010901;1015887600
+    4.0;19990421;993247200
+    3.0;0;971992800
 PHP_VERSIONS
-    }; mapfile -t EXISTING< <(existing_php_versions | sed 's/^\s*//')
+}; mapfile -t EXISTING< <(existing_php_versions | sed 's/^\s*//')
 
-    populate_versions_array(){
-        mapfile -t VERSIONS< <(phpquery -V | sort)
-    }; populate_versions_array
+populate_versions_array(){
+    mapfile -t VERSIONS< <(phpquery -V | sort)
+}; populate_versions_array
 
-    versions_iterate(){
-        populate_versions_array
-        local job php_version
-        job="$1"
-        for php_version in ${VERSIONS[@]}; do
-            $job $php_version
-        done
-    }
+versions_iterate(){
+    populate_versions_array
+    local job php_version
+    job="$1"
+    for php_version in ${VERSIONS[@]}; do
+        $job $php_version
+    done
+}
 
-    populate_can_array(){
-        mapfile -t CAN< <(env LC_MESSAGES=C apt-cache search "^$phpvregex$"|awk '{print substr($1,4,3)}'|sort -ru)
-    }; populate_can_array
+populate_can_array(){
+    mapfile -t CAN< <(env LC_MESSAGES=C apt-cache search "^$PHPVREGEX$"|awk '{print substr($1,4,3)}'|sort -ru)
+}; populate_can_array
 
-    # increment & decrement version, echoes next higher or lower candidate if exist
-    i_ver(){
-        local -i i r=1
-        populate_can_array
-        for i in ${!CAN[@]}; do
-            if [ "${CAN[i]}" = "$1" ] && ((i)); then
-                echo "${CAN[i-1]}"
-                r=0
-            fi
-        done
-        return $r
-    }
+# increment & decrement version, echoes next higher or lower candidate if exist
+i_ver(){
+    local -i i r=1
+    populate_can_array
+    for i in ${!CAN[@]}; do
+        if [ "${CAN[i]}" = "$1" ] && ((i)); then
+            echo "${CAN[i-1]}"
+            r=0
+        fi
+    done
+    return $r
+}
 
-    d_ver(){
-        local -i i r=1
-        populate_can_array
-        for i in ${!CAN[@]}; do
-            if [ "${CAN[i]}" = "$1" ] && (( i < $(( ${#CAN[@]} - 1 )) )); then
-                echo "${CAN[i+1]}"
-                r=0
-            fi
-        done
-        return $r
-    }
+d_ver(){
+    local -i i r=1
+    populate_can_array
+    for i in ${!CAN[@]}; do
+        if [ "${CAN[i]}" = "$1" ] && (( i < $(( ${#CAN[@]} - 1 )) )); then
+            echo "${CAN[i+1]}"
+            r=0
+        fi
+    done
+    return $r
+}
 
-    # end_of_ life & end_of_ support
-    end_of_(){
-        local -i ut
-        case $1 in
-              life) ut=$(a_fld EXISTING ';' "$2" 3)
-                    ;;
-           support) ut=$(a_fld EXISTING ';' "$2" 4)
-        esac
-        echo "$(ut2udF $ut) ($(interval $ut))"
-    }
+# end_of_ life & end_of_ support
+end_of_(){
+    local -i ut
+    case $1 in
+          life) ut=$(a_fld EXISTING ';' "$2" 3)
+                ;;
+       support) ut=$(a_fld EXISTING ';' "$2" 4)
+    esac
+    echo "$(ut2udF $ut) ($(interval $ut))"
+}
 
-    list_existing(){
-        local -i i eol eos c2=10 c3=49
-        local ver
-        line '=' P 2/78 b1
-        o2;B;echo "This is a list of existing php versions for your information.";N
-        Y;o2;echo "Version$(o $c2)End of life$(o $c3)End of active support";N
-        line '-' dP 2/78
-        for i in ${!EXISTING[@]};do
-            read -r ver ext eol eos <<<${EXISTING[i]//;/ }
-            if [ $today -le $eos ];then
-                o2;pf;lG
-                echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3)$(ut2udF $eos) ($(interval $eos))";N
-            elif [ $today -le $eol ];then
-                o2;pf;G
-                echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3;dR)$(ut2udF $eos) ($(interval $eos))";N
+list_existing(){
+    local -i i eol eos c2=10 c3=49
+    local ver
+    line '=' P 2/78 b1
+    o2;B;echo "This is a list of existing php versions for your information.";N
+    Y;o2;echo "Version$(o $c2)End of life$(o $c3)End of active support";N
+    line '-' dP 2/78
+    for i in ${!EXISTING[@]};do
+        read -r ver ext eol eos <<<${EXISTING[i]//;/ }
+        if [ $today -le $eos ];then
+            o2;pf;lG
+            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3)$(ut2udF $eos) ($(interval $eos))";N
+        elif [ $today -le $eol ];then
+            o2;pf;G
+            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3;dR)$(ut2udF $eos) ($(interval $eos))";N
+        else
+            o2;pf;GRAY
+            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))";N
+        fi
+    done;line '-' dP 2/78;o2;GRAY;echo "More info: $(W)https://www.php.net/supported-versions.php";N
+}
+
+list_candidates() {
+    local eol
+    local -i i c2=11 c3=50
+    line '=' P 2/78 b1
+    o2;B;echo "This is a list of php versions offered by the actual apt sources";N
+    Y;o2;echo "Version$(o $c2)End of life$(o $c3)Description";N
+    line '-' dP 2/78
+    for i in "${!CAN[@]}";do
+        if does_exist_ "${CAN[i]}" 0; then
+            eol="$(end_of_ life ${CAN[i]})"
+            if [ "$PHP_VERSION" = "${CAN[i]}" ];then
+                line ' ' bGbg 1/80 a0
+                o2;bGbg;echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
+            elif [[ " ${VERSIONS[@]} " =~ " ${CAN[i]} " ]];then
+                o2;lG;echo "$(pf)${CAN[i]}$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
             else
-                o2;pf;GRAY
-                echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))";N
+                o2;pf;GRAY;echo "${CAN[i]}$(o $c2)$eol$(N)"
             fi
-        done;line '-' dP 2/78;o2;GRAY;echo "More info: $(W)https://www.php.net/supported-versions.php";N
-    }
+        else version_mismatch; fi
+    done
+    line '-' dP 2/78
+}
 
-    list_candidates() {
-        local eol
-        local -i i c2=11 c3=50
-        line '=' P 2/78 b1
-        o2;B;echo "This is a list of php versions offered by the actual apt sources";N
-        Y;o2;echo "Version$(o $c2)End of life$(o $c3)Description";N
-        line '-' dP 2/78
-        for i in "${!CAN[@]}";do
-            if does_exist_ "${CAN[i]}" 0; then
-                eol="$(end_of_ life ${CAN[i]})"
-                if [ "$PHP_VERSION" = "${CAN[i]}" ];then
-                    line ' ' bGbg 1/80 a0
-                    o2;bGbg;echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
-                elif [[ " ${VERSIONS[@]} " =~ " ${CAN[i]} " ]];then
-                    o2;lG;echo "$(pf)${CAN[i]}$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
-                else
-                    o2;pf;GRAY;echo "${CAN[i]}$(o $c2)$eol$(N)"
-                fi
-            else version_mismatch; fi
-        done
-        line '-' dP 2/78
-    }
-
-    does_exist_(){
-        local -i r=0 a=$2
-        if ((a)); then
-            if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
-                if ! [[ " ${VERSIONS[@]%%;*} " =~ " $1 " ]]; then
-                    wrong_first_argument "$1" 1
-                fi
-            else
-                wrong_first_argument "$1" 0
+does_exist_(){
+    local -i r=0 a=$2
+    if ((a)); then
+        if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
+            if ! [[ " ${VERSIONS[@]%%;*} " =~ " $1 " ]]; then
+                wrong_first_argument "$1" 1
             fi
         else
-            if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
-                if ! [[ " ${CAN[@]%%;*} " =~ " $1 " ]]; then
-                    r=1
-                    no_candidate $1
-                fi
-            else
-                r=1
-                does_not_exist $1
-            fi
+            wrong_first_argument "$1" 0
         fi
-    #    ((r))&&exit$r
-        return $r
-    }
+    else
+        if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
+            if ! [[ " ${CAN[@]%%;*} " =~ " $1 " ]]; then
+                r=1
+                no_candidate $1
+            fi
+        else
+            r=1
+            does_not_exist $1
+        fi
+    fi
+#    ((r))&&exit$r
+    return $r
 }

@@ -7,16 +7,16 @@ __copyright__
 __license__
 #
 
-${PHP_LOGO_BASHLIB:-false} || {
-    PHP_LOGO_BASHLIB=:
+${PHP_LOGO_BASHLIB:-false} && return
+PHP_LOGO_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire ansi)
+. <(lrequire ansi)
 
-    php_logo(){
-        cat << PHPLOGO
+php_logo(){
+    cat << PHPLOGO
   $(dPHP)hhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhH$(N)
   $(dPHP)HhhHhhhHhhHhhHhhHhhhHhhHhhHhhhhPPPppPppPpppPpPPPPhhhHhhhHhhHhhHhhhHhhHhhHhhHhh$(N)
   $(dPHP)hhhhhhhhhhhhhhhhhhhhPPp$(lPHP):::;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)pppPhhhhhhhhhhhhhhhhhhhh$(N)
@@ -40,9 +40,8 @@ ${PHP_LOGO_BASHLIB:-false} || {
   $(dPHP)HhhHhhhHhhHhhHhhHHhhHhhHhhHhhHhPhhPPPPPPPPPPPhhhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhh$(N)
   $(dPHP)hhHhhHhhHhhhHhhHhhHhhHhhhHhhHhhHhhHhhhHhhHhhHhhhHhhHhhHhhHhhhHhhHhhHhhHhhhHhhH$(N)
 PHPLOGO
-    }
+}
 
-    phplogo(){
-        php_logo
-    }
+phplogo(){
+    php_logo
 }

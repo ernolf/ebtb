@@ -7,70 +7,69 @@ __copyright__
 __license__
 #
 
-${INI_BASHLIB:-false} || {
-    INI_BASHLIB=:
+${INI_BASHLIB:-false} && return
+INI_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire ansi)
+. <(lrequire ansi)
 
-    module_ini_case(){
-        local module=$1
-        case "$module" in
-          igbinary) echo "extension=$module.so igbinary.compact_strings=On"            ;;
-         memcached) echo "extension=$module.so memcached.serializer=php"               ;;
-          tideways) echo "extension=tideways_xhprof.so tideways.auto_prepend_library=0";;
-            xdebug) echo "zend_extension=$module.so"                                   ;;
-                 *) echo "extension=$module.so"
-        esac
-    }
+module_ini_case(){
+    local module=$1
+    case "$module" in
+      igbinary) echo "extension=$module.so igbinary.compact_strings=On"            ;;
+     memcached) echo "extension=$module.so memcached.serializer=php"               ;;
+      tideways) echo "extension=tideways_xhprof.so tideways.auto_prepend_library=0";;
+        xdebug) echo "zend_extension=$module.so"                                   ;;
+             *) echo "extension=$module.so"
+    esac
+}
 
-    ini_symlinks(){
-        local sapi
-        if $remove; then
-            $quiet||{ f; GRAY; echo "- next step: $(B)phpdismod -prv $php_version -s ALL $module"; }
-            ${step:-false} && anykey
-            o2; B; echo "phpdismod -prv $php_version -s ALL $module"; N
-            phpdismod -prv $php_version -s ALL $module 2>/dev/null
-        else
-            f; GRAY; echo "- next step: $(B)phpenmod -rv $php_version -s ALL $module"
-            ${step:-false} && anykey
-            phpenmod -rv $php_version -s ALL $module
-            f
-            GRAY; echo "- result:"
-            for sapi in $sapis; do
-                o2;lG;phpquery -v $php_version -s $sapi -m $module
-            done
-            N
-            f
-        fi
-    }
+ini_symlinks(){
+    local sapi
+    if $remove; then
+        $quiet||{ f; GRAY; echo "- next step: $(B)phpdismod -prv $php_version -s ALL $module"; }
+        ${step:-false} && anykey
+        o2; B; echo "phpdismod -prv $php_version -s ALL $module"; N
+        phpdismod -prv $php_version -s ALL $module 2>/dev/null
+    else
+        f; GRAY; echo "- next step: $(B)phpenmod -rv $php_version -s ALL $module"
+        ${step:-false} && anykey
+        phpenmod -rv $php_version -s ALL $module
+        f
+        GRAY; echo "- result:"
+        for sapi in $sapis; do
+            o2;lG;phpquery -v $php_version -s $sapi -m $module
+        done
+        N
+        f
+    fi
+}
 
-    module_ini(){
-        if $remove; then
-            ini_symlinks
-            $quiet||{ f; GRAY; echo "- next step: $(B)module_ini (remove):"; }
-            ${step:-false} && anykey
-            o2; B; echo "rm \"$ini_dir/$module.ini\""; N
-            rm -f "$ini_dir/$module.ini"
-        else
-            f
-            GRAY; echo "- next step: $(B)module_ini (create):"
-            ${step:-false} && anykey
-            ini_file+=("; priority = $priority")
-            for directive in $(module_ini_case $module); do
-                ini_file+=("$directive")
-            done
-            C;echo "("
-            for i in ${!ini_file[@]}; do
-                echo "${ini_file[i]}"
-            done
-            echo ") > $ini_dir/$module.ini";N
-            (for i in ${!ini_file[@]}; do
-                echo "${ini_file[i]}"
-            done) > $ini_dir/$module.ini
-            ini_symlinks
-        fi
-    }
+module_ini(){
+    if $remove; then
+        ini_symlinks
+        $quiet||{ f; GRAY; echo "- next step: $(B)module_ini (remove):"; }
+        ${step:-false} && anykey
+        o2; B; echo "rm \"$ini_dir/$module.ini\""; N
+        rm -f "$ini_dir/$module.ini"
+    else
+        f
+        GRAY; echo "- next step: $(B)module_ini (create):"
+        ${step:-false} && anykey
+        ini_file+=("; priority = $priority")
+        for directive in $(module_ini_case $module); do
+            ini_file+=("$directive")
+        done
+        C;echo "("
+        for i in ${!ini_file[@]}; do
+            echo "${ini_file[i]}"
+        done
+        echo ") > $ini_dir/$module.ini";N
+        (for i in ${!ini_file[@]}; do
+            echo "${ini_file[i]}"
+        done) > $ini_dir/$module.ini
+        ini_symlinks
+    fi
 }

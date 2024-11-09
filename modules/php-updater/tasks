@@ -7,874 +7,872 @@ __copyright__
 __license__
 #
 
-${TASKS_BASHLIB:-false} || {
-    TASKS_BASHLIB=:
+${TASKS_BASHLIB:-false} && return
+TASKS_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire button)
-    . <(lrequire exit)
-    . <(lrequire anykey)
-    . <(lrequire ask)
-    . <(lrequire dpkg)
-    . <(lrequire php/versions)
-    . <(lrequire php/extensions)
-    . <(lrequire php/apache2)
-    . <(lrequire php/fpm)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire anykey)
+. <(lrequire ask)
+. <(lrequire dpkg)
+. <(lrequire php/versions)
+. <(lrequire php/extensions)
+. <(lrequire php/apache2)
+. <(lrequire php/fpm)
 
-    replace_aim(){ # replace admin installed modules
-        replace_(){
-            local ini_dir mod
-            if [ "$(pecl list)" = '(no packages installed from channel pecl.php.net)' ] && ((imb)); then
-                if $pmb; then
-                    for i in ${!mods[@]}; do
-                        ver=${mods[i]#*php}
-                        ver=${ver%)}
-                        mod=${mods[i]%(*}
-                        php-module-builder $ver $mod --remove --force --quiet
-                        ext_state purge $mod $ver
-                    done
-                fi
-            else
-                ini_dir="/etc/php/$PHP_VERSION/mods-available"
-                pecl uninstall ${mods[@]%(*}
-                for mod in ${mods[@]%(*}; do
-                    pecl uninstall $mod # for the sake of stability, if something went wrong 2 lines before
-                    phpdismod -p -v $PHP_VERSION -s ALL $mod
+replace_aim(){ # replace admin installed modules
+    replace_(){
+        local ini_dir mod
+        if [ "$(pecl list)" = '(no packages installed from channel pecl.php.net)' ] && ((imb)); then
+            if $pmb; then
+                for i in ${!mods[@]}; do
+                    ver=${mods[i]#*php}
+                    ver=${ver%)}
+                    mod=${mods[i]%(*}
+                    php-module-builder $ver $mod --remove --force --quiet
                     ext_state purge $mod $ver
-                    rm -f "$ini_dir/$mod.ini"
                 done
             fi
-#            anykey
-            ext_state cleanup
-            ext_state fix
-            apt_install_prechecked --yes ${pakages[@]}
-        }
-        if command -v pecl >/dev/null; then
-            local pmb ver module pakage pkgmod modstring serializers compression replaced
-            local -i iam imb pecli=0
-            local -a ibymb pkgmods mods pakages
-            replaced=false
-            for pv in ${VERSIONS[@]}; do
-                eval iam+=\${#C4EIBY4_${pv//./}[@]}
+        else
+            ini_dir="/etc/php/$PHP_VERSION/mods-available"
+            pecl uninstall ${mods[@]%(*}
+            for mod in ${mods[@]%(*}; do
+                pecl uninstall $mod # for the sake of stability, if something went wrong 2 lines before
+                phpdismod -p -v $PHP_VERSION -s ALL $mod
+                ext_state purge $mod $ver
+                rm -f "$ini_dir/$mod.ini"
             done
-            command -v php-module-builder >/dev/null&&pmb=true||pmb=false
-            mapfile -t ibymb< <(grep -lr "module built by php-module-builder" /etc/php/)
-            imb=${#ibymb[@]}
-            if (( iam )); then
-                if [ "$(pecl list)" = '(no packages installed from channel pecl.php.net)' ]; then
-                    spinner C " . search packages for modules installed by the php-module-builder script ." &
-                    if ((imb)); then
-                        for inifile in ${ibymb[@]}; do
-                            ver=${inifile#/etc/php/}
-                            ver=${ver%%/*}
-                            module=$(basename ${inifile%.ini})
-                            pakage="php$ver-$module"
-                            if apt_exist "$pakage"; then ((pecli++))
-                                pakages+=("$pakage")
-                                mods+=("$(awk 'NR==1 {print $3}' $inifile)(php$ver)")
+        fi
+#            anykey
+        ext_state cleanup
+        ext_state fix
+        apt_install_prechecked --yes ${pakages[@]}
+    }
+    if command -v pecl >/dev/null; then
+        local pmb ver module pakage pkgmod modstring serializers compression replaced
+        local -i iam imb pecli=0
+        local -a ibymb pkgmods mods pakages
+        replaced=false
+        for pv in ${VERSIONS[@]}; do
+            eval iam+=\${#C4EIBY4_${pv//./}[@]}
+        done
+        command -v php-module-builder >/dev/null&&pmb=true||pmb=false
+        mapfile -t ibymb< <(grep -lr "module built by php-module-builder" /etc/php/)
+        imb=${#ibymb[@]}
+        if (( iam )); then
+            if [ "$(pecl list)" = '(no packages installed from channel pecl.php.net)' ]; then
+                spinner C " . search packages for modules installed by the php-module-builder script ." &
+                if ((imb)); then
+                    for inifile in ${ibymb[@]}; do
+                        ver=${inifile#/etc/php/}
+                        ver=${ver%%/*}
+                        module=$(basename ${inifile%.ini})
+                        pakage="php$ver-$module"
+                        if apt_exist "$pakage"; then ((pecli++))
+                            pakages+=("$pakage")
+                            mods+=("$(awk 'NR==1 {print $3}' $inifile)(php$ver)")
+                        fi
+                    done
+                fi
+                kill_spinner
+            else
+                for i in $(eval echo \${!C4EIBY4_${PHP_VERSION//./}[@]}); do
+                    pkgmod="$(eval echo \"\${C4EIBY4_${PHP_VERSION//./}[i]}\")"
+                    if (( $(pecl list | grep -wc "${pkgmod#*:}") )); then
+                        (( pecli++ ))
+                        pakages+=("${pkgmod%:*}")
+                        mods+=("${pkgmod#*:}(php$PHP_VERSION)")
+                    fi
+                done
+            fi
+        fi
+        if (( pecli )); then
+            if ((pecli==1)); then
+                plu='' modstring="$(B)${mods[0]}$(N)"
+            else
+                plu='s' modstring="$(listify B ${mods[@]})"
+            fi
+            if [[ "${mods[@]}" =~ redis ]]; then
+                serializers="$(php -i | grep "Available serializers" | sed 's/.*=> //;s/,//g')"
+                compression="$(php -i | grep "Available compression" | sed 's/.*=> //;s/,//g')"
+                if [[ ! "$serializers" =~ igbinary ]] && [ -z "$compression" ]; then
+                    bundle echo "$(xpf;format_string "$(Y)The actually installed $(C)redis$(Y) module was poorly built without enabled igbinary serializer support and without any compression ($(dY)lzf, zstd, and/or lz4$(Y)) support enabled, which results in a loss of performance." 3;N)"
+                fi
+            fi
+            bundle echo "$(ipf;format_string "The php module$plu $modstring can be replaced by this script. You can answer $(box no) here, but then you may be confronted with some error messages after the upgrade while migrating the settings." 3)"
+            ask "$(qpf)Do you want to replace $modstring now" "$YES" && { replaced=true;replace_;}
+            separator
+        fi
+    else
+        bundle echo "$(xpf;format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
+    fi
+    $replaced && "$me$forceflag" "json=$my_json" --list-installed-only
+}
+
+remove_unused_sapis(){
+    spinner C " . searching misconfigurations: unused SAPIs ." &
+    populate_pkgs_by_dpkg_array
+    if $(is_sapi_true_ cgi) || $(is_sapi_true_ embed) || $(is_sapi_true_ phpdbg); then
+        local unused_sapi plu be modstring pkgstring
+        local -a unused_sapis packages_2_purge
+        for unused_sapi in cgi embed phpdbg;do
+            if $(is_sapi_true_ $unused_sapi); then
+                unused_sapis+=("$unused_sapi")
+                packages_2_purge+=(${SAPIS[$unused_sapi]/@VER@/*})
+            fi
+        done
+        if (( ${#unused_sapis[@]} == 1 )); then
+            plu='is:' be='is a' modstring="$(B)${unused_sapis[0]}$(N)" pkgstring="$(B)${packages_2_purge[@]}$(N)"
+        else
+            plu='ese:s' be='are' modstring="$(listify B ${unused_sapis[@]})" pkgstring="$(listify B ${packages_2_purge[@]})"
+        fi
+        question="Q:$(format_string "Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} package${plu#*:} $pkgstring now" 3)"
+        kill_spinner
+        bundle echo "$(xpf;format_string "There $be $modstring SAPI${plu#*:} installed on this machine." 3;N)"
+        echo "$(ipf;format_string "In most cases, th${plu%:*} SAPI${plu#*:} get installed because of a dependency package. There is not a single use case that requires th${plu%:*} SAPI${plu#*:} to operate an application like Netxcloud. $(Y)Consider removing th${plu%:*} unnecessary SAPI${plu#*:} before updating." 3;N)"
+        echo " -$(format_string "This script can remove th${plu%:*} $modstring package${plu#*:} in a safe way." 3)"
+        if ask "$question" "$YES"; then
+            apt_purge --yes ${packages_2_purge[@]}
+            "$me$forceflag" "json=$my_json" --list-installed-only
+            anykey
+            return 0
+        else
+            return 1
+        fi
+    else
+        kill_spinner
+        return 1
+    fi
+}
+
+remove_dependency_packages(){
+    spinner C " . searching misconfigurations: dependency-packages ." &
+    populate_dependency_pkgs_array
+    mapfile -t DEPENDENCY_PKGS< <(comm -12 <(p_sort_trim ${DEPENDENCY_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
+    if (( ${#DEPENDENCY_PKGS[@]} )); then
+        if ((${#DEPENDENCY_PKGS[@]}==1)); then
+            plu='is:' be='is a' modstring="$(B)${DEPENDENCY_PKGS[0]}$(N)"
+        else
+            plu='ese:s' be='are' modstring="$(listify B ${DEPENDENCY_PKGS[@]})"
+        fi
+        question="Q:$(format_string "Do you want to remove the dependency package${plu#*:} $modstring now" 3)"
+        kill_spinner
+        bundle echo "$(xpf;format_string "There $be unnecessary $(O)dependency package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
+        echo "$(ipf;Y;format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove th${plu%:*} package${plu#*:} before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3;N)"
+        echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
+        if ask "$question" "$YES"; then
+            apt_remove --yes ${DEPENDENCY_PKGS[@]}
+            "$me$forceflag" "json=$my_json" --list-installed-only
+            anykey
+            return 0
+        else
+            return 1
+        fi
+    else
+        kill_spinner
+        return 1
+    fi
+}
+
+remove_meta_packages(){
+    spinner C " . searching misconfigurations: meta-packages ." &
+    populate_meta_pkgs_array
+    mapfile -t META_PKGS< <(comm -12 <(p_sort_trim ${META_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
+    if (( ${#META_PKGS[@]} )); then
+        if ((${#META_PKGS[@]}==1)); then
+            plu='is:' be='is a' modstring="$(B)${META_PKGS[0]}$(N)"
+        else
+            plu='ese:s' be='are' modstring="$(listify B ${META_PKGS[@]})"
+        fi
+        question="Q:$(format_string "Do you want to remove the meta package${plu#*:} $modstring now" 3)"
+        kill_spinner
+        bundle echo "$(xpf;format_string "There $be unnecessary $(O)meta package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
+        echo "$(ipf;Y;format_string "Meta packages do not contain actual software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require these meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove th${plu%:*} package${plu#*:} before updating. The removal makes your system more resilient against unintended changes made without your decision." 3;N)"
+        echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
+        if ask "$question" "$YES"; then
+            apt_remove --yes ${META_PKGS[@]}
+            "$me$forceflag" "json=$my_json" --list-installed-only
+            anykey
+            return 0
+        else
+            return 1
+        fi
+    else
+        kill_spinner
+        return 1
+    fi
+}
+
+change_sapi(){
+    sapi_check_apache2(){
+        case $active_sapi in
+            a2) active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_a2_pkg="libapache2-mod-php$active_a2_version"
+                read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(ipf;format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - completely remove php*-fpm"
+                f;o 10;bundle echo "$(button 2) - switch apache2 from libapache2-mod-php to php*-fpm"
+                f;o 10;bundle echo "$(button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            apt_remove 'php*-fpm'
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            php_a2module_2_fpm "$PHP_VERSION"
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$PHP_VERSION-fpm
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        3)  cursor_ show
+                            f
+                            php_a2module_2_fpm "$PHP_VERSION"
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$PHP_VERSION-fpm
+                            apt_remove 'libapache2-mod-php*'
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+           fpm) active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_fpm_pkg="php$active_fpm_version-fpm"
+                read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(ipf;format_string "The '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)apache2handler SAPI$(N)' $(B)libapache2-mod-php$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php* (recommended)"
+                f;o 10;bundle echo "$(button 2) - switch apache2 from php*-fpm to libapache2-mod-php"
+                f;o 10;bundle echo "$(button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            apt_remove 'libapache2-mod-php*'
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+# TODO: migrate php.ini
+                            systemctl restart apache2
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        3)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+# TODO: migrate php.ini
+                            systemctl restart apache2
+                            apt_remove 'php*-fpm'
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+          both) active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_a2_pkg="libapache2-mod-php$active_a2_version"
+                active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_fpm_pkg="php$active_fpm_version-fpm"
+                read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(xpf;format_string "It looks like both, the '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) are connected to it. These two SAPIs are mutually exclusive in this usecase. $(R)This is a serious misconfiguration that needs to be fixed$(N)." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - disconnect apache2 from libapache2-mod-php (recommended)"
+                f;o 10;bundle echo "$(button 2) - disconnect apache2 from libapache2-mod-php and completely remove libapache2-mod-php*"
+                f;o 10;bundle echo "$(button 3) - disconnect apache2 from php*-fpm"
+                f;o 10;bundle echo "$(button 4) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt " key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            php_a2module_ disable
+                            php_fpm_module_ enable
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$active_fpm_version-fpm
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            php_a2module_ disable
+                            php_fpm_module_ enable
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$active_fpm_version-fpm
+                            apt_remove 'libapache2-mod-php*'
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        3)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+                            systemctl restart apache2
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        4)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+                            systemctl restart apache2
+                            apt_remove 'php*-fpm'
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+            *)  active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_a2_pkg="libapache2-mod-php$active_a2_version"
+                read_prompt="$(os;C)press $(button 1), $(button 2) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(ipf;format_string "The apache2 webserver is installed but inactive. The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is configured to be connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) is listening as well. These two SAPIs are mutually exclusive in any usecase with apache2." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php*"
+                f;o 10;bundle echo "$(button 2) - completely remove php*-fpm"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            apt_remove 'libapache2-mod-php*'
+                            php_a2module_2_fpm "$PHP_VERSION"
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            apt_remove 'php*-fpm'
+                            php_fpm_2_a2module $PHP_VERSION
+                            "$me$forceflag" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+        esac
+    }
+
+    spinner C " . searching misconfigurations: change SAPI ." &
+    populate_pkgs_by_dpkg_array
+    if $(is_sapi_true_ apache2) && $(is_sapi_true_ fpm); then
+        kill_spinner
+        bundle echo "$(xpf;format_string "There are $(B)apache2handler$(N) and $(B)fpm$(N) SAPIs installed on this machine." 3)"
+        spinner C " . searching misconfigured SAPIs ." &
+        [[ "${SAPI_A2[@]}" =~ a ]] && active_sapi="a2"
+        [[ "${SAPI_FPM[@]}" =~ a ]] && { [ "$active_sapi" = "a2" ] && active_sapi="both" || active_sapi="fpm";}
+        populate_httpd_ enabled
+        populate_httpd_ active
+        populate_httpd_ wk_enabled
+        populate_httpd_ wk_active
+        if (( ${#HTTPD_ENABLED[@]} )); then
+            if (( ${#HTTPD_ENABLED[@]} == ${#WK_HTTPD_ENABLED[@]} )); then
+                if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                    webserver="${WK_HTTPD_ENABLED[0]}"
+                    infostring="Detected httpd (webserver): $(C)$webserver$(N) (status inactive)"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        infostring="${infostring/inactive/active}"
+                    fi
+                elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
+                    webserver=both
+                    modstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
+                    infostring="Detected httpds (webservers): $modstring"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        active_webserver=${WK_HTTPD_ACTIVE[0]}
+                        infostring="$infostring, but only $(C)$active_webserver$(N) seems to be active."
+                    elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
+                        active_webserver=both
+                        infostring="$infostring, and $active_webserver seem to be active."
+                    fi
+                fi
+            elif (( ${#HTTPD_ENABLED[@]} > ${#WK_HTTPD_ENABLED[@]} )); then
+                if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                    webserver="${WK_HTTPD_ENABLED[0]}"
+                    modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                    infostring="Detected httpds (webservers): $modstring. httpd with importance for this script: $(C)$webserver$(N) (status inactive)"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        infostring="${infostring/inactive/active}"
+                    fi
+                elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
+                    webserver=both
+                    modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                    modsubstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
+                    infostring="Detected httpds (webservers): $modstring. httpds with importance for this script: $modsubstring"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        active_webserver=${WK_HTTPD_ACTIVE[0]}
+                        infostring="$infostring, but only $(C)$active_webserver$(N) seems to be active."
+                    elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
+                        active_webserver=both
+                        infostring="$infostring, and $active_webserver seem to be active."
+                    fi
+                fi
+            fi
+        fi
+        kill_spinner
+        bundle echo "$(ipf;format_string "$infostring" 3)"
+        case $webserver in
+            both)
+                bundle echo "  $(format_string "Your usecase looks complex, because of multiple installed webservers. If you know exactly what you are doing and everything is working well, you can leave this unchanged." 3)"
+                case $active_webserver in
+                    apache2)
+                        bundle echo "  $(format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        ;;
+                    nginx)
+                        bundle echo "  $(format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        ;;
+                    both)
+                        bundle echo "  $(format_string "However, if you are not using one of the two webserver apache2 or nginx, you should consider uninstalling it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        ;;
+                    *)  :
+                esac
+                f;anykey
+                return 0
+                ;;
+            apache2)
+                sapi_check_apache2
+                ;;
+            nginx)
+                pf;N;echo "Consider removing the apache2-mod-php SAPI (recommended)";N
+                if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
+                    apt_purge 'libapache2-mod-php*'
+                    "$me$forceflag" "json=$my_json" --list-installed-only
+                    anykey
+                    return 0
+                fi
+                ;;
+            *)  :
+        esac
+        return 1
+    else
+        return 1
+    fi
+}
+
+ini_directive_detect(){
+    local ver ini_directive result
+    ver="$1" ini_directive="$2"
+    find "/etc/php/$ver" -name "*.ini" ! -type l | while read -r file; do
+        if result="$(stripconf "$file" | grep "$ini_directive")"; then
+            echo "$file:$result"
+        fi
+    done
+}
+
+ext_config_fix(){
+    local ver ext ext_ini xtmp itmp must_be_fixed_message should_be_fixed_message good_to_be_fixed_message pattern sapi php_ini line plu be ini_string ini_string_ php_ini_dpkg key val basic_infostring infostring oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
+    local -a lines inifiles inifiles1_ inifiles2_ php_inis
+    local -i i
+    ver="$1" ext="$2"
+    ext_ini="/etc/php/$ver/mods-available/$ext.ini"
+    [ -f "$ext_ini" ] || return
+    xtmp=$(tf) itmp=$(tf)
+    if [ "$OLD" = "$ver" ] && [[ "$NEW" ]]; then
+        must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here but then the script will not continue, since it would multiply errors and various strange behaviour could arrise."
+        should_be_fixed_message="This should be fixed before this script migrates the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will be migrated as well."
+        good_to_be_fixed_message="This is not an error but about a possible optimization that is missing which you can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
+    else
+        must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php$ver$(P) to an other php version. You can answer $(box no) here but then the script cannot upgrade from this version, since it would multiply errors and various strange behaviour could arrise."
+        should_be_fixed_message="This should be fixed in the configuration of $(C)php$ver$(P)."
+        good_to_be_fixed_message="This is not an error but about a possible optimization that is missing in the configuration of $(C)php$ver$(P) which you can add."
+    fi
+    # get rid of double extension loaders
+    pattern="^\s*(zend_)?extension\s*=\s*$ext.*$"
+    for sapi in $(phpquery -v $ver -S); do
+        if [ -f "/etc/php/$ver/$sapi/php.ini" ]; then
+            php_inis+=("/etc/php/$ver/$sapi/php.ini")
+        fi
+    done
+    mapfile -t inifiles< <(grep -Eslix "$pattern" ${php_inis[@]})
+    if (( ${#inifiles[@]} )); then
+        line=$(grep -Eix "$pattern" ${inifiles[0]})
+        if (( ${#inifiles[@]} == 1 )); then
+            plu='' be=is ini_string_="$(C)${inifiles[0]}$(O)" ini_string="$(C)${inifiles[0]}$(W)"
+        else
+            plu='es' be=are ini_string_="$(listify_ C O ${inifiles[@]})" ini_string="$(listify_ C W ${inifiles[@]})"
+        fi
+        echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
+        infostring="This extension (module) is already loaded in $(C)$ext_ini$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from  $(C)$ini_string$(W)."
+        echo -e "\n$(R)$line$(N)" >> $itmp
+        C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+        for i in ${!inifiles[@]}; do
+            line=$(grep -Eix "$pattern" ${inifiles[i]})
+            echo "sed -i '/^$line$/d' '${inifiles[i]}'" >> $xtmp
+        done
+        if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
+            kill_spinner
+            separator
+            bundle cat "$itmp"
+            f
+            if ask "$(qpf)Do you want to apply this fix$plu" "$YES";then
+                . $xtmp
+                if grep -Eqslix "$pattern" ${php_inis[@]}; then
+                    bundle echo "R: $(R)removal from ${inifiles[@]} failed.$(N)"
+                else
+                    bundle echo "R: $(lG)removal from ${inifiles[@]} was successfull.$(N)"
+                fi
+            else
+                bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+            fi
+            anykey
+            spinner C " . ext_config_fix() searching known configuration errors in php$ver ." &
+        fi
+    fi
+    case $ext in
+        redis)
+            local -a sessionsavehandler
+            mapfile -t sessionsavehandler< <(ini_directive_detect "$ver" "session.save_handler")
+            if (( ${#sessionsavehandler[@]} )); then
+                for i in ${!sessionsavehandler[@]}; do
+                    if [[ "$(key_ val ${sessionsavehandler[i]##*:})" == "redis" &&
+                          "${sessionsavehandler[i]%%:*}" == "/etc/php/$ver/mods-available/redis.ini" ]]; then
+
+                    echo -n > $xtmp; echo -n > $itmp
+                    basic_infostring="The redis module is installed on this server and if you want to use redis for session management, these directives should be added. The best place for this directives is $(C)$ext_ini$(W)"
+                    optionblock="redis.session.locking_enabled=1\nredis.session.lock_wait_time=10000\nredis.session.lock_retries=-1"
+                    optionblock_r="redis.session.lock_retries=-1\nredis.session.lock_wait_time=10000\nredis.session.locking_enabled=1"
+                    optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
+                    optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
+                    pattern='redis\.session\.lock'
+                    if ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" &&
+                       ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" &&
+                       ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" &&
+                       ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
+                        for sapi in $(phpquery -v $ver -S); do
+                            php_ini="/etc/php/$ver/$sapi/php.ini"
+                            if [ -f "$php_ini" ]; then
+                                if p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
+                                   p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
+                                   p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
+                                   p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
+                                    inifiles1_+=("$php_ini")
+                                else
+                                    inifiles2_+=("$php_ini")
+                                fi
                             fi
                         done
-                    fi
-                    kill_spinner
-                else
-                    for i in $(eval echo \${!C4EIBY4_${PHP_VERSION//./}[@]}); do
-                        pkgmod="$(eval echo \"\${C4EIBY4_${PHP_VERSION//./}[i]}\")"
-                        if (( $(pecl list | grep -wc "${pkgmod#*:}") )); then
-                            (( pecli++ ))
-                            pakages+=("${pkgmod%:*}")
-                            mods+=("${pkgmod#*:}(php$PHP_VERSION)")
-                        fi
-                    done
-                fi
-            fi
-            if (( pecli )); then
-                if ((pecli==1)); then
-                    plu='' modstring="$(B)${mods[0]}$(N)"
-                else
-                    plu='s' modstring=$(listify B ${mods[@]})
-                fi
-                if [[ "${mods[@]}" =~ redis ]]; then
-                    serializers="$(php -i | grep "Available serializers" | sed 's/.*=> //;s/,//g')"
-                    compression="$(php -i | grep "Available compression" | sed 's/.*=> //;s/,//g')"
-                    if [[ ! "$serializers" =~ igbinary ]] && [ -z "$compression" ]; then
-                        bundle echo "$(xpf;format_string "$(Y)The actually installed $(C)redis$(Y) module was poorly built without enabled igbinary serializer support and without any compression ($(dY)lzf, zstd, and/or lz4$(Y)) support enabled, which results in a loss of performance." 3;N)"
-                    fi
-                fi
-                bundle echo "$(ipf;format_string "The php module$plu $modstring can be replaced by this script. You can answer $(box no) here, but then you may be confronted with some error messages after the upgrade while migrating the settings." 3)"
-                ask "$(qpf)Do you want to replace $modstring now" "$YES" && { replaced=true;replace_;}
-                separator
-            fi
-        else
-            bundle echo "$(xpf;format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
-        fi
-        $replaced && "$me$forceflag" "json=$my_json" --list-installed-only
-    }
-
-    remove_unused_sapis(){
-        spinner C " . searching misconfigurations: unused SAPIs ." &
-        populate_pkgs_by_dpkg_array
-        if $(is_sapi_true_ cgi) || $(is_sapi_true_ embed) || $(is_sapi_true_ phpdbg); then
-            local unused_sapi plu be modstring pkgstring
-            local -a unused_sapis packages_2_purge
-            for unused_sapi in cgi embed phpdbg;do
-                if $(is_sapi_true_ $unused_sapi); then
-                    unused_sapis+=("$unused_sapi")
-                    packages_2_purge+=(${SAPIS[$unused_sapi]/@VER@/*})
-                fi
-            done
-            if (( ${#unused_sapis[@]} == 1 )); then
-                plu='is:' be='is a' modstring="$(B)${unused_sapis[0]}$(N)" pkgstring="$(B)${packages_2_purge[@]}$(N)"
-            else
-                plu='ese:s' be='are' modstring="$(listify B ${unused_sapis[@]})" pkgstring="(listify B ${packages_2_purge[@]})"
-            fi
-            question="Q:$(format_string "Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} package${plu#*:} $pkgstring now" 3)"
-            kill_spinner
-            bundle echo "$(xpf;format_string "There $be $modstring SAPI${plu#*:} installed on this machine." 3;N)"
-            echo "$(ipf;format_string "In most cases, th${plu%:*} SAPI${plu#*:} get installed because of a dependency package. There is not a single use case that requires th${plu%:*} SAPI${plu#*:} to operate an application like Netxcloud. $(Y)Consider removing th${plu%:*} unnecessary SAPI${plu#*:} before updating." 3;N)"
-            echo " -$(format_string "This script can remove th${plu%:*} $modstring package${plu#*:} in a safe way." 3)"
-            if ask "$question" "$YES"; then
-                apt_purge --yes ${packages_2_purge[@]}
-                "$me$forceflag" "json=$my_json" --list-installed-only
-                anykey
-                return 0
-            else
-                return 1
-            fi
-        else
-            kill_spinner
-            return 1
-        fi
-    }
-
-    remove_dependency_packages(){
-        spinner C " . searching misconfigurations: dependency-packages ." &
-        populate_dependency_pkgs_array
-        mapfile -t DEPENDENCY_PKGS< <(comm -12 <(p_sort_trim ${DEPENDENCY_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
-        if (( ${#DEPENDENCY_PKGS[@]} )); then
-            if ((${#DEPENDENCY_PKGS[@]}==1)); then
-                plu='is:' be='is a' modstring="$(B)${DEPENDENCY_PKGS[0]}$(N)"
-            else
-                plu='ese:s' be='are' modstring="$(listify B ${DEPENDENCY_PKGS[@]})"
-            fi
-            question="Q:$(format_string "Do you want to remove the dependency package${plu#*:} $modstring now" 3)"
-            kill_spinner
-            bundle echo "$(xpf;format_string "There $be unnecessary $(O)dependency package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
-            echo "$(ipf;Y;format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove th${plu%:*} package${plu#*:} before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3;N)"
-            echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
-            if ask "$question" "$YES"; then
-                apt_remove --yes ${DEPENDENCY_PKGS[@]}
-                "$me$forceflag" "json=$my_json" --list-installed-only
-                anykey
-                return 0
-            else
-                return 1
-            fi
-        else
-            kill_spinner
-            return 1
-        fi
-    }
-
-    remove_meta_packages(){
-        spinner C " . searching misconfigurations: meta-packages ." &
-        populate_meta_pkgs_array
-        mapfile -t META_PKGS< <(comm -12 <(p_sort_trim ${META_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
-        if (( ${#META_PKGS[@]} )); then
-            if ((${#META_PKGS[@]}==1)); then
-                plu='is:' be='is a' modstring="$(B)${META_PKGS[0]}$(N)"
-            else
-                plu='ese:s' be='are' modstring="$(listify B ${META_PKGS[@]})"
-            fi
-            question="Q:$(format_string "Do you want to remove the meta package${plu#*:} $modstring now" 3)"
-            kill_spinner
-            bundle echo "$(xpf;format_string "There $be unnecessary $(O)meta package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
-            echo "$(ipf;Y;format_string "Meta packages do not contain actual software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require these meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove th${plu%:*} package${plu#*:} before updating. The removal makes your system more resilient against unintended changes made without your decision." 3;N)"
-            echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
-            if ask "$question" "$YES"; then
-                apt_remove --yes ${META_PKGS[@]}
-                "$me$forceflag" "json=$my_json" --list-installed-only
-                anykey
-                return 0
-            else
-                return 1
-            fi
-        else
-            kill_spinner
-            return 1
-        fi
-    }
-
-    change_sapi(){
-        sapi_check_apache2(){
-            case $active_sapi in
-                a2) active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
-                    active_a2_pkg="libapache2-mod-php$active_a2_version"
-                    read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
-                    kill_spinner
-                    bundle echo "$(ipf;format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
-                    pf;Y;echo "You should either:"
-                    f;o 10;bundle echo "$(button 1) - completely remove php*-fpm"
-                    f;o 10;bundle echo "$(button 2) - switch apache2 from libapache2-mod-php to php*-fpm"
-                    f;o 10;bundle echo "$(button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
-                    f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
-                    cursor_ hide
-                    N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                apt_remove 'php*-fpm'
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$PHP_VERSION"
-# TODO: migrate php.ini
-                                systemctl restart apache2 php$PHP_VERSION-fpm
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$PHP_VERSION"
-# TODO: migrate php.ini
-                                systemctl restart apache2 php$PHP_VERSION-fpm
-                                apt_remove 'libapache2-mod-php*'
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
-                    done
-                    ;;
-               fpm) active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
-                    active_fpm_pkg="php$active_fpm_version-fpm"
-                    read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
-                    kill_spinner
-                    bundle echo "$(ipf;format_string "The '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)apache2handler SAPI$(N)' $(B)libapache2-mod-php$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
-                    pf;Y;echo "You should either:"
-                    f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php* (recommended)"
-                    f;o 10;bundle echo "$(button 2) - switch apache2 from php*-fpm to libapache2-mod-php"
-                    f;o 10;bundle echo "$(button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
-                    f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
-                    cursor_ hide
-                    N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                apt_remove 'libapache2-mod-php*'
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_fpm_2_a2module $PHP_VERSION
-# TODO: migrate php.ini
-                                systemctl restart apache2
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_fpm_2_a2module $PHP_VERSION
-# TODO: migrate php.ini
-                                systemctl restart apache2
-                                apt_remove 'php*-fpm'
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
-                    done
-                    ;;
-              both) active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
-                    active_a2_pkg="libapache2-mod-php$active_a2_version"
-                    active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
-                    active_fpm_pkg="php$active_fpm_version-fpm"
-                    read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
-                    kill_spinner
-                    bundle echo "$(xpf;format_string "It looks like both, the '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) are connected to it. These two SAPIs are mutually exclusive in this usecase. $(R)This is a serious misconfiguration that needs to be fixed$(N)." 3)"
-                    pf;Y;echo "You should either:"
-                    f;o 10;bundle echo "$(button 1) - disconnect apache2 from libapache2-mod-php (recommended)"
-                    f;o 10;bundle echo "$(button 2) - disconnect apache2 from libapache2-mod-php and completely remove libapache2-mod-php*"
-                    f;o 10;bundle echo "$(button 3) - disconnect apache2 from php*-fpm"
-                    f;o 10;bundle echo "$(button 4) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
-                    f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
-                    cursor_ hide
-                    N;f;while :;do read -rsn 1 -p "$read_prompt " key;mh "key: $key"
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                php_a2module_ disable
-                                php_fpm_module_ enable
-# TODO: migrate php.ini
-                                systemctl restart apache2 php$active_fpm_version-fpm
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_a2module_ disable
-                                php_fpm_module_ enable
-# TODO: migrate php.ini
-                                systemctl restart apache2 php$active_fpm_version-fpm
-                                apt_remove 'libapache2-mod-php*'
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_fpm_2_a2module $PHP_VERSION
-                                systemctl restart apache2
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            4)  cursor_ show
-                                f
-                                php_fpm_2_a2module $PHP_VERSION
-                                systemctl restart apache2
-                                apt_remove 'php*-fpm'
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
-                    done
-                    ;;
-                *)  active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
-                    active_a2_pkg="libapache2-mod-php$active_a2_version"
-                    read_prompt="$(os;C)press $(button 1), $(button 2) or $(button q) to leave it unchanged$(N)"
-                    kill_spinner
-                    bundle echo "$(ipf;format_string "The apache2 webserver is installed but inactive. The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is configured to be connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) is listening as well. These two SAPIs are mutually exclusive in any usecase with apache2." 3)"
-                    pf;Y;echo "You should either:"
-                    f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php*"
-                    f;o 10;bundle echo "$(button 2) - completely remove php*-fpm"
-                    f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
-                    cursor_ hide
-                    N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                apt_remove 'libapache2-mod-php*'
-                                php_a2module_2_fpm "$PHP_VERSION"
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                apt_remove 'php*-fpm'
-                                php_fpm_2_a2module $PHP_VERSION
-                                "$me$forceflag" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
-                    done
-                    ;;
-            esac
-        }
-
-        spinner C " . searching misconfigurations: change SAPI ." &
-        populate_pkgs_by_dpkg_array
-        if $(is_sapi_true_ apache2) && $(is_sapi_true_ fpm); then
-            kill_spinner
-            bundle echo "$(xpf;format_string "There are $(B)apache2handler$(N) and $(B)fpm$(N) SAPIs installed on this machine." 3)"
-            spinner C " . searching misconfigured SAPIs ." &
-            [[ "${SAPI_A2[@]}" =~ a ]] && active_sapi="a2"
-            [[ "${SAPI_FPM[@]}" =~ a ]] && { [ "$active_sapi" = "a2" ] && active_sapi="both" || active_sapi="fpm";}
-            populate_httpd_ enabled
-            populate_httpd_ active
-            populate_httpd_ wk_enabled
-            populate_httpd_ wk_active
-            if (( ${#HTTPD_ENABLED[@]} )); then
-                if (( ${#HTTPD_ENABLED[@]} == ${#WK_HTTPD_ENABLED[@]} )); then
-                    if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
-                        webserver="${WK_HTTPD_ENABLED[0]}"
-                        infostring="Detected httpd (webserver): $(C)$webserver$(N) (status inactive)"
-                        if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                            infostring="${infostring/inactive/active}"
-                        fi
-                    elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
-                        webserver=both
-                        modstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
-                        infostring="Detected httpds (webservers): $modstring"
-                        if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                            active_webserver=${WK_HTTPD_ACTIVE[0]}
-                            infostring="$infostring, but only $(C)$active_webserver$(N) seems to be active."
-                        elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
-                            active_webserver=both
-                            infostring="$infostring, and $active_webserver seem to be active."
+                        if (( ${#inifiles1_[@]} == 0 )); then
+                            echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
+                            echo -e "\n   - $(O)Missing directives for redis session management feature in php$ver configuration:" >> $itmp
+                            infostring="$basic_infostring."
+                            echo -e "\n$(R)$optionblock$(N)" >> $itmp
+                            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                            echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
+                        elif (( ${#inifiles2_[@]} )); then
+                            if (( ${#inifiles1_[@]} == 1 )); then
+                                ini_string="$(C)${inifiles1_[0]}$(W)"
+                            else
+                                ini_string="$(listify_ C W ${inifiles1_[@]})"
+                            fi
+                            echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
+                            echo -e "\n   - $(O)(Partially) missing directives for redis session management feature:" >> $itmp
+                            infostring="$basic_infostring but it is only located in $ini_string. So this lines will be removed from there and appended to $(C)$ext_ini$(W) to make it available to all SAPIs."
+                            echo -e "\n$(R)$optionblock$(N)" >> $itmp
+                            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                            for i in ${!inifiles1_[@]}; do
+                                echo "sed -i '/$pattern/d' '${inifiles1_[i]}'" >> $xtmp
+                            done
+                            echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
                         fi
                     fi
-                elif (( ${#HTTPD_ENABLED[@]} > ${#WK_HTTPD_ENABLED[@]} )); then
-                    if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
-                        webserver="${WK_HTTPD_ENABLED[0]}"
-                        modstring="$(listify C ${HTTPD_ENABLED[@]})"
-                        infostring="Detected httpds (webservers): $modstring. httpd with importance for this script: $(C)$webserver$(N) (status inactive)"
-                        if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                            infostring="${infostring/inactive/active}"
+                    if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
+                        kill_spinner
+                        separator
+                        bundle cat "$itmp"
+                        f
+                        if ask "$(qpf)Do you want to apply this directives as suggested" "$YES";then
+                            . $xtmp
+                            if p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
+                               p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
+                               p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
+                               p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
+                                bundle echo "R: $(lG)Directives successfully written in $ext_ini.$(N)"
+                                for i in ${!inifiles1_[@]}; do
+                                    if p_sort "$(stripconf "${inifiles1_[i]}"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock"; then
+                                        bundle echo "R: $(R)removal from ${inifiles1_[i]} failed.$(N)"
+                                    else
+                                        bundle echo "R: $(lG)removal from ${inifiles1_[i]} was successfull.$(N)"
+                                    fi
+                                done
+                            else
+                                bundle echo "R: $(R)this step failed.$(N)"
+                            fi
+                        else
+                            bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
                         fi
-                    elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
-                        webserver=both
-                        modstring="$(listify C ${HTTPD_ENABLED[@]})"
-                        modsubstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
-                        infostring="Detected httpds (webservers): $modstring. httpds with importance for this script: $modsubstring"
-                        if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                            active_webserver=${WK_HTTPD_ACTIVE[0]}
-                            infostring="$infostring, but only $(C)$active_webserver$(N) seems to be active."
-                        elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
-                            active_webserver=both
-                            infostring="$infostring, and $active_webserver seem to be active."
-                        fi
-                    fi
-                fi
-            fi
-            kill_spinner
-            bundle echo "$(ipf;format_string "$infostring" 3)"
-            case $webserver in
-                both)
-                    bundle echo "  $(format_string "Your usecase looks complex, because of multiple installed webservers. If you know exactly what you are doing and everything is working well, you can leave this unchanged." 3)"
-                    case $active_webserver in
-                        apache2)
-                            bundle echo "  $(format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
-                            ;;
-                        nginx)
-                            bundle echo "  $(format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
-                            ;;
-                        both)
-                            bundle echo "  $(format_string "However, if you are not using one of the two webserver apache2 or nginx, you should consider uninstalling it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
-                            ;;
-                        *)  :
-                    esac
-                    f;anykey
-                    return 0
-                    ;;
-                apache2)
-                    sapi_check_apache2
-                    ;;
-                nginx)
-                    pf;N;echo "Consider removing the apache2-mod-php SAPI (recommended)";N
-                    if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
-                        apt_purge 'libapache2-mod-php*'
-                        "$me$forceflag" "json=$my_json" --list-installed-only
                         anykey
-                        return 0
                     fi
-                    ;;
-                *)  :
-            esac
-            return 1
-        else
-            return 1
-        fi
-    }
 
-    ini_directive_detect(){
-        local ver ini_directive result
-        ver="$1" ini_directive="$2"
-        find "/etc/php/$ver" -name "*.ini" ! -type l | while read -r file; do
-            if result="$(stripconf "$file" | grep "$ini_directive")"; then
-                echo "$file:$result"
+                    break
+                    fi
+                done
             fi
-        done
-    }
-
-    ext_config_fix(){
-        local ver ext ext_ini xtmp itmp must_be_fixed_message should_be_fixed_message good_to_be_fixed_message pattern sapi php_ini line plu be ini_string ini_string_ php_ini_dpkg key val basic_infostring infostring oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
-        local -a lines inifiles inifiles1_ inifiles2_ php_inis
-        local -i i
-        ver="$1" ext="$2"
-        ext_ini="/etc/php/$ver/mods-available/$ext.ini"
-        [ -f "$ext_ini" ] || return
-        xtmp=$(tf) itmp=$(tf)
-        if [ "$OLD" = "$ver" ] && [[ "$NEW" ]]; then
-            must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here but then the script will not continue, since it would multiply errors and various strange behaviour could arrise."
-            should_be_fixed_message="This should be fixed before this script migrates the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will be migrated as well."
-            good_to_be_fixed_message="This is not an error but about a possible optimization that is missing which you can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
-        else
-            must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php$ver$(P) to an other php version. You can answer $(box no) here but then the script cannot upgrade from this version, since it would multiply errors and various strange behaviour could arrise."
-            should_be_fixed_message="This should be fixed in the configuration of $(C)php$ver$(P)."
-            good_to_be_fixed_message="This is not an error but about a possible optimization that is missing in the configuration of $(C)php$ver$(P) which you can add."
-        fi
-        # get rid of double extension loaders
-        pattern="^\s*(zend_)?extension\s*=\s*$ext.*$"
-        for sapi in $(phpquery -v $ver -S); do
-            if [ -f "/etc/php/$ver/$sapi/php.ini" ]; then
-                php_inis+=("/etc/php/$ver/$sapi/php.ini")
-            fi
-        done
-        mapfile -t inifiles< <(grep -Eslix "$pattern" ${php_inis[@]})
-        if (( ${#inifiles[@]} )); then
-            line=$(grep -Eix "$pattern" ${inifiles[0]})
-            if (( ${#inifiles[@]} == 1 )); then
-                plu='' be=is ini_string_="$(C)${inifiles[0]}$(O)" ini_string="$(C)${inifiles[0]}$(W)"
-            else
-                plu='es' be=are ini_string_=$(listify_ C O ${inifiles[@]}) ini_string=$(listify_ C W ${inifiles[@]})
-            fi
-            echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-            infostring="This extension (module) is already loaded in $(C)$ext_ini$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from  $(C)$ini_string$(W)."
-            echo -e "\n$(R)$line$(N)" >> $itmp
-            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-            for i in ${!inifiles[@]}; do
-                line=$(grep -Eix "$pattern" ${inifiles[i]})
-                echo "sed -i '/^$line$/d' '${inifiles[i]}'" >> $xtmp
+            ;;
+        apcu)
+            echo -n > $xtmp; echo -n > $itmp
+            echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" > $itmp
+            pattern='^\s*apc.enable_cli\s*=\s*(on|1)\s*$' php_inis=()
+            for sapi in $(phpquery -v $ver -S); do
+                if [[ "$sapi" != 'cli' && -f "/etc/php/$ver/$sapi/php.ini" ]]; then
+                    php_inis+=("/etc/php/$ver/$sapi/php.ini")
+                fi
             done
+            [ -f "${php_inis[0]}" ] || return
+            mapfile -t inifiles1_< <(grep -Eslix "$pattern" ${php_inis[@]})
+            if (( ${#inifiles1_[@]} )); then
+                line=$(grep -Eix "$pattern" ${inifiles1_[0]})
+                if (( ${#inifiles1_[@]} == 1 )); then
+                    plu='' be=is ini_string_="$(C)${inifiles1_[0]}$(O)" ini_string="$(C)${inifiles1_[0]}$(W)"
+                else
+                    plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
+                fi
+                echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
+                if (( $(grep -Exi "$pattern" "$ext_ini" "/etc/php/$ver/cli/php.ini"|wc -l) == 0 )); then
+                    infostring="This directive has absolutely no effect in $ini_string. It is meant to enable the APCu (Alternative PHP user Cache) for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the APCu is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$ver/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$ver/cli/php.ini$(W)."
+                    echo -e "\n$(R)$line$(N)" >> $itmp
+                    C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                    for i in ${!inifiles1_[@]}; do
+                        line=$(grep -Eix "$pattern" ${inifiles1_[i]})
+                        echo "sed -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
+                    done
+                    echo "echo 'apc.enable_cli=1' >> /etc/php/$ver/cli/php.ini" >> $xtmp
+                fi
+            fi
+            uniq_lines "$xtmp"
             if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
                 kill_spinner
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to apply this fix$plu" "$YES";then
+                if ask "$(qpf)Do you want to apply this fixes" "$YES";then
+                    haul cat "$xtmp"
                     . $xtmp
-                    if grep -Eqslix "$pattern" ${php_inis[@]}; then
-                        bundle echo "R: $(R)removal from ${inifiles[@]} failed.$(N)"
+                    if grep -Eqsiw "$pattern" /etc/php/$ver/cli/php.ini; then
+                        bundle echo "R: $(lG)Directive successfully written in /etc/php/$ver/cli/php.ini.$(N)"
+                        mapfile -t inifiles2_< <(grep -Eslix "$pattern" ${php_inis[@]})
+                        if (( ${#inifiles2_[@]} )); then
+                            bundle echo "R: $(R)removal from ${inifiles2_[@]} failed.$(N)"
+                        else
+                            bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull.$(N)"
+                        fi
                     else
-                        bundle echo "R: $(lG)removal from ${inifiles[@]} was successfull.$(N)"
+                        bundle echo "R: $(R)this step failed.$(N)"
                     fi
                 else
                     bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
                 fi
                 anykey
-                spinner C " . ext_config_fix() searching known configuration errors in php$ver ." &
             fi
-        fi
-        case $ext in
-            redis)
-                local -a sessionsavehandler
-                mapfile -t sessionsavehandler< <(ini_directive_detect "$ver" "session.save_handler")
-                if (( ${#sessionsavehandler[@]} )); then
-                    for i in ${!sessionsavehandler[@]}; do
-                        if [[ "$(key_ val ${sessionsavehandler[i]##*:})" == "redis" &&
-                              "${sessionsavehandler[i]%%:*}" == "/etc/php/$ver/mods-available/redis.ini" ]]; then
-
-                        echo -n > $xtmp; echo -n > $itmp
-                        basic_infostring="The redis module is installed on this server and if you want to use redis for session management, these directives should be added. The best place for this directives is $(C)$ext_ini$(W)"
-                        optionblock="redis.session.locking_enabled=1\nredis.session.lock_wait_time=10000\nredis.session.lock_retries=-1"
-                        optionblock_r="redis.session.lock_retries=-1\nredis.session.lock_wait_time=10000\nredis.session.locking_enabled=1"
-                        optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
-                        optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
-                        pattern='redis\.session\.lock'
-                        if ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" &&
-                           ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" &&
-                           ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" &&
-                           ! p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
-                            for sapi in $(phpquery -v $ver -S); do
-                                php_ini="/etc/php/$ver/$sapi/php.ini"
-                                if [ -f "$php_ini" ]; then
-                                    if p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
-                                       p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
-                                       p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
-                                       p_sort "$(stripconf "$php_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
-                                        inifiles1_+=("$php_ini")
-                                    else
-                                        inifiles2_+=("$php_ini")
-                                    fi
-                                fi
-                            done
-                            if (( ${#inifiles1_[@]} == 0 )); then
-                                echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
-                                echo -e "\n   - $(O)Missing directives for redis session management feature in php$ver configuration:" >> $itmp
-                                infostring="$basic_infostring."
-                                echo -e "\n$(R)$optionblock$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                                echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
-                            elif (( ${#inifiles2_[@]} )); then
-                                if (( ${#inifiles1_[@]} == 1 )); then
-                                    ini_string="$(C)${inifiles1_[0]}$(W)"
-                                else
-                                    ini_string=$(listify_ C W ${inifiles1_[@]})
-                                fi
-                                echo -e "\n -$(P;format_string "$good_to_be_fixed_message" 3;N)" > $itmp
-                                echo -e "\n   - $(O)(Partially) missing directives for redis session management feature:" >> $itmp
-                                infostring="$basic_infostring but it is only located in $ini_string. So this lines will be removed from there and appended to $(C)$ext_ini$(W) to make it available to all SAPIs."
-                                echo -e "\n$(R)$optionblock$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                                for i in ${!inifiles1_[@]}; do
-                                    echo "sed -i '/$pattern/d' '${inifiles1_[i]}'" >> $xtmp
-                                done
-                                echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
-                            fi
+            ;;
+        opcache)
+            echo -n > $xtmp; echo -n > $itmp
+            echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" > $itmp
+            pattern='^\s*opcache.enable_cli\s*=\s*(on|1)\s*$' php_inis=()
+            for sapi in $(phpquery -v $ver -S); do
+                if [[ "$sapi" != 'cli' && -f "/etc/php/$ver/$sapi/php.ini" ]]; then
+                    php_inis+=("/etc/php/$ver/$sapi/php.ini")
+                fi
+            done
+            [ -f "${php_inis[0]}" ] || return
+            mapfile -t inifiles1_< <(grep -Eslix "$pattern" ${php_inis[@]})
+            if (( ${#inifiles1_[@]} )); then
+                line=$(grep -Eix "$pattern" ${inifiles1_[0]})
+                if (( ${#inifiles1_[@]} == 1 )); then
+                    plu='' be=is ini_string_="$(C)${inifiles1_[0]}$(O)" ini_string="$(C)${inifiles1_[0]}$(W)"
+                else
+                    plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
+                fi
+                echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
+                if (( $(grep -Exi "$pattern" "$ext_ini" "/etc/php/$ver/cli/php.ini"|wc -l) == 0 )); then
+                    infostring="This directive has absolutely no effect in $ini_string. It is meant to enable the opcode cache for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the opcode cache is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$ver/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$ver/cli/php.ini$(W)."
+                    echo -e "\n$(R)$line$(N)" >> $itmp
+                    C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                    for i in ${!inifiles1_[@]}; do
+                        line=$(grep -Eix "$pattern" ${inifiles1_[i]})
+                        echo "sed -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
+                    done
+                    echo "echo 'opcache.enable_cli=1' >> /etc/php/$ver/cli/php.ini" >> $xtmp
+                fi
+            fi
+            uniq_lines "$xtmp"
+            if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
+                kill_spinner
+                separator
+                bundle cat "$itmp"
+                f
+                if ask "$(qpf)Do you want to apply this fixes" "$YES";then
+                    haul cat "$xtmp"
+                    . $xtmp
+                    if grep -Eqsiw "$pattern" /etc/php/$ver/cli/php.ini; then
+                        bundle echo "R: $(lG)Directive successfully written in /etc/php/$ver/cli/php.ini.$(N)"
+                        mapfile -t inifiles2_< <(grep -Eslix "$pattern" ${php_inis[@]})
+                        if (( ${#inifiles2_[@]} )); then
+                            bundle echo "R: $(R)removal from ${inifiles2_[@]} failed.$(N)"
+                        else
+                            bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull.$(N)"
                         fi
-                        if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
-                            kill_spinner
-                            separator
-                            bundle cat "$itmp"
-                            f
-                            if ask "$(qpf)Do you want to apply this directives as suggested" "$YES";then
-                                . $xtmp
-                                if p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock" ||
-                                   p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_r" ||
-                                   p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_sorted" ||
-                                   p_sort "$(stripconf "$ext_ini"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock_rsorted"; then
-                                    bundle echo "R: $(lG)Directives successfully written in $ext_ini.$(N)"
-                                    for i in ${!inifiles1_[@]}; do
-                                        if p_sort "$(stripconf "${inifiles1_[i]}"|sed -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|grep -qsPzw "$optionblock"; then
-                                            bundle echo "R: $(R)removal from ${inifiles1_[i]} failed.$(N)"
-                                        else
-                                            bundle echo "R: $(lG)removal from ${inifiles1_[i]} was successfull.$(N)"
-                                        fi
-                                    done
-                                else
-                                    bundle echo "R: $(R)this step failed.$(N)"
-                                fi
-                            else
-                                bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
-                            fi
-                            anykey
+                    else
+                        bundle echo "R: $(R)this step failed.$(N)"
+                    fi
+                else
+                    bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                fi
+                anykey
+            fi
+            ;;
+        igbinary)
+            echo -n > $xtmp; echo -n > $itmp
+            echo -e "\n -$(P;format_string "$must_be_fixed_message" 3;N)" >> $itmp
+            php_inis=()
+            for sapi in $(phpquery -v $ver -S); do
+                php_ini="/etc/php/$ver/$sapi/php.ini"
+                if [ -f "$php_ini" ]; then
+                    php_inis+=("/etc/php/$ver/$sapi/php.ini")
+                else
+                    continue
+                fi
+                mapfile -t lines< <(grep "$ext" "$php_ini") # treat ALL lines containing "$ext"
+                if (( ${#lines[@]} )); then
+                    echo -e "\n   - $(O)Malicious configuration lines in $(C)$php_ini$(O):" >> $itmp
+                    for i in ${!lines[@]}; do
+                        line="${lines[i]}"
+                        key="$(key_ name "$line")"
+                        val="$(key_ val "$line")"
+                        if bool="$(boolean "$val")"; then
+                            $bool && val='(on|1)' || val='(off|0)'
                         fi
-
-                        break
+                        if [ "$line" = "# igbinary for PHP" ]; then
+                            infostring="This line was added by an installation script. Of course, this particular line has no meaning as it is commented out, but it will be removed though since the subsequent igbinary related directives will be removed there too and placed on their correct place."
+                            echo -e "\n$(R)$line$(N)" >> $itmp
+                            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                            echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+                        elif grep -qswiE "^\s*$key\s*=\s*$val\s*$" "$ext_ini"; then
+                            infostring="This directive does not belong in $(C)$php_ini$(W) and is already defined in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W)."
+                            echo -e "\n$(R)$line$(N)" >> $itmp
+                            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                            echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+                        elif oldstring="$(grep -wiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
+                            infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W), where it already exists but there it is commented out. It will be removed from $(C)$php_ini$(W) and uncommented in $(C)$ext_ini$(W)."
+                            echo -e "\n$(R)$line$(N)" >> $itmp
+                            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                            echo "sed -Ei 's|^$oldstring$|$line|' '$ext_ini'" >> $xtmp
+                            echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+# TODO 0 -->
+                        elif ! grep -qswiE "$key\s*=\s*$val" "$ext_ini"; then
+                            infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W) and appendet at the end of $(C)$ext_ini$(W)."
+                            echo -e "\n$(R)$line$(N)" >> $itmp
+                            C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
+                            echo "echo >> '$line' '$ext_ini'" >> $xtmp
+                            echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+# TODO <-- 0
+                        else
+                            echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
                         fi
                     done
                 fi
-                ;;
-            apcu)
-                echo -n > $xtmp; echo -n > $itmp
-                echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" > $itmp
-                pattern='^\s*apc.enable_cli\s*=\s*(on|1)\s*$' php_inis=()
-                for sapi in $(phpquery -v $ver -S); do
-                    if [[ "$sapi" != 'cli' && -f "/etc/php/$ver/$sapi/php.ini" ]]; then
-                        php_inis+=("/etc/php/$ver/$sapi/php.ini")
-                    fi
-                done
-                [ -f "${php_inis[0]}" ] || return
-                mapfile -t inifiles1_< <(grep -Eslix "$pattern" ${php_inis[@]})
-                if (( ${#inifiles1_[@]} )); then
-                    line=$(grep -Eix "$pattern" ${inifiles1_[0]})
-                    if (( ${#inifiles1_[@]} == 1 )); then
-                        plu='' be=is ini_string_="$(C)${inifiles1_[0]}$(O)" ini_string="$(C)${inifiles1_[0]}$(W)"
-                    else
-                        plu='s' be=are ini_string_=$(listify_ C O ${inifiles1_[@]}) ini_string=$(listify_ C W ${inifiles1_[@]})
-                    fi
-                    echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                    if (( $(grep -Exi "$pattern" "$ext_ini" "/etc/php/$ver/cli/php.ini"|wc -l) == 0 )); then
-                        infostring="This directive has absolutely no effect in $ini_string. It is meant to enable the APCu (Alternative PHP user Cache) for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the APCu is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$ver/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$ver/cli/php.ini$(W)."
-                        echo -e "\n$(R)$line$(N)" >> $itmp
-                        C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                        for i in ${!inifiles1_[@]}; do
-                            line=$(grep -Eix "$pattern" ${inifiles1_[i]})
-                            echo "sed -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
-                        done
-                        echo "echo 'apc.enable_cli=1' >> /etc/php/$ver/cli/php.ini" >> $xtmp
-                    fi
-                fi
-                uniq_lines "$xtmp"
-                if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
-                    kill_spinner
-                    separator
-                    bundle cat "$itmp"
-                    f
-                    if ask "$(qpf)Do you want to apply this fixes" "$YES";then
-                        haul cat "$xtmp"
-                        . $xtmp
-                        if grep -Eqsiw "$pattern" /etc/php/$ver/cli/php.ini; then
-                            bundle echo "R: $(lG)Directive successfully written in /etc/php/$ver/cli/php.ini.$(N)"
-                            mapfile -t inifiles2_< <(grep -Eslix "$pattern" ${php_inis[@]})
-                            if (( ${#inifiles2_[@]} )); then
-                                bundle echo "R: $(R)removal from ${inifiles2_[@]} failed.$(N)"
-                            else
-                                bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull.$(N)"
-                            fi
-                        else
-                            bundle echo "R: $(R)this step failed.$(N)"
-                        fi
+            done
+            uniq_lines "$xtmp"
+            if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
+                kill_spinner
+                separator
+                bundle cat "$itmp"
+                f
+                if ask "$(qpf)Do you want to apply this fixes" "$YES";then
+                    haul cat "$xtmp"
+                    . $xtmp \
+                    && for inifile in $ext_ini ${php_inis[@]}; do uniq_empty_lines $inifile; done; unset inifile
+                    grep -qs "igbinary" ${php_inis[@]}&&bundle echo "R: $(R)this step failed.$(N)"||bundle echo "R: $(lG)this step was successfull.$(N)"
+                else
+                    if [ "$OLD" = "$ver" ] && [[ "$OLD" ]]; then
+                        bundle echo "R: $(R)you answered $(box no),...$(N)"
+                        exit1
                     else
                         bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
                     fi
-                    anykey
                 fi
-                ;;
-            opcache)
-                echo -n > $xtmp; echo -n > $itmp
-                echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" > $itmp
-                pattern='^\s*opcache.enable_cli\s*=\s*(on|1)\s*$' php_inis=()
-                for sapi in $(phpquery -v $ver -S); do
-                    if [[ "$sapi" != 'cli' && -f "/etc/php/$ver/$sapi/php.ini" ]]; then
-                        php_inis+=("/etc/php/$ver/$sapi/php.ini")
-                    fi
-                done
-                [ -f "${php_inis[0]}" ] || return
-                mapfile -t inifiles1_< <(grep -Eslix "$pattern" ${php_inis[@]})
-                if (( ${#inifiles1_[@]} )); then
-                    line=$(grep -Eix "$pattern" ${inifiles1_[0]})
-                    if (( ${#inifiles1_[@]} == 1 )); then
-                        plu='' be=is ini_string_="$(C)${inifiles1_[0]}$(O)" ini_string="$(C)${inifiles1_[0]}$(W)"
-                    else
-                        plu='s' be=are ini_string_=$(listify_ C O ${inifiles1_[@]}) ini_string=$(listify_ C W ${inifiles1_[@]})
-                    fi
-                    echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                    if (( $(grep -Exi "$pattern" "$ext_ini" "/etc/php/$ver/cli/php.ini"|wc -l) == 0 )); then
-                        infostring="This directive has absolutely no effect in $ini_string. It is meant to enable the opcode cache for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the opcode cache is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$ver/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$ver/cli/php.ini$(W)."
-                        echo -e "\n$(R)$line$(N)" >> $itmp
-                        C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                        for i in ${!inifiles1_[@]}; do
-                            line=$(grep -Eix "$pattern" ${inifiles1_[i]})
-                            echo "sed -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
-                        done
-                        echo "echo 'opcache.enable_cli=1' >> /etc/php/$ver/cli/php.ini" >> $xtmp
-                    fi
-                fi
-                uniq_lines "$xtmp"
-                if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
-                    kill_spinner
-                    separator
-                    bundle cat "$itmp"
-                    f
-                    if ask "$(qpf)Do you want to apply this fixes" "$YES";then
-                        haul cat "$xtmp"
-                        . $xtmp
-                        if grep -Eqsiw "$pattern" /etc/php/$ver/cli/php.ini; then
-                            bundle echo "R: $(lG)Directive successfully written in /etc/php/$ver/cli/php.ini.$(N)"
-                            mapfile -t inifiles2_< <(grep -Eslix "$pattern" ${php_inis[@]})
-                            if (( ${#inifiles2_[@]} )); then
-                                bundle echo "R: $(R)removal from ${inifiles2_[@]} failed.$(N)"
-                            else
-                                bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull.$(N)"
-                            fi
-                        else
-                            bundle echo "R: $(R)this step failed.$(N)"
-                        fi
-                    else
-                        bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
-                    fi
-                    anykey
-                fi
-                ;;
-            igbinary)
-                echo -n > $xtmp; echo -n > $itmp
-                echo -e "\n -$(P;format_string "$must_be_fixed_message" 3;N)" >> $itmp
-                php_inis=()
-                for sapi in $(phpquery -v $ver -S); do
-                    php_ini="/etc/php/$ver/$sapi/php.ini"
-                    if [ -f "$php_ini" ]; then
-                        php_inis+=("/etc/php/$ver/$sapi/php.ini")
-                    else
-                        continue
-                    fi
-                    mapfile -t lines< <(grep "$ext" "$php_ini") # treat ALL lines containing "$ext"
-                    if (( ${#lines[@]} )); then
-                        echo -e "\n   - $(O)Malicious configuration lines in $(C)$php_ini$(O):" >> $itmp
-                        for i in ${!lines[@]}; do
-                            line="${lines[i]}"
-                            key="$(key_ name "$line")"
-                            val="$(key_ val "$line")"
-                            if bool="$(boolean "$val")"; then
-                                $bool && val='(on|1)' || val='(off|0)'
-                            fi
-                            if [ "$line" = "# igbinary for PHP" ]; then
-                                infostring="This line was added by an installation script. Of course, this particular line has no meaning as it is commented out, but it will be removed though since the subsequent igbinary related directives will be removed there too and placed on their correct place."
-                                echo -e "\n$(R)$line$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-                            elif grep -qswiE "^\s*$key\s*=\s*$val\s*$" "$ext_ini"; then
-                                infostring="This directive does not belong in $(C)$php_ini$(W) and is already defined in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W)."
-                                echo -e "\n$(R)$line$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-                            elif oldstring="$(grep -wiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
-                                infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W), where it already exists but there it is commented out. It will be removed from $(C)$php_ini$(W) and uncommented in $(C)$ext_ini$(W)."
-                                echo -e "\n$(R)$line$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                                echo "sed -Ei 's|^$oldstring$|$line|' '$ext_ini'" >> $xtmp
-                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO 0 -->
-                            elif ! grep -qswiE "$key\s*=\s*$val" "$ext_ini"; then
-                                infostring="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W) and appendet at the end of $(C)$ext_ini$(W)."
-                                echo -e "\n$(R)$line$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
-                                echo "echo >> '$line' '$ext_ini'" >> $xtmp
-                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO <-- 0
-                            else
-                                echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-                            fi
-                        done
-                    fi
-                done
-                uniq_lines "$xtmp"
-                if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
-                    kill_spinner
-                    separator
-                    bundle cat "$itmp"
-                    f
-                    if ask "$(qpf)Do you want to apply this fixes" "$YES";then
-                        haul cat "$xtmp"
-                        . $xtmp \
-                        && for inifile in $ext_ini ${php_inis[@]}; do uniq_empty_lines $inifile; done; unset inifile
-                        grep -qs "igbinary" ${php_inis[@]}&&bundle echo "R: $(R)this step failed.$(N)"||bundle echo "R: $(lG)this step was successfull.$(N)"
-                    else
-                        if [ "$OLD" = "$ver" ] && [[ "$OLD" ]]; then
-                            bundle echo "R: $(R)you answered $(box no),...$(N)"
-                            exit1
-                        else
-                            bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
-                        fi
-                    fi
-                    anykey
-                fi
-                ;;
+                anykey
+            fi
+            ;;
 # TODO 1 -->
-            pdo_pgsql)
-                echo -n > $xtmp; echo -n > $itmp
-                echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" >> $itmp
+        pdo_pgsql)
+            echo -n > $xtmp; echo -n > $itmp
+            echo -e "\n -$(P;format_string "$should_be_fixed_message" 3;N)" >> $itmp
 
-                optionblock="pgsql.allow_persistent = On\npgsql.auto_reset_persistent = Off\npgsql.max_persistent = -1\npgsql.max_links = -1\npgsql.ignore_notice = 0\npgsql.log_notice = 0"
+            optionblock="pgsql.allow_persistent = On\npgsql.auto_reset_persistent = Off\npgsql.max_persistent = -1\npgsql.max_links = -1\npgsql.ignore_notice = 0\npgsql.log_notice = 0"
 
-                if grep -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"; then
-                    infostring="$(W)This block was added by an installation script. These are all exclusively default values and besides that, all these lines are already present in the shipped default php.ini for all SAPIs in exact the same order. Php does not get better by adding directives multiple times, it only lowers the overview ability and makes it difficult for this script. That is why this lines will (should) be removed."
-                    echo -e "\n$(R)[PostgresSQL]\n$optionblock$(N)" >> $itmp
-                    C;echo "info$(N):$(format_string "$infostring" 6;N)" >> $itmp
-                    echo "delafter 'extension=pdo_pgsql.so' '$ext_ini'" >> $xtmp
+            if grep -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"; then
+                infostring="$(W)This block was added by an installation script. These are all exclusively default values and besides that, all these lines are already present in the shipped default php.ini for all SAPIs in exact the same order. Php does not get better by adding directives multiple times, it only lowers the overview ability and makes it difficult for this script. That is why this lines will (should) be removed."
+                echo -e "\n$(R)[PostgresSQL]\n$optionblock$(N)" >> $itmp
+                C;echo "info$(N):$(format_string "$infostring" 6;N)" >> $itmp
+                echo "delafter 'extension=pdo_pgsql.so' '$ext_ini'" >> $xtmp
+            fi
+            if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
+                kill_spinner
+                separator
+                bundle cat "$itmp"
+                f
+                if ask "$(qpf)Do you want to remove these lines" "$YES";then
+                    . $xtmp
+                    grep -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"&&bundle echo "R: $(R)removal of this lines failed.$(N)"||bundle echo "R: $(lG)lines successfully removed.$(N)"
+                else
+                    bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
                 fi
-                if (( $(wc -c "$xtmp"|awk '{print$1}') )); then
-                    kill_spinner
-                    separator
-                    bundle cat "$itmp"
-                    f
-                    if ask "$(qpf)Do you want to remove these lines" "$YES";then
-                        . $xtmp
-                        grep -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"&&bundle echo "R: $(R)removal of this lines failed.$(N)"||bundle echo "R: $(lG)lines successfully removed.$(N)"
-                    else
-                        bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
-                    fi
-                    anykey
-                fi
-                ;;
+                anykey
+            fi
+            ;;
 # TODO <-- 1
-            *)  :
-        esac
-    }
-
-    check_config(){
-        local ver amdir am
-        local -a am_ini_files
-        (( $# )) && ver="$1" || ver="$OLD"
-        amdir="/etc/php/$ver/mods-available"
-        [ -d "$amdir" ] || return 1
-        mapfile -t am_ini_files< <(ls "$amdir"|awk -F. '/\.ini$/{print$1}')
-        for am in ${am_ini_files[@]}; do
-            spinner C " . check_config() searching known configuration errors in php$ver." &
-            ext_config_fix $ver $am
-        done
-        kill_spinner
-    }
+        *)  :
+    esac
 }
 
+check_config(){
+    local ver amdir am
+    local -a am_ini_files
+    (( $# )) && ver="$1" || ver="$OLD"
+    amdir="/etc/php/$ver/mods-available"
+    [ -d "$amdir" ] || return 1
+    mapfile -t am_ini_files< <(ls "$amdir"|awk -F. '/\.ini$/{print$1}')
+    for am in ${am_ini_files[@]}; do
+        spinner C " . check_config() searching known configuration errors in php$ver." &
+        ext_config_fix $ver $am
+    done
+    kill_spinner
+}

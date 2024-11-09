@@ -7,47 +7,46 @@ __copyright__
 __license__
 #
 
-${GITHUB_API_BASHLIB:-false} || {
-    GITHUB_API_BASHLIB=:
+${GITHUB_API_BASHLIB:-false} && return
+GITHUB_API_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire basics)
+. <(lrequire basics)
 
-    github_api(){
-        local URL="https://api.github.com/repos/$1/$2?per_page=$3"
-        case $2 in
-              tags) curl -s "$URL" | jq -r '.[] | .name'     | sed 's/^v//' | grep "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | grep -iv a
-                    ;;
-          releases) curl -s "$URL" | jq -r '.[] | .tag_name' | sed 's/^v//' | grep "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | grep -iv a
-        esac
-    }
+github_api(){
+    local URL="https://api.github.com/repos/$1/$2?per_page=$3"
+    case $2 in
+          tags) curl -s "$URL" | jq -r '.[] | .name'     | sed 's/^v//' | grep "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | grep -iv a
+                ;;
+      releases) curl -s "$URL" | jq -r '.[] | .tag_name' | sed 's/^v//' | grep "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | grep -iv a
+    esac
+}
 
-    list_latest(){
-        local version key # $1=prefix
-        local -a versions=(${LATEST_EOL[@]} $(github_api "nextcloud/server" "tags" "90")) parts latest_parts
-        local -A latest_versions
-        for version in "${versions[@]}"; do
-            parts=(${version//./ })
-            key="${parts[0]}.${parts[1]}"
-            if [ "$key" = "$nc_key" ]; then
-                if [ -z "${latest_versions["$key"]}" ]; then
-                    latest_versions["$key"]=$nc_version_tag
-                fi
-            elif [ -z "${latest_versions[$key]}" ]; then
-                latest_versions["$key"]=$version
-            else
-                latest_parts=(${latest_versions[$key]//./ })
-                if (( ${parts[2]/[a-zA-Z]*/} > ${latest_parts[2]/[a-zA-Z]*/} )); then
-                    latest_versions["$key"]=$version
-                elif (( ${parts[2]/[a-zA-Z]*/} == ${latest_parts[2]/[a-zA-Z]*/} )) && [[ ${parts[2],,}z > ${latest_parts[2],,}z ]]; then
-                    latest_versions["$key"]=$version
-                fi
+list_latest(){
+    local version key # $1=prefix
+    local -a versions=(${LATEST_EOL[@]} $(github_api "nextcloud/server" "tags" "90")) parts latest_parts
+    local -A latest_versions
+    for version in "${versions[@]}"; do
+        parts=(${version//./ })
+        key="${parts[0]}.${parts[1]}"
+        if [ "$key" = "$nc_key" ]; then
+            if [ -z "${latest_versions["$key"]}" ]; then
+                latest_versions["$key"]=$nc_version_tag
             fi
-        done
-        for key in "${!latest_versions[@]}"; do
-            echo "v${latest_versions[$key]//z/}"
-        done
-    }
+        elif [ -z "${latest_versions[$key]}" ]; then
+            latest_versions["$key"]=$version
+        else
+            latest_parts=(${latest_versions[$key]//./ })
+            if (( ${parts[2]/[a-zA-Z]*/} > ${latest_parts[2]/[a-zA-Z]*/} )); then
+                latest_versions["$key"]=$version
+            elif (( ${parts[2]/[a-zA-Z]*/} == ${latest_parts[2]/[a-zA-Z]*/} )) && [[ ${parts[2],,}z > ${latest_parts[2],,}z ]]; then
+                latest_versions["$key"]=$version
+            fi
+        fi
+    done
+    for key in "${!latest_versions[@]}"; do
+        echo "v${latest_versions[$key]//z/}"
+    done
 }

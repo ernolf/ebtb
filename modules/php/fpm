@@ -7,117 +7,140 @@ __copyright__
 __license__
 #
 
-${FPM_BASHLIB:-false} || {
-    FPM_BASHLIB=:
+${FPM_BASHLIB:-false} && return
+FPM_BASHLIB=:
 
-    declare -A SAPI_FPM
+declare -A SAPI_FPM
 
-    fpm_conf(){
-        local ver
-        ver="$1"
-        printf '%s' "/etc/php/$ver/fpm/php-fpm.conf"
-    }
+fpm_conf(){
+    local ver
+    ver="$1"
+    printf '%s' "/etc/php/$ver/fpm/php-fpm.conf"
+}
 
-    fpm_include(){
-        local ver conf include
-        ver=$1
-        conf="$(fpm_conf $ver)"
-        include="$(awk -F' |=' '/^\s*include/ {print $NF}' $conf)"
-        case $2 in
-          glob) echo "$include"
-                ;;
-           dir) echo "${include%/*}"
-                ;;
-           ext) echo "${include##*\.}"
-        esac
-    }
+fpm_include(){
+    local ver conf include
+    ver=$1
+    conf="$(fpm_conf $ver)"
+    include="$(awk -F' |=' '/^\s*include/ {print $NF}' $conf)"
+    case $2 in
+      glob) echo "$include"
+            ;;
+       dir) echo "${include%/*}"
+            ;;
+       ext) echo "${include##*\.}"
+    esac
+}
 
-    fpm_ps_info(){
-        local ver pool
-        local -i pid
-        local -a php_ps
-        for pid in $(ps -ef | awk '/php-fpm/ && !/root/ {print $2}'); do
-            ver=$(ps -p $pid --no-headers | awk '{print $NF}')
-            pool=$(ps -p $pid -o args= | awk '{print $NF}')
-            case $1 in
-              long) php_ps[pid]="${ver} pool: $pool" ;;
-                 *) php_ps[pid]="${ver#php-fpm} $pool"
-            esac
-        done
+fpm_ps_info(){
+    local ver pool
+    local -i pid
+    local -a php_ps
+    for pid in $(ps -ef | awk '/php-fpm/ && !/root/ {print $2}'); do
+        ver=$(ps -p $pid --no-headers | awk '{print $NF}')
+        pool=$(ps -p $pid -o args= | awk '{print $NF}')
         case $1 in
-          long) for pid in "${!php_ps[@]}"; do
-                    echo "PID: $pid, Version: ${php_ps[pid]}"
-                done
-                ;;
-         brief) for pid in "${!php_ps[@]}"; do
-                    echo "${php_ps[pid]}"
-                done | sort -u | grep "${2:-.}"
-                ;;
-       version) for pid in "${!php_ps[@]}"; do
-                    echo "${php_ps[pid]}"
-                done | sort -u | awk '/'${2:-.}'/ {print $1}'
-                ;;
-          pool) for pid in "${!php_ps[@]}"; do
-                    echo "${php_ps[pid]}"
-                done | sort -u | awk '/'${2:-.}'/ {print $2}'
+          long) php_ps[pid]="${ver} pool: $pool" ;;
+             *) php_ps[pid]="${ver#php-fpm} $pool"
         esac
-    }
+    done
+    case $1 in
+      long) for pid in "${!php_ps[@]}"; do
+                echo "PID: $pid, Version: ${php_ps[pid]}"
+            done
+            ;;
+     brief) for pid in "${!php_ps[@]}"; do
+                echo "${php_ps[pid]}"
+            done | sort -u | grep "${2:-.}"
+            ;;
+   version) for pid in "${!php_ps[@]}"; do
+                echo "${php_ps[pid]}"
+            done | sort -u | awk '/'${2:-.}'/ {print $1}'
+            ;;
+      pool) for pid in "${!php_ps[@]}"; do
+                echo "${php_ps[pid]}"
+            done | sort -u | awk '/'${2:-.}'/ {print $2}'
+    esac
+}
 
-    fpm_listen(){
-        local poolfile listen
-        poolfile="$1"
-        listen="$(awk -F '\\s*=\\s*' '/^\s*listen/ { sub(/;$/, "", $2); print $2; exit }' "$poolfile")"
-        case $2 in
-            brief)  echo "${listen//\"/}"
-                    ;;
-             type)  echo "${listen//\"/}" | awk -F':' '{
-                        if ($1 ~ /^\//) {
-                            print "unix"
-                        } else if ($1 ~ /^\[/) {
-                            print "tcpv6"
-                        } else if ($1 ~ /^[0-9]+$/) {
-                            print "tcp"
-                        } else {
-                            print "tcpv4"
-                        }
-                    }'
-                    ;;
-             full)  echo "${listen//\"/}" | awk -F':' '{
-                        if ($1 ~ /^\//) {
-                            print "Unix-Socket: " $1
-                        } else if ($1 ~ /^\[/) {
-                            print "IPv6: " $1 ":" $2
-                        } else if ($1 ~ /^[0-9]+$/) {
-                            print "Port: " $1
-                        } else {
-                            print "IPv4: " $1 ":" $2
-                        }
-                    }'
-        esac
-    }
-
-    fpm_sockets(){
-        if [ "$1" = 'versions' ]; then
-            ss -lx | awk '/fpm/{print $5}' | grep -Eo "${phpvregex#php}"
-        else
-            ss -lx | awk '/fpm/{print $5}'
-        fi
-    }
-
-    fpm_socket(){
-        local ver glob poolfile pool
-        local -A pools
-        ver=$1
-        glob=$(fpm_include "$ver" glob)
-        # for poolfile in $(ls $glob 2>/dev/null); do
-        for poolfile in $glob; do # bash has its builtin glob functionality
-            pool="$(sed -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
-            pools[$pool]="$(fpm_listen "$poolfile" brief)"
+fpm_pools(){
+    local v dir ext file strip
+    local -a files pools
+    local -i i index
+    strip=false
+    [ "$1" = 'strip' ] && strip=:
+    for v in ${VERSIONS[@]}; do
+        files=() pools=()
+        [[ "$(phpquery -v "$v" -S)" =~ fpm ]] || continue
+        dir="$(fpm_include "$v" dir)"
+        ext="$(fpm_include "$v" ext)"
+        [ -d "$dir" ] || continue
+        nonullglob "$dir/*" && files=("$dir/*\.$ext")
+        (( ${#files[@]} )) || continue
+        for file in ${files[@]};do
+            $strip && pools+=("$(awk -F ] '/^\[/{print $1}' "$file")") || pools+=("$(grep '^\[' "$file")")
         done
-        if [[ " ${!pools[@]} " =~ " $2 " ]]; then
-            echo "${pools[$2]}"
-        else
-            echo "${!pools[@]}"
-        fi
-    }
+        $strip && echo "$v ${pools[@]#[}" || echo "$v ${pools[@]}"
+    done
+}
+
+fpm_listen(){
+    local poolfile listen
+    poolfile="$1"
+    listen="$(awk -F '\\s*=\\s*' '/^\s*listen/ { sub(/;$/, "", $2); print $2; exit }' "$poolfile")"
+    case $2 in
+        brief)
+            echo "${listen//\"/}"
+            ;;
+         type)
+            echo "${listen//\"/}" | awk -F':' '{
+                if ($1 ~ /^\//) {
+                    print "unix"
+                } else if ($1 ~ /^\[/) {
+                    print "tcpv6"
+                } else if ($1 ~ /^[0-9]+$/) {
+                    print "tcp"
+                } else {
+                    print "tcpv4"
+                }
+            }'
+            ;;
+         full)
+            echo "${listen//\"/}" | awk -F':' '{
+                if ($1 ~ /^\//) {
+                    print "Unix-Socket: " $1
+                } else if ($1 ~ /^\[/) {
+                    print "IPv6: " $1 ":" $2
+                } else if ($1 ~ /^[0-9]+$/) {
+                    print "Port: " $1
+                } else {
+                    print "IPv4: " $1 ":" $2
+                }
+            }'
+    esac
+}
+
+fpm_sockets(){
+    if [ "$1" = 'versions' ]; then
+        ss -lx | awk '/fpm/{print $5}' | grep -Eo "${PHPVREGEX#php}"
+    else
+        ss -lx | awk '/fpm/{print $5}'
+    fi
+}
+
+fpm_socket(){
+    local ver glob poolfile pool
+    local -A pools
+    ver=$1
+    glob=$(fpm_include "$ver" glob)
+    # for poolfile in $(ls $glob 2>/dev/null); do
+    for poolfile in $glob; do # bash has its builtin glob functionality
+        pool="$(sed -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
+        pools[$pool]="$(fpm_listen "$poolfile" brief)"
+    done
+    if [[ " ${!pools[@]} " =~ " $2 " ]]; then
+        echo "${pools[$2]}"
+    else
+        echo "${!pools[@]}"
+    fi
 }

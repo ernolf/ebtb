@@ -7,146 +7,145 @@ __copyright__
 __license__
 #
 
-${DATA_REFINE_BASHLIB:-false} || {
-    DATA_REFINE_BASHLIB=:
+${DATA_REFINE_BASHLIB:-false} && return
+DATA_REFINE_BASHLIB=:
 
-    # for backwards compatibility
-    declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
-    . <(lrequire spinner)
-    . <(lrequire $sin/db)
+. <(lrequire spinner)
+. <(lrequire $sin/db)
 
-    create_json_objects(){
-        local query_version=$nc_version platform parts major minor item
-        if (( $(v2i $nc_version) > $(v2i $nc_master) )); then
-            query_version="$nc_master"
-        fi
-        if $bgjobs; then
-            GRAY;echo ". . . . . . . . . . .  create  and  update  json  objects  . . . . . . . . . . .";N
-            $pager || spinner &
-            appstore 'platform=all' 'new' & local job_ids="$!"
-        else
-            appstore 'platform=all' 'new'
-        fi
-        for platform in $(r_db "SELECT platform FROM versions WHERE meta == 'eol';"); do
-            if ! (( $(r_db "SELECT COUNT(platform) FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang';") )); then
-                if $bgjobs; then
-                    appstore "platform=$platform" "new" & job_ids="$job_ids $!"
-                else
-                    appstore "platform=$platform" "new"
-                fi
-            fi
-        done
-        for platform in $(r_db "SELECT platform FROM versions WHERE meta != 'eol';"); do
-            $bgjobs&&{
+create_json_objects(){
+    local query_version=$nc_version platform parts major minor item
+    if (( $(v2i $nc_version) > $(v2i $nc_master) )); then
+        query_version="$nc_master"
+    fi
+    if $bgjobs; then
+        GRAY;echo ". . . . . . . . . . .  create  and  update  json  objects  . . . . . . . . . . .";N
+        $pager || spinner &
+        appstore 'platform=all' 'new' & local job_ids="$!"
+    else
+        appstore 'platform=all' 'new'
+    fi
+    for platform in $(r_db "SELECT platform FROM versions WHERE meta == 'eol';"); do
+        if ! (( $(r_db "SELECT COUNT(platform) FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang';") )); then
+            if $bgjobs; then
                 appstore "platform=$platform" "new" & job_ids="$job_ids $!"
-            }|| appstore "platform=$platform" "new"
-        done
-        if $bgjobs; then
-            wait $job_ids
-            if $pager; then
-                echo "  json  objects  created"
-                line '=' N 80
             else
-                kill_spinner
+                appstore "platform=$platform" "new"
             fi
         fi
-    }
+    done
+    for platform in $(r_db "SELECT platform FROM versions WHERE meta != 'eol';"); do
+        $bgjobs&&{
+            appstore "platform=$platform" "new" & job_ids="$job_ids $!"
+        }|| appstore "platform=$platform" "new"
+    done
+    if $bgjobs; then
+        wait $job_ids
+        if $pager; then
+            echo "  json  objects  created"
+            line '=' N 80
+        else
+            kill_spinner
+        fi
+    fi
+}
 
-    query_apps(){
+query_apps(){
 # TODO 0 -->
 $debug && echo "${FUNCNAME[0]}"
 # TODO <-- 0
-        while (( $# )); do local $1; shift; done
+    while (( $# )); do local $1; shift; done
 
-        local local_applist appstore_ids local_ids app_id appstore_json global_applist platform="$nc_version"
-        local -a appstore_ids_not_installed
-        local_applist="$(r_db "SELECT json_data FROM app_lists WHERE section == 'local';")"
+    local local_applist appstore_ids local_ids app_id appstore_json global_applist platform="$nc_version"
+    local -a appstore_ids_not_installed
+    local_applist="$(r_db "SELECT json_data FROM app_lists WHERE section == 'local';")"
 
 # TODO 1 -->
 $debug && set -x
 # TODO <-- 1
-        $unsupported||$all&&platform='all'
-        appstore_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'appstore_$platform';"|base64 -d)"
+    $unsupported||$all&&platform='all'
+    appstore_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'appstore_$platform';"|base64 -d)"
 # TODO 2 -->
 $debug && echo "platform=$nc_version, lang=$lang"
 $debug && anykey
 # TODO <-- 2
-        local_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'local';"|base64 -d)"
+    local_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'local';"|base64 -d)"
 # TODO 3 -->
 $debug && anykey
 $debug && set +x
 # TODO <-- 3
 
-        # iterate through appstore_ids and filter out IDs that are not in local_ids array
-        for app_id in $appstore_ids; do
-            echo "$local_ids" | grep -qsw "$app_id" || appstore_ids_not_installed+=("$app_id")
+    # iterate through appstore_ids and filter out IDs that are not in local_ids array
+    for app_id in $appstore_ids; do
+        echo "$local_ids" | grep -qsw "$app_id" || appstore_ids_not_installed+=("$app_id")
+    done
+    # convert appstore_ids into JSON object format
+    appstore_json=$(echo "${appstore_ids_not_installed[*]}"|jq -R 'split(" ")|(reduce .[] as $item ({};.[$item] = ""))')
+    # merge the appstore_json object into the original local_applist
+    global_applist=$(echo "$local_applist"|jq -c --argjson new_data "$appstore_json" '. * {store: $new_data}')
+    w_db app_lists global "$runtime_etag" "$global_applist"
+    return 0
+}
+
+stock_up_arrays(){ local platform
+    read_json_data_file(){ r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$1' AND lang == '$lang'";}
+    create_json_objects
+    nc_master="$(r_db "SELECT platform FROM versions WHERE tag = 'master';")"
+    while (($#));do local $1;shift;done
+    local up_tmp=$(tf)
+    $bgjobs&&{
+        echo "$(GRAY) . . . . . . . . . . .  stocking  up  arrays  with  data  . . . . . . . . . . .$(N)"
+        $pager||spinner &
+    }
+    $bgjobs&&{
+        query_apps all=$all & local job_ids="$!"
+    }|| query_apps all=$all
+    $filtered_appstore&&{
+        declare -gA filtered_appstore_json_
+        $bgjobs&&{
+            query_updates $up_tmp & job_ids="$job_ids $!"
+        }|| query_updates $up_tmp
+        for platform in $(r_db "SELECT platform FROM filtered_apps;");do
+            filtered_appstore_json_[$platform]="$(read_json_data_file $platform)"
         done
-        # convert appstore_ids into JSON object format
-        appstore_json=$(echo "${appstore_ids_not_installed[*]}"|jq -R 'split(" ")|(reduce .[] as $item ({};.[$item] = ""))')
-        # merge the appstore_json object into the original local_applist
-        global_applist=$(echo "$local_applist"|jq -c --argjson new_data "$appstore_json" '. * {store: $new_data}')
-        w_db app_lists global "$runtime_etag" "$global_applist"
-        return 0
     }
+    $bgjobs&&wait $job_ids
+    applist_json="$(r_db "SELECT json_data FROM app_lists WHERE section == 'global';")"
+    $filtered_appstore&&mapfile availupd < $up_tmp
+    $bgjobs&&{
+        $pager&&{ echo "  all arrays stocked up";line '=' N 80;}||kill_spinner
+    }
+}
 
-    stock_up_arrays(){ local platform
-        read_json_data_file(){ r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$1' AND lang == '$lang'";}
-        create_json_objects
-        nc_master="$(r_db "SELECT platform FROM versions WHERE tag = 'master';")"
-        while (($#));do local $1;shift;done
-        local up_tmp=$(tf)
-        $bgjobs&&{
-            echo "$(GRAY) . . . . . . . . . . .  stocking  up  arrays  with  data  . . . . . . . . . . .$(N)"
-            $pager||spinner &
-        }
-        $bgjobs&&{
-            query_apps all=$all & local job_ids="$!"
-        }|| query_apps all=$all
-        $filtered_appstore&&{
-            declare -gA filtered_appstore_json_
-            $bgjobs&&{
-                query_updates $up_tmp & job_ids="$job_ids $!"
-            }|| query_updates $up_tmp
-            for platform in $(r_db "SELECT platform FROM filtered_apps;");do
-                filtered_appstore_json_[$platform]="$(read_json_data_file $platform)"
-            done
-        }
-        $bgjobs&&wait $job_ids
-        applist_json="$(r_db "SELECT json_data FROM app_lists WHERE section == 'global';")"
-        $filtered_appstore&&mapfile availupd < $up_tmp
-        $bgjobs&&{
-            $pager&&{ echo "  all arrays stocked up";line '=' N 80;}||kill_spinner
-        }
-    }
+# Get different lists of apps from JSON format
+apps_(){
+    case $1 in
+        enabled|disabled|store) jq -r '.'$1'|keys|sort[]' <<< $applist_json;;
+        local) jq -r '.enabled + .disabled|keys|sort[]' <<< $applist_json  ;;
+        all) jq -r '.enabled + .disabled + .store|keys|sort[]' <<< $applist_json
+    esac
+}
 
-    # Get different lists of apps from JSON format
-    apps_(){
-        case $1 in
-            enabled|disabled|store) jq -r '.'$1'|keys|sort[]' <<< $applist_json;;
-            local) jq -r '.enabled + .disabled|keys|sort[]' <<< $applist_json  ;;
-            all) jq -r '.enabled + .disabled + .store|keys|sort[]' <<< $applist_json
-        esac
-    }
+# $1=app, $2=-q  #### D O N 'T   T O U C H   T H I S
+is_shipped_(){
+    local query_version=$nc_version shipped_json
+    (( $(v2i $nc_version) > $(v2i $nc_master) )) && query_version="$nc_master"
+    shipped_json="$(r_db "SELECT json_data FROM shipped WHERE platform == '$query_version';" | base64 -d)"
+    [ "$2" = "-q" ] && local quiet=true || local quiet=false
+    if $(jq 'has("alwaysEnabled")'<<<"$shipped_json") && jq '.alwaysEnabled[]'<<<"$shipped_json" | grep -qsw $1; then
+            $quiet || printf "a"; return 0
+    elif $(jq 'has("defaultEnabled")'<<<"$shipped_json") && jq '.defaultEnabled[]'<<<"$shipped_json" | grep -qsw $1; then
+            $quiet || printf "d"; return 0
+    elif jq '.shippedApps[]' <<< "$shipped_json" | grep -qsw $1; then
+        $quiet || printf "s"; return 0
+    else return 1
+    fi
+}
 
-    # $1=app, $2=-q  #### D O N 'T   T O U C H   T H I S
-    is_shipped_(){
-        local query_version=$nc_version shipped_json
-        (( $(v2i $nc_version) > $(v2i $nc_master) )) && query_version="$nc_master"
-        shipped_json="$(r_db "SELECT json_data FROM shipped WHERE platform == '$query_version';" | base64 -d)"
-        [ "$2" = "-q" ] && local quiet=true || local quiet=false
-        if $(jq 'has("alwaysEnabled")'<<<"$shipped_json") && jq '.alwaysEnabled[]'<<<"$shipped_json" | grep -qsw $1; then
-                $quiet || printf "a"; return 0
-        elif $(jq 'has("defaultEnabled")'<<<"$shipped_json") && jq '.defaultEnabled[]'<<<"$shipped_json" | grep -qsw $1; then
-                $quiet || printf "d"; return 0
-        elif jq '.shippedApps[]' <<< "$shipped_json" | grep -qsw $1; then
-            $quiet || printf "s"; return 0
-        else return 1
-        fi
-    }
-
-    # returns if app is either "enabled", "disabled", "store" or "na"
-    get_applist_section_(){
-        jq -r --arg app "$1" 'if .enabled|has($app) then "enabled" elif .disabled|has($app) then "disabled" elif .store|has($app) then "store" else "na" end' <<< "$applist_json"
-    }
+# returns if app is either "enabled", "disabled", "store" or "na"
+get_applist_section_(){
+    jq -r --arg app "$1" 'if .enabled|has($app) then "enabled" elif .disabled|has($app) then "disabled" elif .store|has($app) then "store" else "na" end' <<< "$applist_json"
 }
