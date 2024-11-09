@@ -61,7 +61,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/mimetype-checker-script-for-files-without-or-with-wrong-file-extensions-for-flow-external-script/155648"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 declare bools="listmimes recursive dryrun verbose debug quiet bak enabled_user"
 # declare options

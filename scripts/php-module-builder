@@ -46,7 +46,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/newest-php8-4-on-debian-ubuntu-build-missing-modules-with-php-module-builder/174766"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 ## it starts here:
 ###############################################################################

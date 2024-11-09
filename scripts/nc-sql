@@ -44,7 +44,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/script-nc-sql-zero-config-commandline-client-for-the-nextcloud-database/195088"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 help(){
     cat << HELP

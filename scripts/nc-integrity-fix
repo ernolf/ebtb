@@ -45,7 +45,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/nc-integrity-fix-script-to-resolve-some-files-have-not-passed-the-integrity-check-warnings/194729"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 debug=false
 

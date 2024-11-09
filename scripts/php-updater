@@ -54,7 +54,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/php-updater-a-script-to-upgrade-php-in-a-safe-way/180215"
 }
-for arg in "$@"; do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 declare key keys="help force forceflag needforce supported unsupported nolts distrib_to_old distrib_to_new distrib_unknown pager"
 declare -A FLAG

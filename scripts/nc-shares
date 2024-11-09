@@ -47,7 +47,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/script-nc-shares-list-shares-on-command-line/185599"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 v_echo "help=$help, verbose=$verbose, debug=$debug"
 

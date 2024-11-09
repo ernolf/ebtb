@@ -41,7 +41,7 @@ donate_(){
     . <(require donate)
     donate "https://help.nextcloud.com/t/calendar-subscriptions-refresh-rate-as-a-user/163340/5"
 }
-for arg in "$@";do [[ "$arg" =~ donate ]] && donate_; done; unset -v arg
+[[ "$@" =~ donate ]] && donate_
 
 ## void
 f
