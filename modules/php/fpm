@@ -12,16 +12,20 @@ FPM_BASHLIB=:
 
 declare -A SAPI_FPM
 
-fpm_conf(){
-    local ver
+fpm_configfile(){
+    local ver conf
+    local -i r
     ver="$1"
-    printf '%s' "/etc/php/$ver/fpm/php-fpm.conf"
+    conf="$(php-fpm$ver -t 2>&1 | grep -o "/[^ ':]*" | sort -u)"
+    [ -f "$conf" ] && r=0 || r=1
+    printf '%s' "$conf"
+    return $r
 }
 
 fpm_include(){
     local ver conf include
     ver=$1
-    conf="$(fpm_conf $ver)"
+    conf="$(fpm_configfile $ver)" || return=1
     include="$(awk -F' |=' '/^\s*include/ {print $NF}' $conf)"
     case $2 in
       glob) echo "$include"
@@ -70,8 +74,9 @@ fpm_pools(){
     strip=false
     [ "$1" = 'strip' ] && strip=:
     for v in ${VERSIONS[@]}; do
+        fpm_configfile "$v" &>/dev/null || continue
         files=() pools=()
-        [[ "$(phpquery -v "$v" -S)" =~ fpm ]] || continue
+        [[ "$(phpquery -v "$v" -S)" =~ fpm ]]
         dir="$(fpm_include "$v" dir)"
         ext="$(fpm_include "$v" ext)"
         [ -d "$dir" ] || continue
@@ -130,9 +135,10 @@ fpm_sockets(){
 
 fpm_socket(){
     local ver glob poolfile pool
+    local -i r
     local -A pools
     ver=$1
-    glob=$(fpm_include "$ver" glob)
+    glob=$(fpm_include "$ver" glob) && r=0 || r=1
     # for poolfile in $(ls $glob 2>/dev/null); do
     for poolfile in $glob; do # bash has its builtin glob functionality
         pool="$(sed -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
@@ -143,4 +149,5 @@ fpm_socket(){
     else
         echo "${!pools[@]}"
     fi
+    return $r
 }

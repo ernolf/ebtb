@@ -20,11 +20,19 @@ POOL_BASHLIB=:
 . <(lrequire php/fpm)
 
 check_fpm_pool_files(){
+    fpm_configfile_corupt(){
+        separator; f
+        bundle echo "$(xpf;R;format_string "FATAL ERROR $(W)The configuration file of PHP-FPM version $(C)$1$(W) ($(C)$2$(W)) could not be found or is corrupted. If you want to deactivate php-fpm for that version, you should use other means. You can deactivate php-fpm with systemd or uninstall it but removing or renaming the config file itself damages the functionality of this script. Please fix that and once more run" 3;N)"
+        f; G; echo "$(prompt; lB) $me${FLAG[forceflag]}$(C) $old $new"; N
+        f; os; W; echo "to finalize the migration."; N
+        f ;exit1
+    }
     local old new pkgold pkgnew odir ndir ext be plu this
     local -a ofiles nfiles alt_indexes alt_files pools
     local -i i www_index alt_index
     old="$1" new="$2"
     [[ "$(phpquery -v "$old" -S)" =~ fpm ]] || return # return if no fpm installed for php$old
+    old_config=$(fpm_configfile "$old") || fpm_configfile_corupt "$old" "$old_config"
     pkgold="php$old-fpm" pkgnew="php$new-fpm"
     # is installed $pkgold || return
     odir="$(fpm_include "$old" dir)" ndir="$(fpm_include "$new" dir)"
