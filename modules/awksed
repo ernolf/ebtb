@@ -10,30 +10,32 @@ __license__
 ${AWKSED_BASHLIB:-false} && return
 AWKSED_BASHLIB=:
 
-# awk
-# NOTE: sponge is part of moreutils
+# awk (iof=intermediate output file)
 awk_remove_trailing_empty_lines(){
     local infile="$1"
-    awk '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" | sponge "$infile"
+    local iof="$infile~iof~"
+    awk '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" > "$iof" && mv "$iof" "$infile"
 }
-
 # radicaly delete duplicate lines
 uniq_lines(){
     local infile="$1"
-    awk '!seen[$0]++' "$infile" | sponge "$infile"
+    local iof="$infile~iof~"
+    awk '!seen[$0]++' "$infile" > "$iof" && mv "$iof" "$infile"
 }
 
 # delete duplicate empty lines, keep single empty lines
 uniq_empty_lines(){
     local infile="$1"
-    awk 'NF || prev { print; prev = NF }' "$infile" | sponge "$infile" \
+    local iof="$infile~iof~"
+    awk 'NF || prev { print; prev = NF }' "$infile" > "$iof" && mv "$iof" "$infile" \
     && remove_trailing_empty_lines "$infile"
 }
 
 # delete duplicate lines, keep single empty lines INSIDE the file, remove empty lines at the end of the file
 dedup_lines(){
     local infile="$1"
-    awk '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" | sponge "$infile" \
+    local iof="$infile~iof~"
+    awk '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" > "$iof" && mv "$iof" "$infile" \
     && remove_trailing_empty_lines "$infile"
 }
 
