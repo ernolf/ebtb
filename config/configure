@@ -1,36 +1,35 @@
 # Configuration file for the project
 
-AUTOR=ernolf
-PROJECT=ebtb
-MY_HOME=https://global-social.net/apps/raw/s
+PROJECT='ebtb'
+MY_HOME='https://global-social.net/apps/raw/s'
 # Prefix directory
-PREFIX=/usr/local
+PREFIX='/usr/local'
 # Directory for scripts
-BINDIR=$PREFIX/bin
+BINDIR="$PREFIX/bin"
 # Directory for modules
-INCLUDEDIR=$PREFIX/include/$AUTOR
+INCLUDEDIR="$PREFIX/include/$PROJECT"
 # Directory for module channel
-MODULEDIR=$INCLUDEDIR/$channel
+MODULEDIR="$INCLUDEDIR/$channel"
 # Directory for scripts
-SCRIPTS_DIR=scripts
+SCRIPTS_DIR='scripts'
 # Directory for modules
-MODULES_DIR=modules
+MODULES_DIR='modules'
 # Directory for tools
-TOOLS_DIR=tools
+TOOLS_DIR='tools'
 # Directory for the build process
-BUILD_DIR=build
+BUILD_DIR='build'
 # Directory for the script build process
-SBUILD_DIR=$BUILD_DIR/$SCRIPTS_DIR
+SBUILD_DIR="$BUILD_DIR/$SCRIPTS_DIR"
 # Directory for the module build process
-MBUILD_DIR=$BUILD_DIR/$MODULES_DIR
+MBUILD_DIR="$BUILD_DIR/$MODULES_DIR"
 # Minify (some) codeblocks in scripts
-MINIFY=true
+MINIFY='true'
 # Local module server
-LOCAL_SERVER=true
+LOCAL_SERVER='true'
 # Port (ephemeral port range = 49152 - 65535)
 LOCAL_SERVER_PORT=48484
 # php or python3
-LOCAL_SERVER_BINARY=python3
+LOCAL_SERVER_BINARY='python3'
 # Server directory
-LOCAL_SERVER_DIRECTORY=$PREFIX/srv/$PROJECT
+LOCAL_SERVER_DIRECTORY="$PREFIX/srv/$PROJECT"
 

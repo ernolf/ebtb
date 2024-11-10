@@ -1,27 +1,21 @@
 # Makefile for compilation, editing, and installation of Bash scripts and modules
 
-include config/configure
-
-AUTOR = ernolf
-PROJECT = ebtb
-# Default directory
-PREFIX ?= /usr/local
 # Bindir for scripts
-BINDIR = $(PREFIX)/bin
+BINDIR := $(shell . config/configure && echo $$BINDIR)
 # Include directory for modules
-INCLUDEDIR = $(PREFIX)/include/$(AUTOR)
+INCLUDEDIR := $(shell . config/configure && echo $$INCLUDEDIR)
 # Directory for scripts
-SCRIPTS_DIR = scripts
+SCRIPTS_DIR := $(shell . config/configure && echo $$SCRIPTS_DIR)
 # Directory for modules
-MODULES_DIR = modules
+MODULES_DIR := $(shell . config/configure && echo $$MODULES_DIR)
 # Directory for tools
-TOOLS_DIR = tools
+TOOLS_DIR := $(shell . config/configure && echo $$TOOLS_DIR)
 # Directory for the build process
-BUILD_DIR = build
+BUILD_DIR := $(shell . config/configure && echo $$BUILD_DIR)
 # Directory for the script build process
-SBUILD_DIR = $(BUILD_DIR)/$(SCRIPTS_DIR)
+SBUILD_DIR := $(shell . config/configure && echo $$SBUILD_DIR)
 # Directory for the module build process
-MBUILD_DIR = $(BUILD_DIR)/$(MODULES_DIR)
+MBUILD_DIR := $(shell . config/configure && echo $$MBUILD_DIR)
 
 # Default goal
 .DEFAULT_GOAL := help
