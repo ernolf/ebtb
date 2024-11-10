@@ -1,0 +1,292 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${TASKS_CHANGE_SAPI_BASHLIB:-false} && return
+TASKS_CHANGE_SAPI_BASHLIB=:
+
+change_sapi(){
+    sapi_check_apache2(){
+        case $active_sapi in
+            a2) active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_a2_pkg="libapache2-mod-php$active_a2_version"
+                read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(ipf;format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - completely remove php*-fpm"
+                f;o 10;bundle echo "$(button 2) - switch apache2 from libapache2-mod-php to php*-fpm"
+                f;o 10;bundle echo "$(button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            apt_remove 'php*-fpm'
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            php_a2module_2_fpm "$PHP_VERSION"
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$PHP_VERSION-fpm
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        3)  cursor_ show
+                            f
+                            php_a2module_2_fpm "$PHP_VERSION"
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$PHP_VERSION-fpm
+                            apt_remove 'libapache2-mod-php*'
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+           fpm) active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_fpm_pkg="php$active_fpm_version-fpm"
+                read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(ipf;format_string "The '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)apache2handler SAPI$(N)' $(B)libapache2-mod-php$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php* (recommended)"
+                f;o 10;bundle echo "$(button 2) - switch apache2 from php*-fpm to libapache2-mod-php"
+                f;o 10;bundle echo "$(button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            apt_remove 'libapache2-mod-php*'
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+# TODO: migrate php.ini
+                            systemctl restart apache2
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        3)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+# TODO: migrate php.ini
+                            systemctl restart apache2
+                            apt_remove 'php*-fpm'
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+          both) active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_a2_pkg="libapache2-mod-php$active_a2_version"
+                active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_fpm_pkg="php$active_fpm_version-fpm"
+                read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(xpf;format_string "It looks like both, the '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) are connected to it. These two SAPIs are mutually exclusive in this usecase. $(R)This is a serious misconfiguration that needs to be fixed$(N)." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - disconnect apache2 from libapache2-mod-php (recommended)"
+                f;o 10;bundle echo "$(button 2) - disconnect apache2 from libapache2-mod-php and completely remove libapache2-mod-php*"
+                f;o 10;bundle echo "$(button 3) - disconnect apache2 from php*-fpm"
+                f;o 10;bundle echo "$(button 4) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt " key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            php_a2module_ disable
+                            php_fpm_module_ enable
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$active_fpm_version-fpm
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            php_a2module_ disable
+                            php_fpm_module_ enable
+# TODO: migrate php.ini
+                            systemctl restart apache2 php$active_fpm_version-fpm
+                            apt_remove 'libapache2-mod-php*'
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        3)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+                            systemctl restart apache2
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        4)  cursor_ show
+                            f
+                            php_fpm_2_a2module $PHP_VERSION
+                            systemctl restart apache2
+                            apt_remove 'php*-fpm'
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+            *)  active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
+                active_a2_pkg="libapache2-mod-php$active_a2_version"
+                read_prompt="$(os;C)press $(button 1), $(button 2) or $(button q) to leave it unchanged$(N)"
+                kill_spinner
+                bundle echo "$(ipf;format_string "The apache2 webserver is installed but inactive. The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is configured to be connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) is listening as well. These two SAPIs are mutually exclusive in any usecase with apache2." 3)"
+                pf;Y;echo "You should either:"
+                f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php*"
+                f;o 10;bundle echo "$(button 2) - completely remove php*-fpm"
+                f;o 10;bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                cursor_ hide
+                N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
+                    case $key in
+                        q)  cursor_ show
+                            f 2;break
+                            ;;
+                        1)  cursor_ show
+                            f
+                            apt_remove 'libapache2-mod-php*'
+                            php_a2module_2_fpm "$PHP_VERSION"
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                            ;;
+                        2)  cursor_ show
+                            f
+                            apt_remove 'php*-fpm'
+                            php_fpm_2_a2module $PHP_VERSION
+                            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                            anykey
+                            return 0
+                    esac
+                done
+                ;;
+        esac
+    }
+
+    spinner C " . searching misconfigurations: change SAPI ." &
+    populate_pkgs_by_dpkg_array
+    if $(is_sapi_true_ apache2) && $(is_sapi_true_ fpm); then
+        kill_spinner
+        bundle echo "$(xpf;format_string "There are $(B)apache2handler$(N) and $(B)fpm$(N) SAPIs installed on this machine." 3)"
+        spinner C " . searching misconfigured SAPIs ." &
+        [[ "${SAPI_A2[@]}" =~ a ]] && active_sapi="a2"
+        [[ "${SAPI_FPM[@]}" =~ a ]] && { [ "$active_sapi" = "a2" ] && active_sapi="both" || active_sapi="fpm";}
+        populate_httpd_ enabled
+        populate_httpd_ active
+        populate_httpd_ wk_enabled
+        populate_httpd_ wk_active
+        if (( ${#HTTPD_ENABLED[@]} )); then
+            if (( ${#HTTPD_ENABLED[@]} == ${#WK_HTTPD_ENABLED[@]} )); then
+                if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                    webserver="${WK_HTTPD_ENABLED[0]}"
+                    infostring="Detected httpd (webserver): $(C)$webserver$(N) (status inactive)"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        infostring="${infostring/inactive/active}"
+                    fi
+                elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
+                    webserver=both
+                    modstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
+                    infostring="Detected httpds (webservers): $modstring"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        active_webserver=${WK_HTTPD_ACTIVE[0]}
+                        infostring="$infostring, but only $(C)$active_webserver$(N) seems to be active."
+                    elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
+                        active_webserver=both
+                        infostring="$infostring, and $active_webserver seem to be active."
+                    fi
+                fi
+            elif (( ${#HTTPD_ENABLED[@]} > ${#WK_HTTPD_ENABLED[@]} )); then
+                if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                    webserver="${WK_HTTPD_ENABLED[0]}"
+                    modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                    infostring="Detected httpds (webservers): $modstring. httpd with importance for this script: $(C)$webserver$(N) (status inactive)"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        infostring="${infostring/inactive/active}"
+                    fi
+                elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
+                    webserver=both
+                    modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                    modsubstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
+                    infostring="Detected httpds (webservers): $modstring. httpds with importance for this script: $modsubstring"
+                    if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                        active_webserver=${WK_HTTPD_ACTIVE[0]}
+                        infostring="$infostring, but only $(C)$active_webserver$(N) seems to be active."
+                    elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
+                        active_webserver=both
+                        infostring="$infostring, and $active_webserver seem to be active."
+                    fi
+                fi
+            fi
+        fi
+        kill_spinner
+        bundle echo "$(ipf;format_string "$infostring" 3)"
+        case $webserver in
+            both)
+                bundle echo "  $(format_string "Your usecase looks complex, because of multiple installed webservers. If you know exactly what you are doing and everything is working well, you can leave this unchanged." 3)"
+                case $active_webserver in
+                    apache2)
+                        bundle echo "  $(format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        ;;
+                    nginx)
+                        bundle echo "  $(format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        ;;
+                    both)
+                        bundle echo "  $(format_string "However, if you are not using one of the two webserver apache2 or nginx, you should consider uninstalling it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        ;;
+                    *)  :
+                esac
+                f;anykey
+                return 0
+                ;;
+            apache2)
+                sapi_check_apache2
+                ;;
+            nginx)
+                pf;N;echo "Consider removing the apache2-mod-php SAPI (recommended)";N
+                if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
+                    apt_purge 'libapache2-mod-php*'
+                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                    anykey
+                    return 0
+                fi
+                ;;
+            *)  :
+        esac
+        return 1
+    else
+        return 1
+    fi
+}
