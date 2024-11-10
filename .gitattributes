@@ -11,6 +11,7 @@ modules/nc-who/* linguist-language=Bash
 modules/php/* linguist-language=Bash
 modules/php-module-builder/* linguist-language=Bash
 modules/php-updater/* linguist-language=Bash
+modules/php-updater/tasks.d/* linguist-language=Bash
 modules/php.net/* linguist-language=Bash
 modules/* linguist-language=Bash
 scripts/* linguist-language=Bash
