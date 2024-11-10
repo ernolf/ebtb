@@ -29,8 +29,8 @@ nohome() {
 }
 sourced() {
     local am
-    local -u m="${1#*/}_BASHLIB"
-    eval am="\$$m"
+    local -u m="${1/\.d\//_}_BASHLIB"
+    eval am="\$${m#*/}"
     ${am:-false}
 }
 json_etag() {
