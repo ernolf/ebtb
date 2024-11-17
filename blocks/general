@@ -23,9 +23,9 @@ hc() {
     curl -$a /dev/null -w %{http_code} -A "$(fp)$@"
 }
 nohome() {
-    echo -e "\n - Failed to load required module \"$1\".\n   try again later or run\n   - sudo wget -O $ca_me $my_url\n   and start the script again."
-    rm -f "$lincld/$1"
-    exit 1
+    echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $ca_me $my_url\n\n\e[31m   and start the script again.\e[0m\n" > /dev/tty
+    [[ "$lincld" == *"/ebtb/"* ]] && rm -r "$lincld"
+    kill -TERM $mpid
 }
 sourced() {
     local am
@@ -47,17 +47,18 @@ c4u() {
     }
 }
 req() {
-    sourced $1 || { log req $1;curl -A "$(fp)req $1" $cargs/$rincld/$1 && return 0 || nohome $l; }
+    sourced $1 || { local mc=$(curl -A "$(fp)req $1" $cargs/$rincld/$1); [ "${mc:0:9}" = "# BASHLIB" ] && @HEREDOC@ || nohome "$l"; }
 }
 require() { req $@; }
 lreq() {
-    if [ -f "$lincld/$1" ]; then
-        sourced $1 || cat "$lincld/$1"
+    local m="$lincld/$1"
+    if [ -f "$m" ]; then
+        sourced $1 || cat "$m"
     elif ! $rt; then
-        $(req $1)
-    elif (($(mkdir -p "$(dirname "$lincld/$1")";curl -o "$lincld/$1" -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)); then
+        req $1
+    elif (($(mkdir -p $(dirname $m); curl -o $m -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)) && [ "$(head -c9 $m 2>&1)" = "# BASHLIB" ]; then
         log REQ $1
-        cat "$lincld/$1"
+        cat "$m"
     else
         nohome $1
     fi
@@ -65,12 +66,12 @@ lreq() {
 lrequire() { lreq $@; }
 module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
 declare lf version my_url cargs opt opts astr="$(id -un): " A="$(uname -a)"
-declare -i epoch my_epoch my_size lce mje mjne w4uc
+declare -i mpid epoch my_epoch my_size lce mje mjne w4uc
 declare -a args tntd
-lf="$TMPDIR/ebtb-logfiles/$bm.log"
+mpid=$$ lf="$TMPDIR/ebtb-logfiles/$bm.log"
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"
-my_url="$my_home/$scriptname" cargs="-se $bm-$epoch $my_home"
+my_url="$my_home/script/$scriptname" cargs="-se $bm-$epoch $my_home/apps/raw/s"
 opts="rt run2 irun2 do_update do_restore_backup do_integrity_check"
 for opt in $opts; do declare $opt=false; done
 (($(id -u))) || rt=:

@@ -1,7 +1,7 @@
 # Configuration file for the project
 
 PROJECT='ebtb'
-MY_HOME='https://global-social.net/apps/raw/s'
+MY_HOME='https://global-social.net'
 # Prefix directory
 PREFIX='/usr/local'
 # Directory for scripts
