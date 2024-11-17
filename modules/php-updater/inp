@@ -51,6 +51,7 @@ install_new_php(){
             apt_purge --yes ${sapi_not[@]}
         fi
         command -v needrestart >/dev/null&&needrestart -r a
+        populate_pkgs_by_dpkg_array
     else f
         no_candidate "$new"
         exit1
