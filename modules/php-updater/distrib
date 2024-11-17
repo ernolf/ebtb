@@ -19,6 +19,7 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@; }
 . <(lrequire ask)
 . <(lrequire php/versions)
 . <(lrequire dist/os_release)
+. <(require $sin/disclaimer)
 
 call_me(){
     o2; GRAY; echo "You can call this list with:$(o 35; B)$me --list-$1"
@@ -44,6 +45,7 @@ check_systemd(){
 check_debian(){
     . <(require dist/debian)
 
+    disclaimer
     list_supported_debian
     call_me debian 2
 
@@ -101,6 +103,7 @@ check_debian(){
 check_ubuntu(){
     . <(require dist/ubuntu)
 
+    disclaimer
     list_supported_ubuntu
     call_me ubuntu 2
 

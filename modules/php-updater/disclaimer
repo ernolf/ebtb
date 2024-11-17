@@ -1,0 +1,49 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${DISCLAIMER_BASHLIB:-false} && return
+DISCLAIMER_BASHLIB=:
+
+
+disclaimer(){
+    cat <<DISCLAIMER
+                            Privacy Notice
+                            ==============
+
+    Using this script is not for free!
+
+    Data from your system can be transferred, such as
+
+        - distribution
+        - versions of various packages,
+        - the configured apt-sources
+        - installed and used web servers
+        - php packages and versions
+
+    The script’s activity is logged for reference. You can view this log under:
+
+        "/tmp/ebtb-logfiles/php-updater.log"
+
+    An anonymized fingerprint is created for each computer using the machine ID
+    associating the information with “a computer” but not with any individual.
+
+    As the operator of a Nextcloud web server, you likely understand that IP
+    addresses can reveal certain information. Your IP address will also be
+    logged by the module server (itself a Nextcloud server), though this data
+    is only used where technically essential.
+
+
+    The data is used solely to optimize the script itself. During times when
+    the script is not being actively developed, no data will be transmitted.
+
+    Please end the script now if you do not agree with these terms.
+
+DISCLAIMER
+anykey
+}
