@@ -134,7 +134,7 @@ declare module_is_installed=false;[[ " $installed_modules " =~ " $module " ]]&&m
 declare sapis="$(phpquery -S -v $php_version)"
 
 if $remove;then
-    declare extension="$(module_ini_case $module|sed 's/^.*extension=//;s/\.so.*$//')"
+    declare extension="$(extension_ini_case $module|sed 's/^.*extension=//;s/\.so.*$//')"
     if $module_is_built;then
         lG;echo "- php$php_version-$module seems to be installed by this script"
         $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\"";}

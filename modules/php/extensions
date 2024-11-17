@@ -94,6 +94,25 @@ extension_dir_of_(){
     echo "/usr/lib/php/$(a_fld EXISTING ';' "$php_version" 2)"
 }
 
+extension_ini_case(){
+    local module=$1
+    case "$module" in
+        igbinary)
+            echo "extension=$module.so igbinary.compact_strings=On"
+            ;;
+        memcached)
+            echo "extension=$module.so memcached.serializer=php"
+            ;;
+        tideways)
+            echo "extension=tideways_xhprof.so tideways.auto_prepend_library=0"
+            ;;
+        opcache|xdebug)
+            echo "zend_extension=$module.so"
+            ;;
+        *)  echo "extension=$module.so"
+    esac
+}
+
 extension_include_dir_of_(){
     local php_version include_dir
     php_version=$1
@@ -197,12 +216,11 @@ is_sapi_true_(){
         sapi=''
         if sapi=$(extension_is_ sapi "$pkg"); then
             if [ "${sapi%:*}" = "$1" ];then
-                echo true
-                return
+                return 0
             fi
         fi
     done
-    echo false
+    return 1
 }
 
 ext_state(){

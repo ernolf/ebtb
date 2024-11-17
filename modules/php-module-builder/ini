@@ -14,17 +14,7 @@ INI_BASHLIB=:
 declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
 . <(lrequire ansi)
-
-module_ini_case(){
-    local module=$1
-    case "$module" in
-      igbinary) echo "extension=$module.so igbinary.compact_strings=On"            ;;
-     memcached) echo "extension=$module.so memcached.serializer=php"               ;;
-      tideways) echo "extension=tideways_xhprof.so tideways.auto_prepend_library=0";;
-        xdebug) echo "zend_extension=$module.so"                                   ;;
-             *) echo "extension=$module.so"
-    esac
-}
+. <(lrequire php/extensions)
 
 ini_symlinks(){
     local sapi
@@ -59,7 +49,7 @@ module_ini(){
         GRAY; echo "- next step: $(B)module_ini (create):"
         ${step:-false} && anykey
         ini_file+=("; priority = $priority")
-        for directive in $(module_ini_case $module); do
+        for directive in $(extension_ini_case $module); do
             ini_file+=("$directive")
         done
         C;echo "("
