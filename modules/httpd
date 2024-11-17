@@ -19,8 +19,8 @@ HTTPD_BASHLIB=:
 #        tntnet      /etc/tntnet             /lib/systemd/system/tntnet.service
 #        yaws        /etc/yaws               /lib/systemd/system/yaws.service
 # TODO <-- 0
-declare -a A2CONFFILES NGINXCONFFILES A2MODULES NGINXMODULES HTTPD_NEXTCLOUD HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ENABLED WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ENABLED HTTPD_ACTIVE HTTPD_ALL
-declare -A SERVER_STATUS=([apache2]=0 [caddy]=0 [lighttpd]=0 [mini_httpd]=0 [nginx]=0 [tntnet]=0 [yaws]=0)
+declare -ga A2CONFFILES NGINXCONFFILES A2MODULES NGINXMODULES HTTPD_NEXTCLOUD HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ENABLED WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ENABLED HTTPD_ACTIVE HTTPD_ALL
+declare -gA SERVER_STATUS=([apache2]=0 [caddy]=0 [lighttpd]=0 [mini_httpd]=0 [nginx]=0 [tntnet]=0 [yaws]=0)
 
 populate_a2conffiles(){
     mapfile -t A2CONFFILES< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null | tail +2 | awk '{print $NF}')
@@ -132,20 +132,22 @@ populate_httpd_(){
     esac
 }
 
-declare httpd
-for httpd in ${!SERVER_STATUS[@]}; do
-    if command -v "$httpd" &>/dev/null; then
-        SERVER_STATUS["$httpd"]=1 # "known"
-        if systemctl --no-pager --quiet is-enabled "$httpd" &>/dev/null; then
-            SERVER_STATUS["$httpd"]=2 # "enabled & inactive"
-            if systemctl --no-pager --quiet is-active "$httpd" &>/dev/null; then
-                SERVER_STATUS["$httpd"]=3 # "enabled & active"
+load_server_status(){
+    local httpd
+    for httpd in ${!SERVER_STATUS[@]}; do
+        if command -v "$httpd" &>/dev/null; then
+            SERVER_STATUS["$httpd"]=1 # "known"
+            if systemctl --no-pager --quiet is-enabled "$httpd" &>/dev/null; then
+                SERVER_STATUS["$httpd"]=2 # "enabled & inactive"
+                if systemctl --no-pager --quiet is-active "$httpd" &>/dev/null; then
+                    SERVER_STATUS["$httpd"]=3 # "enabled & active"
+                fi
             fi
         fi
-    fi
-done
-unset httpd
+    done
+}
 
+load_server_status
 (( ${SERVER_STATUS[apache2]} )) && populate_a2conffiles
 (( ${SERVER_STATUS[nginx]} )) && populate_nginxconffiles
 # TODO 1 -->
