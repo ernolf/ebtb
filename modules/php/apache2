@@ -10,10 +10,12 @@ __license__
 ${APACHE2_BASHLIB:-false} && return
 APACHE2_BASHLIB=:
 
+. <(lrequire httpd)
+
 declare -A SAPI_A2
 
 apache2_mpm(){
-    mpm_module="$(apachectl -M 2>/dev/null|grep mpm|awk '{print $1}')"
+    mpm_module="$(apachectl -M 2>/dev/null | awk '/mpm/{print $1}')"
     case "$mpm_module" in
         mpm_event_module)   [ "$1" = "event" ] && return 0
                             ;;
@@ -25,55 +27,52 @@ apache2_mpm(){
 }
 
 apache2_module(){
-    local module
-    module="$1"
-    apachectl -M 2>/dev/null|grep -wqs "${module}_module" # && return 0 || return 1
+    populate_a2modules && [[ " ${A2MODULES[@]%_module} " =~ " $1 " ]]
 }
 
 php_a2module_(){
     case $1 in
-        enable) a2enmod mpm_prefork php$2
+        enable) a2enmod -mq mpm_prefork php$2
                 ;;
-       disable) a2dismod php${2:-*} mpm_prefork
+       disable) a2dismod -mqf mpm_prefork
     esac
 }
 
 php_fpm_module_(){
     case $1 in
-        enable) a2enmod mpm_event proxy_fcgi setenvif
+        enable) a2enmod -mq mpm_event proxy_fcgi setenvif
                 ;;
-       disable) a2dismod mpm_event
+       disable) a2dismod -mqf mpm_event
     esac
 }
 
 php_fpm_conf_(){
-    local ver
-    ver="$2" quiet="$3"
     case $1 in
-        enable) a2enconf $quiet php$ver-fpm
+        enable) a2enconf -mq php$2-fpm
                 ;;
-       disable) a2disconf $quiet php${ver:-*}-fpm
+       disable) a2disconf -mqp php*-fpm
                 ;;
-       switch2) a2disconf $quiet php*-fpm 2>/dev/null
-                a2enconf $quiet php$ver-fpm
+       switch2) a2disconf -mqp php*-fpm 2>/dev/null
+                a2enconf -mq php$2-fpm
     esac
-    return $?
 }
 
 php_fpm_2_a2module(){
-    local ver
-    ver="$1"
     php_fpm_conf_ disable
     php_fpm_module_ disable
-    php_a2module_ enable "$ver"
-    systemctl restart apache2 "php$ver-fpm"
+    php_a2module_ enable $2
+    systemctl restart apache2 php$2-fpm
 }
 
 php_a2module_2_fpm(){
-    local ver
-    ver="$1"
     php_a2module_ disable # $ver
     php_fpm_module_ enable
-    php_fpm_conf_ enable "$ver"
-    systemctl restart apache2 "php$ver-fpm"
+    php_fpm_conf_ enable $1
+    systemctl restart apache2 php$1-fpm
+}
+
+php_a2module_switch_2_(){
+    a2dismod -mqf php*
+    a2enmod -mq php$1
+    systemctl restart apache2
 }
