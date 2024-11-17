@@ -11,7 +11,9 @@ ${VDIR_BASHLIB:-false} && return
 VDIR_BASHLIB=:
 
 setvdir(){
-    local v1 v2 v3 v="$(eval echo \$$vdirname)" d="$(eval echo \$dflt_$vdirname)"
+    local d v v1 v2 v3
+    d="$(eval echo \$dflt_$vdirname)"
+    v="$(eval echo \$$vdirname)"
     v1="$(eval echo \$$1)"
     [ -z "$3" ] && v3="$ca_me" || v3="$3"
     case "$2" in
