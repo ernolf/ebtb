@@ -84,7 +84,7 @@ list_installed_sapi(){
                 bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3;N)"
                 if (( ${#SAPI_A2[@]} )); then
                     bundle echo "$(ipf;format_string "$(Yi)Apache2handler (libapache2-mod-php) is installed for version $(listify C ${!SAPI_A2[@]})" 3;N)"
-                    bundle echo "$(ipf;format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the API" 3;N)"
+                    bundle echo "$(ipf;format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the SAPI" 3;N)"
                 else
                     bundle echo "$(ipf;format_string "$(Yi)But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3;N)"
                     php_a2module_ disable
