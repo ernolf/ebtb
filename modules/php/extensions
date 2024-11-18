@@ -34,14 +34,14 @@ SAPIS=(
 
 detect_installed_by_dpkg(){
     local e
-    local -a P PE
+    local -a p pe
     local -i i
-    mapfile -t P< <(dpkg -l|awk '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}'|sort)
-    mapfile -t PE< <(apt-mark showmanual '*php*'|sed 's/$/:m/';apt-mark showauto '*php*'|sed 's/$/:a/')
-    mapfile -t PE< <(p_sort ${PE[@]})
-    for i in ${!P[@]}; do
-        e=${PE[i]#*:}
-        echo "${P[i]}" | awk -F'/' '{print$1"/"$2"/"$3"/"substr($4,1,1)"'$e'/"$5}'
+    mapfile -t p< <(env LC_MESSAGES=C dpkg -l | awk '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}' | sort)
+    mapfile -t pe< <(apt-mark showmanual '*php*' | sed 's/$/:m/';apt-mark showauto '*php*' | sed 's/$/:a/')
+    mapfile -t pe< <(p_sort ${pe[@]})
+    for i in ${!p[@]}; do
+        e=${pe[i]#*:}
+        echo "${p[i]}" | awk -F'/' '{print$1"/"$2"/"$3"/"substr($4,1,1)"'$e'/"$5}'
     done
 }
 
