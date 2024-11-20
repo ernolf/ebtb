@@ -18,6 +18,7 @@ SWITCH_BASHLIB=:
 . <(lrequire line)
 . <(lrequire ask)
 . <(lrequire php/versions)
+. <(lrequire php/extensions)
 . <(lrequire php/fpm)
 . <(lrequire php/apache2)
 . <(lrequire $sin/linstalled)
@@ -164,7 +165,7 @@ switch_fpm_version(){
     local -a fpm_installed fpm_alternatives pools_o pools_n conffiles
     local -A fpm_switch
     ver_n="$1"
-    mapfile -t fpm_installed< <(for pkg in ${PKGS_BY_DPKG[@]%%/*}; do [[ "$pkg" =~ $PHPVREGEX-fpm ]] && echo "$pkg" | sed -E 's/^php([0-9]+\.[0-9]+)-fpm$/\1/'; done)
+    mapfile -t fpm_installed< <(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
     mapfile -t fpm_alternatives< <(for v in ${fpm_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
 
     (( ${#fpm_installed[@]} )) || return 2
@@ -337,8 +338,7 @@ switch_a2module_version(){
 
     if (( ${SERVER_STATUS[apache2]} > 2 )); then
         apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
-
-        mapfile -t a2_installed< <(for pkg in ${PKGS_BY_DPKG[@]%%/*}; do [[ "$pkg" =~ libapache2-mod-$PHPVREGEX ]] && echo "${pkg#libapache2-mod-php}"; done)
+        mapfile -t a2_installed< <(dpkg -l | awk '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
         mapfile -t a2_alternatives< <(for v in ${a2_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
 
         (( ${#a2_installed[@]} )) || return 2
@@ -473,7 +473,6 @@ switch_default_version(){
                         populate_httpd_ wk_enabled
                         populate_httpd_ wk_active
                         (( ${#HTTPD_ENABLED[@]} )) || { o3;Pbg;bundle echo " - This script could not detect any enabled httpd (webserver). $(N)"; exit0; }
-                        populate_pkgs_by_dpkg_array
                         switch_fpm_version ${VERSIONS[$key-1]}
                         ret=$?
                         if (( ret )); then

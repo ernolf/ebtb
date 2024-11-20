@@ -12,13 +12,18 @@ TASKS_DEPENDENCY_PKGS_BASHLIB=:
 
 remove_dependency_packages(){
     spinner C " . searching misconfigurations: dependency-packages ." &
-    populate_dependency_pkgs_array
-    mapfile -t DEPENDENCY_PKGS< <(comm -12 <(p_sort_trim ${DEPENDENCY_PKGS[@]}) <(p_sort_trim ${PKGS_BY_DPKG[@]%%/*}))
-    if (( ${#DEPENDENCY_PKGS[@]} )); then
-        if ((${#DEPENDENCY_PKGS[@]}==1)); then
-            plu='is:' be='is a' modstring="$(B)${DEPENDENCY_PKGS[0]}$(N)"
+    local pkg plu be modstring question
+    local -a dependency_pkgs
+    for pkg in $(dpkg -l | awk '/^[hiu]i.*php/{print $2}'); do
+        if extension_is_ dependency "$pkg"; then
+            rdepends -q "$pkg"||dependency_pkgs+=("$pkg")
+        fi
+    done
+    if (( ${#dependency_pkgs[@]} )); then
+        if ((${#dependency_pkgs[@]}==1)); then
+            plu='is:' be='is a' modstring="$(B)${dependency_pkgs[0]}$(N)"
         else
-            plu='ese:s' be='are' modstring="$(listify B ${DEPENDENCY_PKGS[@]})"
+            plu='ese:s' be='are' modstring="$(listify B ${dependency_pkgs[@]})"
         fi
         question="Q:$(format_string "Do you want to remove the dependency package${plu#*:} $modstring now" 3)"
         kill_spinner
@@ -26,8 +31,7 @@ remove_dependency_packages(){
         echo "$(ipf;Y;format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove th${plu%:*} package${plu#*:} before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3;N)"
         echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
-            apt_remove --yes ${DEPENDENCY_PKGS[@]}
-            populate_pkgs_by_dpkg_array
+            apt_remove --yes ${dependency_pkgs[@]}
             "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
             anykey
             return 0

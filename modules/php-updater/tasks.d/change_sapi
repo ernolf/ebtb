@@ -17,7 +17,7 @@ change_sapi(){
             a2_ok)
                 active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
                 active_a2_pkg="libapache2-mod-php$active_a2_version"
-                if [[ "${PKGS_BY_DPKG[@]%%/*}" =~ php$active_a2_version-fpm ]]; then
+                if [ "$(dpkg -l | awk '/^[hiu]i.*php'$active_a2_version'-fpm/{print $2}')" = "php$active_a2_version-fpm" ]; then
                     alt=true
                     allowed_keys='q123'
                     read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
@@ -28,7 +28,7 @@ change_sapi(){
                 fi
                 kill_spinner
                 bundle echo "$(ipf;format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems not to be connected. These two SAPIs are mutually exclusive in this usecase." 3)"
-                $alt || { bundle echo "$(ipf;format_string "$(B)php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(echo ${PKGS_BY_DPKG[@]%%/*} | grep -Eo "$PHPVREGEX-fpm")"), so here you will not get the option to switch the SAPI to the '$(dY)fast process manager SAPI$(N)'." 3)"; }
+                $alt || { bundle echo "$(ipf;format_string "$(B)php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'-fpm/{print $2}')"), so here you will not get the option to switch the SAPI to the '$(dY)fast process manager SAPI$(N)'." 3)"; }
                 pf;Y;echo "Since php-fpm still consumes resources despite not being connected, you should either:"
                 f;o 10;bundle echo "$(button 1) - completely remove php*-fpm"
                 $alt && {
@@ -46,7 +46,6 @@ change_sapi(){
                             1)  cursor_ show
                                 f
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -64,7 +63,6 @@ change_sapi(){
                                 php_a2module_2_fpm "$active_a2_version"
 # TODO: migrate php.ini
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -113,7 +111,6 @@ change_sapi(){
                                 php_a2module_2_fpm "$active_a2_version"
 # TODO: migrate php.ini
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -123,7 +120,6 @@ change_sapi(){
                                 php_fpm_2_a2module "$active_a2_version"
 # TODO: migrate php.ini
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -134,7 +130,7 @@ change_sapi(){
             fpm_ok)
                 active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
                 active_fpm_pkg="php$active_fpm_version-fpm"
-                if [[ "${PKGS_BY_DPKG[@]%%/*}" =~ libapache2-mod-php$active_fpm_version ]]; then
+                if [ "$(dpkg -l | awk '/^[hiu]i.*libapache2-mod-php'$active_fpm_version'/{print $2}')" = "libapache2-mod-php$active_fpm_version" ]; then
                     alt=true
                     allowed_keys='q123'
                     read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
@@ -145,7 +141,7 @@ change_sapi(){
                 fi
                 kill_spinner
                 bundle echo "$(ipf;format_string "The '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)apache2handler SAPI$(N)' $(B)libapache2-mod-php$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
-                $alt || { bundle echo "$(ipf;format_string "$(B)libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(echo ${PKGS_BY_DPKG[@]%%/*} | grep -Eo "libapache2-mod-$PHPVREGEX")"), so here you will not get the option to switch the SAPI to the '$(dY)apache2handler SAPI$(N)'." 3)"
+                $alt || { bundle echo "$(ipf;format_string "$(B)libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(dpkg -l | awk '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/{print $2}'|sort)"), so here you will not get the option to switch the SAPI to the '$(dY)apache2handler SAPI$(N)'." 3)"
                 }
                 pf;Y;echo "You should either:"
                 f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php* (recommended)"
@@ -164,7 +160,6 @@ change_sapi(){
                             1)  cursor_ show
                                 f
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -182,7 +177,6 @@ change_sapi(){
                                 php_fpm_2_a2module $active_fpm_version
 # TODO: migrate php.ini
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -232,7 +226,6 @@ change_sapi(){
                                 php_fpm_2_a2module "$active_fpm_version"
 # TODO: migrate php.ini
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -242,7 +235,6 @@ change_sapi(){
                                 php_a2module_2_fpm "$active_fpm_version"
 # TODO: migrate php.ini
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -294,7 +286,6 @@ change_sapi(){
                                 php_fpm_2_a2module $active_a2_version
 # TODO: migrate php.ini
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -304,7 +295,6 @@ change_sapi(){
                                 php_a2module_2_fpm $active_fpm_version
 # TODO: migrate php.ini
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -356,7 +346,6 @@ change_sapi(){
                                 php_a2module_2_fpm $active_fpm_version
 # TODO: migrate php.ini
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -366,7 +355,6 @@ change_sapi(){
                                 php_fpm_2_a2module $active_a2_version
 # TODO: migrate php.ini
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -395,7 +383,6 @@ change_sapi(){
                                 f
                                 php_a2module_2_fpm "$PHP_VERSION"
                                 apt_remove 'libapache2-mod-php*'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -404,7 +391,6 @@ change_sapi(){
                                 f
                                 php_fpm_2_a2module $PHP_VERSION
                                 apt_remove 'php*-fpm'
-                                populate_pkgs_by_dpkg_array
                                 "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                                 anykey
                                 return 0
@@ -417,13 +403,11 @@ change_sapi(){
 
     local active_sapi a2mpm infostring modstring modsubstring webserver active_webserver
     spinner C " . searching misconfigurations: change SAPI ." &
-    populate_pkgs_by_dpkg_array
+
     if $(is_sapi_true_ apache2) && $(is_sapi_true_ fpm); then
         kill_spinner
         bundle echo "$(xpf;format_string "There are $(B)apache2handler$(N) and $(B)fpm$(N) SAPIs installed on this machine." 3)"
         spinner C " . searching misconfigured SAPIs ." &
-
-        populate_pkgs_by_dpkg_array
 
         populate_httpd_ enabled
         populate_httpd_ active
@@ -499,13 +483,13 @@ change_sapi(){
                 bundle echo "  $(format_string "Your usecase looks complex, because of multiple installed webservers. If you know exactly what you are doing and everything is working well, you can leave this unchanged." 3)"
                 case $active_webserver in
                     apache2)
-                        bundle echo "  $(format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        bundle echo "  $(format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
                         ;;
                     nginx)
-                        bundle echo "  $(format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        bundle echo "  $(format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
                         ;;
                     both)
-                        bundle echo "  $(format_string "However, if you are not using one of the two webservers apache2 or nginx, you should consider uninstalling the not used one. After you have done that, you should run this script again so that it can check the configuration for the new use case." 3)"
+                        bundle echo "  $(format_string "However, if you are not using one of the two webservers apache2 or nginx, you should consider uninstalling the not used one. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
                         ;;
                     *)  :
                 esac
@@ -519,7 +503,6 @@ change_sapi(){
                 pf;N;echo "Consider removing the apache2-mod-php SAPI (recommended)";N
                 if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
                     apt_purge 'libapache2-mod-php*'
-                    populate_pkgs_by_dpkg_array
                     "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
                     anykey
                     return 0

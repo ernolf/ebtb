@@ -96,6 +96,8 @@ if ! declare -f log >/dev/null; then
 fi
 
 mh(){
+    local L
+    [ "$1" = -L ] && L=false || L=:
     if $testing; then
         [[ " $leftstring_test " =~ " $bm " ]]||{ :;return;}
     else
@@ -108,7 +110,8 @@ mh(){
         local debugx=false
     fi
 #    curl -Io /dev/null -A "$(fp)$(noansi "${@//'\n'/ }")" $cargs/$rincld/mh.json >/dev/null 2>&1
-    log "$(noansi "${@//'\n'/ }")" &
+    $L && log "$(noansi "${@//'\n'/ }")" &
+
     $debugx && set -x
     return 0
 }
@@ -415,10 +418,10 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
         fi
 
     # installed php packages
-#        . <(lrequire php/extensions)
-        populate_pkgs_by_dpkg_array
-        for i in ${!PKGS_BY_DPKG[@]}; do
-            mh "PHP Package-$(printf '%02d' $((i+1))): $( echo ${PKGS_BY_DPKG[i]} 2>&1|awk -F'/' '{print $1 " " $2}')"
+        local -a pkgs_by_dpkg
+        mapfile -t pkgs_by_dpkg< <(dpkg -l 2>&1 | awk '/^[hiu]i\s+[^\s]*php/{print}' | sort)
+        for i in ${!pkgs_by_dpkg[@]}; do
+            mh "PHP-pkg-$(printf '%02d' $((i+1))): ${pkgs_by_dpkg[i]}"
         done
 
     # pecl
@@ -454,18 +457,6 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
     fi # End " php-module-builder php-updater "
 
 #    . <(lrequire httpd)
-    populate_httpd_ nextcloud
-    for i in "${!HTTPD_NEXTCLOUD[@]}"; do mh "nextcloud-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NEXTCLOUD[i]}"; done
-    populate_httpd_ nc-dir
-    for i in "${!HTTPD_NC_DIR[@]}"; do mh "nc-dir-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NC_DIR[i]}"; done
-    populate_httpd_ known
-    for i in "${!HTTPD_KNOWN[@]}"; do mh "known-httpd - $(printf '%02d' $((i+1))): ${HTTPD_KNOWN[i]}"; done
-    populate_httpd_ enabled
-    for i in "${!HTTPD_ENABLED[@]}"; do mh "enabled-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ENABLED[i]}"; done
-    populate_httpd_ active
-    for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
-    populate_httpd_ all
-    for i in "${!HTTPD_ALL[@]}"; do mh "all-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ALL[i]}"; done
     if (( ${SERVER_STATUS[apache2]} )); then
         ( apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )) ) || {
             local -a a2errors
@@ -474,8 +465,26 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
                 mh "apache2 error-$(printf '%02d' $((i+1))): ${a2errors[i]}"
             done
         }
+        local a2mod common_a2mods missing_a2mods uncommon_a2mods
+        common_a2mods="access_compat alias auth_basic authn_core authn_file authz_core authz_host authz_user deflate dir env filter mime negotiation reqtimeout ssl"
         populate_a2modules shared
-        (( ${#A2MODULES[@]} )) && mh "apache2 shared modules: ${A2MODULES[@]%_module}"
+        if (( ${#A2MODULES[@]} )); then
+            for a2mod in $common_a2mods; do
+                if ! [[ "${A2MODULES[@]%_module}" =~ $a2mod ]]; then
+                    missing_a2mods+=" $a2mod"
+                fi
+            done
+            missing_a2mods="$(trim "$missing_a2mods")"
+            [ -z "$missing_a2mods" ] || mh "apache2 missing common modules: $missing_a2mods"
+            for a2mod in ${A2MODULES[@]%_module}; do
+                if ! [[ "$common_a2mods" =~ $a2mod ]]; then
+                    uncommon_a2mods+=" $a2mod"
+                fi
+            done
+            uncommon_a2mods="$(trim "$uncommon_a2mods")"
+            [ -z "$uncommon_a2mods" ] || mh "apache2 uncommon modules: $uncommon_a2mods"
+        fi
+        unset -v a2mod common_a2mods missing_a2mods uncommon_a2mods
     fi
     if (( ${SERVER_STATUS[nginx]} )); then
         ( nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )) ) || {
@@ -488,6 +497,18 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
         populate_nginxmodules shared
         (( ${#NGINXMODULES[@]} )) && mh "nginx shared modules: ${NGINXMODULES[@]%_module}"
     fi
+    populate_httpd_ known
+    for i in "${!HTTPD_KNOWN[@]}"; do mh "known-httpd - $(printf '%02d' $((i+1))): ${HTTPD_KNOWN[i]}"; done
+    populate_httpd_ enabled
+    for i in "${!HTTPD_ENABLED[@]}"; do mh "enabled-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ENABLED[i]}"; done
+    populate_httpd_ active
+    for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
+    populate_httpd_ all
+    for i in "${!HTTPD_ALL[@]}"; do mh -L "all-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ALL[i]}"; done
+    populate_httpd_ nextcloud
+    for i in "${!HTTPD_NEXTCLOUD[@]}"; do mh "nextcloud-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NEXTCLOUD[i]}"; done
+    populate_httpd_ nc-dir
+    for i in "${!HTTPD_NC_DIR[@]}"; do mh -L "nc-dir-httpd - $(printf '%02d' $((i+1))): ${HTTPD_NC_DIR[i]}"; done
 
     rm -f "$clf"
     return 0
@@ -510,7 +531,7 @@ if ( ${rt:-false} && $testing && [[ " $leftstring_test " =~ " $bm " ]] ) || ( ${
             VERSIONS_BASHLIB=false
             . <(lrequire php/versions)
         fi
-        if ! command -v populate_pkgs_by_dpkg_array &>/dev/null; then
+        if [ -z "$PHPVREGEX" ]; then
             EXTENSIONS_BASHLIB=false
             . <(lrequire php/extensions)
         fi
@@ -520,7 +541,7 @@ if ( ${rt:-false} && $testing && [[ " $leftstring_test " =~ " $bm " ]] ) || ( ${
         fi
     fi
     if ! command -v populate_httpd_ &>/dev/null; then
-        HTTPD_BASHLIB=true
+        HTTPD_BASHLIB=false
         . <(lrequire httpd)
     fi
     distinf &

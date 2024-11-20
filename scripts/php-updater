@@ -190,7 +190,6 @@ echo "${prefix}populating arrays with inventory results.."
 
 # PACKAGES_INSTALLED_BY_DPKG
 $verbose&&echo "$(pf)Packages installed by dpkg.."
-populate_pkgs_by_dpkg_array
 if ${FLAG[supported]}; then
     ext_state cleanup
     ext_state fix

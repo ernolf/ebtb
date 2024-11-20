@@ -20,8 +20,8 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 . <(lrequire php/versions)
 [ "$sin" = 'php-updater' ] && . <(require php/sury)
 
-declare -a PKGS_BY_DPKG EXTS_ADMIN DEPENDENCY_PKGS META_PKGS
-declare -A SAPIS 2>/dev/null
+declare -ag EXTS_ADMIN
+declare -Ag SAPIS 2>/dev/null
 
 SAPIS=(
     [apache2]="libapache2-mod-php@VER@"
@@ -45,31 +45,8 @@ detect_installed_by_dpkg(){
     done
 }
 
-populate_pkgs_by_dpkg_array(){
-    mapfile -t PKGS_BY_DPKG< <(detect_installed_by_dpkg)
-}
-
-populate_dependency_pkgs_array(){
-    DEPENDENCY_PKGS=()
-    populate_pkgs_by_dpkg_array
-    for i in "${!PKGS_BY_DPKG[@]}"; do
-        pkg="${PKGS_BY_DPKG[i]%%/*}"
-        if extension_is_ dependency "$pkg"; then
-            rdepends -q "$pkg"||DEPENDENCY_PKGS+=("$pkg")
-        fi
-    done
-}
-
-populate_meta_pkgs_array(){
-    META_PKGS=()
-    populate_pkgs_by_dpkg_array
-    for i in "${!PKGS_BY_DPKG[@]}"; do
-        pkg="${PKGS_BY_DPKG[i]%%/*}"
-        if extension_is_ meta "$pkg"; then
-            rdepends -q "$pkg"||META_PKGS+=("$pkg")
-        fi
-    done
-}
+# for backwards compatibility:
+populate_pkgs_by_dpkg_array(){ :;}
 
 detect_extensions_in_(){
     local -a files valid_files
@@ -122,23 +99,22 @@ extension_include_dir_of_(){
 detect_and_assign_extensions(){
     local php_version extension_dir dpkg_package
     local -i i
-    local -a EXTS_ALL EXTS_DPKG
+    local -a exts_all exts_dpkg
     spinner C " . detect extensions ." &
     for php_version in ${VERSIONS[@]}; do
         extension_dir="$(extension_dir_of_ $php_version)"
-        mapfile -t EXTS_ALL< <(p_nosort ${EXTS_ALL[@]};detect_extensions_in_ $extension_dir)
+        mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ $extension_dir)
     done
     kill_spinner
     spinner C " . assign extensions ." &
-    for i in ${!PKGS_BY_DPKG[@]}; do
-        dpkg_package=${PKGS_BY_DPKG[i]%%/*}
+    for dpkg_package in $(dpkg -l | awk '/^[hiu]i.*php/{print $2}'); do
         declare -ga ${dpkg_package//[.-]/_}
         mapfile -t "${dpkg_package//[.-]/_}"< <(dpkg -L $dpkg_package|grep "\.so$")
-        mapfile -t EXTS_DPKG< <(p_nosort ${EXTS_DPKG[@]};dpkg -L $dpkg_package|grep "\.so$"|sort)
+        mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};dpkg -L $dpkg_package|grep "\.so$"|sort)
     done
     # EXTENSIONS_INSTALLED_BY_ADMIN
     $verbose && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
-    mapfile -t EXTS_ADMIN< <(comm -23 <(p_sort ${EXTS_ALL[@]}) <(p_sort ${EXTS_DPKG[@]}))
+    mapfile -t EXTS_ADMIN< <(comm -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
     mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
     kill_spinner
 }
@@ -148,14 +124,12 @@ detect_and_assign_extensions(){
 # versions_iterate search_candidates_4_extensions_installed_by_admin
 search_candidates_4_extensions_installed_by_admin(){
     local php_version sort extension_dir fullpath module package
-    local -i i
-    sort=false php_version="$1"
+    php_version="$1" sort=false
     spinner C " . searching packaged versions for php$php_version extensions not installed by dpkg ." &
     declare -ga EIBY4_${php_version//./}
     declare -ga C4EIBY4_${php_version//./}
     extension_dir="$(extension_dir_of_ $php_version)"
-    for i in ${!EXTS_ADMIN[@]}; do
-        fullpath="${EXTS_ADMIN[i]}"
+    for fullpath in ${EXTS_ADMIN[@]}; do
         module="${fullpath##*/}"
         if [ "${fullpath%/*}" = "$extension_dir" ];then
             sort=true
@@ -212,7 +186,7 @@ extension_is_(){
 
 is_sapi_true_(){
     local pkg sapi
-    for pkg in "${PKGS_BY_DPKG[@]%%/*}"; do
+    for pkg in $(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
         sapi=''
         if sapi=$(extension_is_ sapi "$pkg"); then
             if [ "${sapi%:*}" = "$1" ];then

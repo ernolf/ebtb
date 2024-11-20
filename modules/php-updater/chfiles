@@ -50,8 +50,8 @@ changed_files_(){
         local old new
         local -a oip nip jip files # old_, new_ and joint_installed_packages
         old="$1" new="$2"
-        mapfile -t oip< <(p_nosort ${PKGS_BY_DPKG[@]%%/*} | awk '/php'$old'/ {gsub("'$old'","@VERSION@",$1);print $1}')
-        mapfile -t nip< <(p_nosort ${PKGS_BY_DPKG[@]%%/*} | awk '/php'$new'/ {gsub("'$new'","@VERSION@",$1);print $1}')
+        mapfile -t oip< <(dpkg -l | awk '/^[hiu]i.*php'$old'/{gsub("'$old'","@VERSION@",$2);print $2}')
+        mapfile -t nip< <(dpkg -l | awk '/^[hiu]i.*php'$new'/{gsub("'$new'","@VERSION@",$2);print $2}')
         mapfile -t jip< <(comm -12 <(p_sort ${oip[@]}) <(p_sort ${nip[@]}))
         for i in ${!jip[@]}; do
             pkg="${jip[i]//@VERSION@/$old}"

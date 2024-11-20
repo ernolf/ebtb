@@ -29,7 +29,7 @@ install_new_php(){
         # update first?
         f; echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
         if ask "$(qpf)Do you want to update the system first " "$NO"; then
-            apt-mark hold $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') &>/dev/null # hold php as it is for this step.
+            apt-mark hold $(dpkg -l | awk '/^[hiu]i.*php*/{print $2}') &>/dev/null # hold php as it is for this step.
             apt-get dist-upgrade
             pf; echo "$(lG)system updated$(N)"
             anykey
@@ -50,8 +50,7 @@ install_new_php(){
         if ((${#sapi_not[@]})); then
             apt_purge --yes ${sapi_not[@]}
         fi
-        command -v needrestart >/dev/null&&needrestart -r a
-        populate_pkgs_by_dpkg_array
+        command -v needrestart >/dev/null && needrestart -r a
     else f
         no_candidate "$new"
         exit1

@@ -34,12 +34,11 @@ list_installed_sapi(){
     local -a sockets
     local -i c2 c3 i
     c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
-    populate_pkgs_by_dpkg_array
     populate_httpd_ active
 
     for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
 
-    for pkg in "${PKGS_BY_DPKG[@]%%/*}"; do
+    for pkg in $(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
         if [[ "$pkg" =~ libapache2-mod-$PHPVREGEX ]]; then
             SAPI_A2[${pkg#libapache2-mod-php}]='installed'
         elif [[ "$pkg" =~ $PHPVREGEX-fpm ]]; then
@@ -145,10 +144,13 @@ list_installed_sapi(){
 list_installed(){
     cursor_ hide
     local arg sapi quiet only pkg plu fullpath mod pv httpd pkgmod
-    local -a sockets
+    local -a pkgs_by_dpkg sockets
     local -i c2 c3 i iim iam ctr aimct
     c2=28 c3=74 aimct=0 SAPI_A2=() SAPI_FPM=()
     quiet=false only=false
+    spinner C " . detect packages installed by dpkg ." &
+    mapfile -t pkgs_by_dpkg< <(detect_installed_by_dpkg)
+    kill_spinner
     detect_and_assign_extensions
     iam=${#EXTS_ADMIN[@]}
     ((iam)) && versions_iterate search_candidates_4_extensions_installed_by_admin
@@ -157,8 +159,8 @@ list_installed(){
     o2;B;echo "actual PHP related packages installed and managed by dpkg";N
     R;o;echo "X$(o5;Y)Package$(o $c2)Version$(o $c3)Status";N
     line '-' dP 2/78
-    for i in "${!PKGS_BY_DPKG[@]}"; do
-        pkg="${PKGS_BY_DPKG[i]%%/*}" sapi='' sockets=()
+    for i in "${!pkgs_by_dpkg[@]}"; do
+        pkg="${pkgs_by_dpkg[i]%%/*}" sapi='' sockets=()
         if extension_is_ known "$pkg"; then
             o2;pf
         elif sapi=$(extension_is_ sapi "$pkg"); then
@@ -170,20 +172,18 @@ list_installed(){
             if rdepends -q "$pkg"; then
                 o2;pf;
             else
-#                DEPENDENCY_PKGS+=("$pkg")
                 R;printf "DEP  ";N
             fi
         elif extension_is_ meta "$pkg"; then
             if rdepends -q "$pkg"; then
                 o2;pf
             else
-#                META_PKGS+=("$pkg")
                 dR;printf "META ";N
             fi
         else
             o2;pf
         fi
-        Y;printf "$pkg";o $c2;GRAY;echo "${PKGS_BY_DPKG[i]}" | awk -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}';N
+        Y;printf "$pkg";o $c2;GRAY;echo "${pkgs_by_dpkg[i]}" | awk -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}';N
 # --> included modules
         iim=$(eval printf \${#${pkg//[.-]/_}[@]})
         if ((iim)); then
