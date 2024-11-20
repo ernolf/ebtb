@@ -71,7 +71,7 @@ declare -a args tntd
 mpid=$$ lf="$TMPDIR/ebtb-logfiles/$bm.log"
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"
-my_url="$my_home/script/$scriptname" cargs="-se $bm-$epoch $my_home/apps/raw/s"
+my_url="$my_home/script/$scriptname" cargs="-se $bm-$epoch $my_home/apps/raw"
 opts="rt run2 irun2 do_update do_restore_backup do_integrity_check"
 for opt in $opts; do declare $opt=false; done
 (($(id -u))) || rt=:
