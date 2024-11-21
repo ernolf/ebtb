@@ -16,7 +16,7 @@ fpm_configfile(){
     local ver conf
     local -i r
     ver="$1"
-    conf="$(php-fpm$ver -t 2>&1 | grep -o "/[^ ':]*" | sort -u)"
+    conf="$(php-fpm$ver -t 2>&1 | grep -o "/[^ ':]*\.conf" | sort -u)"
     [ -f "$conf" ] && r=0 || r=1
     printf '%s' "$conf"
     return $r
