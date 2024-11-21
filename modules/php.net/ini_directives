@@ -26,7 +26,7 @@ ini_directives(){
         apc.serializer)                        def="php"                              chlog="Prior to APCu 5.1.15, the default was default";;
         apc.shm_segments)                      def="1"                                chlog="";;
         apc.shm_size)                          def="32M"                              chlog="";;
-        apc.slam_defense)                      def="1"                                chlog="";;
+        apc.slam_defense)                      def="0"                                chlog="";;
         apc.ttl)                               def="0"                                chlog="";;
         apc.use_request_time)                  def="0"                                chlog="Prior to APCu 5.1.19, the default was 1";;
         arg_separator.input)                   def="&"                                chlog="";;
@@ -228,6 +228,7 @@ ini_directives(){
         memcache.redundancy)                   def="1"                                chlog="Supported since memcache 3.0.0";;
         memcache.session_redundancy)           def="2"                                chlog="Supported since memcache 3.0.0";;
         memory_limit)                          def="128M"                             chlog="";;
+        mongodb.debug)                         def=""                                 chlog="";;
         mysql.allow_local_infile)              def="1"                                chlog="";;
         mysql.allow_persistent)                def="1"                                chlog="";;
         mysql.connect_timeout)                 def="60"                               chlog="";;
@@ -276,10 +277,7 @@ ini_directives(){
         odbc.check_persistent)                 def="1"                                chlog="";;
         odbc.defaultbinmode)                   def="1"                                chlog="";;
         odbc.default_cursortype)               def="3"                                chlog="";;
-        odbc.default_db)                       def="NULL"                             chlog="";;
         odbc.defaultlrl)                       def="4096"                             chlog="";;
-        odbc.default_pw)                       def="NULL"                             chlog="";;
-        odbc.default_user)                     def="NULL"                             chlog="";;
         odbc.max_links)                        def="-1"                               chlog="";;
         odbc.max_persistent)                   def="-1"                               chlog="";;
         opcache.blacklist_filename)            def=""                                 chlog="";;
@@ -324,7 +322,7 @@ ini_directives(){
         opcache.max_file_size)                 def="0"                                chlog="";;
         opcache.max_wasted_percentage)         def="5"                                chlog="";;
         opcache.memory_consumption)            def="128"                              chlog="";;
-        opcache.mmap_base)                     def="NULL"                             chlog="";;
+        opcache.mmap_base)                     def="NULL"                             chlog="Windows only";;
         opcache.opt_debug_level)               def="0"                                chlog="Available as of PHP 7.1.0";;
         opcache.optimization_level)            def="0x7FFEBFFF"                       chlog="Changed from 0x7FFFBFFF in PHP 7.3.0";;
         opcache.preferred_memory_model)        def=""                                 chlog="";;
@@ -422,8 +420,8 @@ ini_directives(){
         session.save_handler)                  def="files"                            chlog="";;
         session.save_path)                     def=""                                 chlog="";;
         session.serialize_handler)             def="php"                              chlog="";;
-        session.sid_bits_per_character)        def="4"                                chlog="Available as of PHP 7.1.0";;
-        session.sid_length)                    def="32"                               chlog="Available as of PHP 7.1.0";;
+        session.sid_bits_per_character)        def="4"                                chlog="Available as of PHP 7.1.0. Deprecated as of PHP 8.4.0";;
+        session.sid_length)                    def="32"                               chlog="Available as of PHP 7.1.0. Deprecated as of PHP 8.4.0";;
         session.trans_sid_hosts)               def="\$_SERVER['HTTP_HOST']"           chlog="Available as of PHP 7.1.0";;
         session.trans_sid_tags)                def="a=href,area=href,frame=src,form=" chlog="Available as of PHP 7.1.0";;
         session.upload_progress.cleanup)       def="1"                                chlog="";;

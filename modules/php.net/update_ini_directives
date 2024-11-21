@@ -14,7 +14,7 @@ UPDATE_INI_DIRECTIVES_BASHLIB=:
 . <(lrequire php.net/ini_directives)
 
 update_ini_directives(){
-    [ -z "$1" ]&&local dryrun=:||local "$1"
+    [ -z "$1" ]&&local dryrun=:||local "$@"
     $dryrun&&set -x
     local phpneturl='https://www.php.net/manual/en' url
     local ini_list_php='ini.list.php' ini_core_php='ini.core.php#ini.extension'
@@ -134,4 +134,4 @@ PARSE_DIRECTIVES_AWK
     ' "$working_copy" > "$myoutfile"
     exit 0
 }
-[ "$1" = "--update_ini_directives" ]&&update_ini_directives $2
+[ "$1" = "--update_ini_directives" ] && update_ini_directives $@ # --update_ini_directives dryrun=false includedir=$includedir
