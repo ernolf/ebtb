@@ -20,26 +20,18 @@ ini_directive_detect(){
     done
 }
 
-ext_config_fix(){
-    local ver ext ext_ini xtmp itmp must_be_fixed_message should_be_fixed_message good_to_be_fixed_message pattern sapi php_ini line plu be ini_string ini_string_ php_ini_dpkg key val basic_infostring infostring oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
-    local -a lines inifiles inifiles1_ inifiles2_ php_inis
-    local -i i
+ext_double_loaders(){
+    # get rid of double extension loaders
+    local ver ext ext_ini xtmp itmp pattern sapi line plu be a ini_string ini_string_ ini_lnk_string infostring symlinkstring
+    local -a php_inis inifiles sapis
+    local -A ext_ini_lnk ext_ini_islnk
     ver="$1" ext="$2"
     ext_ini="/etc/php/$ver/mods-available/$ext.ini"
     [ -f "$ext_ini" ] || return
     xtmp=$(tf) itmp=$(tf)
-    if [ "$OLD" = "$ver" ] && [[ "$NEW" ]]; then
-        must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here but then the script will not continue, since it would multiply errors and various strange behaviour could arrise."
-        should_be_fixed_message="This should be fixed before this script migrates the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will be migrated as well."
-        good_to_be_fixed_message="This is not an error but about a possible optimization that is missing which you can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
-    else
-        must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php$ver$(P) to an other php version. You can answer $(box no) here but then the script cannot upgrade from this version, since it would multiply errors and various strange behaviour could arrise."
-        should_be_fixed_message="This should be fixed in the configuration of $(C)php$ver$(P)."
-        good_to_be_fixed_message="This is not an error but about a possible optimization that is missing in the configuration of $(C)php$ver$(P) which you can add."
-    fi
-    # get rid of double extension loaders
-    pattern="^\s*(zend_)?extension\s*=\s*$ext.*$"
+    pattern="^\s*(zend_)?extension\s*=\s*$ext[^_]*$"
     for sapi in $(phpquery -v $ver -S); do
+        ext_ini_lnk[$sapi]="$(echo /etc/php/$ver/$sapi/conf.d/[0-9][0-9]-$ext.ini)"
         if [ -f "/etc/php/$ver/$sapi/php.ini" ]; then
             php_inis+=("/etc/php/$ver/$sapi/php.ini")
         fi
@@ -48,12 +40,34 @@ ext_config_fix(){
     if (( ${#inifiles[@]} )); then
         line=$(grep -Eix "$pattern" ${inifiles[0]})
         if (( ${#inifiles[@]} == 1 )); then
-            plu='' be=is ini_string_="$(C)${inifiles[0]}$(O)" ini_string="$(C)${inifiles[0]}$(W)"
+            plu='' be=is a=" a" ini_string_="$(C)${inifiles[0]}$(O)" ini_string="$(C)${inifiles[0]}$(W)"
+            sapi="${inifiles[0]#/etc/php/$ver/}"
+            ini_lnk_string="$(Yi)${ext_ini_lnk[${sapi%/*}]}"
+            [ "$(readlink ${ext_ini_lnk[${sapi%/*}]})" = "$ext_ini" ] && ext_ini_islnk[${sapi%/*}]=true || ext_ini_islnk[${sapi%/*}]=false
         else
-            plu='es' be=are ini_string_="$(listify_ C O ${inifiles[@]})" ini_string="$(listify_ C W ${inifiles[@]})"
+            plu='es' be=are a="" ini_string_="$(listify_ C O ${inifiles[@]})" ini_string="$(listify_ C W ${inifiles[@]})"
+            sapis=("${inifiles[@]#/etc/php/$ver/}")
+            ini_lnk_string="$(listify_ Yi W $(for sapi in ${sapis[@]%/*}; do echo "${ext_ini_lnk[$sapi]}"; done))"
+            for sapi in ${sapis[@]%/*}; do
+                [ "$(readlink ${ext_ini_lnk[$sapi]})" = "$ext_ini" ] && ext_ini_islnk[$sapi]=true || ext_ini_islnk[$sapi]=false
+            done
         fi
         echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-        infostring="This extension (module) is already loaded in $(C)$ext_ini$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from  $(C)$ini_string$(W)."
+
+        if [[ "${ext_ini_islnk[@]}" =~ "true" && ! "${ext_ini_islnk[@]}" =~ "false" ]]; then
+            infostring="This extension $(GRAY)(module)$(W) is already loaded by $ini_lnk_string $(GRAY)(which $be$a symlink${plu#e} to $(dB)$ext_ini$(GRAY))$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from $(C)$ini_string$(W)."
+        elif [[ "${ext_ini_islnk[@]}" =~ "false" && ! "${ext_ini_islnk[@]}" =~ "true" ]]; then
+            infostring="This extension $(GRAY)(module)$(W) is already loaded by $ini_lnk_string $(GRAY)(which btw. $be not$a symlink${plu#e} to $ext_ini, which is strange)$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from $(C)$ini_string$(W)."
+        else
+            for sapi in ${sapis[@]%/*}; do
+                if "${ext_ini_islnk[$sapi]}"; then
+                    symlinkstring+=" ${ext_ini_lnk[$sapi]} is a symlink to $(dB)$ext_ini$(GRAY),"
+                else
+                    symlinkstring+=" ${ext_ini_lnk[$sapi]} is not a symlink,"
+                fi
+            done
+            infostring="This extension $(GRAY)(module)$(W) is already loaded by $ini_lnk_string $(GRAY)(where${symlinkstring%,})$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from $(C)$ini_string$(W)."
+        fi
         echo -e "\n$(R)$line$(N)" >> $itmp
         C;echo "info$(N):$(W;format_string "$infostring" 6;N)" >> $itmp
         for i in ${!inifiles[@]}; do
@@ -68,16 +82,35 @@ ext_config_fix(){
             if ask "$(qpf)Do you want to apply this fix$plu" "$YES";then
                 . $xtmp
                 if grep -Eqslix "$pattern" ${php_inis[@]}; then
-                    bundle echo "R: $(R)removal from ${inifiles[@]} failed.$(N)"
+                    bundle echo "R: $(R)removal from $(listify_ Yi R ${inifiles[@]}) failed.$(N)"
                 else
-                    bundle echo "R: $(lG)removal from ${inifiles[@]} was successfull.$(N)"
+                    bundle echo "R: $(lG)removal from $(listify_ Y G ${inifiles[@]}) was successfull.$(N)"
                 fi
             else
                 bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
             fi
             anykey
-            spinner C " . ext_config_fix() searching known configuration errors in php$ver ." &
+            spinner C " . ext_config_fix() searching known configuration errors in php$ver: checking $ext ." &
         fi
+    fi
+}
+
+ext_config_fix(){
+    local ver ext ext_ini xtmp itmp must_be_fixed_message should_be_fixed_message good_to_be_fixed_message pattern sapi php_ini line plu be ini_string ini_string_ key val basic_infostring infostring oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
+    local -a lines inifiles1_ inifiles2_ php_inis
+    local -i i
+    ver="$1" ext="$2"
+    ext_ini="/etc/php/$ver/mods-available/$ext.ini"
+    [ -f "$ext_ini" ] || return
+    xtmp=$(tf) itmp=$(tf)
+    if [ "$OLD" = "$ver" ] && [[ "$NEW" ]]; then
+        must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here but then the script will not continue, since it would multiply errors and various strange behaviour could arrise."
+        should_be_fixed_message="This should be fixed before this script migrates the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will be migrated as well."
+        good_to_be_fixed_message="This is not an error but about a possible optimization that is missing which you can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
+    else
+        must_be_fixed_message="This errors must be fixed before this script can migrate the settings from $(C)php$ver$(P) to an other php version. You can answer $(box no) here but then the script cannot upgrade from this version, since it would multiply errors and various strange behaviour could arrise."
+        should_be_fixed_message="This should be fixed in the configuration of $(C)php$ver$(P)."
+        good_to_be_fixed_message="This is not an error but about a possible optimization that is missing in the configuration of $(C)php$ver$(P) which you can add."
     fi
     case $ext in
         redis)
@@ -394,7 +427,9 @@ check_config(){
     [ -d "$amdir" ] || return 1
     mapfile -t am_ini_files< <(ls "$amdir"|awk -F. '/\.ini$/{print$1}')
     for am in ${am_ini_files[@]}; do
-        spinner C " . check_config() searching known configuration errors in php$ver." &
+        kill_spinner
+        spinner C " . check_config() searching known configuration errors in php$ver: checking $am ." &
+        ext_double_loaders $ver $am
         ext_config_fix $ver $am
     done
     kill_spinner
