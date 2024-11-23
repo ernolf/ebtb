@@ -455,17 +455,29 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
         fi
 
 #        . <(lrequire php/fpm)
-        local -a fpm_pools
-#        mapfile -t fpm_pools< <(fpm_ps_info brief 2>&1)
-        mapfile -t fpm_pools< <(fpm_pools 2>&1)
-        for i in ${!fpm_pools[@]}; do
-            mh "PHP-FPM pool-$(printf '%02d' $((i+1))): ${fpm_pools[i]}"
+
+        populate_versions_array
+        local pv
+        local -a fpm_test
+        for pv in ${VERSIONS[@]}; do
+            if command -v php-fpm$pv >/dev/null; then
+                mapfile -t fpm_test< <(php-fpm$pv -t 2>&1)
+                mh "php-fpm$pv -t: ${fpm_test[@]}"
+            fi
         done
 
-        local -a fpm_sockets
-        mapfile -t fpm_sockets< <(fpm_sockets 2>&1)
-        for i in ${!fpm_sockets[@]}; do
-            mh "PHP-FPM sockets-$(printf '%02d' $((i+1))): ${fpm_sockets[i]}"
+
+        local -a fpmpools
+#        mapfile -t fpmpools< <(fpm_ps_info brief 2>&1)
+        mapfile -t fpmpools< <(fpm_pools 2>&1)
+        for i in ${!fpmpools[@]}; do
+            mh "PHP-FPM pool-$(printf '%02d' $((i+1))): ${fpmpools[i]}"
+        done
+
+        local -a fpmsockets
+        mapfile -t fpmsockets< <(fpm_sockets 2>&1 | sort)
+        for i in ${!fpmsockets[@]}; do
+            mh "PHP-FPM sockets-$(printf '%02d' $((i+1))): ${fpmsockets[i]}"
         done
 
     fi # End " php-module-builder php-updater "
