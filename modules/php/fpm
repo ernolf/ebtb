@@ -10,7 +10,11 @@ __license__
 ${FPM_BASHLIB:-false} && return
 FPM_BASHLIB=:
 
-declare -A SAPI_FPM
+#globals
+if ! declare -p SAPI_FPM 2>/dev/null | grep -qs 'declare -A'; then
+    unset SAPI_FPM
+    declare -gA SAPI_FPM 2>/dev/null || declare -A SAPI_FPM
+fi
 
 fpm_configfile(){
     local ver conf

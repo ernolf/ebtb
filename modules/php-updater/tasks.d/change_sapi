@@ -414,7 +414,7 @@ change_sapi(){
         populate_httpd_ wk_enabled
         populate_httpd_ wk_active
 
-        if (( ${SERVER_STATUS[apache2]} )); then
+        if (( ${HTTPD[apache2]} )); then
             populate_a2modules shared
             if (( ${#A2MODULES[@]} )); then
                 if [[ "${A2MODULES[@]%_module}" =~ prefork ]]; then

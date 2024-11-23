@@ -60,7 +60,7 @@ list_installed_sapi(){
             Y;echo "$(pf)$pkg";N
             fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
             o5;fO;echo -n "\\apache2handler$(O) $fullpath";N
-            if (( ${SERVER_STATUS[apache2]} > 2 )); then
+            if (( ${HTTPD[apache2]} > 2 )); then
                 if [[ "${A2CONFFILES[@]}" =~ php$pv.conf && "${A2CONFFILES[@]}" =~ php$pv.load ]]; then
                     SAPI_A2[$pv]='a'
                     o $c3;lG;echo " <ACTIVE> loaded";N
@@ -117,13 +117,13 @@ list_installed_sapi(){
                                             continue
                                         fi
                                         ;;
-                                 nginx) if nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )); then
-                                            grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
+                                 nginx) if nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )); then
+                                            grep -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]} || continue
                                         else
                                             continue
                                         fi
                             esac
-                            case ${SERVER_STATUS["$httpd"]} in
+                            case ${HTTPD["$httpd"]} in
                                 2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
                                 3)  connected_httpd=" $httpd $connected_httpd"
                             esac
@@ -211,7 +211,7 @@ list_installed(){
             # --> Active SAPI
             if [ "${sapi%:*}" = 'apache2' ]; then
                 pv="${pkg/libapache2-mod-php/}" # extract version
-                if (( ${SERVER_STATUS[apache2]} > 2 )); then
+                if (( ${HTTPD[apache2]} > 2 )); then
                     if [[ "${A2CONFFILES[@]}" =~ php${sapi#*:}\.conf && "${A2CONFFILES[@]}" =~ php${sapi#*:}\.load ]]; then
                         SAPI_A2[$pv]='a'
                         lG;echo " <ACTIVE> loaded";N
@@ -255,13 +255,13 @@ list_installed(){
                                                     continue
                                                 fi
                                                 ;;
-                                         nginx) if nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )); then
-                                                    grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} || continue
+                                         nginx) if nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )); then
+                                                    grep -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]} || continue
                                                 else
                                                     continue
                                                 fi
                                     esac
-                                    case ${SERVER_STATUS["$httpd"]} in
+                                    case ${HTTPD["$httpd"]} in
                                         2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(N;lG)" ;;
                                         3)  connected_httpd=" $httpd $connected_httpd"
                                     esac

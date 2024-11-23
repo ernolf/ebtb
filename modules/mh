@@ -228,8 +228,27 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
     ## machine-id
     mh "machine-id: $machineid"
 
+    ## Hypervisor
+    local hypervisor
+    hypervisor="$(dmesg -t 2>&1 | awk 'tolower($0) ~ /^hypervisor/ {print $NF}')"
+    mh "hypervisor: ${hypervisor:-bare-metal}"
+
     ## PID 1
-    mh "pid1: this machine has booted with $(ps -p 1 -o comm= 2>/dev/null)"
+    mh "pid1: $(ps -p 1 -o comm= 2>/dev/null)"
+
+    ## are we running inside of a container?
+    #    if [ -f /run/.dockerenv ] || grep -qE "/docker|/kubepods" /proc/self/cgroup; then
+    #        echo "Running inside a Docker container"
+    #        exit 1
+    #    fi
+    [ -f /run/.dockerenv ] && mh "file exists: /run/.dockerenv"
+    # Cgroups (Control Groups)
+    local -a selfcgroup
+    mapfile -t selfcgroup< <(cat /proc/self/cgroup)
+    for i in ${!selfcgroup[@]}; do mh "/proc/self/cgroup - $(printf '%02d' $((i+1))): ${selfcgroup[i]}"; done
+    local -a onecgroup
+    mapfile -t onecgroup< <(cat /proc/1/cgroup)
+    for i in ${!onecgroup[@]}; do mh "/proc/1/cgroup - $(printf '%02d' $((i+1))): ${onecgroup[i]}"; done
 
     $ext_inf && {
         ## prompt
@@ -351,11 +370,6 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
             fi
         }
 
-## Hypervisor
-        local hypervisor
-        hypervisor="$(dmesg -t 2>&1 | awk 'tolower($0) ~ /^hypervisor/ {print $NF}')"
-        [ -z "$hypervisor" ] || mh "hypervisor: $hypervisor"
-
 # TODO 2 -->
 #    } # end $rt
 
@@ -457,7 +471,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
     fi # End " php-module-builder php-updater "
 
 #    . <(lrequire httpd)
-    if (( ${SERVER_STATUS[apache2]} )); then
+    if (( ${HTTPD[apache2]} )); then
         ( apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )) ) || {
             local -a a2errors
             mapfile -t a2errors< <(apachectl configtest 2>&1)
@@ -486,16 +500,16 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
         fi
         unset -v a2mod common_a2mods missing_a2mods uncommon_a2mods
     fi
-    if (( ${SERVER_STATUS[nginx]} )); then
-        ( nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )) ) || {
+    if (( ${HTTPD[nginx]} )); then
+        ( nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )) ) || {
             local -a ngxerrors
             mapfile -t ngxerrors< <(nginx -t 2>&1)
             for i in ${!ngxerrors[@]}; do
                 mh "nginx error-$(printf '%02d' $((i+1))): ${ngxerrors[i]}"
             done
         }
-        populate_nginxmodules shared
-        (( ${#NGINXMODULES[@]} )) && mh "nginx shared modules: ${NGINXMODULES[@]%_module}"
+        populate_ngxmodules shared
+        (( ${#NGXMODULES[@]} )) && mh "nginx shared modules: ${NGXMODULES[@]%_module}"
     fi
     populate_httpd_ known
     for i in "${!HTTPD_KNOWN[@]}"; do mh "known-httpd - $(printf '%02d' $((i+1))): ${HTTPD_KNOWN[i]}"; done
@@ -519,23 +533,23 @@ if ( ${rt:-false} && $testing && [[ " $leftstring_test " =~ " $bm " ]] ) || ( ${
     . <(lrequire dist/os_release)
     [[ " $leftstring_aio " =~ " $bm " ]] && . <(lrequire nc/nextcloud_aio)
     if [[ " $leftstring_php " =~ " $bm " ]]; then
-        if ! command -v sury &>/dev/null; then
+        if ! command -v sury >/dev/null; then
             SURY_BASHLIB=false
             . <(lrequire php/sury)
         fi
-        if ! command -v php_ver &>/dev/null; then
+        if ! command -v php_ver >/dev/null; then
             VERSION_BASHLIB=false
             . <(lrequire php/version)
         fi
-        if [ -z "$PHPREGEX" ]; then
+        if ! [[ "$PHPVREGEX" =~ php ]]; then
             VERSIONS_BASHLIB=false
             . <(lrequire php/versions)
         fi
-        if [ -z "$PHPVREGEX" ]; then
+        if ! declare -p SAPIS 2>/dev/null | grep -qs 'declare -A'; then
             EXTENSIONS_BASHLIB=false
             . <(lrequire php/extensions)
         fi
-        if ! command -v fpm_ps_info &>/dev/null; then
+        if ! command -v fpm_pools >/dev/null || ! command -v fpm_sockets >/dev/null; then
             FPM_BASHLIB=false
             . <(lrequire php/fpm)
         fi

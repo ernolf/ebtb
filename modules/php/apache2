@@ -12,7 +12,11 @@ APACHE2_BASHLIB=:
 
 . <(lrequire httpd)
 
-declare -A SAPI_A2
+# globals
+if ! declare -p SAPI_A2 2>/dev/null | grep -qs 'declare -A'; then
+    unset SAPI_A2
+    declare -gA SAPI_A2 2>/dev/null || declare -A SAPI_A2
+fi
 
 apache2_mpm(){
     mpm_module="$(apachectl -M 2>/dev/null | awk '/mpm/{print $1}')"

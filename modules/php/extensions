@@ -20,8 +20,10 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 . <(lrequire php/versions)
 [ "$sin" = 'php-updater' ] && . <(require php/sury)
 
-declare -ag EXTS_ADMIN
-declare -Ag SAPIS 2>/dev/null
+# globals
+declare -ag EXTS_ADMIN 2>/dev/null || declare -a EXTS_ADMIN
+unset SAPIS
+declare -Ag SAPIS 2>/dev/null || declare -A SAPIS
 
 SAPIS=(
     [apache2]="libapache2-mod-php@VER@"

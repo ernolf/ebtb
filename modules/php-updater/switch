@@ -43,8 +43,8 @@ php_fpm_sites_available_conf_(){
                 fi
                 ;;
             nginx)
-                mapfile -t sock_o< <(find ${NGINXCONFFILES[@]} 2>/dev/null ! -name "*.backup" -exec grep -Ehos "^[^#]*${sock_regex[$pool]//\./\.}" {} + | grep -Eos "${sock_regex[$pool]//\./\.}" | sort -u)
-                mapfile -t conffiles< <(grep -Els "^[^#]*${sock_regex[$pool]//\./\.}" ${NGINXCONFFILES[@]} | grep -Ev '\.backup$' | sort -u)
+                mapfile -t sock_o< <(find ${NGXCONFFILES[@]} 2>/dev/null ! -name "*.backup" -exec grep -Ehos "^[^#]*${sock_regex[$pool]//\./\.}" {} + | grep -Eos "${sock_regex[$pool]//\./\.}" | sort -u)
+                mapfile -t conffiles< <(grep -Els "^[^#]*${sock_regex[$pool]//\./\.}" ${NGXCONFFILES[@]} | grep -Ev '\.backup$' | sort -u)
                 if (( ${#conffiles[@]} )); then
                     o3; bundle echo "$(ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6;N)"
                 fi
@@ -161,7 +161,7 @@ switch_fpm_version(){
                 o3;bundle echo "-$(format_string "$(P)Please give me feedback on the way php is integrated into this web server so that I can add support for ${httpd:-this webserver} in future versions of this script." 6;N)"
                 exit0
     esac
-    local ver_o ver_n pkg v pool fpm_conf a2_fpm_switch nginx_fpm_switch
+    local ver_o ver_n pkg v pool fpm_conf
     local -a fpm_installed fpm_alternatives pools_o pools_n conffiles
     local -A fpm_switch
     ver_n="$1"
@@ -217,7 +217,7 @@ switch_fpm_version(){
     local socket pv
     if (( ${#WK_HTTPD_ACTIVE[@]} )); then
 #            if [[ "${WK_HTTPD_ACTIVE[@]}" =~ apache2 ]]; then
-        if (( "${SERVER_STATUS[apache2]}" > 2 )); then
+        if (( "${HTTPD[apache2]}" > 2 )); then
             for socket in $(fpm_sockets); do
                 pv="$(echo $socket | grep -Eo "${PHPVREGEX#php}")"
                 [ "$pv" != "$ver_n" ] && continue
@@ -230,11 +230,11 @@ switch_fpm_version(){
                     fi
             done
         fi
-        if (( "${SERVER_STATUS[nginx]}" > 2 )); then
+        if (( "${HTTPD[nginx]}" > 2 )); then
             for socket in $(fpm_sockets); do
                 pv="$(echo $socket | grep -Eo "${PHPVREGEX#php}")"
                 [ "$pv" != "$ver_n" ] && continue
-                mapfile -t conffiles< <(grep -Els "^[^#]*unix:$socket" ${NGINXCONFFILES[@]} | grep -Ev '\.backup$' | sort -u)
+                mapfile -t conffiles< <(grep -Els "^[^#]*unix:$socket" ${NGXCONFFILES[@]} | grep -Ev '\.backup$' | sort -u)
                 if (( ${#conffiles[@]} )); then
                     if (( ${#conffiles[@]} == 1 )); then
                         this='This' be='is' plu=''
@@ -258,7 +258,7 @@ switch_fpm_version(){
         for socket in $(fpm_sockets); do
             pv="$(echo $socket | grep -Eo "${PHPVREGEX#php}")"
             [ "$pv" = "$ver_n" ] && continue
-            if (( ${SERVER_STATUS[apache2]} > 2 )); then
+            if (( ${HTTPD[apache2]} > 2 )); then
                 if apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )); then
                     if grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                         fpm_conf="/etc/apache2/conf-enabled/php${pv//\./\.}-fpm.conf"
@@ -290,9 +290,9 @@ switch_fpm_version(){
                     fpm_switch[apache2]="err"
                 fi
             fi
-            if (( ${SERVER_STATUS[nginx]} > 2 )); then
-                if nginx -t &>/dev/null && (( ${#NGINXCONFFILES[@]} )); then
-                    if grep -qs "^[^#]*unix:$socket" ${NGINXCONFFILES[@]}; then
+            if (( ${HTTPD[nginx]} > 2 )); then
+                if nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )); then
+                    if grep -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]}; then
                         fpm_switch[nginx]+="ok"
                     else
                         fpm_switch[nginx]+="nok"
@@ -336,7 +336,7 @@ switch_a2module_version(){
     local -a a2_installed a2_alternatives
     ver_n="$1"
 
-    if (( ${SERVER_STATUS[apache2]} > 2 )); then
+    if (( ${HTTPD[apache2]} > 2 )); then
         apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
         mapfile -t a2_installed< <(dpkg -l | awk '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
         mapfile -t a2_alternatives< <(for v in ${a2_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
@@ -486,7 +486,7 @@ switch_default_version(){
                             anykey
                             break
                         fi
-                        if (( ${SERVER_STATUS[apache2]} )); then
+                        if (( ${HTTPD[apache2]} )); then
                             switch_a2module_version ${VERSIONS[$key-1]}
                             ret=$?
                             if (( ret )); then

@@ -18,8 +18,15 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 . <(lrequire array)
 . <(lrequire php/sury)
 
-declare -g PHP_VERSION PHPVREGEX
-declare -ga EXISTING VERSIONS CAN
+# globals
+globalvars="PHP_VERSION PHPVREGEX"
+for var in $globalvars; do declare -g "$var" 2>/dev/null || declare "$var"; done
+unset -v var globalvars
+
+globalarrays="EXISTING VERSIONS CAN"
+for array in $globalarrays; do declare -ga "$array" 2>/dev/null || declare -a "$array"; done
+unset -v array globalarrays
+
 PHPVREGEX='php(5\.6|[78]\.[01234])'
 
 no_php(){
