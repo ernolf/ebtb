@@ -20,7 +20,7 @@ spinner_pid_file="$TMPDIR/${bm}-spinner.pid"
 
 # Function to display the spinning animation
 spinner(){
-    ${debug:-false} && return 0
+    ${debug:-false} && { shift; (($#)) && echo "$@"; return 0; }
     [ -f "$spinner_pid_file" ] && return 0
     local cursor_status color spinr spinl
     local -i L R prog dir pos marg
@@ -53,7 +53,7 @@ spinner(){
     cursor_ hide
     echo "$cursor_status" > "$CURSOR"
     $color
-    (($#))&&echo "$@"
+    (($#)) && echo "$@"
     while :; do
         (( pos += dir ))
         (( prog ++ ))
