@@ -15,6 +15,7 @@ dependencies=(
 #    "apt-file#apt-file#Search for files within Debian packages"
 #    "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
 #    "sponge#moreutils#additional Unix utilities"
+#    "lsof#lsof#Unix-specific diagnostic tool to LiSt Open Files"
 # TODO <-- 0
     "lsb_release#lsb-release#Tool to detect the Linux standard base version"
     "update-the-ca-certificates#ca-certificates#Common CA certificates"
@@ -22,6 +23,7 @@ dependencies=(
     "gpg#gnupg#GNU Privacy Guard"
     "jq#jq#Command-line JSON processor"
     "ccdiff#ccdiff#Colored Character Diff"
+    "ss#iproute2#Networking and traffic control tools"
 )
 modules=(
     today interval basics awksed tempfile prompt ansi prefix button fstring
