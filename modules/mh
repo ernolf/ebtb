@@ -16,7 +16,7 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 . <(lrequire awksed)
 . <(lrequire tempfile)
 
-if [[ "$lincld" =~ ebtb ]]; then
+if [[ "$lincld" =~ ebtb ]] && ! grep -qsr 'include/ernolf' /usr/local/bin/; then
     [ -d "${ca_dir%/*}/include/ernolf" ]&&[ -d "${ca_dir%/*}/include/ebtb" ]&&rm -r "${ca_dir%/*}/include/ernolf"
 fi
 
