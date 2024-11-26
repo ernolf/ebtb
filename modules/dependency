@@ -38,7 +38,7 @@ dependency_check(){
         f
         o2;B;echo "missing dependenc$plu"
         line '=' P 2/78
-        o2;B;echo "Bynary$(o $c2)Package$(o $c3)Description"
+        o2;B;echo "Binary$(o $c2)Package$(o $c3)Description"
         line '-' dP 2/78
         Y;for bin in ${mis[@]}; do
             o2;echo "$bin$(o $c2)$(a_fld dependencies '#' "$bin" 2)$(o $c3)$(a_fld dependencies '#' "$bin" 3)"
