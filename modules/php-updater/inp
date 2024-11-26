@@ -37,7 +37,7 @@ install_new_php(){
 # TODO <-- 0
         detect_and_assign_extensions
         search_candidates_4_extensions_installed_by_admin $old
-        spinner C " . performing thorough review (dry run) of package sources and candidate availability ." &
+        spinner C " . performing thorough review (dry run) of package sources and for candidate availability ." &
         mapfile -t packages< <(packages_diff $old $new)
         mapfile -t sapi_packages< <(for sapi in $(comm -23 <(p_sort $(phpquery -v $old -S)) <(p_sort $(phpquery -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
         mapfile -t sapi_not< <(for sapi in $(comm -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(phpquery -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
@@ -55,11 +55,10 @@ install_new_php(){
         no_candidate "$new"
         exit1
     fi
-    populate_versions_array
     separator
-    f; echo " -$(format_string "$(P)If everything looks good so far, the migration of the settings from $(C)php-$old$(P) to $(C)php-$new$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
-    f; G; echo "$(prompt; lB) $me${FLAG[forceflag]}$(C) $old $new"; N
+    f; echo " -$(format_string "$(P)If everything looks good so far, the migration of the settings from $(B)php-$(C)$old$(P) to $(B)php-$(C)$new$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
+    f; G; echo "$(prompt; B) $me${FLAG[forceflag]} $(C)$old $new"; N
     f; os; P; echo "to finalize or redo the migration."; N
-    f; echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(C)php-$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3; N)"
+    f; echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(B)php-$(C)$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3; N)"
     ask "$(qpf)Proceed with next step" "$YES"&&{ separator; "$me${FLAG[forceflag]}" "json=$my_json" $old $new; exit; }||exit0
 }

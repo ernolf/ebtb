@@ -36,6 +36,9 @@ remove_meta_packages(){
             anykey
             return 0
         else
+            echo "$(ipf;Y;format_string "You answered $(button no), nothing changed." 3;N)"
+            echo "$(xpf;R;format_string "WARNING: You should absolutely know what you are doing if you do not follow the script's advice, as it may result in an unstable system and affect the script's execution down the line! I may not be able to help with subsequent errors." 3;N)"
+            anykey
             return 1
         fi
     else

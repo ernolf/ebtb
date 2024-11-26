@@ -109,7 +109,6 @@ mh(){
     else
         local debugx=false
     fi
-#    curl -Io /dev/null -A "$(fp)$(noansi "${@//'\n'/ }")" $cargs/$rincld/mh.json >/dev/null 2>&1
     $L && log "$(noansi "${@//'\n'/ }")" &
 
     $debugx && set -x
@@ -226,7 +225,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
 
 ## it beginns here:
     ## machine-id
-    mh "machine-id: $machineid"
+    mh -L "machine-id: $machineid"
 
     ## Hypervisor
     local hypervisor
@@ -253,7 +252,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
     $ext_inf && {
         ## prompt
 #            $ext_inf && . <(lrequire prompt)
-        mh "prompt: $(prompt 2>&1)"
+        mh -L "prompt: $(prompt 2>&1)"
     } # end $ext_inf
 
     ## os-release
@@ -272,41 +271,41 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
     if command -v localectl >/dev/null; then
         local -a localestatus
         mapfile -t localestatus< <(localectl status 2>&1)
-        for i in ${!localestatus[@]}; do mh "localectl status - $((i+1)): ${localestatus[i]}"; done
+        for i in ${!localestatus[@]}; do mh -L "localectl status - $((i+1)): ${localestatus[i]}"; done
     fi
 
     $ext_inf && {
         ## hostname
         # /etc/hostname
         if [ -f /etc/hostname ]; then
-            mh "/etc/hostname: $(< /etc/hostname)"
+            mh -L "/etc/hostname: $(< /etc/hostname)"
         fi
         # hostname -A, hostname -I
         if command -v hostname >/dev/null; then
-            mh "hostname -A: $(hostname -A 2>&1)"
-            mh "hostname -I: $(hostname -I 2>&1)"
+            mh -L "hostname -A: $(hostname -A 2>&1)"
+            mh -L "hostname -I: $(hostname -I 2>&1)"
         fi
 
 ## user
         # $USER
-        [ -z "$USER" ] || mh "\$USER: $USER"
+        [ -z "$USER" ] || mh -L "\$USER: $USER"
         # $SUDO_USER
-        [ -z "$SUDO_USER" ] || mh "\$SUDO_USER: $SUDO_USER"
+        [ -z "$SUDO_USER" ] || mh -L "\$SUDO_USER: $SUDO_USER"
         # id
-        mh "id -a: $(id -a 2>&1)"
+        mh -L "id -a: $(id -a 2>&1)"
 
 ## who
         if command -v who >/dev/null; then
             local -a who_all
             mapfile -t who_all< <(env LC_MESSAGES=C who 2>&1)
             for i in ${!who_all[@]}; do
-                mh "who - $(printf '%02d' $((i+1))): ${who_all[i]}"
+                mh -L "who - $(printf '%02d' $((i+1))): ${who_all[i]}"
             done
         fi
 
 ## uptime
         if command -v uptime >/dev/null; then
-            mh "uptime: $(uptime 2>&1)"
+            mh -L "uptime: $(uptime 2>&1)"
         fi
 
         $ext_ext_inf && {
@@ -315,7 +314,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
                 local -a lscpu
                 mapfile -t lscpu< <(env LC_MESSAGES=C lscpu 2>&1 | grep -iv "not affected")
                 for i in ${!lscpu[@]}; do
-                    mh "lscpu - $(printf '%02d' $((i+1))): ${lscpu[i]}"
+                    mh -L "lscpu - $(printf '%02d' $((i+1))): ${lscpu[i]}"
                 done
             fi
         } # end $ext_ext_inf
@@ -325,7 +324,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
             local -a free_hwt
             mapfile -t free_hwt< <(env LC_MESSAGES=C free -hwt 2>&1)
             for i in ${!free_hwt[@]}; do
-                mh "free - $(printf '%02d' $((i+1))): ${free_hwt[i]}"
+                mh -L "free - $(printf '%02d' $((i+1))): ${free_hwt[i]}"
             done
         fi
     } # end $ext_inf
@@ -346,10 +345,10 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
                 if [ "$(sestatus | awk '{print $NF}')" != "disabled" ]; then
                     local -a selinuxstatus selinuxbooleans
                     mapfile -t selinuxstatus< <(sestatus -v 2>&1)
-                    for i in ${!selinuxstatus[@]}; do mh "sestatus -v - $(printf '%02d' $((i+1))): ${selinuxstatus[i]}"; done
+                    for i in ${!selinuxstatus[@]}; do mh -L "sestatus -v - $(printf '%02d' $((i+1))): ${selinuxstatus[i]}"; done
                     mapfile -t selinuxbooleans< <(sestatus -b 2>&1)
-                    for i in ${!selinuxbooleans[@]}; do mh "sestatus -b - $(printf '%02d' $((i+1))): ${selinuxbooleans[i]}"; done
-                    mh "id -Z: $(id -Z 2>&1)"
+                    for i in ${!selinuxbooleans[@]}; do mh -L "sestatus -b - $(printf '%02d' $((i+1))): ${selinuxbooleans[i]}"; done
+                    mh -L "id -Z: $(id -Z 2>&1)"
                 fi
             fi
 
@@ -357,7 +356,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
             if command -v aa-status >/dev/null; then
                 local -a aastatus
                 mapfile -t aastatus< <(aa-status 2>&1)
-                for i in ${!aastatus[@]}; do mh "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
+                for i in ${!aastatus[@]}; do mh -L "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
             fi
 
 ## dmidecode
@@ -365,7 +364,7 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
                 local -a dmidecode
                 mapfile -t dmidecode< <(dmidecode -qt 1,11 2>&1 | grep -v "^$")
                 for i in ${!dmidecode[@]}; do
-                    mh "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
+                    mh -L "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
                 done
             fi
         }
@@ -456,10 +455,9 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
 
 #        . <(lrequire php/fpm)
 
-        populate_versions_array
         local pv
         local -a fpm_test
-        for pv in ${VERSIONS[@]}; do
+        for pv in $(phpquery -V | sort); do
             if command -v php-fpm$pv >/dev/null; then
                 mapfile -t fpm_test< <(php-fpm$pv -t 2>&1)
                 mh "php-fpm$pv -t: ${fpm_test[@]}"
