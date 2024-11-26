@@ -77,9 +77,6 @@ if $firstrun||[[ -z "$project_dir"||! -d "$project_dir"||"$project_dir" = "UNDEF
     . <(require $sin/first_run)&&first_run
 fi
 
-declare PHP_VERSION
-mapfile -t VERSIONS< <(phpquery -V|sort)
-
 declare php_version="$1" # e.g. 8.3
 declare module="$2" # e.g. igbinary
 declare etc_dir="/etc/php/$php_version"

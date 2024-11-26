@@ -417,9 +417,9 @@ switch_a2module_version(){
 
 switch_default_version(){
     local key
-    local -a selections
+    local -a selections php_versions
     local -i i ret
-    populate_versions_array
+    mapfile -t php_versions< <(phpquery -V | sort)
     # update-alternatives
     cleanup_and_fix_alternatives before  # repair broken alternatives, remove not existing alternatives
     mapfile -t selections< <(update-alternatives --get-selections | grep -E "ph(ar|p)")
@@ -440,8 +440,8 @@ switch_default_version(){
     line '=' P 2/78 b1
     f
     pf;Y;echo "Switch default php version to:"
-    for i in ${!VERSIONS[@]}; do
-        f;o 10;echo "$(button $((i + 1))) - php${VERSIONS[i]}"
+    for i in ${!php_versions[@]}; do
+        f;o 10;echo "$(button $((i + 1))) - php${php_versions[i]}"
     done
     f;o 10;echo "$(button q) - do nothing, quit"
     N;f
@@ -449,12 +449,12 @@ switch_default_version(){
         case $key in
                 q)  f 2;break
                     ;;
-            [1-9])  if [[ ${VERSIONS[$key-1]} ]]; then
-                        P;pf;echo "Your choice:$(Yi) php${VERSIONS[$key-1]}";N
+            [1-9])  if [[ ${php_versions[$key-1]} ]]; then
+                        P;pf;echo "Your choice:$(Yi) php${php_versions[$key-1]}";N
                         anykey
                         separator
                         apt-mark manual $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
-                        set_selections 'ph(ar|p)' 'manual' "${PHPVREGEX#php}" "${VERSIONS[$key-1]}"
+                        set_selections 'ph(ar|p)' 'manual' "${PHPVREGEX#php}" "${php_versions[$key-1]}"
                         cleanup_and_fix_alternatives afterwards  # repair broken alternatives, remove not existing alternatives
                         mapfile -t selections< <(update-alternatives --get-selections | grep -E "ph(ar|p)")
                         o3;dY;echo "alternatives system is now switch to:";N
@@ -473,33 +473,33 @@ switch_default_version(){
                         populate_httpd_ wk_enabled
                         populate_httpd_ wk_active
                         (( ${#HTTPD_ENABLED[@]} )) || { o3;Pbg;bundle echo " - This script could not detect any enabled httpd (webserver). $(N)"; exit0; }
-                        switch_fpm_version ${VERSIONS[$key-1]}
+                        switch_fpm_version ${php_versions[$key-1]}
                         ret=$?
                         if (( ret )); then
                             o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)Fast Process Manager SAPI $(GRAY)(php-fpm)$(R) version." 6;N)"
                             case $ret in
                                 2)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(GRAY) php-fpm$(R) is not installed in any version" 6;N)"
                                     ;;
-                                3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(R) for version $(Y)${VERSIONS[$key-1]} $(GRAY)(php${VERSIONS[$key-1]}-fpm)$(R) is not installed." 6;N)"
+                                3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(php${php_versions[$key-1]}-fpm)$(R) is not installed." 6;N)"
                             esac
                             f
                             anykey
                             break
                         fi
                         if (( ${HTTPD[apache2]} )); then
-                            switch_a2module_version ${VERSIONS[$key-1]}
+                            switch_a2module_version ${php_versions[$key-1]}
                             ret=$?
                             if (( ret )); then
-                                o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(R) to version ${VERSIONS[$key-1]}." 6;N)"
+                                o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(R) to version ${php_versions[$key-1]}." 6;N)"
                                 case $ret in
                                     2)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(GRAY) libapache2-mod-php$(R) is not installed in any version" 6;N)"
                                         ;;
-                                    3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)${VERSIONS[$key-1]} $(GRAY)(libapache2-mod-php${VERSIONS[$key-1]})$(R) is not installed." 6;N)"
+                                    3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(libapache2-mod-php${php_versions[$key-1]})$(R) is not installed." 6;N)"
                                         ;;
                                     4)  o3;O;bundle echo "Skipped the apache2 server due to its inactive state.";N
                                         o3;O;bundle echo "You should first start the apache2 server and run";N
                                         f;G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} --switch-version";N
-                                        f;o3;O;bundle echo ".. again if you want to switch the $(dY)apache2handler SAPI$(O) to $(C)${VERSIONS[$key-1]}";N
+                                        f;o3;O;bundle echo ".. again if you want to switch the $(dY)apache2handler SAPI$(O) to $(C)${php_versions[$key-1]}";N
                                 esac
                                 f
                                 anykey

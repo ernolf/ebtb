@@ -23,7 +23,7 @@ globalvars="PHP_VERSION PHPVREGEX"
 for var in $globalvars; do declare -g "$var" 2>/dev/null || declare "$var"; done
 unset -v var globalvars
 
-globalarrays="EXISTING VERSIONS CAN"
+globalarrays="EXISTING CAN"
 for array in $globalarrays; do declare -ga "$array" 2>/dev/null || declare -a "$array"; done
 unset -v array globalarrays
 
@@ -74,15 +74,10 @@ existing_php_versions(){
 PHP_VERSIONS
 }; mapfile -t EXISTING< <(existing_php_versions | sed 's/^\s*//')
 
-populate_versions_array(){
-    mapfile -t VERSIONS< <(phpquery -V | sort)
-}; populate_versions_array
-
 versions_iterate(){
-    populate_versions_array
     local job php_version
     job="$1"
-    for php_version in ${VERSIONS[@]}; do
+    for php_version in $(phpquery -V | sort); do
         $job $php_version
     done
 }
@@ -162,7 +157,7 @@ list_candidates() {
             if [ "$PHP_VERSION" = "${CAN[i]}" ];then
                 line ' ' bGbg 1/80 a0
                 o2;bGbg;echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
-            elif [[ " ${VERSIONS[@]} " =~ " ${CAN[i]} " ]];then
+            elif [[ "$(phpquery -V)" =~ ${CAN[i]} ]];then
                 o2;lG;echo "$(pf)${CAN[i]}$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
             else
                 o2;pf;GRAY;echo "${CAN[i]}$(o $c2)$eol$(N)"
@@ -176,7 +171,7 @@ does_exist_(){
     local -i r=0 a=$2
     if ((a)); then
         if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
-            if ! [[ " ${VERSIONS[@]%%;*} " =~ " $1 " ]]; then
+            if ! [[ "$(phpquery -V)" =~ $1 ]]; then
                 wrong_first_argument "$1" 1
             fi
         else

@@ -103,7 +103,7 @@ detect_and_assign_extensions(){
     local -i i
     local -a exts_all exts_dpkg
     spinner C " . detect extensions ." &
-    for php_version in ${VERSIONS[@]}; do
+    for php_version in $(phpquery -V); do
         extension_dir="$(extension_dir_of_ $php_version)"
         mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ $extension_dir)
     done
@@ -173,8 +173,7 @@ extension_is_(){
             return $?
             ;;
         sapi)
-            for i in ${!VERSIONS[@]}; do
-                ver=${VERSIONS[i]}
+            for ver in $(phpquery -V); do
                 for sapi in $(phpquery -v $ver -S); do
                     if [ "$pkg" = "${SAPIS[$sapi]/@VER@/$ver}" ]; then
                         r=0
@@ -200,7 +199,6 @@ is_sapi_true_(){
 }
 
 ext_state(){
-    populate_versions_array
     local vlpm dir ver mod sapi registry_dir state_dir
     vlpm="/var/lib/php/modules"
     [ -d "$vlpm" ] || return
@@ -209,14 +207,14 @@ ext_state(){
         cleanup)
             for dir in $vlpm/*; do
                 if [ -d "$dir" ]; then
-                    [[ "${VERSIONS[@]}" =~ ${dir##*/} ]] || rm -fr "$dir"
+                    [[ "$(phpquery -V)" =~ ${dir##*/} ]] || rm -fr "$dir"
                 fi
             done
             return
             ;;
         fix)
             for mod in $(dpkg -l | awk '/^[hiu]i\s+[^\s]*'$PHPVREGEX'/{print $2}'); do
-                for ver in ${VERSIONS[@]}; do
+                for ver in $(phpquery -V); do
                     [ "${mod%-*}" = "php$ver" ] && mod="${mod#*-}" || continue
                     registry_dir="$vlpm/$ver/registry"
                     [ -d "$registry_dir" ] || mkdir -p "$registry_dir"

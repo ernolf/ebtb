@@ -243,14 +243,14 @@ case $1 in
     *)  :
 esac
 
-if ${FLAG[supported]} && [ $# -eq 2 ] && [ ${#VERSIONS[@]} -gt 1 ];then
+if ${FLAG[supported]} && [ $# -eq 2 ] && [ 0$(phpquery -V | wc -w) -gt 1 ];then
     does_exist_ "${1//php/}" 1 && does_exist_ "${2//php/}" 0 && OLD="${1//php/}" NEW="${2//php/}" || explain
 fi
 
 if ${FLAG[supported]}; then
-    if [ ${#VERSIONS[@]} -eq 1 ];then
-        [ "${VERSIONS[0]}" = "$PHP_VERSION" ]||version_mismatch
-        OLD=${VERSIONS[0]}
+    if [ 0$(phpquery -V | wc -w) -eq 1 ];then
+        [ "$(phpquery -V)" = "$PHP_VERSION" ]||version_mismatch
+        OLD="$(phpquery -V)"
         separator
         f
         echo "$(ipf;W;format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3;N)"
@@ -299,7 +299,7 @@ if ${FLAG[supported]}; then
             spinner C " . searching for php$NEW packages yet to be installed ." &
             mapfile -t missing_new_packages< <(packages_diff "$OLD" "$NEW")
             kill_spinner
-            if [[ " ${VERSIONS[@]} " =~ " $NEW " ]]; then
+            if [[ "$(phpquery -V)" =~ $NEW ]]; then
                 if ((${#missing_new_packages[@]}));then
                     array_populated missing_new_packages &
                     if ((${#missing_new_packages[@]}==1)); then

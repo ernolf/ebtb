@@ -43,7 +43,7 @@ replace_aim(){ # replace admin installed modules
         local -i iam imb pecli=0
         local -a ibymb pkgmods mods pakages
         replaced=false
-        for pv in ${VERSIONS[@]}; do
+        for pv in $(phpquery -V | sort); do
             eval iam+=\${#C4EIBY4_${pv//./}[@]}
         done
         command -v php-module-builder >/dev/null&&pmb=true||pmb=false

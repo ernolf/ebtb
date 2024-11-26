@@ -77,7 +77,7 @@ fpm_pools(){
     local -i i index
     strip=false
     [ "$1" = 'strip' ] && strip=:
-    for v in ${VERSIONS[@]}; do
+    for v in $(phpquery -V | sort); do
         fpm_configfile "$v" &>/dev/null || continue
         files=() pools=()
         [[ "$(phpquery -v "$v" -S)" =~ fpm ]]

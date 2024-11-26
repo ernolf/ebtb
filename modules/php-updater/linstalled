@@ -285,7 +285,7 @@ list_installed(){
         line '-' dP 2/78
         o2;B;echo "actual PHP pecl extension$plu $(R)NOT$(B) installed and managed by dpkg"
         line '-' dP 2/78
-        for pv in ${VERSIONS[@]}; do
+        for pv in $(phpquery -V | sort); do
             eval iam=\${#EIBY4_${pv//./}[@]}
             if (( iam )); then
                 (( iam == 1 )) || plu='s'
@@ -314,7 +314,7 @@ list_installed(){
     o2;Y;echo "Status:$(o 9;pf;W)First letter (Desired Action):$(o 45;pf)Second letter (Package Status):";N
     o 12;GRAY;echo "u=Unknown $(W)-$(GRAY) i=Install $(W)-$(GRAY) h=Hold$(o 48)a=Automatic $(W)-$(GRAY) m=Manual";N
     line '-' dP 2/78
-    if (( ${#VERSIONS[@]} > 1 )); then
+    if [ 0$(phpquery -V | wc -w) -gt 1 ]; then
         o2;Yi;echo "You can switch the $(lG)<ACTIVE>$(Yi) and $(lG)<CONNECTED>$(Yi) version with:"
         o 35;B;echo "$me --switch-version"
         line '-' dP 2/78
