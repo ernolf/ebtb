@@ -226,6 +226,20 @@ mark_checked(){
 #    lsb_release -a: Distributor ID: Linuxmint Description: LMDE 6 (faye) Release: 6 Codename: faye
 #    /etc/lsb-release: DISTRIB_ID=LinuxMint DISTRIB_RELEASE=5 DISTRIB_CODENAME=elsie DISTRIB_DESCRIPTION="LMDE 5 Elsie"
 
+#    ## KDE neon
+#    NAME="KDE neon"
+#    PRETTY_NAME="KDE neon 6.2"
+#    VERSION_ID=24.04
+#    VERSION=6.2
+#    VERSION_CODENAME=noble
+#    ID=neon
+#    ID_LIKE="ubuntu debian"
+#    HOME_URL=https://neon.kde.org/
+#    SUPPORT_URL=https://neon.kde.org/
+#    BUG_REPORT_URL=https://bugs.kde.org/
+#    PRIVACY_POLICY_URL=https://kde.org/privacypolicy/
+#    UBUNTU_CODENAME=noble
+#    LOGO=start-here-kde-neon
 
 #    ### Alpine Linux
 #    ## common:
