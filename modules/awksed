@@ -125,9 +125,12 @@ unquote() {
     sed -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
 }
 
-# remove ansi color codes
+# Remove ANSI color codes and invisible characters like 'ZERO WIDTH SPACE', and \xE2\x9A\xA0\xEF\xB8\x8F or \xE2\x9A\xA0 (instead of ⚠️)
 noansi(){
-    sed -re 's/⚠️/!/g;s/\x1B\[[0-9;?]*[a-zA-Z]//g' <<< "$*"
+    sed -re 's/\x1B\[[0-9;?]*[a-zA-Z]//g; s/\xE2\x9A\xA0/!/g; s/\xEF\xB8\x8F//g; s/\xE2\x80\x8B//g' <<< "$*"
+# TODO 0 -->
+#    perl -CSD -pe 's/\x1B\[[0-9;?]*[a-zA-Z]//g; s/\x{26A0}/!/g; s/\x{FE0F}//g; s/\x{200B}//g' <<< "$*"
+# TODO <-- 0
 }
 
 urldecode(){
