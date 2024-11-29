@@ -39,7 +39,8 @@ minify() {
             sed 's/;;;/;;/g' |\
             sed 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/'
     else
-        cat "$1"
+#        cat "$1"
+        sed 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/' "$1"
     fi
 }
 
