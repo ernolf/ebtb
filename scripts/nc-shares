@@ -43,11 +43,11 @@ __nextcloud_updater__
 
 ##############################################################################
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/script-nc-shares-list-shares-on-command-line/185599"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/script-nc-shares-list-shares-on-command-line/185599"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 v_echo "help=$help, verbose=$verbose, debug=$debug"
 

@@ -42,11 +42,11 @@ __module_loader__
 __module_integrity__
 ## <- include bashmodules end #
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/newest-php8-4-on-debian-ubuntu-build-missing-modules-with-php-module-builder/174766"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/newest-php8-4-on-debian-ubuntu-build-missing-modules-with-php-module-builder/174766"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 ## it starts here:
 ###############################################################################

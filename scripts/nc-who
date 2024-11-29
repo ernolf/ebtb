@@ -42,11 +42,11 @@ __nextcloud_updater__
 
 ## SCRIPT SPECIFIC
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/script-nc-who-similar-to-unix-who-follow-live-who-is-logged-in/164972"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/script-nc-who-similar-to-unix-who-follow-live-who-is-logged-in/164972"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 command=print_help
 while (($#));do

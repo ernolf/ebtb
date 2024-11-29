@@ -18,7 +18,7 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
 exit0(){
     G; echo "exiting script."
-    N; echo "generous? run '$me --donate'"
+    N; echo "generous? feedback? questions? run: '$me --contribute'"
     N; exit 0
 }
 

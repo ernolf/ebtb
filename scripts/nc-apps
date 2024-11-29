@@ -51,11 +51,11 @@ __module_integrity__
 
 __nextcloud_updater__
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/script-nc-apps-a-helpful-and-more-verbose-complement-to-occ-app-list/164389"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/script-nc-apps-a-helpful-and-more-verbose-complement-to-occ-app-list/164389"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 all_apps(){
     stock_up_arrays filtered_appstore=true

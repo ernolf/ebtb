@@ -57,11 +57,11 @@ __module_integrity__
 
 __nextcloud_updater__
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/mimetype-checker-script-for-files-without-or-with-wrong-file-extensions-for-flow-external-script/155648"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/mimetype-checker-script-for-files-without-or-with-wrong-file-extensions-for-flow-external-script/155648"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 declare bools="listmimes recursive dryrun verbose debug quiet bak enabled_user"
 # declare options

@@ -39,11 +39,11 @@ __module_integrity__
 
 __nextcloud_updater__
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/script-nc-occ-interactive-occ-interface/195249"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/script-nc-occ-interactive-occ-interface/195249"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 declare JSON_FILE arg INCLUDE_ALL_OPTIONS INCLUDE_HELP HELP
 

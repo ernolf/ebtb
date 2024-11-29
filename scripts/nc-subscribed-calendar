@@ -37,11 +37,11 @@ __module_integrity__
 
 __nextcloud_updater__
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/calendar-subscriptions-refresh-rate-as-a-user/163340/5"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/calendar-subscriptions-refresh-rate-as-a-user/163340/5"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 ## void
 f

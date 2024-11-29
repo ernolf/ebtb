@@ -41,11 +41,11 @@ __nextcloud_updater__
 
 # https://github.com/nextcloud/server/blob/master/lib/private/IntegrityCheck/Checker.php
 
-donate_(){
-    . <(require donate)
-    donate "https://help.nextcloud.com/t/nc-integrity-fix-script-to-resolve-some-files-have-not-passed-the-integrity-check-warnings/194729"
-}
-[[ "$@" =~ donate ]] && donate_
+contribute_(){
+    . <(require contribute)
+    contribute "https://help.nextcloud.com/t/nc-integrity-fix-script-to-resolve-some-files-have-not-passed-the-integrity-check-warnings/194729"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
 
 debug=false
 
@@ -249,7 +249,7 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
     echo " -$(format_string "You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3;N)"
     f
     anykey
-    donate_
+    contribute_
 else
     echo
     echo " -$(format_string "This script could not find any integrity warnings to resolve." 3;N)"

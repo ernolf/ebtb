@@ -514,7 +514,7 @@ switch_default_version(){
                     fi
         esac
     done
-    donate_
+    contribute_
 }
 # COMMENT -->
 #########################################

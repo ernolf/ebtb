@@ -12,55 +12,5 @@ DONATE_BASHLIB=:
 
 # for backwards compatibility
 declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
-. <(lrequire line)
-. <(lrequire fstring)
-
-donate(){
-    cat <<DONATE
-
-$(separator xGRAY)
-  $(GRAY;format_string "I have spent countless unpaid hours developing these scripts - and am still" 3)
-  $(GRAY;format_string "developing them further so that they can safely perform even more helpfull tasks" 3)
-  $(GRAY;format_string "for you in the future." 3)
-
-  $(GRAY;format_string "If your problem has been resolved with this script, then I was able to help you," 3)
-  $(GRAY;format_string "which fulfills the main motivation of my work!" 3)
-
-  $(W;format_string "I expect everyone who uses my scripts to contribute in some way, especially if" 3)
-  $(W;format_string "you use them for commercial or professional purposes." 3)
-
-$(Yi)                         This is how YOU can contribute:
-$(Yi)                         ===============================
-
-  $(W;format_string "If your problem has NOT been resolved with this script, then you can contribute" 3)
-  $(W;format_string "with precise feedback. Please describe as detailed as possible what you expected" 3)
-  $(W;format_string "from the script and where that expectation was not met. I will do everything in" 3)
-  $(W;format_string "my power to help you anyway and possibly improve the scripts so that others can" 3)
-  $(W;format_string "benefit from your feedback in the future." 3)
-
-  $(O;format_string "You can buy me a coffee:" 3)
-
-                           $(GRAY)* $(C)Paypal$(GRAY) to
-$(GRAY)             )                 $(lG)ernolf$(C)<at>$(lG)global-social.net
-$(GRAY)            ($(N) (            $(GRAY)or in cryptocurrency
-$(N)             ) )           $(GRAY)* $(C)Bitcoin$(GRAY) to
-$(O)          ........             $(lG)bc1qwlcqc7zsak45vwqk0dt7hnxlrta7syzstgf7t8
-$(O)          |      |]        $(GRAY)* $(C)Ethereum$(GRAY), $(C)BNB Smart Chain$(GRAY), $(C)Polygon$(GRAY) to
-$(O)          \\$(dY)°$(O)     /             $(lG)0x72b7901b3daa45a7266A77Aa3B3552aB686d0D0D
-$(O)           \`----'          $(GRAY)* $(C)Solana$(GRAY) to
-                               $(lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(N)
-
-  $(W;format_string "I sincerely want to express my thanks to those who have shown their appreciation" 3)
-  $(W;format_string "with donations!" 3)
-
-  $(GRAY;format_string "… and if you don't want to spend money, spreading the word, a 'thank you'," 3)
-  $(GRAY;format_string "a $(R)❤️$(GRAY) or a 'like' at $(button 1;GRAY) are the least that everyone can afford." 3;N)
-
-$(button 1;W;pf)$1
-
-$(separator xGRAY)
-
-DONATE
-    exit 0
-}
+. <(lrequire contribute)
+donate(){ contribute;}
