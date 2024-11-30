@@ -15,7 +15,9 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
 . <(lrequire sudo)
 
-declare AIO DOCKER
+globals="AIO DOCKER"
+for global in $globals; do declare -g $global 2>/dev/null || declare $global; done
+unset -v global globals
 AIO=false DOCKER=false
 
 detect_aio(){

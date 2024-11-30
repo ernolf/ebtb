@@ -17,7 +17,10 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 . <(lrequire nc/nextcloud)
 
 # Database globals:
-declare DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY dc=false
+globals="DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY dc"
+for global in $globals; do declare -g $global 2>/dev/null || declare $global; done
+unset -v global globals
+dc=false
 
 database_call(){
     $dc && return 0

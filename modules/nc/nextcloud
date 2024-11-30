@@ -122,7 +122,7 @@ else
     fi
 fi
 
-declare NC_DATADIR
+declare -g NC_DATADIR 2>/dev/null || declare NC_DATADIR
 if $AIO; then
     NC_DATADIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
 elif nc_configkey_exist_ datadirectory; then
@@ -133,10 +133,14 @@ else
     NC_DATADIR=""
 fi
 
-declare GITHUB_RAW='https://raw.githubusercontent.com/nextcloud'
+declare -g GITHUB_RAW 2>/dev/null || declare GITHUB_RAW
+GITHUB_RAW='https://raw.githubusercontent.com/nextcloud'
 
 # array with latest versions from end of life platforms
-declare -a LATEST_EOL=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11)
+declare -ga LATEST_EOL 2>/dev/null || declare -a LATEST_EOL
+LATEST_EOL=(
+    11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 # 28.0.13
+)
 
 nc_version_(){ local version_php="$2"
     case $1 in
