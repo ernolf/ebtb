@@ -19,6 +19,26 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@; }
 . <(lrequire fstring)
 . <(lrequire php.net/ini_directives)
 
+last_occurrence(){
+    local key path
+    local -i llnr
+    key="$1" path="$2"
+    if [ "$key" = "extension" ]; then
+        # find the line number of the last occurrence of the extension setting, including uncommented lines
+        llnr=$(grep -n "^\s*;\{0,1\}\s*extension" "$path" | tail -1 | cut -d ":" -f 1)
+    elif [[ "${key}" =~ ^\[.*\]$ ]]; then
+        # find the section opener
+        llnr=$(grep -n "^\s*$(escaped $key)" "$path" | tail -1 | cut -d ":" -f 1)
+    elif [[ "${key: -1}" = "." ]]; then
+        # find the last line of the section, including uncommented lines
+        llnr=$(grep -n "^\s*;\{0,1\}\s*$(escaped $key)" "$path" | tail -1 | cut -d ":" -f 1)
+    else
+        # find the line numbers of last occurrences of the setting name, ignoring uncommented lines
+        llnr=$(grep -n "^\s*;\s*$(escaped $key)\s*=.*" "$path" | tail -1 | cut -d ":" -f 1)
+    fi
+    echo $llnr
+}
+
 merge_settings(){
     local -a keep
     # Do not touch the directives in this array:
@@ -134,22 +154,6 @@ merge_settings(){
             done
         done
         kill_spinner
-    }
-    last_occurrence(){
-        local key path
-        local -i llnr
-        key="$1" path="$2"
-        if [ "$key" = "extension" ]; then
-            # find the line number of the last occurrence of the extension setting, including uncommented lines
-            llnr=$(grep -n "^\s*;\{0,1\}\s*extension" "$path" | tail -1 | cut -d ":" -f 1)
-        elif [[ "${key: -1}" = "." ]]; then
-            # find the last line of the seection, including uncommented lines
-            llnr=$(grep -n "^\s*;\{0,1\}\s*$(escaped $key)" "$path" | tail -1 | cut -d ":" -f 1)
-        else
-            # find the line numbers of last occurrences of the setting name, ignoring uncommented lines
-            llnr=$(grep -n "^\s*;\s*$(escaped $key)\s*=.*" "$path" | tail -1 | cut -d ":" -f 1)
-        fi
-        echo $llnr
     }
     append2eos(){
         kill_spinner

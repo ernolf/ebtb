@@ -14,6 +14,7 @@ ${TASKS_BASHLIB:-false} || {
     . <(lrequire anykey)
     . <(lrequire ask)
     . <(lrequire dpkg)
+    . <(lrequire $sin/merge)
     . <(lrequire php/versions)
     . <(lrequire php/extensions)
     . <(lrequire php/apache2)

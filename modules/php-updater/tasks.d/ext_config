@@ -368,7 +368,19 @@ ext_config_fix(){
                         line=$(grep -Eix "$pattern" ${inifiles1_[i]})
                         echo "sed -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
                     done
-                    echo "echo 'opcache.enable_cli=1' >> /etc/php/$ver/cli/php.ini" >> $xtmp
+                    local -i last=0 sect=0 sectend=0
+                    last=$(last_occurrence "opcache.enable_cli" "/etc/php/$ver/cli/php.ini") # find the last occurrence of the commented setting_name
+                    sect=$(last_occurrence "[opcache]" "/etc/php/$ver/cli/php.ini") # find the section opener
+                    sectend=$(last_occurrence "opcache." "/etc/php/$ver/cli/php.ini") # find the section end
+                    if (( last )); then
+                        echo "sed -i '${last}a\\opcache.enable_cli=1' '/etc/php/$ver/cli/php.ini'" >> $xtmp
+                    elif (( sect )); then
+                        echo "sed -i '${sect}a\\opcache.enable_cli=1' '/etc/php/$ver/cli/php.ini'" >> $xtmp
+                    elif (( sectend )); then
+                        echo "sed -i '${sectend}a\\opcache.enable_cli=1' '/etc/php/$ver/cli/php.ini'" >> $xtmp
+                    else
+                        echo "echo 'opcache.enable_cli=1' >> /etc/php/$ver/cli/php.ini" >> $xtmp
+                    fi
                 fi
             fi
             uniq_lines "$xtmp"
@@ -428,22 +440,22 @@ ext_config_fix(){
                             echo -e "\n$(R)$line$(N)" >> $itmp
                             C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
                             echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-                        elif oldstring="$(grep -wiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
+                        elif oldstring="$(grep -xiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
                             infstr="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W), where it already exists but there it is commented out. It will be removed from $(C)$php_ini$(W) and uncommented in $(C)$ext_ini$(W)."
                             echo -e "\n$(R)$line$(N)" >> $itmp
                             C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
-                            echo "sed -Ei 's|^$oldstring$|$line|' '$ext_ini'" >> $xtmp
+                            echo "sed -i 's|$oldstring|$line|' '$ext_ini'" >> $xtmp
                             echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO 0 -->
                         elif ! grep -qswiE "$key\s*=\s*$val" "$ext_ini"; then
                             infstr="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W) and appendet at the end of $(C)$ext_ini$(W)."
                             echo -e "\n$(R)$line$(N)" >> $itmp
                             C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
-                            echo "echo >> '$line' '$ext_ini'" >> $xtmp
+                            echo "echo '$line' >> '$ext_ini'" >> $xtmp
                             echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO <-- 0
+# TODO 0 -->
                         else
                             echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
+# TODO <-- 0
                         fi
                     done
                 fi
@@ -470,7 +482,6 @@ ext_config_fix(){
                 anykey
             fi
             ;;
-# TODO 1 -->
         pdo_pgsql)
             echo -n > $xtmp; echo -n > $itmp
             echo -e "\n -$(P;format_string "$(message_ $ver should_be_fixed)" 3;N)" >> $itmp
@@ -497,7 +508,6 @@ ext_config_fix(){
                 anykey
             fi
             ;;
-# TODO <-- 1
         *)  :
     esac
 }
