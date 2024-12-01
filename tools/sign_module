@@ -52,7 +52,7 @@ $verbose && yes=false
 declare dir1_source dir2_dest
 dir1_source="$MBUILD_DIR"
 if $LOCAL_SERVER; then
-    dir2_dest="$LOCAL_SERVER_DIRECTORY/includes/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+    dir2_dest="$LOCAL_SERVER_DIRECTORY/$MODULES_DIR/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 else
     dir2_dest="$DATA_DIR/$target_modules_dir/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 fi
