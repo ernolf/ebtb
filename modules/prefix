@@ -17,9 +17,10 @@ pf(){
     printf ' - '
 }
 
-# Exclamation
+# Warning / Exclamation
+# ⚠️ = either '\u26A0' or '\xE2\x9A\xA0'
 xpf(){
-    R;printf "⚠️$(N):"
+    R;printf '\u26A0'$(N):
 }
 
 # Information
