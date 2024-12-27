@@ -20,8 +20,8 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
 # $1=pid $2=cls (clear screen)
 cleanup(){
-    kill -TERM $1 >/dev/null 2>&1
-    wait -f $1 >/dev/null 2>&1
+    kill -TERM $1 &>/dev/null
+    wait -f $1 &>/dev/null
     if [ "$2" = "cls" ]; then
         reset
         clear
