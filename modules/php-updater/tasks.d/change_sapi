@@ -429,8 +429,8 @@ change_sapi(){
             [[ "${SAPI_FPM[@]}" =~ a && "$a2mpm" == 'prefork' && "$active_sapi" == 'a2_ok' ]] && active_sapi='both_a2_ok'
             [[ "${SAPI_FPM[@]}" =~ a && "$a2mpm" == 'event' && "$active_sapi" == 'a2_nok' ]] && active_sapi='both_fpm_ok'
 
-            [[ "${SAPI_FPM[@]}" =~ a && "$a2mpm" == 'event' ]] && active_sapi='fpm_ok'
-            [[ "${SAPI_FPM[@]}" =~ a && "$a2mpm" == 'prefork' ]] && active_sapi='fpm_nok'
+            [[ "${SAPI_FPM[@]}" =~ a && "$a2mpm" == 'event' && "$active_sapi" != 'both_fpm_ok' ]] && active_sapi='fpm_ok'
+            [[ "${SAPI_FPM[@]}" =~ a && "$a2mpm" == 'prefork' && "$active_sapi" != 'both_a2_ok' ]] && active_sapi='fpm_nok'
         fi
 
         if (( ${#HTTPD_ENABLED[@]} )); then
