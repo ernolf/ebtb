@@ -29,6 +29,12 @@ source_os_release(){
 }
 source_os_release
 
+os_not_supported(){
+    os;lB;echo "$OS_PRETTY_NAME $OS_VERSION_CODENAME detected.."
+    os;xpf;R;echo "$OS_PRETTY_NAME is not supported by this script .."
+    exit1
+}
+
 check_raspbian(){
     os;lB;echo "Raspbian OS detected, treat as debian.."
     check_debian
@@ -47,6 +53,8 @@ check_os_release(){
 #    distinf &
     echo "$(GRAYbg)   Distribution check..   $(N)"
     case $OS_ID in
+        astra) os_not_supported
+        ;;
         ubuntu|debian|raspbian|linuxmint) check_$OS_ID
         ;;
         *)  if [ -n "$OS_ID_LIKE" ]; then
@@ -134,6 +142,33 @@ mark_checked(){
 #    VERSION_ID=11
 #    VERSION="11 (bullseye)"
 #    VERSION_CODENAME=bullseye
+
+
+#    ### Astra Linux
+#    PRETTY_NAME="Astra Linux"
+#    NAME="Astra Linux"
+#    ID=astra
+#    ID_LIKE=debian
+#    ANSI_COLOR=1;31
+#    HOME_URL=https://astralinux.ru
+#    SUPPORT_URL=https://astralinux.ru/support
+#    LOGO=astra
+#    VERSION_ID=1.7_x86-64
+#    VERSION_CODENAME=1.7_x86-64
+
+
+#    ### Kali
+#    PRETTY_NAME="Kali GNU/Linux Rolling"
+#    NAME="Kali GNU/Linux"
+#    VERSION_ID=2024.4
+#    VERSION=2024.4
+#    VERSION_CODENAME=kali-rolling
+#    ID=kali
+#    ID_LIKE=debian
+#    HOME_URL=https://www.kali.org/
+#    SUPPORT_URL=https://forums.kali.org/
+#    BUG_REPORT_URL=https://bugs.kali.org/
+#    ANSI_COLOR=1;31
 
 
 #    ### Ubuntu
@@ -354,6 +389,31 @@ mark_checked(){
 #    REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux 9"
 #    REDHAT_SUPPORT_PRODUCT_VERSION="CentOS Stream"
 
+#    ### Fedora
+#    NAME="Fedora Linux"
+#    VERSION="41 (Server Edition)"
+#    RELEASE_TYPE=stable
+#    ID=fedora
+#    VERSION_ID=41
+#    VERSION_CODENAME=
+#    PLATFORM_ID=platform:f41
+#    PRETTY_NAME="Fedora Linux 41 (Server Edition)"
+#    ANSI_COLOR=0;38;2;60;110;180
+#    LOGO=fedora-logo-icon
+#    CPE_NAME=cpe:/o:fedoraproject:fedora:41
+#    HOME_URL=https://fedoraproject.org/
+#    DOCUMENTATION_URL=https://docs.fedoraproject.org/en-US/fedora/f41/system-administrators-guide/
+#    SUPPORT_URL=https://ask.fedoraproject.org/
+#    BUG_REPORT_URL=https://bugzilla.redhat.com/
+#    REDHAT_BUGZILLA_PRODUCT=Fedora
+#    REDHAT_BUGZILLA_PRODUCT_VERSION=41
+#    REDHAT_SUPPORT_PRODUCT=Fedora
+#    REDHAT_SUPPORT_PRODUCT_VERSION=41
+#    SUPPORT_END=2025-12-15
+#    VARIANT=Server Edition
+#    VARIANT_ID=server
+
+
 #    ### Almalinux
 #    ## common:
 #    NAME=AlmaLinux
@@ -381,13 +441,21 @@ mark_checked(){
 #    VERSION="9.3 (Shamrock Pampas Cat)"
 #    VERSION_ID=9.3
 #    PLATFORM_ID=platform:el9
-#    ANSI_COLOR=0;34
-#    LOGO=fedora-logo-icon
 #    CPE_NAME=cpe:/o:almalinux:almalinux:9::baseos
 #    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-9
 #    ALMALINUX_MANTISBT_PROJECT_VERSION=9.3
-#    REDHAT_SUPPORT_PRODUCT=AlmaLinux
 #    REDHAT_SUPPORT_PRODUCT_VERSION=9.3
+
+#    ## 9.5
+#    PRETTY_NAME="AlmaLinux 9.5 (Teal Serval)"
+#    VERSION="9.5 (Teal Serval)"
+#    VERSION_ID=9.5
+#    PLATFORM_ID=platform:el9
+#    CPE_NAME=cpe:/o:almalinux:almalinux:9::baseos
+#    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-9
+#    ALMALINUX_MANTISBT_PROJECT_VERSION=9.5
+#    REDHAT_SUPPORT_PRODUCT_VERSION=9.5
+#    SUPPORT_END=2032-06-01
 
 
 #    ### Rocky Linux
@@ -454,6 +522,35 @@ mark_checked(){
 #    ORACLE_BUGZILLA_PRODUCT="Oracle Linux 9"
 #    ORACLE_BUGZILLA_PRODUCT_VERSION=9.5
 #    ORACLE_SUPPORT_PRODUCT_VERSION=9.5
+
+
+#    ### Koozali
+#
+#    #------------------------------------------------------------
+#    #    !!DO NOT MODIFY THIS FILE!!
+#    #
+#    # Manual changes will be lost when this file is regenerated.
+#    #
+#    # Please read the developer's guide, which is available
+#    # at http://www.contribs.org/development/
+#    #
+#    # Copyright (C) 1999-2006 Mitel Networks Corporation
+#    #------------------------------------------------------------
+#    NAME=Koozali SME Server
+#    VERSION=10.1
+#    ID=koozali
+#    ID_LIKE=rhel fedora centos
+#    VERSION_ID=10.1
+#    PRETTY_NAME=Koozali SME Server 10.1
+#    ANSI_COLOR=0;31
+#    HOME_URL=https://koozali.org
+#    BUG_REPORT_URL=https://bugs.koozali.org/
+#
+#    CENTOS_MANTISBT_PROJECT=CentOS-7
+#    CENTOS_MANTISBT_PROJECT_VERSION=7
+#    REDHAT_SUPPORT_PRODUCT=centos
+#    REDHAT_SUPPORT_PRODUCT_VERSION=7
+
 
 #    ### Arch
 
