@@ -67,12 +67,12 @@ listify(){
     local color
     color=$1
     shift
-    echo -en "$($color;echo -n "$@"|sed "s/ /, /g;s/\(.*\), /\1 $(N)and$($color) /";N)"
+    echo -e "$($color;echo -n "${@//\ /@E_S@}"|sed "s/ /, /g;s/\(.*\), /\1 $(N)and$($color) /; s/@E_S@/ /g";N)"
 }
 
 listify_(){
     local color_fg color_bg
     color_fg=$1 color_bg=$2
     shift 2
-    echo -en "$($color_fg;echo -n "$@"|sed "s/ /, /g;s/\(.*\), /\1 $($color_bg)and$($color_fg) /";$color_bg)"
+    echo -e "$($color_fg;echo -n "${@//\ /@E_S@}"|sed "s/ /, /g;s/\(.*\), /\1 $($color_bg)and$($color_fg) /; s/@E_S@/ /g";$color_bg)"
 }
