@@ -15,12 +15,63 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
 . <(lrequire button)
 . <(lrequire exit)
+. <(lrequire spinner)
 . <(lrequire anykey)
 . <(lrequire awksed)
 . <(lrequire fstring)
 . <(lrequire ask)
 . <(lrequire today)
 . <(lrequire php/versions)
+
+declare -ga DPKG_LOCKFILES || declare -a DPKG_LOCKFILES
+DPKG_LOCKFILES=(
+    "/var/lib/dpkg/lock"
+    "/var/lib/dpkg/lock-frontend"
+    "/var/lib/apt/daily_lock"
+    "/var/lib/apt/lists/lock"
+    "/var/cache/apt/archives/lock"
+)
+
+check_lockfile(){
+    local lockfile verbose fuser_output
+    local -i pid
+    lockfile=$1
+    [ "$2" = '-v' ] && verbose=: || verbose=false
+    if [ -e "$lockfile" ]; then
+        # Identify the process holding the lock
+        fuser_output=$(fuser "$lockfile" 2>/dev/null)
+        if [ -n "$fuser_output" ]; then
+            processstring="$(listify_ Yi R "$(for pid in $fuser_output; do echo "$(ps -p $pid -o comm=) (pid:$pid)"; done)")"
+            o3; R; echo "- Lockfile '$(C)$lockfile$(R)' is used by: $processstring";N
+#            for pid in $fuser_output; do echo "$(ps -p $pid -o comm=) (pid:$pid))"; done
+        else
+            $verbose && { o3; echo "- Lockfile '$(C)$lockfile$(N)' exists but no process seems to be using it."; }
+        fi
+    else
+        $verbose && { o3; echo "- Lockfile '$(C)$lockfile$(N)' does not exist."; }
+    fi
+}
+
+check_lockfiles(){
+    local lockfile verbose
+    local -a checked_lockfiles
+    local -i i
+    verbose="$1"
+    mapfile -t checked_lockfiles< <(for lockfile in "${DPKG_LOCKFILES[@]}"; do check_lockfile "$lockfile" "$verbose"; done)
+    if (( $# )); then
+        for i in ${!checked_lockfiles[@]}; do
+            echo "${checked_lockfiles[i]}"
+        done
+    elif (( ${#checked_lockfiles[@]} )); then
+        bundle echo "$(xpf;R) WARNING: dpkg and/or apt is locked:";N
+        for i in ${!checked_lockfiles[@]}; do
+            bundle echo "${checked_lockfiles[i]}"
+        done
+        return 1
+    else
+        return 0
+    fi
+}
 
 apt_update(){
     spinner C " .  resynchronizing the APT package index files  ." &
@@ -30,6 +81,7 @@ apt_update(){
 
 # returns true if last apt-* update is done more than $1=int (defaults to 4) hours ago
 apt_need_update(){
+    check_lockfiles || exit1
     if [ $(($(($(now)-$(stat -c %Y /var/lib/apt/lists/partial)))/3600)) -gt ${1:-4} ]; then
         f
         echo " -$(format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
@@ -82,6 +134,7 @@ apt_exist(){
 
 apt_install(){
     apt_need_update
+    check_lockfiles || exit1
     local p ps yes=" -y"
     ${step:-false} && yes=""
     mh "apt-get$yes install $@" &
@@ -97,6 +150,7 @@ apt_install(){
 }
 
 apt_install_prechecked(){
+    check_lockfiles || exit1
     prechecked "$@" &
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
@@ -107,6 +161,7 @@ apt_install_prechecked(){
 }
 
 apt_remove(){
+    check_lockfiles || exit1
     removed "$@" &
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
@@ -118,6 +173,7 @@ apt_remove(){
 }
 
 apt_purge(){
+    check_lockfiles || exit1
     purged "$@" &
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
