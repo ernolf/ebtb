@@ -65,11 +65,14 @@ ext_double_loaders(){
     xtmp=$(tf) itmp=$(tf)
     pattern="^\s*(zend_)?extension\s*=\s*$ext[^_]*$"
     for sapi in $(phpquery -v $ver -S); do
-        ext_ini_lnk[$sapi]="$(echo /etc/php/$ver/$sapi/conf.d/[0-9][0-9]-$ext.ini)"
-        if [ -f "/etc/php/$ver/$sapi/php.ini" ]; then
-            php_inis+=("/etc/php/$ver/$sapi/php.ini")
+        if nonullglob "/etc/php/$ver/$sapi/conf.d/[0-9][0-9]-$ext.ini"; then
+            ext_ini_lnk[$sapi]="$(echo /etc/php/$ver/$sapi/conf.d/[0-9][0-9]-$ext.ini)"
+            if [ -f "/etc/php/$ver/$sapi/php.ini" ]; then
+                php_inis+=("/etc/php/$ver/$sapi/php.ini")
+            fi
         fi
     done
+    (( ${#php_inis[@]} )) || return # TODO: create link
     mapfile -t inifiles< <(grep -Eslix "$pattern" ${php_inis[@]})
     if (( ${#inifiles[@]} )); then
         line=$(grep -Eix "$pattern" ${inifiles[0]})
