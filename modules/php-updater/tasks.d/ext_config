@@ -138,8 +138,9 @@ ext_config_fix(){
     [[ "$ext" == "core" || -f "$ext_ini" ]] || return
     xtmp=$(tf) itmp=$(tf)
     case $ext in
+# TODO 0 -->
         core)
-            pattern='^\s*output_buffering\s*=\s*(off)\s*$' php_inis=()
+            php_inis=()
             mapfile -t php_inis< <(
                 for wob in "$(ini_directive_detect "$ver" "output_buffering")"; do
                     [[ " $(key_ val "${wob##*:}") " =~ " "[Oo][Ff][Ff]" " && "${wob%%:*}" != "/etc/php/$ver/cli/php.ini" && -f "${wob%%:*}" ]] && echo "${wob%%:*}"
@@ -148,7 +149,8 @@ ext_config_fix(){
             if (( ${#php_inis[@]} )); then
                 echo -n > $xtmp; echo -n > $itmp
                 echo -e "\n -$(P;format_string "$(message_ $ver should_be_fixed)" 3;N)" > $itmp
-                line=$(grep -Eix "$pattern" ${php_inis[0]})
+                pattern='^\s*output_buffering\s*=\s*off\s*$'
+                line=$(grep -ix "$pattern" ${php_inis[0]})
                 if (( ${#php_inis[@]} == 1 )); then
                     plu='' be=is ini_string_="$(C)${php_inis[0]}$(O)" ini_string="$(C)${php_inis[0]}$(W)"
                 else
@@ -165,8 +167,10 @@ ext_config_fix(){
                 echo "$(o5;W;format_string "$infstr3" 6;N)" >> $itmp
                 echo "$(o5;W;format_string "$infstr4" 6;N)" >> $itmp
                 for i in ${!php_inis[@]}; do
-                    line=$(grep -Eix "$pattern" ${php_inis[i]})
-                    echo "sed -i 's/^$line$/output_buffering=0/g' '${php_inis[i]}'" >> $xtmp
+                    line=$(grep -ix "$pattern" ${php_inis[i]})
+                    if [[ -n "$line" && "$line" =~ $pattern ]]; then
+                        echo "sed -i 's/^$line$/output_buffering=0/g' '${php_inis[i]}'" >> $xtmp
+                    fi
                 done
             fi
             uniq_lines "$xtmp"
@@ -199,6 +203,7 @@ ext_config_fix(){
                 anykey
             fi
             ;;
+# TODO <-- 0
         redis)
             local -a sessionsavehandler
             mapfile -t sessionsavehandler< <(ini_directive_detect "$ver" "session.save_handler")
@@ -304,7 +309,7 @@ ext_config_fix(){
                     plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
                 fi
                 echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                if (( $(grep -Exi "$pattern" "$ext_ini" "/etc/php/$ver/cli/php.ini"|wc -l) == 0 )); then
+                if (( $(grep -Eix "$pattern" "$ext_ini" "/etc/php/$ver/cli/php.ini"|wc -l) == 0 )); then
                     infstr="This directive has absolutely no effect in $ini_string. It is meant to enable the APCu (Alternative PHP user Cache) for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the APCu is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$ver/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$ver/cli/php.ini$(W)."
                     echo -e "\n$(R)$line$(N)" >> $itmp
                     C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
@@ -452,10 +457,10 @@ ext_config_fix(){
                             C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
                             echo "echo '$line' >> '$ext_ini'" >> $xtmp
                             echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO 0 -->
+# TODO 1 -->
                         else
                             echo "sed -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO <-- 0
+# TODO <-- 1
                         fi
                     done
                 fi
