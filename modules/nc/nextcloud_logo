@@ -10,13 +10,11 @@ __license__
 ${NEXTCLOUD_LOGO_BASHLIB:-false} && return
 NEXTCLOUD_LOGO_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire line)
 
 nextcloud_logo(){
-    cat << NEXTCLOUDLOGO
+    ${BINARIES[cat]} << NEXTCLOUDLOGO
 
 $(line ' ' NCbluebg 84 a0)
 $(line ' ' NCbluebg 84 a0)

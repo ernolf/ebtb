@@ -10,9 +10,7 @@ __license__
 ${DATA_REFINE_BASHLIB:-false} && return
 DATA_REFINE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire spinner)
 . <(lrequire $sin/db)
 
@@ -67,12 +65,12 @@ $debug && echo "${FUNCNAME[0]}"
 $debug && set -x
 # TODO <-- 1
     $unsupported||$all&&platform='all'
-    appstore_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'appstore_$platform';"|base64 -d)"
+    appstore_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'appstore_$platform';" | ${BINARIES[base64]} -d)"
 # TODO 2 -->
 $debug && echo "platform=$nc_version, lang=$lang"
 $debug && anykey
 # TODO <-- 2
-    local_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'local';"|base64 -d)"
+    local_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'local';" | ${BINARIES[base64]} -d)"
 # TODO 3 -->
 $debug && anykey
 $debug && set +x
@@ -80,12 +78,12 @@ $debug && set +x
 
     # iterate through appstore_ids and filter out IDs that are not in local_ids array
     for app_id in $appstore_ids; do
-        echo "$local_ids" | grep -qsw "$app_id" || appstore_ids_not_installed+=("$app_id")
+        echo "$local_ids" | ${BINARIES[grep]} -qsw "$app_id" || appstore_ids_not_installed+=("$app_id")
     done
     # convert appstore_ids into JSON object format
-    appstore_json=$(echo "${appstore_ids_not_installed[*]}"|jq -R 'split(" ")|(reduce .[] as $item ({};.[$item] = ""))')
+    appstore_json=$(echo "${appstore_ids_not_installed[*]}" | ${BINARIES[jq]} -R 'split(" ")|(reduce .[] as $item ({};.[$item] = ""))')
     # merge the appstore_json object into the original local_applist
-    global_applist=$(echo "$local_applist"|jq -c --argjson new_data "$appstore_json" '. * {store: $new_data}')
+    global_applist=$(echo "$local_applist" | ${BINARIES[jq]} -c --argjson new_data "$appstore_json" '. * {store: $new_data}')
     w_db app_lists global "$runtime_etag" "$global_applist"
     return 0
 }
@@ -123,9 +121,9 @@ stock_up_arrays(){ local platform
 # Get different lists of apps from JSON format
 apps_(){
     case $1 in
-        enabled|disabled|store) jq -r '.'$1'|keys|sort[]' <<< $applist_json;;
-        local) jq -r '.enabled + .disabled|keys|sort[]' <<< $applist_json  ;;
-        all) jq -r '.enabled + .disabled + .store|keys|sort[]' <<< $applist_json
+        enabled|disabled|store) ${BINARIES[jq]} -r '.'$1'|keys|sort[]' <<< $applist_json;;
+        local) ${BINARIES[jq]} -r '.enabled + .disabled|keys|sort[]' <<< $applist_json  ;;
+        all) ${BINARIES[jq]} -r '.enabled + .disabled + .store|keys|sort[]' <<< $applist_json
     esac
 }
 
@@ -133,13 +131,13 @@ apps_(){
 is_shipped_(){
     local query_version=$nc_version shipped_json
     (( $(v2i $nc_version) > $(v2i $nc_master) )) && query_version="$nc_master"
-    shipped_json="$(r_db "SELECT json_data FROM shipped WHERE platform == '$query_version';" | base64 -d)"
+    shipped_json="$(r_db "SELECT json_data FROM shipped WHERE platform == '$query_version';" | ${BINARIES[base64]} -d)"
     [ "$2" = "-q" ] && local quiet=true || local quiet=false
-    if $(jq 'has("alwaysEnabled")'<<<"$shipped_json") && jq '.alwaysEnabled[]'<<<"$shipped_json" | grep -qsw $1; then
+    if $(${BINARIES[jq]} 'has("alwaysEnabled")'<<<"$shipped_json") && ${BINARIES[jq]} '.alwaysEnabled[]'<<<"$shipped_json" | ${BINARIES[grep]} -qsw $1; then
             $quiet || printf "a"; return 0
-    elif $(jq 'has("defaultEnabled")'<<<"$shipped_json") && jq '.defaultEnabled[]'<<<"$shipped_json" | grep -qsw $1; then
+    elif $(${BINARIES[jq]} 'has("defaultEnabled")'<<<"$shipped_json") && ${BINARIES[jq]} '.defaultEnabled[]'<<<"$shipped_json" | ${BINARIES[grep]} -qsw $1; then
             $quiet || printf "d"; return 0
-    elif jq '.shippedApps[]' <<< "$shipped_json" | grep -qsw $1; then
+    elif ${BINARIES[jq]} '.shippedApps[]' <<< "$shipped_json" | ${BINARIES[grep]} -qsw $1; then
         $quiet || printf "s"; return 0
     else return 1
     fi
@@ -147,5 +145,5 @@ is_shipped_(){
 
 # returns if app is either "enabled", "disabled", "store" or "na"
 get_applist_section_(){
-    jq -r --arg app "$1" 'if .enabled|has($app) then "enabled" elif .disabled|has($app) then "disabled" elif .store|has($app) then "store" else "na" end' <<< "$applist_json"
+    ${BINARIES[jq]} -r --arg app "$1" 'if .enabled|has($app) then "enabled" elif .disabled|has($app) then "disabled" elif .store|has($app) then "store" else "na" end' <<< "$applist_json"
 }

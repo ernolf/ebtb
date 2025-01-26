@@ -5,9 +5,9 @@ w4uc=900
 lincld="${ca_dir%/*}/include/ebtb/$channel" rincld="modules/$channel"
 $rt && mkdir -p $lincld/$sin
 REQ=". $lincld" lmj="$lincld/modules.json" rmj="$rincld/modules.json" lcf="$lincld/$sin/.checked"
-lmjn="$lmj~new" lce=$(cat "$lcf" 2>/dev/null) fp=$(cat "$lincld/fp" 2>/dev/null)
+lmjn="$lmj~new" lce=$(q2 cat "$lcf") fp=$(q2 cat "$lincld/fp")
 $rt && ((rte - lce > w4uc)) && {
-    curl -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
+    $curlc -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
     if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && check=:; fi
 }
 for mod in ${modules[@]}; do

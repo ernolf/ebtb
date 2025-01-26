@@ -29,7 +29,7 @@ source config/configure
 # Source the placeholders file
 source config/placeholders
 # source sed functions
-source <(tail -n +10 modules/awksed)
+source <(tail -n +14 modules/awksed)
 
 # Declare variables
 declare input_module output_module modulename tempfile placeholder placeholder_pattern
@@ -37,6 +37,15 @@ declare input_module output_module modulename tempfile placeholder placeholder_p
 input_module="$1" output_module="$2"
 
 modulename=${input_module#$MODULES_DIR/}
+
+if [ -n "$EXCLUDE_SUFIXES" ]; then
+    exclude_regex="${EXCLUDE_SUFIXES// /|}"
+#    if [[ "$modulename" =~ (${exclude_regex//./\\.}) ]]; then
+    if echo "$modulename" | grep -Eiqsw "^.*(${exclude_regex//./\\.})$"; then
+        echo "* == skiping '$modulename' because of excluded sufix"
+        exit 0
+    fi
+fi
 
 # copy the input module to the output module
 cp "$input_module" $output_module

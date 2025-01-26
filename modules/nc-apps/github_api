@@ -10,17 +10,15 @@ __license__
 ${GITHUB_API_BASHLIB:-false} && return
 GITHUB_API_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire basics)
 
 github_api(){
     local URL="https://api.github.com/repos/$1/$2?per_page=$3"
     case $2 in
-          tags) curl -s "$URL" | jq -r '.[] | .name'     | sed 's/^v//' | grep "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | grep -iv a
+          tags) ${BINARIES[curl]} -s "$URL" | ${BINARIES[jq]} -r '.[] | .name'     | ${BINARIES[sed]} 's/^v//' | ${BINARIES[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${BINARIES[grep]} -iv a
                 ;;
-      releases) curl -s "$URL" | jq -r '.[] | .tag_name' | sed 's/^v//' | grep "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | grep -iv a
+      releases) ${BINARIES[curl]} -s "$URL" | ${BINARIES[jq]} -r '.[] | .tag_name' | ${BINARIES[sed]} 's/^v//' | ${BINARIES[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${BINARIES[grep]} -iv a
     esac
 }
 

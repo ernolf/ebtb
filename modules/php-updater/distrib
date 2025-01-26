@@ -10,9 +10,7 @@ __license__
 ${DISTRIB_BASHLIB:-false} && return
 DISTRIB_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@; }
-
+. <(lrequire binaries)
 . <(lrequire button)
 . <(lrequire exit)
 . <(lrequire anykey)
@@ -31,17 +29,6 @@ no_debianoid(){
     ask "$(qpf)proceed in safe mode" "$NO" && mark_checked unsupported || exit1
 }
 
-check_systemd(){
-    local pid1
-    pid1="$(ps -p 1 -o comm= 2>/dev/null)"
-    if [[ "$pid1" != 'systemd' ]]; then
-        echo
-        os; R; echo "This system is not started with systemd but instead with $(C)$pid1"
-        os; R; echo "This script depends on systemd to work."; N
-        exit1
-    fi
-}
-
 check_debian(){
     . <(require dist/debian)
 
@@ -54,7 +41,7 @@ check_debian(){
     local ver releasedate eos eol ss
     local -l vercode chan
     case $OS_ID in
-        debian|raspbian) ver="$OS_VERSION_ID"
+        debian|raspbian) ver="${DEBIAN_VERSIONS[$OS_VERSION_CODENAME]}"
         ;;
         *)  [ -n "$OS_DEBIAN_CODENAME" ]&&ver="${DEBIAN_VERSIONS[$OS_DEBIAN_CODENAME]}"||ver="$OS_VERSION_ID"
             echo ", which is"
@@ -170,4 +157,4 @@ check_ubuntu(){
 
 }
 
-[[ "$(tail -n3 "$ca_me"|head -n1)" =~ "distrib_checked" ]]||check_os_release
+[[ "$(${BINARIES[tail]} -n3 "$ca_me"|${BINARIES[head]} -n1)" =~ "distrib_checked" ]]||check_os_release

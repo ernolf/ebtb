@@ -10,18 +10,16 @@ __license__
 ${DISCLAIMER_BASHLIB:-false} && return
 DISCLAIMER_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire button)
 . <(lrequire exit)
 . <(lrequire anykey)
 . <(lrequire php/logo)
 
 disclaimer(){
-    clear
+    ${BINARIES[clear]}
     phplogo
-    cat << DISCLAIMER
+    ${BINARIES[cat]} << DISCLAIMER
 
   Disclaimer
   ==========

@@ -10,9 +10,7 @@ __license__
 ${LINE_BASHLIB:-false} && return
 LINE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire ansi)
 
 # $1=pattern $2=color $3=(empty spaces/)repetition of pattern((int/)int)
@@ -26,7 +24,7 @@ line(){
 
     local p="$1" c="$2"
     local -i e=0 r a=1 b=0
-    (( $(expr $3 : '.*/.*') )) && e=${3%/*}
+    (( $(${BINARIES[expr]} $3 : '.*/.*') )) && e=${3%/*}
     r=${3#*/}
     shift 3
     while (( $# )); do
@@ -46,11 +44,11 @@ line(){
 separator(){
     local color
     color="$1"
-    line ' -' ${color:-GRAY} $((($(tput cols)-8)/2))
+    line ' -' ${color:-GRAY} $((($(${BINARIES[tput]} cols)-8)/2))
 }
 
 separator2(){
     local color
     color="$1"
-    line ' =' ${color:-GRAY} $((($(tput cols)-8)/2))
+    line ' =' ${color:-GRAY} $((($(${BINARIES[tput]} cols)-8)/2))
 }

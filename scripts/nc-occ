@@ -10,14 +10,16 @@ __license__
 __scriptname__
 
 dependencies=(
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
     "curl#curl#Command line file transfer tool with URL syntax"
     "gpg#gnupg#GNU Privacy Guard"
     "jq#jq#Command line JSON processor"
     "php#php-cli#PHP Commandline Interface"
 )
 modules=(
-    basics awksed tempfile ansi prefix button fstring exit spinner anykey line
-    array ask sudo dependency vdir integrity nc/nextcloud
+    binaries basics awksed tempfile ansi prefix button fstring exit spinner
+    anykey line array ask sudo dependency vdir integrity nc/nextcloud
 )
 __debug__
 __when__
@@ -95,8 +97,8 @@ $HELP&&help_
 
 create_json_object(){
     local -i joe
-    [ -d "${JSON_FILE%/*}" ]||mkdir -p "${JSON_FILE%/*}"
-    [ -f "$JSON_FILE" ]&&joe=$(stat -c %Z $JSON_FILE)
+    [ -d "${JSON_FILE%/*}" ]||${BINARIES[mkdir]} -p "${JSON_FILE%/*}"
+    [ -f "$JSON_FILE" ]&&joe=$(${BINARIES[stat]} -c %Z $JSON_FILE)
     if ((rte-joe>900)); then
         occ list --format=json > "$JSON_FILE"
     fi
@@ -144,13 +146,13 @@ parse_json() {
 
     if (( level == 1 )); then
         # List main categories, including special commands first
-        mapfile -t special_options< <(jq -r '.commands[].name' "$JSON_FILE" | grep -E "^($special_commands)$" | sort)
-        mapfile -t general_options< <(jq -r '.commands[].name | split(":")[0]' "$JSON_FILE" | grep -Ev "^($special_commands)$" | grep -v '^_' | sort -u)
+        mapfile -t special_options< <(${BINARIES[jq]} -r '.commands[].name' "$JSON_FILE" | ${BINARIES[grep]} -E "^($special_commands)$" | ${BINARIES[sort]})
+        mapfile -t general_options< <(${BINARIES[jq]} -r '.commands[].name | split(":")[0]' "$JSON_FILE" | ${BINARIES[grep]} -Ev "^($special_commands)$" | ${BINARIES[grep]} -v '^_' | ${BINARIES[sort]} -u)
         options=("${special_options[@]}" "${general_options[@]}")
     else
         # List commands of the selected category
         local category=$2
-        mapfile -t options< <(jq -r --arg category "$category" '.commands[] | select(.name | startswith($category + ":")) | .name' "$JSON_FILE" | grep -v '^_' | sort -u)
+        mapfile -t options< <(${BINARIES[jq]} -r --arg category "$category" '.commands[] | select(.name | startswith($category + ":")) | .name' "$JSON_FILE" | ${BINARIES[grep]} -v '^_' | ${BINARIES[sort]} -u)
     fi
 
     show_menu $level "${options[@]}"
@@ -173,11 +175,11 @@ parse_json() {
             # long help
             # execute_command "$selected_command" --help
             pf;echo "Help"
-            occ "$selected_command" --help | awk '{print "   " $0}'
+            occ "$selected_command" --help | ${BINARIES[gawk]} '{print "   " $0}'
         else
             # brief usage message
-            description="$(jq -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .description' "$JSON_FILE")"
-            usage="$(jq -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .usage[]' "$JSON_FILE")"
+            description="$(${BINARIES[jq]} -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .description' "$JSON_FILE")"
+            usage="$(${BINARIES[jq]} -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .usage[]' "$JSON_FILE")"
             o3;GRAY;echo "Description$(N;o 14;format_string "$description" 15)"
             o3;GRAY;echo "Usage$(N;o 14;format_string "$usage" 15)"
         fi
@@ -194,11 +196,11 @@ parse_arguments() {
     shift
     selected_options=("$@")
 
-    mapfile -t arguments < <(jq -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.arguments | to_entries[] | .key' "$JSON_FILE")
+    mapfile -t arguments < <(${BINARIES[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.arguments | to_entries[] | .key' "$JSON_FILE")
 
     for argument in "${arguments[@]}"; do
-        description=$(jq -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].description' "$JSON_FILE")
-        is_required=$(jq -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].is_required' "$JSON_FILE")
+        description=$(${BINARIES[jq]} -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].description' "$JSON_FILE")
+        is_required=$(${BINARIES[jq]} -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].is_required' "$JSON_FILE")
 
         separator
         pf;echo "Argument$(o 15)$argument"
@@ -231,16 +233,16 @@ parse_options() {
 
     if [[ "$INCLUDE_ALL_OPTIONS" == true ]]; then
         # Include all options
-        mapfile -t options < <(jq -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "$JSON_FILE")
+        mapfile -t options < <(${BINARIES[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "$JSON_FILE")
     else
         # Exclude common options
-        mapfile -t options < <(jq -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "$JSON_FILE" | grep -Ev "^($unimportant_options)$")
+        mapfile -t options < <(${BINARIES[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "$JSON_FILE" | ${BINARIES[grep]} -Ev "^($unimportant_options)$")
     fi
 
     for option in "${options[@]}"; do
-        accept_value=$(jq -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].accept_value' "$JSON_FILE")
-        description=$(jq -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].description' "$JSON_FILE")
-        default=$(jq -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].default' "$JSON_FILE")
+        accept_value=$(${BINARIES[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].accept_value' "$JSON_FILE")
+        description=$(${BINARIES[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].description' "$JSON_FILE")
+        default=$(${BINARIES[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].default' "$JSON_FILE")
 
         separator
         pf;echo "Option$(o 15)--$option"

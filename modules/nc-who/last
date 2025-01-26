@@ -10,13 +10,11 @@ __license__
 ${LAST_BASHLIB:-false} && return
 LAST_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire basics)
 . <(lrequire nc/nextcloud_db)
 
 nc_last(){
-    database_call
+    q0 database_call
     local query
 
     group_query(){

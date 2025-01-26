@@ -10,9 +10,8 @@ __license__
 ${DB_BASHLIB:-false} && return
 DB_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire $sin/github_api)
 . <(lrequire nc/nextcloud)
 
@@ -21,19 +20,19 @@ declare runtime_etag="$rte.000000"
 declare database_created=false
 declare appstore_dir="$TMPDIR/nc-appstore-tmp"
 declare db="$appstore_dir/apps.db"
-declare -p db_sleep >/dev/null 2>&1 || declare -r db_sleep=0.1
-declare -p db_max_attempts >/dev/null 2>&1 || declare -ri db_max_attempts=10
+q0 declare -p db_sleep || declare -r db_sleep=0.1
+q0 declare -p db_max_attempts || declare -ri db_max_attempts=10
 
 jsontf(){
     local t
-    t="$(mktemp -p $appstore_dir -t json_data_XXXXXXXXXXXX)"
-    chown "$NC_USER":"$NC_USER" "$t"
-    chmod 666 "$t"
+    t="$(${BINARIES[mktemp]} -p $appstore_dir -t json_data_XXXXXXXXXXXX)"
+    ${BINARIES[chown]} "$NC_USER":"$NC_USER" "$t"
+    ${BINARIES[chmod]} 666 "$t"
     echo "$t"
 }
 
 delete_db(){
-    rm -rf "$appstore_dir"
+    ${BINARIES[rm]} -rf "$appstore_dir"
 }
 
 rebuild_db(){
@@ -44,8 +43,8 @@ rebuild_db(){
 }
 
 # initialise the SQLite-database-file, in case it does not exist
-init_db(){ [ -d "$appstore_dir" ]||{ mkdir -m 1777 "$appstore_dir";chown "$NC_USER":"$NC_USER" "$appstore_dir";}
-    sqlite3 "$db" <<SQL&&chmod 666 "$db"
+init_db(){ [ -d "$appstore_dir" ] || { ${BINARIES[mkdir]} -m 1777 "$appstore_dir";${BINARIES[chown]} "$NC_USER":"$NC_USER" "$appstore_dir";}
+    ${BINARIES[sqlite3]} "$db" <<SQL && ${BINARIES[chmod]} 666 "$db"
     CREATE TABLE IF NOT EXISTS versions (platform TEXT PRIMARY KEY, major INTEGER, minor INTEGER, version TEXT, versionstring TEXT, tag TEXT, meta TEXT);
     CREATE TABLE IF NOT EXISTS shipped (platform TEXT PRIMARY KEY, json_data BLOB);
     CREATE TABLE IF NOT EXISTS categories (etag TEXT, lang TEXT, json_data TEXT);
@@ -60,7 +59,7 @@ r_db(){
     local -i db_attempts="$db_max_attempts"
     while ((db_attempts)); do
         ((db_attempts--))
-        sqlite3 "$db" "$1" 2>/dev/null && break || sleep "$db_sleep"
+        q2 ${BINARIES[sqlite3]} "$db" "$1" && break || ${BINARIES[sleep]} "$db_sleep"
     done
 }
 
@@ -72,11 +71,11 @@ w_db(){
     for arg in "$@"; do
         values+=(\'$arg\')
     done
-    fields="$(r_db "PRAGMA table_info($table);" | awk -F\| '{print $2}' | paste -sd, - | sed 's/id,//')"
+    fields="$(r_db "PRAGMA table_info($table);" | ${BINARIES[gawk]} -F\| '{print $2}' | ${BINARIES[paste]} -sd, - | ${BINARIES[sed]} 's/id,//')"
     local -i db_attempts=$db_max_attempts
     while ((db_attempts)); do
         ((db_attempts--))
-        sqlite3 "$db" <<SQL 2>/dev/null && break || sleep "$db_sleep"
+        q2 ${BINARIES[sqlite3]} "$db" <<SQL && break || ${BINARIES[sleep]} "$db_sleep"
         BEGIN;
         INSERT OR REPLACE INTO $table ($fields)
         VALUES ($(IFS=,;echo "${values[*]}"));
@@ -94,11 +93,11 @@ w_f2b_db(){
         [ -s "$arg" ] && arg=$(file2blob $arg)
         values+=(\'$arg\')
     done
-    fields="$(r_db "PRAGMA table_info($table);" | awk -F\| '{print $2}' | paste -sd, -)"
+    fields="$(r_db "PRAGMA table_info($table);" | ${BINARIES[gawk]} -F\| '{print $2}' | ${BINARIES[paste]} -sd, -)"
     local -i db_attempts=$db_max_attempts
     while ((db_attempts)); do
         ((db_attempts--))
-        sqlite3 "$db" <<SQL 2>/dev/null && break || sleep "$db_sleep"
+        q2 ${BINARIES[sqlite3]} "$db" <<SQL && break || ${BINARIES[sleep]} "$db_sleep"
         BEGIN;
         INSERT OR REPLACE INTO $table ($fields)
         VALUES ($(IFS=,;echo "${values[*]}"));
@@ -115,7 +114,7 @@ create_database(){
     write_local_ids(){
         local local_applist="$(occ app:list --output=json)"
         w_db 'app_lists' 'local' "$runtime_etag" "$local_applist" & local -i job_id=$!
-        local local_ids="$(echo "$local_applist" | jq -r '.enabled + .disabled|keys_unsorted[]' | base64 -w 0)"
+        local local_ids="$(echo "$local_applist" | ${BINARIES[jq]} -r '.enabled + .disabled|keys_unsorted[]' | ${BINARIES[base64]} -w 0)"
         w_db 'app_ids' 'local' "$runtime_etag" "$local_ids"
         wait "$job_id"
     }
@@ -126,7 +125,7 @@ create_database(){
     }
 
     database_created(){
-        sqlite3 "$db" "CREATE TABLE IF NOT EXISTS database_created (runtime_etag TEXT PRIMARY KEY);"
+        ${BINARIES[sqlite3]} "$db" "CREATE TABLE IF NOT EXISTS database_created (runtime_etag TEXT PRIMARY KEY);"
     }
 
 # TODO 0 -->
@@ -157,7 +156,7 @@ create_database(){
 #        *)
 # TODO <-- 1
         version_php="$(tf)"
-        curl -so "$version_php" "$rawURL/$latest/version.php"
+        ${BINARIES[curl]} -so "$version_php" "$rawURL/$latest/version.php"
         version="$(nc_version_ short $version_php)"
         versionstring="$(nc_version_ string $version_php)"
 # TODO 2 -->
@@ -178,11 +177,11 @@ create_database(){
         if $bgjobs; then
             write_appstore_ids "$version" & job_ids="$job_ids $!"
             w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta" & job_ids="$job_ids $!"
-            w_db shipped "$version" "$(curl -s "$rawURL/$latest/core/shipped.json" | jq -c '.' | base64 -w 0)" & job_ids="$job_ids $!"
+            w_db shipped "$version" "$(${BINARIES[curl]} -s "$rawURL/$latest/core/shipped.json" | ${BINARIES[jq]} -c '.' | ${BINARIES[base64]} -w 0)" & job_ids="$job_ids $!"
         else
             write_appstore_ids "$version"
             w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta"
-            w_db shipped "$version" "$(curl -s "$rawURL/$latest/core/shipped.json" | jq -c '.' | base64 -w 0)"
+            w_db shipped "$version" "$(${BINARIES[curl]} -s "$rawURL/$latest/core/shipped.json" | ${BINARIES[jq]} -c '.' | ${BINARIES[base64]} -w 0)"
         fi
     done
     database_created && w_db database_created $runtime_etag && database_created=true

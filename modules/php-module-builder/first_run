@@ -10,9 +10,7 @@ __license__
 ${FIRST_RUN_BASHLIB:-false} && return
 FIRST_RUN_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire vdir)
@@ -26,7 +24,7 @@ first_run(){
     register_project_dir(){
         mh "vdir: $*" &
         local flags=""
-        [ -d "$*" ] || mkdir -p "$*"
+        [ -d "$*" ] || ${BINARIES[mkdir]} -p "$*"
         setvdir v "$*"
         f;o2;echo "- $(lG)first run wizard completed successfully.";N;f
         $force && flags="--force";$remove && flags="$flags --remove"
@@ -47,7 +45,7 @@ first_run(){
             o2;B;echo "enter the directory where the$(N) \"$(Y)$project$(N)\" $(B)directory resides $q"
             read -rp "  --> " p
             [ "$(tlwr $p)" = "q" ] && exit 0
-            local dir="$(echo "$p" | sed 's/\"//g')"
+            local dir="$(echo "$p" | ${BINARIES[sed]} 's/\"//g')"
             [ -d "$dir/$project" ] && register_project_dir "$dir"
             [ -d "$dir" ] && echo "$(o2;B)\"$(Y)$dir$(B)\" is an existing directory but it does not contain a subdirectory \"$project\""
         else
@@ -57,7 +55,7 @@ first_run(){
             while :;do
                 read -rp "  --> " p
                 [ "$(tlwr $p)" = "q" ] && exit 0
-                local dir="$(echo "${p//\"/}" | sed 's/\"//g')"
+                local dir="$(echo "${p//\"/}" | ${BINARIES[sed]} 's/\"//g')"
                 if [ -z "$dir" ]; then te0; continue
                 elif [ -d "$dir/$project" ]; then register_project_dir "$dir"
                 elif [ -d "$dir" ]; then

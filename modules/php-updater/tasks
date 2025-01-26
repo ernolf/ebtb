@@ -9,6 +9,7 @@ __license__
 
 ${TASKS_BASHLIB:-false} || {
     TASKS_BASHLIB=:
+    . <(lrequire binaries)
     . <(lrequire button)
     . <(lrequire exit)
     . <(lrequire anykey)
@@ -29,7 +30,7 @@ ${TASKS_BASHLIB:-false} || {
         }
     fi
 
-    mkdir -p $lincld/$sin/tasks.d
+    ${BINARIES[mkdir]} -p $lincld/$sin/tasks.d
 }
 
 . <(lrequire $sin/tasks.d/replace_aim)

@@ -11,11 +11,13 @@ __license__
 ${HELP_BASHLIB:-false} && return
 HELP_BASHLIB=:
 
+. <(lrequire binaries)
+
 function print_help(){
 #. <(require $sin/disclaimer)
 #disclaimer
 
-    cat <<HELP
+    ${BINARIES[cat]} <<HELP
 
   Usage:  $me [-s|--sharetype=(0-13)] -- user|all
           $me -h|--help

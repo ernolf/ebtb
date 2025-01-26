@@ -10,12 +10,11 @@ __license__
 ${DEPENDENCY_BASHLIB:-false} && return
 DEPENDENCY_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire array)
 . <(lrequire sudo)
 . <(lrequire ask)
+. <(lrequire anykey)
 
 dependency_check(){
     # for backwards compatibility:
@@ -27,8 +26,16 @@ dependency_check(){
     local -a mis
     local -i c2=18 c3=34
     for dependency in ${dependencies[@]%%#*}; do
-        if ! command -v $dependency >/dev/null; then
-            dpkg -l | grep -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"||mis+=("$dependency")
+        if [ -z "${BINARIES[$dependency]}" ]; then
+            if ${BINARIES[dpkg]} -l | ${BINARIES[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
+                if (( epoch > 1737549000 )); then
+                    o2;R;bundle echo "The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
+                    o2;R;bundle echo "You should fix that first!"
+                    N;anykey
+                fi
+            else
+                mis+=("$dependency")
+            fi
         fi
     done
     if (( ${#mis[@]} )); then
@@ -44,7 +51,7 @@ dependency_check(){
             o2;echo "$bin$(o $c2)$(a_fld dependencies '#' "$bin" 2)$(o $c3)$(a_fld dependencies '#' "$bin" 3)"
         done
         line '-' dP 2/78 a2
-        if command -v apt-get >/dev/null; then
+        if [ -n "${BINARIES[apt-get]}" ]; then
             local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
             mh "$install" &
             if ask "$(qpf)Do you want to install this $pkg now" "$YES"; then
@@ -60,7 +67,7 @@ dependency_check(){
                         exit1
                     fi
                 else
-                    if apt-get -y $install; then
+                    if ${BINARIES[apt-get]} -y $install; then
                         if [[ "$install" =~ apt-file ]]; then
                             apt-file update
                         fi

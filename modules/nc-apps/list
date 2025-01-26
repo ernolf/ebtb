@@ -10,6 +10,8 @@ __license__
 ${LIST_BASHLIB:-false} && return
 LIST_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire xml)
 . <(lrequire $sin/github_api)
@@ -39,22 +41,23 @@ list(){
     else
         local platform app_json
         for platform in $(r_db "SELECT platform FROM filtered_apps WHERE platform <= '$query_version' AND platform >= '$nc_min_version' ORDER BY platform DESC;"); do
-            if $(jq -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}" 2>/dev/null); then
+#            if $(q2 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}"); then
+            if q0 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}"; then
                 inappstore=true
-                app_json="$(jq --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[$platform]}")"
+                app_json="$(${BINARIES[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[$platform]}")"
                 break
             fi
         done
 
-        if ( $use_json_all && ! $inappstore &&
-        $(jq -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}" 2>/dev/null) ); then
+#        if ( $use_json_all && ! $inappstore && $(q2 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}") ); then
+        if ( $use_json_all && ! $inappstore && q2 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}" ); then
             inappstore=true
-            app_json="$(jq --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[all]}")"
+            app_json="$(${BINARIES[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[all]}")"
         fi
 
         if $inappstore; then
             # eval json values into sh vars
-            eval "$(echo "$app_json" | jq -r 'keys[] as $key | "\($key)=\(.[$key] | @sh)"')"
+            eval "$(echo "$app_json" | ${BINARIES[jq]} -r 'keys[] as $key | "\($key)=\(.[$key] | @sh)"')"
             (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section=store
         fi
     fi
@@ -63,7 +66,7 @@ $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
 # TODO <-- 0
     case $section in
         enabled|disabled|na)
-            mapfile -t apps_paths < <(nc_configkey apps_paths | jq -r 'if . == null then "apps" else .[] | .path | split("/")[-1] end')
+            mapfile -t apps_paths < <(nc_configkey apps_paths | ${BINARIES[jq]} -r 'if . == null then "apps" else .[] | .path | split("/")[-1] end')
             for apps_path in ${apps_paths[@]}; do
                 [ -f "$NC_DIR/$apps_path/$id/appinfo/info.xml" ] && info_xml="$NC_DIR/$apps_path/$id/appinfo/info.xml"
             done
@@ -91,41 +94,41 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
                     exit 0
                 fi
             fi
-            name=$(xmls -v "(//info/name)" "$info_xml" | sed '2,$d')
-            summary=$(xmls -v "//info/summary[@lang='$lang']" "$info_xml" | sed '2,$d')
-            [ -n "$summary" ] || summary=$(xmls -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | sed '2,$d')
-            categories="$(xmls -v "(//info/category)" "$info_xml" | tr '\n' ' ')"
-            version=$(xmls -v "//info/version" "$info_xml" | sed '2,$d')
-            userDocs=$(xmls -v "//info/documentation/user" "$info_xml" | sed '2,$d')
-            adminDocs=$(xmls -v "//info/documentation/admin" "$info_xml" | sed '2,$d')
-            developerDocs=$(xmls -v "//info/documentation/developer" "$info_xml" | sed '2,$d')
-            repo=$(xmls -v "//info/repository" "$info_xml" | sed '2,$d;s|.git$||1')
-            issueTracker=$(xmls -v "//info/bugs" "$info_xml" | sed '2,$d')
-            website=$(xmls -v "//info/website" "$info_xml" | sed '2,$d')
+            name=$(xmls -v "(//info/name)" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            summary=$(xmls -v "//info/summary[@lang='$lang']" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            [ -n "$summary" ] || summary=$(xmls -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            categories="$(xmls -v "(//info/category)" "$info_xml" | ${BINARIES[tr]} '\n' ' ')"
+            version=$(xmls -v "//info/version" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            userDocs=$(xmls -v "//info/documentation/user" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            adminDocs=$(xmls -v "//info/documentation/admin" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            developerDocs=$(xmls -v "//info/documentation/developer" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            repo=$(xmls -v "//info/repository" "$info_xml" | ${BINARIES[sed]} '2,$d;s|.git$||1')
+            issueTracker=$(xmls -v "//info/bugs" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            website=$(xmls -v "//info/website" "$info_xml" | ${BINARIES[sed]} '2,$d')
             databases=$(xmls -m "//info/dependencies/database" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
             phpExtensions=$(xmls -m "//info/dependencies/lib" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
-            phpMinIntSize=$(xmls -v "//info/dependencies/php/@min-int-size" "$info_xml" | sed '2,$d')
-            phpMin=$(xmls -v "//info/dependencies/php/@min-version" "$info_xml" | sed '2,$d')
-            phpMax=$(xmls -v "//info/dependencies/php/@max-version" "$info_xml" | sed '2,$d')
-            NCmin=$(xmls -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | sed '2,$d')
-            NCmax=$(xmls -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | sed '2,$d')
+            phpMinIntSize=$(xmls -v "//info/dependencies/php/@min-int-size" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            phpMin=$(xmls -v "//info/dependencies/php/@min-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            phpMax=$(xmls -v "//info/dependencies/php/@max-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            NCmin=$(xmls -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            NCmax=$(xmls -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
             ;;
         *)  :
     esac
 
     if [[ "$issueTracker" =~ github.com ]]; then
         if [[ "${issueTracker%/}" =~ /issues$ ]]; then
-            [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | sed 's|/issues$||1')
+            [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${BINARIES[sed]} 's|/issues$||1')
         else
             issueTracker="${issueTracker%/}/issues"
         fi
     fi
-    [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | sed 's|/issues$||1')
+    [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${BINARIES[sed]} 's|/issues$||1')
     (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section="$(get_applist_section_ $id)"
 
     if [ -z "$info_xml" ]; then
         if [[ "$repo" =~ github.com ]]; then
-            local url="$(sed 's/github/raw.githubusercontent/' <<< "$repo")"
+            local url="$(${BINARIES[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
             local github_info_xml=$(tf)
             for tag in "$version" "v$version" master main; do
                 if (( $(hc sD $bm-$epoch -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
@@ -288,13 +291,13 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
 
     # PHP extensions
     if [ -n "$phpExtensions" ]; then
-        phpExtensions="$(htmldecode $phpExtensions | sed 's/\s*>=\s*,/,/g;s/,\s*$//1')"
+        phpExtensions="$(htmldecode $phpExtensions | ${BINARIES[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')"
         echo "${in}php-Extensions$(N)$mid$($md||es 2)$phpExtensions"
     fi
 
     # Databases
     if [ -n "$databases" ]; then
-        databases=$(htmldecode $databases | sed 's/\s*>=\s*,/,/g;s/,\s*$//1')
+        databases=$(htmldecode $databases | ${BINARIES[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')
         echo "${in}Databases$(N)$mid$($md||es 7)$databases"
     fi
 

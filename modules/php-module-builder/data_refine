@@ -10,19 +10,18 @@ __license__
 ${DATA_REFINE_BASHLIB:-false} && return
 DATA_REFINE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire ansi)
 
 # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
 find_built_modules(){
     local pv pvd m
-    local -a pvs=($(ls "$project_dir/$project" 2>/dev/null))
+    local -a pvs=($(q2 ${BINARIES[ls]} "$project_dir/$project"))
     for pv in "${pvs[@]}"; do
         pvd="$project_dir/$project/$pv"
         if [ -d "$pvd" ]; then
-            local -a ms=($(ls "$pvd"))
+            local -a ms=($(${BINARIES[ls]} "$pvd"))
             for m in "${ms[@]}"; do
                 echo "$pv $m"
             done
@@ -33,17 +32,17 @@ find_built_modules(){
 # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
 find_built_module_versions(){
     local pv pvd m mv mvd
-    local -a pvs=($(ls "$project_dir/$project" 2>/dev/null))
+    local -a pvs=($(q2 ${BINARIES[ls]} "$project_dir/$project"))
     for pv in "${pvs[@]}"; do
         pvd="$project_dir/$project/$pv"
         if [ -d "$pvd" ];then
-            local -a ms=($(ls "$pvd"))
+            local -a ms=($(${BINARIES[ls]} "$pvd"))
             for m in "${ms[@]}"; do
                 mvd="$pvd/$m"
                 if [ -d "$mvd" ]; then
-                    local -a mvs=($(ls -d "$mvd"/*))
+                    local -a mvs=($(${BINARIES[ls]} -d "$mvd"/*))
                     for mv in "${mvs[@]}"; do
-                        [ -d "$mv" ] && echo "$pv $(basename $mv)"
+                        [ -d "$mv" ] && { mv="${mv%/}"; echo "$pv ${mv##*/}";}
                     done
                 fi
             done
@@ -59,7 +58,7 @@ check_conflicts(){
     if [ -n "$conflicts" ]; then
         R;echo "- $module conflicts with$conflicts. Remove conflicting modules first.";N
         cd
-        rmdir $project_dir/$project/$php_version/$module
+        ${BINARIES[rmdir]} $project_dir/$project/$php_version/$module
         exit 1
     fi
 }

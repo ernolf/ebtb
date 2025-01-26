@@ -10,24 +10,26 @@ __license__
 ${TEMPFILE_BASHLIB:-false} && return
 TEMPFILE_BASHLIB=:
 
+. <(lrequire binaries)
+
 # tempfile creation $1=u (--dry-run)
-[ -z "$TMPDIR" ] && declare TMPDIR='/tmp'
+: "${TMPDIR:=/tmp}"
 
 tf(){
-    local arg t u='' chmod=''
+    local arg t u='' mode=''
     for arg in $@; do
         case $arg in
             u)  u=u ;;
-      666|777)  chmod=$arg
+      666|777)  mode=$arg
         esac
     done
-    t="$(mktemp -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
+    t="$(${BINARIES[mktemp]} -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
 # TODO 0 -->
-#    t="$(mktemp -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
+#    t="$(${BINARIES[mktemp]} -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
 # TODO <-- 0
     if [ -z "$u" ]; then
-        if [ -n "$chmod" ]; then
-            chmod $chmod "$t"
+        if [ -n "$mode" ]; then
+            ${BINARIES[chmod]} $mode "$t"
         fi
     fi
     echo "$t"

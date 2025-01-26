@@ -10,9 +10,7 @@ __license__
 ${PECL_BASHLIB:-false} && return
 PECL_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire exit)
 
 pecl_download(){
@@ -23,10 +21,10 @@ pecl_download(){
         chan="$module"
     fi
 
-    pecl channel-update pecl.php.net
+    ${BINARIES[pecl]} channel-update pecl.php.net
 
-    download_output=$(pecl download $chan 2>&1)
-    file_name=$(echo "$download_output" | grep -oP '(?<=File ).*(?= downloaded)' | xargs basename)
+    download_output=$(${BINARIES[pecl]} download $chan 2>&1)
+    file_name=$(echo "$download_output" | ${BINARIES[grep]} -oP '(?<=File ).*(?= downloaded)' | ${BINARIES[xargs]} ${BINARIES[basename]})
 
     if [ -f "$file_name" ]; then
         lG; echo "- download of $file_name successfull"
@@ -35,7 +33,7 @@ pecl_download(){
         exit1
     fi
 
-    if tar -xzf $file_name; then
+    if ${BINARIES[tar]} -xzf $file_name; then
         B; echo "- entering directory \"${file_name%.*}\""
         cd ${file_name%.*}
     else

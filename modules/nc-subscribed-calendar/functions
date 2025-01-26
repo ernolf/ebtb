@@ -10,9 +10,7 @@ __license__
 ${FUNCTIONS_BASHLIB:-false} && return
 FUNCTIONS_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire exit)
 . <(lrequire line)
@@ -128,7 +126,7 @@ capture_refreshrate(){
         read -rp "$prompt ($(q2q))$(B):$(N) " refreshrate
         [ "$refreshrate" = "Q" ] && nothing_changed
         # Validate user input
-        if echo $refreshrate | grep -qsP $pattern || [ "$refreshrate" = "NULL" ]; then
+        if echo $refreshrate | ${BINARIES[grep]} -qsP $pattern || [ "$refreshrate" = "NULL" ]; then
             break
         else
             echo "$(Pbg)You must enter a valid ISO 8601 duration (without P\$nM or P\$nY) or 'NULL'$(N)"

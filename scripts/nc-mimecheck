@@ -26,12 +26,14 @@ __license__
 __scriptname__
 
 deps=(
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
     "gpg#gnupg#GNU Privacy Guard"
     "jq#jq#command-line JSON processor"
 )
 modules=(
-    basics awksed tempfile ansi prefix button exit anykey verbose line array
-    ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
+    binaries basics awksed tempfile ansi prefix button exit anykey verbose line
+    array ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
     $sin/mime_types $sin/help $sin/functions
 )
 
@@ -131,7 +133,7 @@ shopt -u extglob
 [ -n "$shiftedoption" ]&&set -- $shiftedoption $@
 unset shiftedoption
 
-options=$(getopt -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$me" -- "$@")
+options=$(${BINARIES[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$me" -- "$@")
 if (($?==0));then
     eval set -- "$options"
     while :;do
@@ -270,7 +272,7 @@ fi
 cd "$NC_DATADIR"
 
 # remove absolute path to NC_DATADIR if not invoked by nextcloud flow
-basepath="$(echo "$*"|sed 's\'$NC_DATADIR'/\\1')"
+basepath="$(echo "$*"|${BINARIES[sed]} 's\'$NC_DATADIR'/\\1')"
 user2check="$(check_username_case "${basepath%%/*}")"
 [ "$user2check" = "${basepath%%/*}" ]||{
     v_echo "$(pf;Y)user case corrected:$(N) from \"$(B)${basepath%%/*}$(N)\" to \"$(B)$user2check$(N)\" "
@@ -289,7 +291,7 @@ fi
 # thoroughly but slowly tests
 iid="$(nc_configkey instanceid)"
 blacklist="appdata_$iid|updater-$iid"
-if echo "$basepath"|grep -Eqs  "$blacklist";then
+if echo "$basepath"|${BINARIES[grep]} -Eqs  "$blacklist";then
     wrong_option "blacklisted filepath $(Pbg)$basepath$(N)"
 else
     v_echo "$(pf;Y)basepath is no system dir (appdata or backup). $gg"
@@ -298,7 +300,7 @@ fi
 # TODO: enable groupfolders
 #    groupfolder = __groupfolders/$groupfolder_id/
 # if groupfolder, not occ files:scan but occ groupfolders:scan
-if echo "$basepath"|grep $grepopts "__groupfolders/[0-9]";then
+if echo "$basepath"|${BINARIES[grep]} $grepopts "__groupfolders/[0-9]";then
     wrong_option "groupfolders not (yet) supported"
 else
     v_echo "$(pf;Y)basepath is not a groupfolder. $gg"
@@ -306,7 +308,7 @@ fi
 
 # check if basepath is a user
 #       user dir = $user_id/files/
-#occ user:info "${basepath%%/*}"|grep $grepopts "enabled: true"
+#occ user:info "${basepath%%/*}"|${BINARIES[grep]} $grepopts "enabled: true"
     # this does not work with usernames containing spaces:
     #if enabled_user="$(occ user:info --output=json -- "'$user2check'"|jq '.enabled')"; then
 if $(user_exists "$user2check"); then
@@ -319,7 +321,7 @@ if $(user_exists "$user2check"); then
             basepath="$basepath/files/"
             v_echo "$(pf;Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
         fi
-        if echo "$basepath/"|grep $grepopts "^${basepath%%/*}/files/";then
+        if echo "$basepath/"|${BINARIES[grep]} $grepopts "^${basepath%%/*}/files/";then
             v_echo "$(pf;Yi)basepath check succeeded. $gg"
         else
             wom1="basepath $(Pbg)$basepath$(R)"
@@ -373,9 +375,9 @@ if [ -d "$basepath" ];then
 else
 # if $actualpath is a file, only that file will be treated.
     #exract path for occ files:scan at the end
-    path="$(dirname "$basepath")"
+    path="$(${BINARIES[dirname]} "$basepath")"
     mimetype="$($mimedetector "$basepath")"
-    echo "${mime_ext_regex_array[@]%%:*}"|grep -qsw "$mimetype"||error "MIME type '$mimetype' not supported"
+    echo "${mime_ext_regex_array[@]%%:*}"|${BINARIES[grep]} -qsw "$mimetype"||error "MIME type '$mimetype' not supported"
     extension="$(a_fld mime_ext_regex_array ':' "$mimetype" 2)"
     regex="$(a_fld mime_ext_regex_array ':' "$mimetype" 3)"
     main "$basepath" "$regex" "$extension" "$mimetype"

@@ -10,6 +10,8 @@ __license__
 ${PDIFF_BASHLIB:-false} && return
 PDIFF_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire dpkg)
 . <(lrequire php/extensions)
 
@@ -19,7 +21,7 @@ packages_diff(){
         local v x
         v="$1"
         shift
-        (   dpkg -l | awk '/^[hiu]i.*php'$v'/{print $2}' | sed "s/$v//"
+        (   ${BINARIES[dpkg]} -l | awk '/^[hiu]i.*php'$v'/{print $2}' | ${BINARIES[sed]} "s/$v//"
             for x in $@; do
                 case $x in
                     libapache2-mod-php) echo $x
@@ -48,9 +50,9 @@ packages_diff(){
             [[ " $pkg" =~ " php$pvo-" ]] && eia+=("${pkg#*-}")
         done
     fi
-    for pkg in $(comm -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | sed "s/php/php$2/"); do
-        if echo "$pkg" | grep -Eqsvw "^$PHPVREGEX$"; then
-            apt_exist "$pkg" &>/dev/null && echo $pkg
+    for pkg in $(${BINARIES[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${BINARIES[sed]} "s/php/php$2/"); do
+        if echo "$pkg" | ${BINARIES[grep]} -Eqsvw "^$PHPVREGEX$"; then
+            q0 apt_exist "$pkg" && echo $pkg
         fi
     done
 }

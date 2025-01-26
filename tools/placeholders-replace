@@ -50,8 +50,9 @@ placeholder_replace(){
     case $placeholder in
         shebang_bash)
             # https://stackoverflow.com/questions/10376206/what-is-the-preferred-bash-shebang#10383546
+#            echo "#!/bin/bash"
 #            echo "#!/usr/bin/env bash"
-            echo "#!/bin/bash"
+            echo "#!/usr/bin/env -S LC_MESSAGES=C bash"
             ;;
         bashlib)
             echo "# BASHLIB"
@@ -93,7 +94,7 @@ placeholder_replace(){
             cat "blocks/vdirname"
             ;;
         tempdir)
-            echo '[ -z "$TMPDIR" ]&&declare TMPDIR="/tmp"'
+            echo ': "${TMPDIR:=/tmp}"'
             ;;
         module_server)
             echo "declare my_home=$MY_HOME"

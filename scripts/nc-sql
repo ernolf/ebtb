@@ -10,14 +10,17 @@ __license__
 __scriptname__
 
 dependencies=(
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
     "curl#curl#Command line file transfer tool with URL syntax"
     "gpg#gnupg#GNU Privacy Guard"
 #    "xmlstarlet#xmlstarlet#Command line XML toolkit"
     "jq#jq#Command line JSON processor"
 )
 modules=(
-    basics awksed tempfile ansi prefix button fstring exit spinner anykey line
-    array ask sudo dependency vdir integrity httpd nc/nextcloud nc/nextcloud_db
+    binaries basics awksed tempfile ansi prefix button fstring exit spinner
+    anykey line array ask sudo dependency vdir integrity httpd nc/nextcloud
+    nc/nextcloud_db
 )
 __debug__
 __when__
@@ -47,7 +50,7 @@ contribute_(){
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
 help(){
-    cat << HELP
+    ${BINARIES[cat]} << HELP
 
     $me [ --raw [ --execute "query;" ] ]
 
@@ -77,7 +80,7 @@ for arg in "$@";do
 done
 set -- "${args[@]}"&&unset -v args
 
-if $AIO && command -v psql >/dev/null; then
+if $AIO && [ -n "${BINARIES[psql]}" ]; then
         DOCKER=false
 fi
 
@@ -96,4 +99,3 @@ else
 fi
 
 exit0
-

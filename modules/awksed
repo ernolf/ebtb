@@ -10,24 +10,26 @@ __license__
 ${AWKSED_BASHLIB:-false} && return
 AWKSED_BASHLIB=:
 
+. <(lrequire binaries)
+
 # awk (iof=intermediate output file)
 awk_remove_trailing_empty_lines(){
     local infile="$1"
     local iof="$infile~iof~"
-    awk '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" > "$iof" && mv "$iof" "$infile"
+    ${BINARIES[gawk]} '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" > "$iof" && mv "$iof" "$infile"
 }
 # radicaly delete duplicate lines
 uniq_lines(){
     local infile="$1"
     local iof="$infile~iof~"
-    awk '!seen[$0]++' "$infile" > "$iof" && mv "$iof" "$infile"
+    ${BINARIES[gawk]} '!seen[$0]++' "$infile" > "$iof" && mv "$iof" "$infile"
 }
 
 # delete duplicate empty lines, keep single empty lines
 uniq_empty_lines(){
     local infile="$1"
     local iof="$infile~iof~"
-    awk 'NF || prev { print; prev = NF }' "$infile" > "$iof" && mv "$iof" "$infile" \
+    ${BINARIES[gawk]} 'NF || prev { print; prev = NF }' "$infile" > "$iof" && mv "$iof" "$infile" \
     && remove_trailing_empty_lines "$infile"
 }
 
@@ -35,23 +37,23 @@ uniq_empty_lines(){
 dedup_lines(){
     local infile="$1"
     local iof="$infile~iof~"
-    awk '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" > "$iof" && mv "$iof" "$infile" \
+    ${BINARIES[gawk]} '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" > "$iof" && mv "$iof" "$infile" \
     && remove_trailing_empty_lines "$infile"
 }
 
 # sed
 remove_trailing_empty_lines(){
     local infile="$1"
-    sed -i ':a;N;$!ba;s/\n*$//' $infile
+    ${BINARIES[sed]} -i ':a;N;$!ba;s/\n*$//' $infile
 }
 
 # delete from $pattern to end without deleting the line containing $pattern
 delafter(){
     local pattern="$1" infile="$2" outfile="$3"
     case ${outfile:--i} in
-        -i) sed -i -n "0,/$pattern/p" "$infile"
+        -i) ${BINARIES[sed]} -i -n "0,/$pattern/p" "$infile"
             ;;
-         *) sed -n "0,/$pattern/p" "$infile" > "$outfile"
+         *) ${BINARIES[sed]} -n "0,/$pattern/p" "$infile" > "$outfile"
     esac
 }
 
@@ -59,9 +61,9 @@ delafter(){
 delp2ei(){
     local pattern="$1" infile="$2" outfile="$3"
     case ${outfile:--i} in
-        -i) sed -i -n "/$pattern/q;p" "$infile"
+        -i) ${BINARIES[sed]} -i -n "/$pattern/q;p" "$infile"
             ;;
-         *) sed -n "/$pattern/q;p" "$infile" > "$outfile"
+         *) ${BINARIES[sed]} -n "/$pattern/q;p" "$infile" > "$outfile"
     esac
 }
 del_from_x_to_end_including(){ delp2ei "$@";}
@@ -70,9 +72,9 @@ del_from_x_to_end_including(){ delp2ei "$@";}
 delx2yi(){
     local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
     case ${outfile:--i} in
-        -i) sed -i "/$pattern1/,/$pattern2/d" "$infile"
+        -i) ${BINARIES[sed]} -i "/$pattern1/,/$pattern2/d" "$infile"
             ;;
-         *) sed "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
+         *) ${BINARIES[sed]} "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
     esac
 }
 del_from_x_to_y_including(){ delx2yi "$@";}
@@ -81,9 +83,9 @@ del_from_x_to_y_including(){ delx2yi "$@";}
 delx2y(){
     local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
     case ${outfile:--i} in
-        -i) sed -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
+        -i) ${BINARIES[sed]} -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
             ;;
-         *) sed "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
+         *) ${BINARIES[sed]} "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
     esac
 }
 del_from_x_to_y(){ delx2y "$@";}
@@ -92,9 +94,9 @@ del_from_x_to_y(){ delx2y "$@";}
 delb2pi(){
     local pattern="$1" infile="$2" outfile="$3"
     case ${outfile:--i} in
-        -i) sed -i "1,/$pattern/d" "$infile"
+        -i) ${BINARIES[sed]} -i "1,/$pattern/d" "$infile"
             ;;
-         *) sed "1,/$pattern/d" "$infile" > "$outfile"
+         *) ${BINARIES[sed]} "1,/$pattern/d" "$infile" > "$outfile"
     esac
 }
 del_from_begin_to_y_including(){ delb2pi "$@";}
@@ -103,30 +105,30 @@ del_from_begin_to_y_including(){ delb2pi "$@";}
 delb2p(){
     local pattern="$1" infile="$2" outfile="$3"
     case ${outfile:--i} in
-        -i) sed -i "1,/$pattern/{/$pattern/!d;}" "$infile"
+        -i) ${BINARIES[sed]} -i "1,/$pattern/{/$pattern/!d;}" "$infile"
             ;;
-         *) sed "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
+         *) ${BINARIES[sed]} "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
     esac
 }
 del_from_begin_to_y(){ delb2p "$@";}
 
 # trim "$1" from leading and trailing spaces
 trim(){
-    sed 's/^\s*//; s/\s*$//' <<< "$1"
+    ${BINARIES[sed]} 's/^\s*//; s/\s*$//' <<< "$1"
 }
 
 # stripconf php.ini, exclude pattern: comment marker ';', #, empty lines and '['
 stripconf(){
-    sed -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
+    ${BINARIES[sed]} -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
 }
 
 # remove single and double  quotes from begin and end of line $1
 unquote() {
-    sed -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
+    ${BINARIES[sed]} -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
 }
 
 noansi_sed(){
-    sed -E '
+    ${BINARIES[sed]} -E '
         # ANSI sequences
         s/\x1B\[[0-9;?]*[a-zA-Z]//g # Remove ANSI sequences
 
@@ -171,7 +173,7 @@ noansi_sed(){
 }
 #    perl -CSD -pe 's/\x1B\[[0-9;?]*[a-zA-Z]//g; s/\x{26A0}/!/g; s/\x{FE0F}//g; s/\x{200B}//g; s/\x{2028}//g' <<< "$*"
 noansi_perl(){
-    perl -CSD -pe '
+    ${BINARIES[perl]} -CSD -pe '
         # ANSI sequences
         s/\x1B\[[0-9;?]*[a-zA-Z]//g;
 
@@ -218,5 +220,5 @@ noansi_perl(){
 noansi(){ noansi_perl $*; }
 
 urldecode(){
-    echo -n "${*//+/ }" | sed 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | xargs -0 printf
+    echo -n "${*//+/ }" | ${BINARIES[sed]} 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | ${BINARIES[xargs]} -0 printf
 }

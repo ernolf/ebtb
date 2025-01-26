@@ -20,3 +20,19 @@ placeholders=(
     nextcloud_updater
 )
 
+# binaries for build process
+declare binary
+declare -a build_binaries
+build_binaries=(gawk sed)
+unset BINARIES
+declare -gA BINARIES 2>/dev/null || declare -A BINARIES
+BINARIES[env]="$(command -v env) LC_MESSAGES=C"
+
+for binary in "${build_binaries[@]}"; do
+    if [ -L "$(command -v $binary)" ]; then
+        BINARIES[$binary]="${BINARIES[env]} $(${BINARIES[readlink]} -f $(command -v $binary))"
+    else
+        BINARIES[$binary]="${BINARIES[env]} $(command -v $binary)"
+    fi
+done
+

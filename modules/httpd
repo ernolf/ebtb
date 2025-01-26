@@ -10,6 +10,9 @@ __license__
 ${HTTPD_BASHLIB:-false} && return
 HTTPD_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
+
 # TODO 0 -->
 #        apache2     /etc/apache2            /lib/systemd/system/apache2.service
 #        caddy       /etc/caddy              /lib/systemd/system/caddy.service
@@ -21,11 +24,11 @@ HTTPD_BASHLIB=:
 # TODO <-- 0
 # globals
 globalarrays="A2CONFFILES NGXCONFFILES A2MODULES NGXMODULES HTTPD_NEXTCLOUD HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ENABLED WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ENABLED HTTPD_ACTIVE HTTPD_ALL"
-for array in $globalarrays; do declare -ga "$array" 2>/dev/null || declare -a "$array"; done
+for array in $globalarrays; do q2 declare -ga "$array" || declare -a "$array"; done
 unset -v array globalarrays
 
 unset HTTPD
-declare -gA HTTPD 2>/dev/null || declare -A HTTPD
+q2 declare -gA HTTPD || declare -A HTTPD
 
 HTTPD=(
     [apache2]=0
@@ -38,24 +41,24 @@ HTTPD=(
 )
 
 populate_a2conffiles(){
-    mapfile -t A2CONFFILES< <(apachectl -t -D DUMP_INCLUDES 2>/dev/null | tail +2 | awk '{print $NF}')
+    mapfile -t A2CONFFILES< <(q2 ${BINARIES[apache2ctl]} -t -D DUMP_INCLUDES | ${BINARIES[tail]} +2 | ${BINARIES[gawk]} '{print $NF}')
 }
 
 populate_ngxconffiles(){
-    mapfile -t NGXCONFFILES< <(nginx -T 2>/dev/null | awk -F' |:' '/^#[^#]*:$/{print $(NF-1)}')
+    mapfile -t NGXCONFFILES< <(q2 ${BINARIES[nginx]} -T | ${BINARIES[gawk]} -F' |:' '/^#[^#]*:$/{print $(NF-1)}')
 }
 
 # $1 either 'static' (built in) or 'shared' (dynamic)
 populate_a2modules(){
-    apachectl configtest &>/dev/null || return
-    mapfile -t A2MODULES< <(apachectl -M 2>/dev/null | tail +2 | awk '/'$1'/{print $(NF-1)}')
+    q0 ${BINARIES[apache2ctl]} configtest || return
+    mapfile -t A2MODULES< <(q2 ${BINARIES[apache2ctl]} -M | ${BINARIES[tail]} +2 | ${BINARIES[gawk]} '/'$1'/{print $(NF-1)}')
 }
 
 populate_ngxmodules(){
-    nginx -t &>/dev/null || return
+    q0 ${BINARIES[nginx]} -t || return
     mapfile -t NGXMODULES< <(
-        [[ -z "$1" || "$1" == 'static' ]] && nginx -V 2>&1 | tr -- - '\n' | grep _module
-        [[ -z "$1" || "$1" == 'shared' ]] && nginx -T 2>&1 | awk -F / '/load_module/{print $2}' | sed -E 's/(^ngx_|\.so.*$)//g'
+        [[ -z "$1" || "$1" == 'static' ]] && ${BINARIES[nginx]} -V 2>&1 | ${BINARIES[tr]} -- - '\n' | ${BINARIES[grep]} _module
+        [[ -z "$1" || "$1" == 'shared' ]] && ${BINARIES[nginx]} -T 2>&1 | ${BINARIES[gawk]} -F / '/load_module/{print $2}' | ${BINARIES[sed]} -E 's/(^ngx_|\.so.*$)//g'
     )
 }
 
@@ -69,17 +72,17 @@ detect_httpd(){
             conffiles=("${NGXCONFFILES[@]}") # Copy the array values
         fi
         (( ${#conffiles[@]} )) || return 1
-        for p in $(grep -ER "^\s*(<Directory|root)" "${conffiles[@]}" 2>/dev/null | \
-            awk -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
+        for p in q2 $(${BINARIES[grep]} -ER "^\s*(<Directory|root)" "${conffiles[@]}" | \
+            ${BINARIES[gawk]} -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
             case $1 in
-   nextcloud_server) if find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; &>/dev/null; then
+   nextcloud_server) if q0 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;; then
                          nextcloud_server["$2"]=true
                      fi
                      ;;
-nextcloud_directory) find "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \; 2>/dev/null
+nextcloud_directory) q2 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;
                      ;;
                 all) if [ -L "${p%%;*}" ]; then
-                         echo "${p%%;*}->$(readlink -f ${p%%;*}) - ${p##*;}"
+                         echo "${p%%;*}->$(${BINARIES[readlink]} -f ${p%%;*}) - ${p##*;}"
                      else
                          echo "${p%%;*} - ${p##*;}"
                      fi
@@ -110,12 +113,12 @@ wk_enabled) for httpd in ${wellknown_httpdaemons[@]}; do (( ${HTTPD["$httpd"]} >
             ;;
  nextcloud) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && echo "$httpd"; done
             ;;
-    nc-dir) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && check_ nextcloud_directory "$httpd" | sort -u; done
+    nc-dir) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && check_ nextcloud_directory "$httpd" | ${BINARIES[sort]} -u; done
             ;;
        all) for httpd in "${wellknown_httpdaemons[@]}"; do
                 if "${nextcloud_server["$httpd"]}"; then
                     echo "$httpd:"
-                        check_ all "$httpd" | sort -u
+                        check_ all "$httpd" | ${BINARIES[sort]} -u
                 fi
             done
             ;;
@@ -150,11 +153,11 @@ populate_httpd_(){
 load_server_status(){
     local httpd
     for httpd in ${!HTTPD[@]}; do
-        if command -v "$httpd" &>/dev/null; then
+        if [ -n "${BINARIES[$httpd]}" ]; then
             HTTPD["$httpd"]=1 # "known"
-            if systemctl --no-pager --quiet is-enabled "$httpd" &>/dev/null; then
+            if q0 ${BINARIES[systemctl]} --no-pager --quiet is-enabled "$httpd"; then
                 HTTPD["$httpd"]=2 # "enabled & inactive"
-                if systemctl --no-pager --quiet is-active "$httpd" &>/dev/null; then
+                if q0 ${BINARIES[systemctl]} --no-pager --quiet is-active "$httpd"; then
                     HTTPD["$httpd"]=3 # "enabled & active"
                 fi
             fi

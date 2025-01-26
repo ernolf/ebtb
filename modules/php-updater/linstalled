@@ -10,9 +10,8 @@ __license__
 ${LINSTALLED_BASHLIB:-false} && return
 LINSTALLED_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire button)
 . <(lrequire exit)
 . <(lrequire anykey)
@@ -38,7 +37,7 @@ list_installed_sapi(){
 
     for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
 
-    for pkg in $(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
+    for pkg in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
         if [[ "$pkg" =~ libapache2-mod-$PHPVREGEX ]]; then
             SAPI_A2[${pkg#libapache2-mod-php}]='installed'
         elif [[ "$pkg" =~ $PHPVREGEX-fpm ]]; then
@@ -88,19 +87,19 @@ list_installed_sapi(){
                     bundle echo "$(ipf;format_string "$(Yi)But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3;N)"
                     php_a2module_ disable
                     php_fpm_module_ enable
-                    systemctl restart apache2
+                    ${BINARIES[systemctl]} restart apache2
                 fi
             else
                 bundle echo "$(ipf;format_string "$(Yi)But since the mpm_prefork module is not loaded either, I will try to load the mpm_event_module and other required modules for fpm to work.." 3;N)"
                 php_fpm_module_ enable
-                systemctl restart apache2
+                ${BINARIES[systemctl]} restart apache2
             fi
             f
         fi
         for pv in $(p_sort ${!SAPI_FPM[@]}); do
             sockets=()
             pkg="php$pv-fpm"
-            sockets=($(ss -lx | awk '/'$pkg'/{print $5}'))
+            sockets=($(${BINARIES[ss]} -lx | ${BINARIES[gawk]} '/'$pkg'/{print $5}'))
             Y;echo "$(pf)$pkg";N
             if (( ${#sockets[@]} )); then
                 populate_httpd_ wk_enabled
@@ -111,14 +110,14 @@ list_installed_sapi(){
                     if (( ${#WK_HTTPD_ENABLED[@]} )); then
                         for httpd in ${WK_HTTPD_ENABLED[@]}; do
                             case $httpd in
-                               apache2) if apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )); then
-                                            grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
+                               apache2) if q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
+                                            ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
                                         else
                                             continue
                                         fi
                                         ;;
-                                 nginx) if nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )); then
-                                            grep -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]} || continue
+                                 nginx) if q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )); then
+                                            ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]} || continue
                                         else
                                             continue
                                         fi
@@ -164,7 +163,7 @@ list_installed(){
         if extension_is_ known "$pkg"; then
             o2;pf
         elif sapi=$(extension_is_ sapi "$pkg"); then
-            sockets=($(ss -lx | awk '/'$pkg'/{print $5}'))
+            sockets=($(${BINARIES[ss]} -lx | ${BINARIES[gawk]} '/'$pkg'/{print $5}'))
             O;printf "SAPI ";N
         elif [[ "$pkg" =~ $PHPVREGEX- ]]; then
             o2;pf
@@ -183,7 +182,7 @@ list_installed(){
         else
             o2;pf
         fi
-        Y;printf "$pkg";o $c2;GRAY;echo "${pkgs_by_dpkg[i]}" | awk -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}';N
+        Y;printf "$pkg";o $c2;GRAY;echo "${pkgs_by_dpkg[i]}" | ${BINARIES[gawk]} -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}';N
 # --> included modules
         iim=$(eval printf \${#${pkg//[.-]/_}[@]})
         if ((iim)); then
@@ -226,14 +225,14 @@ list_installed(){
         else
             case "${sapi%:*}" in
                cli) o5;fO;echo -n "\\php binary$(O) /usr/bin/php${sapi#*:}";N
-                    if [ "$(readlink -e $(command -v php))" = "/usr/bin/php${sapi#*:}" ]; then
+                    if [ "$(${BINARIES[readlink]} -e $(command -v php))" = "/usr/bin/php${sapi#*:}" ]; then
                         lG;echo " <ACTIVE> linked to generic /usr/bin/php";N
                     else
                         W;echo " <<INACTIVE not linked";N
                     fi
                     ;;
             phpdbg) o5;fO;echo -n "\\phpdbg binary$(O) /usr/bin/phpdbg${sapi#*:}";N
-                    if [ "$(readlink -e $(command -v phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
+                    if [ "$(${BINARIES[readlink]} -e $(command -v phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
                         lG;echo " <ACTIVE> linked to generic /usr/bin/phpdbg";N
                     else
                         W;echo " <<INACTIVE not linked";N
@@ -249,14 +248,14 @@ list_installed(){
                             if (( ${#WK_HTTPD_ENABLED[@]} )); then
                                 for httpd in ${WK_HTTPD_ENABLED[@]}; do
                                     case $httpd in
-                                       apache2) if apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )); then
-                                                    grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
+                                       apache2) if q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
+                                                    ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]} || continue
                                                 else
                                                     continue
                                                 fi
                                                 ;;
-                                         nginx) if nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )); then
-                                                    grep -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]} || continue
+                                         nginx) if q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )); then
+                                                    ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]} || continue
                                                 else
                                                     continue
                                                 fi
@@ -285,7 +284,7 @@ list_installed(){
         line '-' dP 2/78
         o2;B;echo "actual PHP pecl extension$plu $(R)NOT$(B) installed and managed by dpkg"
         line '-' dP 2/78
-        for pv in $(phpquery -V | sort); do
+        for pv in $(${BINARIES[phpquery]} -V | sort); do
             eval iam=\${#EIBY4_${pv//./}[@]}
             if (( iam )); then
                 (( iam == 1 )) || plu='s'
@@ -314,7 +313,7 @@ list_installed(){
     o2;Y;echo "Status:$(o 9;pf;W)First letter (Desired Action):$(o 45;pf)Second letter (Package Status):";N
     o 12;GRAY;echo "u=Unknown $(W)-$(GRAY) i=Install $(W)-$(GRAY) h=Hold$(o 48)a=Automatic $(W)-$(GRAY) m=Manual";N
     line '-' dP 2/78
-    if [ 0$(phpquery -V | wc -w) -gt 1 ]; then
+    if [ 0$(${BINARIES[phpquery]} -V | wc -w) -gt 1 ]; then
         o2;Yi;echo "You can switch the $(lG)<ACTIVE>$(Yi) and $(lG)<CONNECTED>$(Yi) version with:"
         o 35;B;echo "$me --switch-version"
         line '-' dP 2/78

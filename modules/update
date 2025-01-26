@@ -10,9 +10,7 @@ __license__
 ${UPDATE_BASHLIB:-false} && return
 UPDATE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire button)
 . <(lrequire line)
 . <(lrequire sudo)
@@ -34,24 +32,24 @@ if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
     declare upinf="$updateinfo"
 fi
 
-version_(){ awk '/^# version 20/ {print $3, $4}' "$1";}
+version_(){ ${BINARIES[gawk]} '/^# version 20/ {print $3, $4}' "$1";}
 
 backup_and_replace_me_with_(){
     local new="$1" bkp="$ca_me~$epoch"
-    mv -u "$ca_me" "$bkp" &&\
-    mv -u "$new" "$ca_me" &&\
-    chmod +x "$ca_me" &&\
-    chmod -x "$bkp"
+    ${BINARIES[mv]} -u "$ca_me" "$bkp" &&\
+    ${BINARIES[mv]} -u "$new" "$ca_me" &&\
+    ${BINARIES[chmod]} +x "$ca_me" &&\
+    ${BINARIES[chmod]} -x "$bkp"
 }
 
 replace_me_with_(){
     local new="$1"
-    mv -fu "$new" "$ca_me" &&\
-    chmod +x "$ca_me"
+    ${BINARIES[mv]} -fu "$new" "$ca_me" &&\
+    ${BINARIES[chmod]} +x "$ca_me"
 }
 
 backups(){
-    find "$ca_dir" -type f -name "$bm~[0-9]*" -not -executable | sort $1
+    ${BINARIES[find]} "$ca_dir" -type f -name "$bm~[0-9]*" -not -executable | ${BINARIES[sort]} $1
 }
 
 my_update(){
@@ -61,8 +59,8 @@ my_update(){
     local my_tmp="$(tf u)" shash
     su_root "to update" my_update
     while :; do
-        curl -o "$my_tmp" -A "$A" $cargs/scripts/$scriptname
-        shash="$(sha256sum "$my_tmp" | awk '{print $1}')"
+        ${BINARIES[curl]} --compressed -o "$my_tmp" -A "$A" $cargs/scripts/$scriptname
+        shash="$(${BINARIES[sha256sum]} "$my_tmp" | ${BINARIES[gawk]} '{print $1}')"
         if [ "$shash" = "$my_hash" ]; then
             echo
             line '=' P 5/75
@@ -79,7 +77,7 @@ my_update(){
                 a)  o5;echo "abort update atempt. You can retry later."
                     exit1
                     ;;
-                r)  rm -f "$my_tmp"
+                r)  ${BINARIES[rm]} -f "$my_tmp"
             esac
         fi
     done
@@ -96,7 +94,7 @@ my_update(){
         o5;echo "cleaning up old backups"
         for (( i=0; i<num2del; i++ )); do
             o5;echo "- deleting: ${bkp_list[i]}"
-            rm "${bkp_list[i]}"
+            ${BINARIES[rm]} "${bkp_list[i]}"
         done
     fi
     integrity_check && {
@@ -148,7 +146,7 @@ restore_backup(){
     line '-' dP 2/78
     for i in "${!bkp_list[@]}"; do
         bkp="${bkp_list[i]}"
-        from="$(stat -c "%y" "$bkp")"
+        from="$(${BINARIES[stat]} -c "%y" "$bkp")"
         ver="$(version_ "$bkp")"
         o3;echo "- $((n+i))$(o $c2)\"$ver\"$(o $c3)\"$from\""
     done

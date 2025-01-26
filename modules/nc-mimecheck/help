@@ -10,9 +10,7 @@ __license__
 ${HELP_BASHLIB:-false} && return
 HELP_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire ansi)
 
 # help information
@@ -26,16 +24,19 @@ print_help(){
     if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
         declare upinf="$updateinfo"
     fi
+    if [ -n "$canonical_me" ]&&[ -z "$ca_me" ]; then
+        declare ca_me="$canonical_me"
+    fi
 
     local opts
     opts="[ -r ] [ --detector=detector ] [ -d | --dryrun ] [ -v | --verbose ]"
-    if (( $(backups | wc -l) )); then
+    if (( $(backups | ${BINARIES[wc]} -l) )); then
         bak=true
         r_b(){
             f
             echo "    $me restore_backup"
         }
-        if (( $(backups | wc -l) > 1 )); then
+        if (( $(backups | ${BINARIES[wc]} -l) > 1 )); then
             s=s
         else
             s=""
@@ -46,7 +47,7 @@ print_help(){
         }
     fi
 
-    cat <<HELP
+    ${BINARIES[cat]} <<HELP
 
   $me - version $version $upinf
 
@@ -125,13 +126,13 @@ Examples:
       and [File MIME type] [is] [Custom mimetype] [image/jpeg]
       and [File name] [does not match] [/^.*\.(jpe?g)$/i]
    >_ Pass files to external scripts for processing outside of Nextcloud
-            [$canonical_me -q %n]
+            [$ca_me -q %n]
 
 HELP
     if $bak;then
-        cat <<BACKUP
+        ${BINARIES[cat]} <<BACKUP
   restore_backup            restore an older version of this script from backup
-                            ($(backups|wc -l) backup$s available, you must be root)
+                            ($(backups|${BINARIES[wc]} -l) backup$s available, you must be root)
 
 BACKUP
     fi

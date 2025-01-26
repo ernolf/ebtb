@@ -10,17 +10,20 @@ __license__
 ${FPM_BASHLIB:-false} && return
 FPM_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
+
 #globals
-if ! declare -p SAPI_FPM 2>/dev/null | grep -qs 'declare -A'; then
+if ! q2 declare -p SAPI_FPM | ${BINARIES[grep]} -qs 'declare -A'; then
     unset SAPI_FPM
-    declare -gA SAPI_FPM 2>/dev/null || declare -A SAPI_FPM
+    q2 declare -gA SAPI_FPM || declare -A SAPI_FPM
 fi
 
 fpm_configfile(){
     local ver conf
     local -i r
     ver="$1"
-    conf="$(php-fpm$ver -t 2>&1 | grep -o "/[^ ':]*\.conf" | sort -u)"
+    conf="$(${BINARIES[php-fpm$ver]} -t 2>&1 | ${BINARIES[grep]} -o "/[^ ':]*\.conf" | ${BINARIES[sort]} -u)"
     [ -f "$conf" ] && r=0 || r=1
     printf '%s' "$conf"
     return $r
@@ -30,7 +33,7 @@ fpm_include(){
     local ver conf include
     ver=$1
     conf="$(fpm_configfile $ver)" || return=1
-    include="$(awk -F' |=' '/^\s*include/ {print $NF}' $conf)"
+    include="$(${BINARIES[gawk]} -F' |=' '/^\s*include/ {print $NF}' $conf)"
     case $2 in
       glob) echo "$include"
             ;;
@@ -44,9 +47,9 @@ fpm_ps_info(){
     local ver pool
     local -i pid
     local -a php_ps
-    for pid in $(ps -ef | awk '/php-fpm/ && !/root/ {print $2}'); do
-        ver=$(ps -p $pid --no-headers | awk '{print $NF}')
-        pool=$(ps -p $pid -o args= | awk '{print $NF}')
+    for pid in $(${BINARIES[ps]} -ef | ${BINARIES[gawk]} '/php-fpm/ && !/root/ {print $2}'); do
+        ver=$(${BINARIES[ps]} -p $pid --no-headers | ${BINARIES[gawk]} '{print $NF}')
+        pool=$(${BINARIES[ps]} -p $pid -o args= | ${BINARIES[gawk]} '{print $NF}')
         case $1 in
           long) php_ps[pid]="${ver} pool: $pool" ;;
              *) php_ps[pid]="${ver#php-fpm} $pool"
@@ -59,15 +62,15 @@ fpm_ps_info(){
             ;;
      brief) for pid in "${!php_ps[@]}"; do
                 echo "${php_ps[pid]}"
-            done | sort -u | grep "${2:-.}"
+            done | ${BINARIES[sort]} -u | ${BINARIES[grep]} "${2:-.}"
             ;;
    version) for pid in "${!php_ps[@]}"; do
                 echo "${php_ps[pid]}"
-            done | sort -u | awk '/'${2:-.}'/ {print $1}'
+            done | ${BINARIES[sort]} -u | ${BINARIES[gawk]} '/'${2:-.}'/ {print $1}'
             ;;
       pool) for pid in "${!php_ps[@]}"; do
                 echo "${php_ps[pid]}"
-            done | sort -u | awk '/'${2:-.}'/ {print $2}'
+            done | ${BINARIES[sort]} -u | ${BINARIES[gawk]} '/'${2:-.}'/ {print $2}'
     esac
 }
 
@@ -77,17 +80,17 @@ fpm_pools(){
     local -i i index
     strip=false
     [ "$1" = 'strip' ] && strip=:
-    for v in $(phpquery -V | sort); do
-        fpm_configfile "$v" &>/dev/null || continue
+    for v in $(${BINARIES[phpquery]} -V | ${BINARIES[sort]}); do
+        q0 fpm_configfile "$v" || continue
         files=() pools=()
-        [[ "$(phpquery -v "$v" -S)" =~ fpm ]]
+        [[ "$(${BINARIES[phpquery]} -v "$v" -S)" =~ fpm ]]
         dir="$(fpm_include "$v" dir)"
         ext="$(fpm_include "$v" ext)"
         [ -d "$dir" ] || continue
         nonullglob "$dir/*" && files=("$dir/*\.$ext")
         (( ${#files[@]} )) || continue
         for file in ${files[@]};do
-            $strip && pools+=("$(awk -F ] '/^\[/{print $1}' "$file")") || pools+=("$(grep '^\[' "$file")")
+            $strip && pools+=("$(${BINARIES[gawk]} -F ] '/^\[/{print $1}' "$file")") || pools+=("$(${BINARIES[grep]} '^\[' "$file")")
         done
         $strip && echo "$v ${pools[@]#[}" || echo "$v ${pools[@]}"
     done
@@ -96,13 +99,13 @@ fpm_pools(){
 fpm_listen(){
     local poolfile listen
     poolfile="$1"
-    listen="$(awk -F '\\s*=\\s*' '/^\s*listen/ { sub(/;$/, "", $2); print $2; exit }' "$poolfile")"
+    listen="$(${BINARIES[gawk]} -F '\\s*=\\s*' '/^\s*listen/ { sub(/;$/, "", $2); print $2; exit }' "$poolfile")"
     case $2 in
         brief)
             echo "${listen//\"/}"
             ;;
          type)
-            echo "${listen//\"/}" | awk -F':' '{
+            echo "${listen//\"/}" | ${BINARIES[gawk]} -F':' '{
                 if ($1 ~ /^\//) {
                     print "unix"
                 } else if ($1 ~ /^\[/) {
@@ -115,7 +118,7 @@ fpm_listen(){
             }'
             ;;
          full)
-            echo "${listen//\"/}" | awk -F':' '{
+            echo "${listen//\"/}" | ${BINARIES[gawk]} -F':' '{
                 if ($1 ~ /^\//) {
                     print "Unix-Socket: " $1
                 } else if ($1 ~ /^\[/) {
@@ -131,9 +134,9 @@ fpm_listen(){
 
 fpm_sockets(){
     if [ "$1" = 'versions' ]; then
-        ss -lx | awk '/fpm/{print $5}' | grep -Eo "${PHPVREGEX#php}"
+        ${BINARIES[ss]} -lx | ${BINARIES[gawk]} '/fpm/{print $5}' | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}"
     else
-        ss -lx | awk '/fpm/{print $5}'
+        ${BINARIES[ss]} -lx | ${BINARIES[gawk]} '/fpm/{print $5}'
     fi
 }
 
@@ -143,9 +146,9 @@ fpm_socket(){
     local -A pools
     ver=$1
     glob=$(fpm_include "$ver" glob) && r=0 || r=1
-    # for poolfile in $(ls $glob 2>/dev/null); do
+#    for poolfile in $(q2 ${BINARIES[ls]} $glob); do
     for poolfile in $glob; do # bash has its builtin glob functionality
-        pool="$(sed -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
+        pool="$(${BINARIES[sed]} -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
         pools[$pool]="$(fpm_listen "$poolfile" brief)"
     done
     if [[ " ${!pools[@]} " =~ " $2 " ]]; then

@@ -10,20 +10,27 @@ __license__
 ${NEXTCLOUD_AIO_BASHLIB:-false} && return
 NEXTCLOUD_AIO_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire sudo)
 
 globals="AIO DOCKER"
-for global in $globals; do declare -g $global 2>/dev/null || declare $global; done
+for global in $globals; do q2 declare -g $global || declare $global; done
 unset -v global globals
 AIO=false DOCKER=false
+
+aio_not_supported(){
+    $AIO || return 0
+    f;pf;R;echo "This script cannot be used with Nextcloud All-in-One …"
+    exit1
+}
+
+[ -n "${BINARIES[docker]}" ] || return
 
 detect_aio(){
     docker_ps_json="$(tf)"
     # detect if any docker containers are running on the host (without -a, because only running containers matter here)
-    docker ps --no-trunc --format=json 2>/dev/null > $docker_ps_json
+    q2 ${BINARIES[docker]} ps --no-trunc --format=json > $docker_ps_json
     mapfile -t docker_names< <(jq -r .Names $docker_ps_json)
     if (( ${#docker_names[@]} )); then
         if [[ "${docker_names[@]}" =~ nextcloud-aio-mastercontainer && "${docker_names[@]}" =~ nextcloud-aio-nextcloud ]]; then
@@ -43,17 +50,11 @@ aio_wrapper(){
     fi
     container_name="$1"
     shift
-    sudo docker exec $interactive_tty "nextcloud-aio-$container_name" bash -c "$*"
-}
-
-aio_not_supported(){
-    $AIO || return 0
-    f;pf;R;echo "This script cannot be used with Nextcloud All-in-One …"
-    exit1
+    ${BINARIES[sudo]} ${BINARIES[docker]} exec $interactive_tty "nextcloud-aio-$container_name" bash -c "$*"
 }
 
 if (( $(id -u) )); then # you are not root
-    if ps aux | grep -qs "[d]ockerd"; then # dockerd is running
+    if ${BINARIES[ps]} aux | ${BINARIES[grep]} -qs "[d]ockerd"; then # dockerd is running
         su_root "to detect all-in-one"
     fi
 else

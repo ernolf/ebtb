@@ -10,14 +10,13 @@ __license__
 ${BUTTON_BASHLIB:-false} && return
 BUTTON_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire ansi)
+. <(lrequire basics)
 
 buttonize(){
     local oldcolor
-    oldcolor="$(cat $COLOR 2>/dev/null)"
+    oldcolor="$(q2 ${BINARIES[cat]} $COLOR)"
     GRAYbg
     printf '%s' '['
     case $1 in
@@ -47,12 +46,30 @@ box(){
     esac
 }
 
+#check(){
+#    [[ " OK NOK " =~ " $1 " ]]||return
+#    case $1 in
+#        OK) buttonize OK '✔️'
+#            ;;
+#       NOK) buttonize NOK '✖️'
+#    esac
+#}
+
 check(){
     [[ " OK NOK " =~ " $1 " ]]||return
+    local ok nok
+    if ${BINARIES[grep]} -qs "webmin.service" /proc/self/cgroup; then
+        ok='✔' nok='✘'
+#        ok='✓' nok='✗'
+#        ok="+" nok="-"
+    else
+#        ok='✅' nok='❌'
+        ok='✔️' nok='✖️'
+    fi
     case $1 in
-        OK) buttonize OK '✔️'
+        OK) buttonize OK "$ok"
             ;;
-       NOK) buttonize NOK '✖️'
+       NOK) buttonize NOK "$nok"
     esac
 }
 

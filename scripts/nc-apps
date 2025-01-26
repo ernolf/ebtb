@@ -10,6 +10,8 @@ __license__
 __scriptname__
 
 dependencies=(
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
     "less#less#A terminal pager similar to more"
     "curl#curl#Command line file transfer tool with URL syntax"
     "gpg#gnupg#GNU Privacy Guard"
@@ -19,8 +21,8 @@ dependencies=(
     "php#php-cli#PHP Commandline Interface"
 )
 modules=(
-    basics awksed tempfile ansi prefix button exit spinner anykey line array
-    ask sudo dependency vdir integrity php/version nc/nextcloud xml
+    binaries basics awksed tempfile ansi prefix button exit spinner anykey line
+    array ask sudo dependency vdir integrity php/version nc/nextcloud xml
     $sin/github_api $sin/app_update $sin/filters $sin/db $sin/appstore
     $sin/data_refine $sin/assumed_version $sin/list $sin/install_overwrite
     $sin/l10n $sin/help
@@ -88,7 +90,7 @@ $debug&&set -x
         elif $ns;then # shellcheck disable=SC2068 # only list the not shipped apps
             is_shipped_ "$app" -q||list $app ${args[@]}
         elif $up;then # shellcheck disable=SC2068 # only list the updatable apps
-            echo ${availupd[@]%%#*}|grep -qsw "$app"&&list $app ${args[@]}
+            echo ${availupd[@]%%#*}|${BINARIES[grep]} -qsw "$app"&&list $app ${args[@]}
         else # shellcheck disable=SC2068 # list all apps
             list $app ${args[@]}
         fi
@@ -104,7 +106,7 @@ updatable(){ all_apps updatable $@;}
 
 id(){ stock_up_arrays filtered_appstore=true all=true;local app
      # shellcheck disable=SC2068
-#    for app in $(apps_ all);do echo $app|grep -iqs "$app_id"&&list $app $@ use_json_all=true;done
+#    for app in $(apps_ all);do echo $app|${BINARIES[grep]} -iqs "$app_id"&&list $app $@ use_json_all=true;done
     for app in $(apps_ all);do [[ "$app" =~ $app_id ]]&&list $app $@ use_json_all=true;done
 }
 
@@ -114,13 +116,13 @@ ids(){ stock_up_arrays filtered_appstore=true all=true;local -i i
 
 name(){ stock_up_arrays filtered_appstore=true all=true
     build_id_name_array(){ local app xml_f name tmp=$1;shift
-        appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id"|jq -r >> $tmp
+        appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id"|${BINARIES[jq]} -r >> $tmp
         for app in $(apps_ all);do
-            if ! grep -qsw "$app" $tmp;then
+            if ! ${BINARIES[grep]} -qsw "$app" $tmp;then
                 xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
                 if [ -f "$xml_f" ];then
-                    name=$(xmls -v "(//info/name)" "$xml_f"|sed '2,$d')
-                    echo "$name"|grep -iqs "$*"&&echo "$app" >> $tmp
+                    name=$(xmls -v "(//info/name)" "$xml_f"|${BINARIES[sed]} '2,$d')
+                    echo "$name"|${BINARIES[grep]} -iqs "$*"&&echo "$app" >> $tmp
                 fi
             fi
         done
@@ -145,7 +147,7 @@ update(){ local -a args
         esac
     done
     for app in $(apps_ $all_endis);do
-        echo ${availupd[@]%%#*}|grep -qsw "$app"&&do_update_ $app "${args[@]}"
+        echo ${availupd[@]%%#*}|${BINARIES[grep]} -qsw "$app"&&do_update_ $app "${args[@]}"
     done
 }
 
@@ -157,7 +159,7 @@ nc_version_string="$(nc_version_ string "$NC_DIR/version.php")"
 nc_version_tag="$(tolower "${nc_version_string// /}")"
 nc_min_version="${LATEST_EOL[0]}" # this is only prefilled here -> changed by assumed_version module
 
-if echo $(r_db .tables;) | grep -qs "database_created"; then
+if echo $(r_db .tables;) | ${BINARIES[grep]} -qs "database_created"; then
     database_created=true
 fi
 
@@ -283,7 +285,7 @@ fi
 [ "${command:=print_help}" = "print_help" ]&&nopager=true
 [ "${command:=filters}" = "filters" ]&&nopager=true
 # yes, this must be "updat", since it must match with "update" AND "updatable"
-echo $command|grep -qs updat&&nopager=true
+echo $command|${BINARIES[grep]} -qs updat&&nopager=true
 
 # create the database if it does not exist
 $database_created||create_database
@@ -306,13 +308,13 @@ if $secondrun||${nopager:=false};then
     $command $suppunsupp
 else
     if $supported; then
-        $me secondrun lang=$lang --supported --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+        $me secondrun lang=$lang --supported --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
     elif $unsupported; then
-        $me secondrun lang=$lang --unsupported --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+        $me secondrun lang=$lang --unsupported --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
 #    elif $use_json_all; then
-#        $me secondrun lang=$lang --alt --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+#        $me secondrun lang=$lang --alt --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
     else
-        $me secondrun lang=$lang --nopager min_version=$nc_min_version version=$nc_version $command|less -R
+        $me secondrun lang=$lang --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
     fi
     exit 0
 fi

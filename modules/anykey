@@ -43,3 +43,26 @@ anykey(){
         fi
     fi
 }
+
+anykey_noquit(){
+    local p aim dummy
+    aim="$1"
+    if ${ANSI_BASHLIB:-false} && ${BUTTON_BASHLIB:-false} && ${EXIT_BASHLIB:-false}; then
+        local -l cursor_status
+        if [ -f "$CURSOR" ]; then
+            cursor_status="$(< "$CURSOR")"
+        else
+            cursor_status=''
+        fi
+        p="Press $(lG)any key$(N) to ${aim:-continue} "
+        cursor_ hide
+        read -rsn 1 -p "$p"  dummy
+        cursor_ ${cursor_status:-show}
+        te1
+    else
+        unset ANYKEY_BASHLIB
+        p="Press any key to continue "
+        read -rsn 1 -p "$p" dummy
+        echo
+    fi
+}

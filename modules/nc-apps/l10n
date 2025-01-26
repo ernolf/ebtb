@@ -10,6 +10,8 @@ __license__
 ${L10N_BASHLIB:-false} && return
 L10N_BASHLIB=:
 
+. <(lrequire binaries)
+
 # Check if the given language code is valid. If not, return 'en'
 validate_language() {
     local lang="$1" valid_languages
@@ -22,4 +24,4 @@ validate_language() {
     echo "$lang"
 }
 
-declare lang="$(validate_language $(echo "$LANG"|cut -d'_' -f1))"
+declare lang="$(validate_language $(echo "$LANG"|${BINARIES[cut]} -d'_' -f1))"

@@ -10,15 +10,14 @@ __license__
 ${NEXTCLOUD_DB_BASHLIB:-false} && return
 NEXTCLOUD_DB_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire nc/nextcloud)
 
 # Database globals:
 globals="DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY dc"
-for global in $globals; do declare -g $global 2>/dev/null || declare $global; done
+for global in $globals; do q2 declare -g $global || declare $global; done
 unset -v global globals
 dc=false
 
@@ -29,7 +28,7 @@ database_call(){
         local db_${configkey%:*}=$(nc_configkey ${configkey#*:})
     done
     DB_TYPE=${db_type%sql} DB_PREF=$db_pref
-    db_host="$(echo $db_host|sed 's/localhost.*/localhost/')"
+    db_host="$(echo $db_host|${BINARIES[sed]} 's/localhost.*/localhost/')"
     case $DB_TYPE in
         my) local my_cnf=$(tf)
             echo -e "[client]\nhost=$db_host\nuser=$db_user\npassword=$db_pass">$my_cnf
@@ -39,16 +38,16 @@ database_call(){
             else
                 dcs="utf8"
             fi
-            DB_STRG="mysql --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
+            DB_STRG="${BINARIES[mysql]} --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
             DB_EXEC="--execute="
             DB_RAW="-srN"
             DB_U2T="FROM_UNIXTIME"
             DB_UT2TS="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
             TYPE_SQL_QUERY="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
             ;;
-        pg) $AIO && db_host="$(docker inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)"
+        pg) $AIO && db_host="$(${BINARIES[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)"
             export PGPASSWORD=$db_pass
-            DB_STRG="psql --user=$db_user --host=$db_host $html -d $db_name"
+            DB_STRG="${BINARIES[psql]} --user=$db_user --host=$db_host $html -d $db_name"
             DB_EXEC="--command="
             DB_RAW="-At"
             DB_U2T="TO_TIMESTAMP"
@@ -68,7 +67,7 @@ database_call(){
 }
 
 db_interactive(){
-    database_call &>/dev/null
+    q0 database_call
     if $DOCKER; then
         aio_wrapper -it database "$DB_STRG"
     else
@@ -77,7 +76,7 @@ db_interactive(){
 }
 
 db_raw_interactive(){
-    database_call &>/dev/null
+    q0 database_call
     if $DOCKER; then
         aio_wrapper -it database "$DB_STRG $DB_RAW"
     else
@@ -86,7 +85,7 @@ db_raw_interactive(){
 }
 
 db_exec_(){
-    database_call &>/dev/null
+    q0 database_call
     local query="$*"
     if $DOCKER; then
         aio_wrapper database "$DB_STRG $DB_EXEC\"$query\""
@@ -96,7 +95,7 @@ db_exec_(){
 }
 
 db_raw_exec_(){
-    database_call &>/dev/null
+    q0 database_call
     local query="$*"
     if $DOCKER; then
         aio_wrapper database "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
@@ -115,7 +114,7 @@ is_app_enabled(){
 
 # returns true or false
 user_exists(){
-    database_call &>/dev/null
+    q0 database_call
     local user="$1" query
     query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN 'true' ELSE 'false' END"
     db_raw_exec_ "$query"
@@ -123,7 +122,7 @@ user_exists(){
 
 # returns uid in corrected case
 check_username_case(){
-    database_call &>/dev/null
+    q0 database_call
     local user="$1" query
     query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN (SELECT uid FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) END"
     db_raw_exec_ "$query"
@@ -131,7 +130,7 @@ check_username_case(){
 
 # returnns true if user disabled, else false
 user_disabled(){
-    database_call &>/dev/null
+    q0 database_call
     local user="$1" query
     query="SELECT CASE WHEN (SELECT configvalue FROM ${DB_PREF}preferences WHERE userid = '$user' AND appid = 'core' AND configkey = 'enabled') = 'false' THEN 'true' ELSE 'false' END"
     db_raw_exec_ "$query"

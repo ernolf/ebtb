@@ -10,6 +10,8 @@ __license__
 ${INP_BASHLIB:-false} && return
 INP_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire line)
 . <(lrequire spinner)
 . <(lrequire fstring)
@@ -29,14 +31,14 @@ install_new_php(){
     fi
 # TODO <-- 0
 
-    if apt-cache show php$new &>/dev/null; then
+    if q0 apt-cache show php$new; then
         separator
 # TODO 1 -->
         # update first?
         f; echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
         if ask "$(qpf)Do you want to update the system first " "$NO"; then
-            apt-mark hold $(dpkg -l | awk '/^[hiu]i.*php*/{print $2}') &>/dev/null # hold php as it is for this step.
-            apt-get dist-upgrade
+            q0 ${BINARIES[apt-mark]} hold $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php*/{print $2}') # hold php as it is for this step.
+            ${BINARIES[apt-get]} dist-upgrade
             pf; echo "$(lG)system updated$(N)"
             anykey
         fi
@@ -45,12 +47,12 @@ install_new_php(){
         search_candidates_4_extensions_installed_by_admin $old
         spinner C " . performing thorough review (dry run) of package sources and for candidate availability ." &
         mapfile -t packages< <(packages_diff $old $new)
-        mapfile -t sapi_packages< <(for sapi in $(comm -23 <(p_sort $(phpquery -v $old -S)) <(p_sort $(phpquery -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
+        mapfile -t sapi_packages< <(for sapi in $(${BINARIES[comm]} -23 <(p_sort $(${BINARIES[phpquery]} -v $old -S)) <(p_sort $(${BINARIES[phpquery]} -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
 # TODO 2 -->
-        mapfile -t sapi_not< <(for sapi in $(comm -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(phpquery -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
+        mapfile -t sapi_not< <(for sapi in $(${BINARIES[comm]} -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(${BINARIES[phpquery]} -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
 # TODO <-- 2
-        apt-mark unhold *php* &>/dev/null
-        command -v needrestart >/dev/null&&export NEEDRESTART_SUSPEND=1
+        q0 ${BINARIES[apt-mark]} unhold *php*
+        [ -z "${BINARIES[needrestart]}" ] || export NEEDRESTART_SUSPEND=1
         kill_spinner
         if ((${#sapi_packages[@]})) || ((${#packages[@]})); then
             apt_install_prechecked --yes ${sapi_packages[@]} ${packages[@]}
@@ -60,7 +62,7 @@ install_new_php(){
             apt_remove --yes ${sapi_not[@]}
         fi
 # TODO <-- 3
-        command -v needrestart >/dev/null && needrestart -r a
+        [ -z "${BINARIES[needrestart]}" ] || ${BINARIES[needrestart]} -r a
     else f
         no_candidate "$new"
         exit1
@@ -70,5 +72,5 @@ install_new_php(){
     f; G; echo "$(prompt; B) $me${FLAG[forceflag]} $(C)$old $new"; N
     f; os; P; echo "to finalize or redo the migration."; N
     f; echo " -$(format_string "$(P)Please be aware that a malicious configuration under $(B)php-$(C)$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3; N)"
-    ask "$(qpf)Proceed with next step" "$YES"&&{ separator; "$me${FLAG[forceflag]}" "json=$my_json" $old $new; exit; }||exit0
+    ask "$(qpf)Proceed with next step" "$YES" && { separator; "$me${FLAG[forceflag]}" "json=$my_json" $old $new; exit; } || exit0
 }

@@ -10,10 +10,9 @@ __license__
 ${CHFILES_BASHLIB:-false} && return
 CHFILES_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire basics)
+. <(lrequire php/extensions)
 
 changed_files_(){
     changed_mod_ini_files(){
@@ -22,16 +21,17 @@ changed_files_(){
         old="$1" new="$2"
         odir="/etc/php/$old/mods-available"
         ndir="/etc/php/$new/mods-available"
-        mapfile -t ofiles< <(ls "$odir")
-        mapfile -t nfiles< <(ls "$ndir")
-        mapfile -t cfiles< <(comm -12 <(p_sort ${ofiles[@]}) <(p_sort ${nfiles[@]}))
+        mapfile -t ofiles< <(${BINARIES[ls]} "$odir")
+        mapfile -t nfiles< <(${BINARIES[ls]} "$ndir")
+        mapfile -t cfiles< <(${BINARIES[comm]} -12 <(p_sort ${ofiles[@]}) <(p_sort ${nfiles[@]}))
         for cfile in ${cfiles[@]}; do
-            ext_objfile="$(extension_dir_of_ $old)/$(awk -F= '/extension=/ {print $2}' "$odir/$cfile")"
+#            ext_objfile="$(extension_dir_of_ $old)/$(${BINARIES[gawk]} -F= '/extension=/ {print $2}' "$odir/$cfile")"
+            ext_objfile="/usr/lib/php/${APIS[$old]}/$(${BINARIES[gawk]} -F= '/extension=/ {print $2}' "$odir/$cfile")"
             [ -f "$ext_objfile" ] || continue
-            ext_pkg="$(dpkg -S "$ext_objfile" | awk '{print$1}' 2>/dev/null)" || continue
+            ext_pkg="$(q2 ${BINARIES[dpkg]} -S "$ext_objfile" | ${BINARIES[gawk]} '{print$1}')" || continue
             if [ "${ext_pkg%-*}" = "php$old" ]; then
-                omd5=$(md5sum "$odir/$cfile" | awk '{print$1}')
-                nmd5=$(md5sum "$ndir/$cfile" | awk '{print$1}')
+                omd5=$(${BINARIES[md5sum]} "$odir/$cfile" | ${BINARIES[gawk]} '{print$1}')
+                nmd5=$(${BINARIES[md5sum]} "$ndir/$cfile" | ${BINARIES[gawk]} '{print$1}')
                 [ "$omd5" = "$nmd5" ] || echo "${ext_pkg#*-}$odir/$cfile"
             fi
         done
@@ -41,23 +41,23 @@ changed_files_(){
         local -a ouf nuf juf # old_, new_ and joint_ucf_files
         old="$1" new="$2" reg=/var/lib/ucf/registry
         changed_mod_ini_files $old $new
-        mapfile -t ouf< <(awk '/.*php\/'$old'/ {print $2}' "$reg")
-        mapfile -t nuf< <(awk '/.*php\/'$new'/ {print $2}' "$reg")
-        mapfile -t juf< <(comm -12 <(p_sort ${ouf[@]##/etc/php/$old}) <(p_sort ${nuf[@]##/etc/php/$new}))
-        ucfq -w $(printf /etc/php/$old'%s\n' "${juf[@]##/etc/php/$old}") | awk -F: '/Yes$/ {gsub("php'$old'-","",$2);print $2 ":" $1}'
+        mapfile -t ouf< <(${BINARIES[gawk]} '/.*php\/'$old'/ {print $2}' "$reg")
+        mapfile -t nuf< <(${BINARIES[gawk]} '/.*php\/'$new'/ {print $2}' "$reg")
+        mapfile -t juf< <(${BINARIES[comm]} -12 <(p_sort ${ouf[@]##/etc/php/$old}) <(p_sort ${nuf[@]##/etc/php/$new}))
+        ucfq -w $(printf /etc/php/$old'%s\n' "${juf[@]##/etc/php/$old}") | ${BINARIES[gawk]} -F: '/Yes$/ {gsub("php'$old'-","",$2);print $2 ":" $1}'
     }
     changed_other_files(){
         local old new
         local -a oip nip jip files # old_, new_ and joint_installed_packages
         old="$1" new="$2"
-        mapfile -t oip< <(dpkg -l | awk '/^[hiu]i.*php'$old'/{gsub("'$old'","@VERSION@",$2);print $2}')
-        mapfile -t nip< <(dpkg -l | awk '/^[hiu]i.*php'$new'/{gsub("'$new'","@VERSION@",$2);print $2}')
-        mapfile -t jip< <(comm -12 <(p_sort ${oip[@]}) <(p_sort ${nip[@]}))
+        mapfile -t oip< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php'$old'/{gsub("'$old'","@VERSION@",$2);print $2}')
+        mapfile -t nip< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php'$new'/{gsub("'$new'","@VERSION@",$2);print $2}')
+        mapfile -t jip< <(${BINARIES[comm]} -12 <(p_sort ${oip[@]}) <(p_sort ${nip[@]}))
         for i in ${!jip[@]}; do
             pkg="${jip[i]//@VERSION@/$old}"
-            mapfile -t files< <(dpkg --verify $pkg | awk '{print $NF}')
+            mapfile -t files< <(${BINARIES[dpkg]} --verify $pkg | ${BINARIES[gawk]} '{print $NF}')
             if (( ${#files[@]} )); then
-                printf ''${pkg#*-}':%s\n' "${files[@]}" | sort -u
+                printf ''${pkg#*-}':%s\n' "${files[@]}" | ${BINARIES[sort]} -u
             fi
         done
     }

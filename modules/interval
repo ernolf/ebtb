@@ -10,9 +10,7 @@ __license__
 ${INTERVAL_BASHLIB:-false} && return
 INTERVAL_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire today)
 
 interval(){
@@ -23,8 +21,8 @@ interval(){
     (( UT_1 > UT_2 )) && N_D=$UT_1 O_D=$UT_2 || N_D=$UT_2 O_D=$UT_1
     (( N_D == today )) && since=" ago"
     (( O_D == today )) && until="in "
-    N_D_F=$(date -ud @$N_D +%Y-%-m-%-d)
-    O_D_F=$(date -ud @$O_D +%Y-%-m-%-d)
+    N_D_F=$(${BINARIES[date]} -ud @$N_D +%Y-%-m-%-d)
+    O_D_F=$(${BINARIES[date]} -ud @$O_D +%Y-%-m-%-d)
     read -r N_Y N_M N_DAY <<< ${N_D_F//-/ }
     read -r O_Y O_M O_DAY <<< ${O_D_F//-/ }
     IY=$((N_Y-O_Y)) IM=$((N_M-O_M)) ID=$((N_DAY-O_DAY))

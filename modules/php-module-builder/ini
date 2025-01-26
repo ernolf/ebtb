@@ -10,27 +10,26 @@ __license__
 ${INI_BASHLIB:-false} && return
 INI_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire php/extensions)
 
 ini_symlinks(){
     local sapi
     if $remove; then
-        $quiet||{ f; GRAY; echo "- next step: $(B)phpdismod -prv $php_version -s ALL $module"; }
+        $quiet||{ f; GRAY; echo "- next step: $(B)${BINARIES[phpdismod]} -prv $php_version -s ALL $module"; }
         ${step:-false} && anykey
-        o2; B; echo "phpdismod -prv $php_version -s ALL $module"; N
-        phpdismod -prv $php_version -s ALL $module 2>/dev/null
+        o2; B; echo "${BINARIES[phpdismod]} -prv $php_version -s ALL $module"; N
+        q2 ${BINARIES[phpdismod]} -prv $php_version -s ALL $module
     else
-        f; GRAY; echo "- next step: $(B)phpenmod -rv $php_version -s ALL $module"
+        f; GRAY; echo "- next step: $(B)${BINARIES[phpenmod]} -rv $php_version -s ALL $module"
         ${step:-false} && anykey
-        phpenmod -rv $php_version -s ALL $module
+        ${BINARIES[phpenmod]} -rv $php_version -s ALL $module
         f
         GRAY; echo "- result:"
         for sapi in $sapis; do
-            o2;lG;phpquery -v $php_version -s $sapi -m $module
+            o2;lG;${BINARIES[phpquery]} -v $php_version -s $sapi -m $module
         done
         N
         f

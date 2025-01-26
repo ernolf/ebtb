@@ -10,9 +10,6 @@ __license__
 ${ANSI_BASHLIB:-false} && return
 ANSI_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
 . <(lrequire tempfile)
 
 ######################## - lib: ANSI Escape codes #############################

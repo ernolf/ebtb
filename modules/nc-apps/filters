@@ -10,8 +10,10 @@ __license__
 ${FILTERS_BASHLIB:-false} && return
 FILTERS_BASHLIB=:
 
+. <(lrequire binaries)
+
 filters(){
-    cat <<FILTERS
+    ${BINARIES[cat]} <<FILTERS
   Usage:
     $me appstore [ jq filter code ]
 

@@ -18,7 +18,7 @@ bubble_sort(){
     len=$#
 
     for ((i = 0; i < len; i++)); do
-        index[$i]=$i
+        index[i]=$i
     done
 
     for ((i = 0; i < len-1; i++)); do

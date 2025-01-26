@@ -1,13 +1,13 @@
 # check module integrity if root is running script and remove tainted modules
 $rt && {
-    [ -f "$lmj" ] || curl -o "$lmj" -A "$(fp)$A" $cargs/$rmj
-    jq -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256 2>/dev/null
+    [ -f "$lmj" ] || $curlc -o "$lmj" -A "$(fp)$A" $cargs/$rmj
+    q2 ${BINARIES[jq]} -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256
     cd $lincld
     tntd=($(
-        sha256sum -c --ignore-missing --quiet modules.sha256 2>/dev/null | sed 's/:.*//'
+        q2 ${BINARIES[sha256sum]} -c --ignore-missing --quiet modules.sha256 | ${BINARIES[sed]} 's/:.*//'
     ))
     ((${#tntd[@]})) && {
-        for tm in ${tntd[@]}; do rm "$tm"; done
+        for tm in ${tntd[@]}; do ${BINARIES[rm]} "$tm"; done
         "$me" "json=$my_json" $my_args
         exit 0
     }

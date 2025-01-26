@@ -10,9 +10,8 @@ __license__
 ${INTEGRITY_BASHLIB:-false} && return
 INTEGRITY_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire awksed)
 . <(lrequire line)
 . <(lrequire sudo)
@@ -20,7 +19,7 @@ declare -f lrequire &>/dev/null||lrequire(){ require $@;}
 
 
 public_key(){
-    cat << PUBLIC_KEY_ASC
+    ${BINARIES[cat]} << PUBLIC_KEY_ASC
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGSXjUIBEADbt4/706Fw6YNHMPwHT+qtq4ZxJCdUclzovEnCvECtylYCK1M5
@@ -58,17 +57,17 @@ integrity_check(){
     local -i r=1
     local signed key mail aut itf="$(tf)" vtf="$(tf)" vdir ddir shash ehash
     signed=:
-    key="$(sed -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
-    mail="$(sed -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
-    aut="$(sed -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
+    key="$(${BINARIES[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
+    mail="$(${BINARIES[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
+    aut="$(${BINARIES[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
     su_root "to run the integrity check" integrity_check
     delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$ca_me" "$itf"
     if [ -n "$vdirname" ]; then
         vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
         [ "$vdir" != "$ddir" ] && setvdir v d "$itf"
     fi
-    shash="$(sha256sum "$itf" | awk '{print $1}')"
-    ehash="$(tail -n1 "$ca_me" | awk '{print $NF}')"
+    shash="$(${BINARIES[sha256sum]} "$itf" | ${BINARIES[gawk]} '{print $1}')"
+    ehash="$(${BINARIES[tail]} -n1 "$ca_me" | ${BINARIES[gawk]} '{print $NF}')"
     line '=' P 5/75
     if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
         . <(lrequire ask)
@@ -79,21 +78,21 @@ integrity_check(){
         o5;R;echo "- Wrong hash, looks like script has been tampered with!"
         line '-' P 5/75
     fi
-    gpg --list-keys|grep -qs "$key"||gpg --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key" 2>/dev/null
-    gpg --list-keys|grep -qs "$key"||gpg --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key" 2>/dev/null
-    gpg --list-keys|grep -qs "$key"||public_key|gpg --import 2>/dev/null
-    gpg --list-keys|grep -qs "$key"||{
+    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || q2 ${BINARIES[gpg]} --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key"
+    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || q2 ${BINARIES[gpg]} --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
+    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || q2 public_key|${BINARIES[gpg]} --import
+    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || {
         . <(lrequire ask)
         o5;R;echo "- import of public key failed."
         qpf;ask "Continue at own risk without check?" "$NO"&&{
-            sed -i 's/^v=false$/v=true/' "$ca_me"
+            ${BINARIES[sed]} -i 's/^v=false$/v=true/' "$ca_me"
             return 0
         }
     }
-    gpg --verify "$ca_me" "$itf">"$vtf" 2>&1
+    ${BINARIES[gpg]} --verify "$ca_me" "$itf">"$vtf" 2>&1
     r=$?
-    grep "$key" "$vtf"
-    grep "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
+    ${BINARIES[grep]} "$key" "$vtf"
+    ${BINARIES[grep]} "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
     line '-' P 5/75
     if (( r )); then
         o5;R;echo -n "- Integrity check $(blinkR)failed$(R). "
@@ -109,14 +108,14 @@ integrity_check(){
             o5;B;echo "to fix this.";N
         else
             o5;B;echo "to get a signed version of this script or disable the integrity check.";N
-            qpf;ask "Do you want to disable the integrity check at own risk" "$NO"&&{
+            qpf;ask "Do you want to disable the integrity check at own risk" "$NO" && {
                 echo -e "v=true\nnohash" >> "$ca_me"
                 return 0
             }
         fi
     else
         o5;lG;echo "Integrity check passed. The script is authentic.";N
-        sed -i 's/^v=false$/v=true/' "$ca_me"
+        ${BINARIES[sed]} -i 's/^v=false$/v=true/' "$ca_me"
     fi
     line '=' P 5/75
     return $r
@@ -134,7 +133,7 @@ run_integrity_check(){
 if $do_integrity_check; then
     run_integrity_check
 fi
-declare "$(tail -n2 "$ca_me" | head -n1)"
+declare "$(${BINARIES[tail]} -n2 "$ca_me" | ${BINARIES[head]} -n1)"
 if ! "${v:-false}"; then
     f
     o5;B;echo "First run, checking integrity:"

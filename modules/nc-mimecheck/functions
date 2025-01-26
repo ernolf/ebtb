@@ -10,9 +10,7 @@ __license__
 ${FUNCTIONS_BASHLIB:-false} && return
 FUNCTIONS_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire verbose)
 . <(lrequire nc/nextcloud)
 
@@ -27,23 +25,23 @@ wrong_option(){
         woi=$((woi+1))
     # -x echo all gathered errors together, show help and exit
     elif [ "$1" = "-x" -a $woi -gt 0 ]; then
-        $quiet&&exit 1
-        for i in $(seq 0 $((woi-1))); do
+        $quiet && exit 1
+        for i in $(${BINARIES[seq]} 0 $((woi-1))); do
             IFS="#" read -ra a <<< ${woa[$i]}
             if [ ${#a[*]} -ne 0 ]; then
                 f
-                R;echo "OPTION: $((i+1)): ${a[0]}">&2
-                echo "           ${a[1]}">&2;N
+                R; echo "OPTION: $((i+1)): ${a[0]}">&2
+                echo "           ${a[1]}">&2; N
             else
                 f
-                R;echo "OPTION: $((i+1)): ${woa[$i]}">&2;N
+                R; echo "OPTION: $((i+1)): ${woa[$i]}">&2; N
             fi
         done
         try_help
     # no -r, no -x echo error, show help and exit
     elif [ "${1:0:1}"  != "-" ]; then
         f
-        R;echo "OPTION: $*">&2;N
+        R; echo "OPTION: $*">&2; N
         try_help
     fi
     return 0
@@ -53,27 +51,30 @@ wrong_option(){
 main(){
     local -i i=1
     v_echo "$4$(o 26)=>  ${1##*/}"
-    if ! echo "$1"|grep -iE $grepopts "$2";then
-        $quiet||echo "detected mimetype of ${1##*/} is $4"
-        $dryrun||mv "$1" "$(echo "$1"|sed 's/\..\{1,5\}$//')$3"
+    if ! echo "$1" | ${BINARIES[grep]} -iE $grepopts "$2"; then
+        $quiet || echo "detected mimetype of ${1##*/} is $4"
+        $dryrun || ${BINARIES[mv]} "$1" "$(echo "$1"|${BINARIES[sed]} 's/\..\{1,5\}$//')$3"
         do_occ_filesscan set true
-        $quiet||echo "$(G)moved $(xGRAY)${1##*/}$(N)"
-        $quiet||echo "$(G)   to $(P)$(echo "${1##*/}"|sed 's/\..\{1,5\}$//')$(Pbg)$3$(N)"
+        $quiet || echo "$(G)moved $(xGRAY)${1##*/}$(N)"
+        $quiet || echo "$(G)   to $(P)$(echo "${1##*/}"|${BINARIES[sed]} 's/\..\{1,5\}$//')$(Pbg)$3$(N)"
         i=0
-    fi;return $i
+    fi
+    return $i
 }
 
 # scan_dir dir=1
 scan_dir(){
     local -i i=255 ret=1
     local filepath mimetype extension
-    for filepath in "$1"/*;do
-        [ -f "$filepath" ]||continue
+    for filepath in "$1"/*; do
+        [ -f "$filepath" ] || continue
         mimetype="$($mimedetector "$filepath")"
-        echo "${mime_ext_regex_array[@]%%:*}"|grep -qsw "$mimetype"||continue
+        echo "${mime_ext_regex_array[@]%%:*}" | ${BINARIES[grep]} -qsw "$mimetype" || continue
         extension="$(a_fld mime_ext_regex_array ':' "$mimetype" 2)"
         regex="$(a_fld mime_ext_regex_array ':' "$mimetype" 3)"
-        main "$filepath" "$regex" "$extension" "$mimetype";ret=$?
-        (($i))&&i=$ret
-    done;return $i
+        main "$filepath" "$regex" "$extension" "$mimetype"
+        ret=$?
+        (($i)) && i=$ret
+    done
+    return $i
 }

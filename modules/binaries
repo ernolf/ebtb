@@ -1,0 +1,56 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${BINARIES_BASHLIB:-false} && return
+BINARIES_BASHLIB=:
+
+declare binary
+declare -a binaries
+
+unset BINARIES
+declare -gA BINARIES 2>/dev/null || declare -A BINARIES
+
+BINARIES[env]="$(command -v env)"
+
+for binary in readlink gawk sed; do
+    if [ -x "$(command -v $binary)" ]; then
+        BINARIES[$binary]="${BINARIES[env]} LC_MESSAGES=C $(command -v $binary)"
+    else
+        echo -e "\e[31mERROR: no '$binary' binary or '$binary' not executable\e[0m" > /dev/tty
+        [ -t 0 ] || exit 1
+    fi
+done
+
+glob_path(){
+    local path binary
+    local -a paths results
+    # standard paths take precedence
+    PATH=$(printf "%s" "/usr/sbin:/usr/bin:/sbin:/bin:$PATH" | ${BINARIES[gawk]} -v RS=: -v ORS=: '!seen[$0]++' | ${BINARIES[sed]} 's/:$//')
+    mapfile -t paths< <(printf "%s\n" ${PATH//:/ })
+    shopt -s nullglob
+    for path in "${paths[@]}"; do
+        for binary in "$path"/*; do
+            results+=("$binary")
+        done
+    done
+    shopt -u nullglob
+    printf '%s\n' "${results[@]}"
+}
+
+mapfile -t binaries < <(glob_path)
+for binary in "${binaries[@]}"; do
+    [ -z "${BINARIES[${binary##*/}]}" ] || continue
+    [ -x "$binary" ] || continue
+    if [ -L "$binary" ]; then
+        BINARIES[${binary##*/}]="${BINARIES[env]} LC_MESSAGES=C $(${BINARIES[readlink]} -f $binary)"
+    else
+        BINARIES[${binary##*/}]="${BINARIES[env]} LC_MESSAGES=C $binary"
+    fi
+done
+unset -v binary binaries

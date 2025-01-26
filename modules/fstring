@@ -10,9 +10,7 @@ __license__
 ${FSTRING_BASHLIB:-false} && return
 FSTRING_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire awksed)
 . <(lrequire ansi)
 
@@ -35,18 +33,18 @@ format_string() {
         basic_color=''
     fi
 
-    if (( $(tput cols) > 90 )); then
+    if (( $(${BINARIES[tput]} cols) > 90 )); then
         marg=10
-    elif (( 90 > $(tput cols) && $(tput cols) > 80  )); then
-        marg=$(( $(tput cols) - 80 ))
+    elif (( 90 > $(${BINARIES[tput]} cols) && $(${BINARIES[tput]} cols) > 80  )); then
+        marg=$(( $(${BINARIES[tput]} cols) - 80 ))
     else
         marg=0
     fi
 
-    if (( $(tput cols) < 80 )); then
+    if (( $(${BINARIES[tput]} cols) < 80 )); then
         max_length=$(( 80 - indent ))
     else
-        max_length=$(( $(tput cols) - $(( marg + indent )) ))
+        max_length=$(( $(${BINARIES[tput]} cols) - $(( marg + indent )) ))
     fi
 
     for word in $input; do
@@ -67,12 +65,12 @@ listify(){
     local color
     color=$1
     shift
-    echo -e "$($color;echo -n "${@//\ /@E_S@}"|sed "s/ /, /g;s/\(.*\), /\1 $(N)and$($color) /; s/@E_S@/ /g";N)"
+    echo -e "$($color;echo -n "${@//\ /@E_S@}"|${BINARIES[sed]} "s/ /, /g;s/\(.*\), /\1 $(N)and$($color) /; s/@E_S@/ /g";N)"
 }
 
 listify_(){
     local color_fg color_bg
     color_fg=$1 color_bg=$2
     shift 2
-    echo -e "$($color_fg;echo -n "${@//\ /@E_S@}"|sed "s/ /, /g;s/\(.*\), /\1 $($color_bg)and$($color_fg) /; s/@E_S@/ /g";$color_bg)"
+    echo -e "$($color_fg;echo -n "${@//\ /@E_S@}"|${BINARIES[sed]} "s/ /, /g;s/\(.*\), /\1 $($color_bg)and$($color_fg) /; s/, /$($color_bg),$($color_fg) /g; s/@E_S@/ /g";$color_bg)"
 }

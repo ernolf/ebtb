@@ -10,9 +10,10 @@ __license__
 ${DISCLAIMER_BASHLIB:-false} && return
 DISCLAIMER_BASHLIB=:
 
+. <(lrequire binaries)
 
 disclaimer(){
-    cat <<DISCLAIMER
+    ${BINARIES[cat]} <<DISCLAIMER
                             Privacy Notice
                             ==============
 

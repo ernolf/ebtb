@@ -10,9 +10,8 @@ __license__
 ${SUDO_BASHLIB:-false} && return
 SUDO_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire exit)
 
 su_do(){
@@ -35,8 +34,8 @@ su_do(){
             fi
             if (( $(id -u) )); then
                 prompt="$(Pbg)[sudo]$(N) - $(P)You have to be '$(C)root$(P)' $p. Password of user$(C) %p$(P):$(N) "
-                if sudo -lp "$prompt" "$run">/dev/null 2>&1; then
-                    sudo "$run" ${args[@]}
+                if q0 ${BINARIES[sudo]} -lp "$prompt" "$run"; then
+                    ${BINARIES[sudo]} "$run" ${args[@]}
                     $r && return 0 || exit 0
                 else
                     nosudo
@@ -53,8 +52,8 @@ su_do(){
             o2;B;echo "This script has to be run as user$(N) '$(C)$NC_USER$(N)' $(B)or as$(N) '$(C)root$(N)'$(B)!$(N)"
             o4;GRAY;echo "sudo -u $NC_USER $me $my_args$(N)"
             prompt="$(Pbg)[sudo]$(N;pf;P)Enter password of user$(C) %p $(P)to substitute user to$(C) $NC_USER$(P):$(N) "
-            o2;if sudo -lu $NC_USER -p "$prompt" $me >/dev/null 2>&1; then
-                sudo -u $NC_USER $me "json=$my_json" $my_args
+            o2;if q0 ${BINARIES[sudo]} -lu $NC_USER -p "$prompt" $me; then
+                ${BINARIES[sudo]} -u $NC_USER $me "json=$my_json" $my_args
                 exit 0
             else
                 nosudo

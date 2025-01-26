@@ -17,21 +17,26 @@ dependencies=(
 #    "sponge#moreutils#additional Unix utilities"
 #    "lsof#lsof#Unix-specific diagnostic tool to LiSt Open Files"
 # TODO <-- 0
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
+    "ss#iproute2#Networking and traffic control tools"
+    "phpquery#php-common#Common files for PHP packages"
     "lsb_release#lsb-release#Tool to detect the Linux standard base version"
-    "update-the-ca-certificates#ca-certificates#Common CA certificates"
+    "update-ca-certificates#ca-certificates#Common CA certificates"
     "curl#curl#Command line file transfer tool with URL syntax"
     "gpg#gnupg#GNU Privacy Guard"
     "jq#jq#Command-line JSON processor"
     "ccdiff#ccdiff#Colored Character Diff"
     "ss#iproute2#Networking and traffic control tools"
+    "file#file#Detecting the file type using magic numbers"
 )
 modules=(
-    today interval basics awksed tempfile prompt ansi prefix button fstring
-    exit sort spinner anykey line array httpd sudo php/version php/apache2
-    php/fpm php/versions dpkg php/extensions php/sury ask dependency vdir
-    integrity dist/os_release php.net/ini_directives $sin/inp $sin/pdiff
-    $sin/merge $sin/diff $sin/pool $sin/tasks $sin/linstalled $sin/help
-    $sin/chfiles $sin/switch
+    binaries today interval basics awksed tempfile prompt ansi prefix button
+    fstring exit sort spinner anykey line array httpd sudo context php/version
+    php/apache2 php/fpm php/versions dpkg php/extensions php/sury ask
+    dependency vdir integrity dist/os_release php.net/ini_directives $sin/inp
+    $sin/pdiff $sin/merge $sin/diff $sin/pool $sin/tasks $sin/linstalled
+    $sin/help $sin/chfiles $sin/switch
 )
 __debug__
 __when__
@@ -77,15 +82,17 @@ cursor_ hide
 ###############################################################################
 # you MUST be root:
 su_root "to run this script."
+check_context
 my_update_check
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " distrib_checked " ]]||. <(require $sin/distrib)
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " supported " ]]&&FLAG[supported]=true
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_old " ]]&&{ FLAG[distrib_to_old]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " to_new " ]]&&{ FLAG[distrib_to_new]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " nolts " ]]&&{ FLAG[nolts]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unknown " ]]&&{ FLAG[distrib_unknown]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " unsupported " ]]&&FLAG[unsupported]=true
 
+tailn3headn1(){ ${BINARIES[tail]} -n3 "$ca_me"|${BINARIES[head]} -n1;}
+[[ " $(tailn3headn1) " =~ " distrib_checked " ]]||. <(require $sin/distrib)
+[[ " $(tailn3headn1) " =~ " supported " ]]&&FLAG[supported]=true
+[[ " $(tailn3headn1) " =~ " to_old " ]]&&{ FLAG[distrib_to_old]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tailn3headn1) " =~ " to_new " ]]&&{ FLAG[distrib_to_new]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tailn3headn1) " =~ " nolts " ]]&&{ FLAG[nolts]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tailn3headn1) " =~ " unknown " ]]&&{ FLAG[distrib_unknown]=true FLAG[needforce]=true; ${FLAG[force]}&&FLAG[supported]=true;}
+[[ " $(tailn3headn1) " =~ " unsupported " ]]&&FLAG[unsupported]=true
 
 # key_ name and key_ val
 key_(){ case $1 in name)trim "${2%%=*}";;val)trim "${2##*=}";esac;}
@@ -179,7 +186,7 @@ tasks(){
 }
 # TODO <-- 1
 ## void ##
-declare lang=$(echo "$LANG"|cut -d'_' -f1)
+declare lang=$(echo "$LANG"|${BINARIES[cut]} -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE
 
 ${FLAG[supported]}&&apt_need_update
@@ -243,14 +250,14 @@ case $1 in
     *)  :
 esac
 
-if ${FLAG[supported]} && [ $# -eq 2 ] && [ 0$(phpquery -V | wc -w) -gt 1 ];then
+if ${FLAG[supported]} && [ $# -eq 2 ] && [ 0$(${BINARIES[phpquery]} -V | ${BINARIES[wc]} -w) -gt 1 ];then
     does_exist_ "${1//php/}" 1 && does_exist_ "${2//php/}" 0 && OLD="${1//php/}" NEW="${2//php/}" || explain
 fi
 
 if ${FLAG[supported]}; then
-    if [ 0$(phpquery -V | wc -w) -eq 1 ];then
-        [ "$(phpquery -V)" = "$PHP_VERSION" ]||version_mismatch
-        OLD="$(phpquery -V)"
+    if [ 0$(${BINARIES[phpquery]} -V | ${BINARIES[wc]} -w) -eq 1 ];then
+        [ "$(${BINARIES[phpquery]} -V)" = "$PHP_VERSION" ]||version_mismatch
+        OLD="$(${BINARIES[phpquery]} -V)"
         separator
         f
         echo "$(ipf;W;format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3;N)"
@@ -267,11 +274,18 @@ if ${FLAG[supported]}; then
         if ask "$(qpf)Do you want to install a new php-version now" "$YES";then
             SUGGESTION="$(i_ver "$OLD")"||{ no_higher_candidate;SUGGESTION="$(d_ver "$OLD")";}
             rs1="$(os)please enter a new, not yet installed php-version…"
+            list_candidates
             while :;do
                 cursor_ show
                 read -rp "E: Please enter the version string you want to install (e.g. '$SUGGESTION'): " NEW
                 cursor_ hide
-                os;echo "You entered: $NEW"
+                sbnc=''
+                if does_exist_ "$NEW" 0;then
+                    if [[ " ${CAN[@]} " =~ " $NEW " ]];then
+                        sbnc=" $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' $NEW 5))"
+                    fi
+                fi
+                os;echo "You entered: $NEW$sbnc"
                 if [ -z "$NEW" ];then echo "$rs1";anykey
                 elif [ "$NEW" = "$OLD" ];then
                     pf;echo "From the point of view of this script, php$NEW is already installed"
@@ -299,7 +313,7 @@ if ${FLAG[supported]}; then
             spinner C " . searching for php$NEW packages yet to be installed ." &
             mapfile -t missing_new_packages< <(packages_diff "$OLD" "$NEW")
             kill_spinner
-            if [[ "$(phpquery -V)" =~ $NEW ]]; then
+            if [[ "$(${BINARIES[phpquery]} -V)" =~ $NEW ]]; then
                 if ((${#missing_new_packages[@]}));then
                     array_populated missing_new_packages &
                     if ((${#missing_new_packages[@]}==1)); then

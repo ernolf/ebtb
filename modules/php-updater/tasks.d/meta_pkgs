@@ -14,7 +14,7 @@ remove_meta_packages(){
     spinner C " . searching misconfigurations: meta-packages ." &
     local pkg plu be modstring question
     local -a meta_pkgs
-    for pkg in $(dpkg -l | awk '/^[hiu]i.*php/{print $2}'); do
+    for pkg in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php/{print $2}'); do
         if extension_is_ meta "$pkg"; then
             rdepends -q "$pkg"||meta_pkgs+=("$pkg")
         fi

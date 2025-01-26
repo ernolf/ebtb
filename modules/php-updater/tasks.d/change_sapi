@@ -17,7 +17,7 @@ change_sapi(){
             a2_ok)
                 active_a2_version="$(for pv in ${!SAPI_A2[@]}; do [ "${SAPI_A2[$pv]}" = 'a' ]&&break;done;echo "$pv")"
                 active_a2_pkg="libapache2-mod-php$active_a2_version"
-                if [ "$(dpkg -l | awk '/^[hiu]i.*php'$active_a2_version'-fpm/{print $2}')" = "php$active_a2_version-fpm" ]; then
+                if [ "$(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php'$active_a2_version'-fpm/{print $2}')" = "php$active_a2_version-fpm" ]; then
                     alt=true
                     allowed_keys='q123'
                     read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
@@ -28,7 +28,7 @@ change_sapi(){
                 fi
                 kill_spinner
                 bundle echo "$(ipf;format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems not to be connected. These two SAPIs are mutually exclusive in this usecase." 3)"
-                $alt || { bundle echo "$(ipf;format_string "$(B)php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'-fpm/{print $2}')"), so here you will not get the option to switch the SAPI to the '$(dY)fast process manager SAPI$(N)'." 3)"; }
+                $alt || { bundle echo "$(ipf;format_string "$(B)php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/{print $2}')"), so here you will not get the option to switch the SAPI to the '$(dY)fast process manager SAPI$(N)'." 3)"; }
                 pf;Y;echo "Since php-fpm still consumes resources despite not being connected, you should either:"
                 f;o 10;bundle echo "$(button 1) - completely remove php*-fpm"
                 $alt && {
@@ -39,34 +39,41 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$active_a2_version"
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$active_a2_version"
-# TODO: migrate php.ini
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$active_a2_version"
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                3)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$active_a2_version"
+    # TODO: migrate php.ini
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;
@@ -87,50 +94,57 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$active_a2_version"
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_fpm_2_a2module "$active_a2_version"
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$active_a2_version"
-# TODO: migrate php.ini
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            4)  cursor_ show
-                                f
-                                php_fpm_2_a2module "$active_a2_version"
-# TODO: migrate php.ini
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$active_a2_version"
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module "$active_a2_version"
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                3)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$active_a2_version"
+    # TODO: migrate php.ini
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                4)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module "$active_a2_version"
+    # TODO: migrate php.ini
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;
             fpm_ok)
                 active_fpm_version="$(for pv in ${!SAPI_FPM[@]}; do [ "${SAPI_FPM[$pv]}" = 'a' ]&&break;done;echo "$pv")"
                 active_fpm_pkg="php$active_fpm_version-fpm"
-                if [ "$(dpkg -l | awk '/^[hiu]i.*libapache2-mod-php'$active_fpm_version'/{print $2}')" = "libapache2-mod-php$active_fpm_version" ]; then
+                if [ "$(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*libapache2-mod-php'$active_fpm_version'/{print $2}')" = "libapache2-mod-php$active_fpm_version" ]; then
                     alt=true
                     allowed_keys='q123'
                     read_prompt="$(os;C)press $(button 1), $(button 2), $(button 3) or $(button q) to leave it unchanged$(N)"
@@ -141,7 +155,7 @@ change_sapi(){
                 fi
                 kill_spinner
                 bundle echo "$(ipf;format_string "The '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)apache2handler SAPI$(N)' $(B)libapache2-mod-php$(N) seems to be inactive. These two SAPIs are mutually exclusive in this usecase." 3)"
-                $alt || { bundle echo "$(ipf;format_string "$(B)libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(dpkg -l | awk '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/{print $2}'|sort)"), so here you will not get the option to switch the SAPI to the '$(dY)apache2handler SAPI$(N)'." 3)"
+                $alt || { bundle echo "$(ipf;format_string "$(B)libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/{print $2}'|sort)"), so here you will not get the option to switch the SAPI to the '$(dY)apache2handler SAPI$(N)'." 3)"
                 }
                 pf;Y;echo "You should either:"
                 f;o 10;bundle echo "$(button 1) - completely remove libapache2-mod-php* (recommended)"
@@ -153,34 +167,41 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_fpm_2_a2module $active_fpm_version
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_fpm_2_a2module $active_fpm_version
-# TODO: migrate php.ini
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $active_fpm_version
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                3)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $active_fpm_version
+    # TODO: migrate php.ini
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;
@@ -201,44 +222,51 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                php_fpm_2_a2module "$active_fpm_version"
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$active_fpm_version"
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_fpm_2_a2module "$active_fpm_version"
-# TODO: migrate php.ini
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            4)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$active_fpm_version"
-# TODO: migrate php.ini
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module "$active_fpm_version"
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$active_fpm_version"
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                3)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module "$active_fpm_version"
+    # TODO: migrate php.ini
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                4)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$active_fpm_version"
+    # TODO: migrate php.ini
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;
@@ -261,44 +289,51 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt " key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                php_fpm_2_a2module $active_a2_version
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_a2module_2_fpm $active_fpm_version
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_fpm_2_a2module $active_a2_version
-# TODO: migrate php.ini
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            4)  cursor_ show
-                                f
-                                php_a2module_2_fpm $active_fpm_version
-# TODO: migrate php.ini
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $active_a2_version
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm $active_fpm_version
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                3)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $active_a2_version
+    # TODO: migrate php.ini
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                4)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm $active_fpm_version
+    # TODO: migrate php.ini
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;
@@ -321,44 +356,51 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt " key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                php_a2module_2_fpm $active_fpm_version
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_fpm_2_a2module $active_a2_version
-# TODO: migrate php.ini
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            3)  cursor_ show
-                                f
-                                php_a2module_2_fpm $active_fpm_version
-# TODO: migrate php.ini
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            4)  cursor_ show
-                                f
-                                php_fpm_2_a2module $active_a2_version
-# TODO: migrate php.ini
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm $active_fpm_version
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $active_a2_version
+    # TODO: migrate php.ini
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                3)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm $active_fpm_version
+    # TODO: migrate php.ini
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                4)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $active_a2_version
+    # TODO: migrate php.ini
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;
@@ -375,26 +417,33 @@ change_sapi(){
                 cursor_ hide
                 N;f;while :;do read -rsn 1 -p "$read_prompt" key;mh "key: $key"
                     if [[ "$allowed_keys" =~ $key ]]; then
-                        case $key in
-                            q)  cursor_ show
-                                f 2;break
-                                ;;
-                            1)  cursor_ show
-                                f
-                                php_a2module_2_fpm "$PHP_VERSION"
-                                apt_remove 'libapache2-mod-php*'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                                ;;
-                            2)  cursor_ show
-                                f
-                                php_fpm_2_a2module $PHP_VERSION
-                                apt_remove 'php*-fpm'
-                                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
-                                anykey
-                                return 0
-                        esac
+                        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                            echo "Confirmed choice $(button $key)"
+                            case $key in
+                                q)  cursor_ show
+                                    f 2;break
+                                    ;;
+                                1)  cursor_ show
+                                    f
+                                    php_a2module_2_fpm "$PHP_VERSION"
+                                    apt_remove 'libapache2-mod-php*'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                                    ;;
+                                2)  cursor_ show
+                                    f
+                                    php_fpm_2_a2module $PHP_VERSION
+                                    apt_remove 'php*-fpm'
+                                    "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+                                    anykey
+                                    return 0
+                            esac
+                        else
+                            echo -e "\n\tChoice $(button $key) cancelled\n"
+                            sleep 2
+                            te0 8
+                        fi
                     fi
                 done
                 ;;

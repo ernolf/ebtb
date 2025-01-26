@@ -10,12 +10,14 @@ __license__
 __scriptname__
 
 dependencies=(
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
     "gpg#gnupg#GNU Privacy Guard"
     "jq#jq#command-line JSON processor"
 )
 modules=(
-    basics awksed tempfile ansi prefix exit anykey verbose line array ask sudo
-    dependency vdir integrity nc/nextcloud nc/nextcloud_db
+    binaries basics awksed tempfile ansi prefix exit anykey verbose line array
+    ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
     $sin/help $sin/list_shares
 )
 
@@ -54,7 +56,7 @@ v_echo "help=$help, verbose=$verbose, debug=$debug"
 ## parsing options
 #options="help verbose debug"
 #for option in $options; do declare $option=false; done
-options="$(getopt -o hs: --long help,sharetype: -n 'me' -- "$@")"
+options="$(${BINARIES[getopt]} -o hs: --long help,sharetype: -n 'me' -- "$@")"
 eval set -- "$options"
 
 command=list_shares

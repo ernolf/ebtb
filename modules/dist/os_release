@@ -17,13 +17,13 @@ source_os_release(){
     if [ -f /etc/os-release ] || [ -f /usr/lib/os-release ]; then
         local os_release
         [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
-        . <(sed 's/^/OS_/g' $os_release)
-    elif command -v lsb_release >/dev/null; then
-        OS_NAME="$(lsb_release -si)"
+        . <(${BINARIES[sed]} 's/^/OS_/g' $os_release)
+    elif [ -n "${BINARIES[lsb_release]}" ]; then
+        OS_NAME="$(${BINARIES[lsb_release]} -si)"
         OS_ID="${OS_NAME%% *}"
-        OS_PRETTY_NAME="$(lsb_release -sd)"
-        OS_VERSION_ID="$(lsb_release -sr)"
-        OS_VERSION_CODENAME="$(lsb_release -sc)"
+        OS_PRETTY_NAME="$(${BINARIES[lsb_release]} -sd)"
+        OS_VERSION_ID="$(${BINARIES[lsb_release]} -sr)"
+        OS_VERSION_CODENAME="$(${BINARIES[lsb_release]} -sc)"
         OS_VERSION="${OS_PRETTY_NAME/$NAME //} ($OS_VERSION_CODENAME)"
     fi
 }
@@ -75,7 +75,7 @@ check_os_release(){
 }
 
 mark_checked(){
-    sed -i "/^v=\(true\|false\)$/i distrib_checked $*" "$ca_me"
+    ${BINARIES[sed]} -i "/^v=\(true\|false\)$/i distrib_checked $*" "$ca_me"
     f
     anykey
 }
@@ -109,18 +109,32 @@ mark_checked(){
 #    VERSION="12 (bookworm)"
 #    VERSION_CODENAME=bookworm
 
+#    ## 13 (trixie)
+#    PRETTY_NAME="Debian GNU/Linux trixie/sid"
+#    VERSION_CODENAME=trixie
+
 
 #    ### Armbian
+#    ## common:
+#    HOME_URL=https://www.armbian.com
+#    SUPPORT_URL=https://forum.armbian.com
+#    BUG_REPORT_URL=https://www.armbian.com/bugs
+
 #    # Armbian 23.8.1 bullseye - like 11 (bullseye)
 #    PRETTY_NAME="Armbian 23.8.1 bullseye"
 #    ARMBIAN_PRETTY_NAME="Armbian 23.8.1 bullseye"
 #    VERSION_ID=11
 #    VERSION="11 (bullseye)"
 #    VERSION_CODENAME=bullseye
-#    HOME_URL=https://www.armbian.com
-#    SUPPORT_URL=https://forum.armbian.com
-#    BUG_REPORT_URL=https://www.armbian.com/bugs
 
+#    # Armbian 24.8.2 bookworm - like 12 (bookworm)
+#    PRETTY_NAME="Armbian 24.8.2 bookworm"
+#    ARMBIAN_PRETTY_NAME="Armbian 24.8.2 bookworm"
+#    NAME="Debian GNU/Linux"
+#    VERSION_ID="12"
+#    VERSION="12 (bookworm)"
+#    VERSION_CODENAME=bookworm
+#    ID=debian
 
 #    ### Raspbian
 #    ## common:
@@ -136,6 +150,20 @@ mark_checked(){
 #    VERSION_ID=10
 #    VERSION="10 (buster)"
 #    VERSION_CODENAME=buster
+#    # build specific (example):
+#    VOLUMIO_BUILD_VERSION=f6610a1100d2380eef33bd3004af43153c786f96
+#    VOLUMIO_FE_VERSION=e7cae168f9927391640a091813b8a9656b6909b6
+#    VOLUMIO_FE3_VERSION=df82a8f23c90a3617c15c55572c8aaea90d8b32a
+#    VOLUMIO_BE_VERSION=1c0e5daee99fe3a72cc38b0d1fe6cd78d7f001fe
+#    VOLUMIO_ARCH=arm
+#    VOLUMIO_VARIANT=volumio
+#    VOLUMIO_TEST=FALSE
+#    VOLUMIO_BUILD_DATE="Mon 16 Dec 2024 09:30:04 AM CET"
+#    VOLUMIO_VERSION=3.785
+#    VOLUMIO_HARDWARE=pi
+#    VOLUMIO_DEVICENAME="Raspberry Pi"
+#    VOLUMIO_HASH=fe0ac4b79aed19ccde4b5bd83d468193
+
 
 #    ## 11 (bullseye)
 #    PRETTY_NAME="Raspbian GNU/Linux 11 (bullseye)"
@@ -213,13 +241,38 @@ mark_checked(){
 #    LOGO=ubuntu-logo
 
 
-#    ### LinuxMint
+#    ### LinuxMint (old!)
+#    ## common:
+#    ID=linuxmint
+#    HOME_URL=https://www.linuxmint.com/
+#    SUPPORT_URL=https://forums.linuxmint.com/
+#    BUG_REPORT_URL=http://bugs.launchpad.net/linuxmint/
+
+#    ## 18.3 (Sylvia)
+#    NAME=Linux Mint
+#    PRETTY_NAME="Linux Mint 18.3"
+#    VERSION_ID=18.3
+#    VERSION="18.3 (Sylvia)"
+#    ID_LIKE=ubuntu
+#    VERSION_CODENAME=sylvia
+#    UBUNTU_CODENAME=xenial
+#    BUG_REPORT_URL=http://bugs.launchpad.net/linuxmint/
+
 #    ## common:
 #    ID=linuxmint
 #    HOME_URL=https://www.linuxmint.com/
 #    SUPPORT_URL=https://forums.linuxmint.com/
 #    BUG_REPORT_URL=http://linuxmint-troubleshooting-guide.readthedocs.io/en/latest/
 #    PRIVACY_POLICY_URL=https://www.linuxmint.com/
+
+#    ## 20 (Ulyana)
+#    NAME=Linux Mint
+#    PRETTY_NAME=Linux Mint 20
+#    VERSION_ID=20
+#    VERSION="20 (Ulyana)"
+#    ID_LIKE=ubuntu
+#    VERSION_CODENAME=ulyana
+#    UBUNTU_CODENAME=focal
 
 #    ## 21.1 (Vera)
 #    NAME="Linux Mint"
@@ -238,6 +291,15 @@ mark_checked(){
 #    ID_LIKE="ubuntu debian"
 #    VERSION_CODENAME=virginia
 #    UBUNTU_CODENAME=jammy
+
+#    ## 22 (Wilma)
+#    NAME=Linux Mint
+#    PRETTY_NAME=Linux Mint 22
+#    VERSION_ID=22
+#    VERSION=22 (Wilma)
+#    ID_LIKE=ubuntu debian
+#    VERSION_CODENAME=wilma
+#    UBUNTU_CODENAME=noble
 
 #    ## LMDE (Linux Mint Debian Edition)
 #    ## 5 (elsie)
@@ -328,19 +390,21 @@ mark_checked(){
 #    VERSION_ID=15.5
 
 
-#    #### Red Hat / CentOS / Fedora
-#    ### RHEL
-#    ## common:
+#    ##### Red Hat / CentOS / Fedora
+#    #### RHEL
+#    ### common:
 #    NAME="Red Hat Enterprise Linux"
 #    ID=rhel
 #    ID_LIKE=fedora
-#    PLATFORM_ID=platform:el8
 #    ANSI_COLOR=0;31
-#    CPE_NAME=cpe:/o:redhat:enterprise_linux:8::baseos
 #    HOME_URL=https://www.redhat.com/
+#    REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
+
+#    ### common 8
+#    PLATFORM_ID=platform:el8
+#    CPE_NAME=cpe:/o:redhat:enterprise_linux:8::baseos
 #    DOCUMENTATION_URL=https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/8
 #    REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 8"
-#    REDHAT_SUPPORT_PRODUCT="Red Hat Enterprise Linux"
 
 #    ## 8.9
 #    PRETTY_NAME="Red Hat Enterprise Linux 8.9 (Ootpa)"
@@ -357,6 +421,22 @@ mark_checked(){
 #    BUG_REPORT_URL=https://issues.redhat.com/
 #    REDHAT_BUGZILLA_PRODUCT_VERSION=8.10
 #    REDHAT_SUPPORT_PRODUCT_VERSION=8.10
+
+#    ### common 9
+#    PLATFORM_ID=platform:el9
+#    CPE_NAME=cpe:/o:redhat:enterprise_linux:9::baseos
+#    DOCUMENTATION_URL=https://access.redhat.com/documentation/en-us/red_hat_enterprise_linux/9
+#    REDHAT_BUGZILLA_PRODUCT="Red Hat Enterprise Linux 9"
+
+#    ## 9.4
+#    PRETTY_NAME="Red Hat Enterprise Linux 9.4 (Plow)"
+#    VERSION_ID=9.4
+#    VERSION="9.4 (Plow)"
+#    LOGO=fedora-logo-icon
+#    BUG_REPORT_URL=https://issues.redhat.com/
+#    REDHAT_BUGZILLA_PRODUCT_VERSION=9.4
+#    REDHAT_SUPPORT_PRODUCT_VERSION=9.4
+
 
 #    ###CentOS
 #    NAME="CentOS Linux"
@@ -426,40 +506,66 @@ mark_checked(){
 #    BUG_REPORT_URL=https://bugs.almalinux.org/
 #    REDHAT_SUPPORT_PRODUCT=AlmaLinux
 
-#    ## 8.9
-#    PRETTY_NAME="AlmaLinux 8.9 (Midnight Oncilla)"
-#    VERSION="8.9 (Midnight Oncilla)"
-#    VERSION_ID=8.9
+#    ## 8
+#    # common:
 #    PLATFORM_ID=platform:el8
 #    CPE_NAME=cpe:/o:almalinux:almalinux:8::baseos
 #    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-8
+
+#    # 8.9
+#    PRETTY_NAME="AlmaLinux 8.9 (Midnight Oncilla)"
+#    VERSION="8.9 (Midnight Oncilla)"
+#    VERSION_ID=8.9
 #    ALMALINUX_MANTISBT_PROJECT_VERSION=8.9
 #    REDHAT_SUPPORT_PRODUCT_VERSION=8.9
 
-#    ## 9.3
+#    # 8.10
+#    PRETTY_NAME="AlmaLinux 8.10 (Cerulean Leopard)"
+#    VERSION="8.10 (Cerulean Leopard)"
+#    VERSION_ID=8.10
+#    ALMALINUX_MANTISBT_PROJECT_VERSION=8.10
+#    REDHAT_SUPPORT_PRODUCT_VERSION=8.10
+#    SUPPORT_END=2029-06-01
+
+#    ## 9
+#    # common:
+#    PLATFORM_ID=platform:el9
+#    CPE_NAME=cpe:/o:almalinux:almalinux:9::baseos
+#    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-9
+
+#    # 9.3
 #    PRETTY_NAME="AlmaLinux 9.3 (Shamrock Pampas Cat)"
 #    VERSION="9.3 (Shamrock Pampas Cat)"
 #    VERSION_ID=9.3
-#    PLATFORM_ID=platform:el9
-#    CPE_NAME=cpe:/o:almalinux:almalinux:9::baseos
-#    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-9
 #    ALMALINUX_MANTISBT_PROJECT_VERSION=9.3
 #    REDHAT_SUPPORT_PRODUCT_VERSION=9.3
 
-#    ## 9.5
+#    # 9.5
 #    PRETTY_NAME="AlmaLinux 9.5 (Teal Serval)"
 #    VERSION="9.5 (Teal Serval)"
 #    VERSION_ID=9.5
-#    PLATFORM_ID=platform:el9
-#    CPE_NAME=cpe:/o:almalinux:almalinux:9::baseos
-#    ALMALINUX_MANTISBT_PROJECT=AlmaLinux-9
 #    ALMALINUX_MANTISBT_PROJECT_VERSION=9.5
 #    REDHAT_SUPPORT_PRODUCT_VERSION=9.5
 #    SUPPORT_END=2032-06-01
 
 
-#    ### Rocky Linux
-#    ## common:
+#    ### Red OS
+#    NAME="RED OS"
+#    VERSION=8.0
+#    PLATFORM_ID=platform:red80
+#    ID=redos
+#    ID_LIKE="rhel centos fedora"
+#    VERSION_ID=8.0
+#    PRETTY_NAME="RED OS 8.0"
+#    ANSI_COLOR=0;31"
+#    CPE_NAME=cpe:/o:redos:redos:8
+#    HOME_URL=https://redos.red-soft.ru
+#    BUG_REPORT_URL=https://support.red-soft.ru
+#    EDITION=Standard
+
+
+#    #### Rocky Linux
+#    ### common:
 #    NAME="Rocky Linux"
 #    ID=rocky
 #    ID_LIKE="rhel centos fedora"
@@ -467,17 +573,19 @@ mark_checked(){
 #    LOGO=fedora-logo-icon
 #    HOME_URL=https://rockylinux.org/
 #    BUG_REPORT_URL=https://bugs.rockylinux.org/
+#    REDHAT_SUPPORT_PRODUCT="Rocky Linux"
+
+#    ### 9 common:
+#    PLATFORM_ID=platform:el9
+#    CPE_NAME=cpe:/o:rocky:rocky:9::baseos
+#    ROCKY_SUPPORT_PRODUCT=Rocky-Linux-9
 
 #    ## 9.3
 #    VERSION="9.3 (Blue Onyx)"
 #    VERSION_ID=9.3
-#    PLATFORM_ID=platform:el9
 #    PRETTY_NAME="Rocky Linux 9.3 (Blue Onyx)"
-#    CPE_NAME=cpe:/o:rocky:rocky:9::baseos
 #    SUPPORT_END=2032-05-31
-#    ROCKY_SUPPORT_PRODUCT=Rocky-Linux-9
 #    ROCKY_SUPPORT_PRODUCT_VERSION=9.3
-#    REDHAT_SUPPORT_PRODUCT="Rocky Linux"
 #    REDHAT_SUPPORT_PRODUCT_VERSION=9.3
 
 #    ## 9.4
@@ -485,10 +593,47 @@ mark_checked(){
 #    VERSION_ID=9.4
 #    PRETTY_NAME="Rocky Linux 9.4 (Blue Onyx)"
 #    SUPPORT_END=2032-05-31
-#    ROCKY_SUPPORT_PRODUCT=Rocky-Linux-9
 #    ROCKY_SUPPORT_PRODUCT_VERSION=9.4
 #    REDHAT_SUPPORT_PRODUCT=Rocky Linux
 #    REDHAT_SUPPORT_PRODUCT_VERSION=9.4
+
+#    ## 9.4
+#    VERSION="9.5 (Blue Onyx)"
+#    VERSION_ID=9.5
+#    PRETTY_NAME="Rocky Linux 9.5 (Blue Onyx)"
+#    VENDOR_NAME=RESF
+#    VENDOR_URL=https://resf.org/
+#    SUPPORT_END="2032-05-31"
+#    ROCKY_SUPPORT_PRODUCT_VERSION=9.5
+#    REDHAT_SUPPORT_PRODUCT_VERSION=9.5
+
+
+#    ## NethServer:
+#    # ================= DO NOT MODIFY THIS FILE =================
+#    #
+#    # Manual changes will be lost when this file is regenerated.
+#    #
+#    # Please read the developer's guide, which is available
+#    # at NethServer official site: https://www.nethserver.org
+#    #
+#    #
+#    NAME="NethServer"
+#    VERSION="7.9.2009"
+#    VERSION_ID="7"
+#    PRETTY_NAME="NethServer 7.9.2009"
+#    ID="nethserver"
+#    HOME_URL="http://www.nethserver.org"
+#
+#    ID_LIKE="rhel fedora centos"
+#    ANSI_COLOR="0;31"
+#    CPE_NAME="cpe:/o:centos:centos:7"
+#    BUG_REPORT_URL="https://community.nethserver.org/"
+#
+#    CENTOS_MANTISBT_PROJECT="CentOS-7"
+#    CENTOS_MANTISBT_PROJECT_VERSION="7"
+#    REDHAT_SUPPORT_PRODUCT="centos"
+#    REDHAT_SUPPORT_PRODUCT_VERSION="7"
+
 
 #    ### Oracle
 #    ## common:

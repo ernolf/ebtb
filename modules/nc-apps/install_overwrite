@@ -10,9 +10,7 @@ __license__
 ${INSTALL_OVERWRITE_BASHLIB:-false} && return
 INSTALL_OVERWRITE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire xml)
 . <(lrequire spinner)
 . <(lrequire nc/nextcloud)
@@ -21,9 +19,9 @@ install_overwrite(){
 
     list_apps_4_array(){
         local app xml_f max
-        for app in $(occ app:list --shipped=false --output=json | jq  -r '.enabled | keys | sort []'); do
+        for app in $(occ app:list --shipped=false --output=json | ${BINARIES[jq]}  -r '.enabled | keys | sort []'); do
             xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
-            max=$(xmls -v "//nextcloud/@max-version" "$xml_f" | sed '2,$d')
+            max=$(xmls -v "//nextcloud/@max-version" "$xml_f" | ${BINARIES[sed]} '2,$d')
             if [ -z "$max" ] || (( ${max%%.*} >= ${nc_version%%.*} )); then
                 continue
             fi
@@ -35,24 +33,24 @@ install_overwrite(){
     replace_array(){
         if $app_install_overwrite_exists; then
             if (( counter )); then
-                sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/c\\" -e "$aioa" $configfile
+                ${BINARIES[sed]} $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/c\\" -e "$aioa" $configfile
             else
-                sed $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/d" "$configfile"
+                ${BINARIES[sed]} $@ "/'app_install_overwrite' =>/,/\(\],\|),\)/d" "$configfile"
             fi
         else
-            sed $@ '$s/^);$/'"$aioa"'\n&/' "$configfile"
+            ${BINARIES[sed]} $@ '$s/^);$/'"$aioa"'\n&/' "$configfile"
         fi
     }
 
     [ "$1" = "-u" ] && do_update_ $2 --all
 
     local file configfile="$NC_DIR/config/config.php" app_install_overwrite_exists=false
-    if grep -qsw "'app_install_overwrite'" $NC_DIR/config/*config.php; then
+    if ${BINARIES[grep]} -qsw "'app_install_overwrite'" $NC_DIR/config/*config.php; then
         app_install_overwrite_exists=true
         for file in $NC_DIR/config/*config.php; do
             if [ "$file" = "$configfile" ]; then
                 continue
-            elif grep -qs "[[:space:]]*'app_install_overwrite'" $file; then
+            elif ${BINARIES[grep]} -qs "[[:space:]]*'app_install_overwrite'" $file; then
                 configfile=$file
                 break
             fi
@@ -84,7 +82,7 @@ install_overwrite(){
         line '-' GRAY 80
         GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
 
-        cat $configfile
+        ${BINARIES[cat]} $configfile
 
         GRAY;printf '<--   end '; line '  <--' GRAY 14
         line '=' N 80
@@ -113,7 +111,7 @@ install_overwrite(){
             line '-' GRAY 80
             GRAY;echo -n '-->  begin'; line '  -->' GRAY 14
 
-            cat $configfile
+            ${BINARIES[cat]} $configfile
 
             printf '<--   end '; line '  <--' GRAY 14
             line '=' N 80

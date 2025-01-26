@@ -10,9 +10,8 @@ __license__
 ${APPSTORE_BASHLIB:-false} && return
 APPSTORE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire $sin/db)
 
 # appstore-functions:
@@ -22,13 +21,13 @@ dl_appstore_json_db(){
     # etag to unix, with check if the string is in hexadecimal format (lowercase only)
     e2u(){
         [ -z "$1" ] || {
-            [[ "$1" =~ ^[0-9a-f-]+$ ]] && printf "$1" || printf "$(date --utc --date="${1%%.*}" +"%s").$(printf "${1#*.}" | sed 's/+.*//')"
+            [[ "$1" =~ ^[0-9a-f-]+$ ]] && printf "$1" || printf "$(${BINARIES[date]} --utc --date="${1%%.*}" +"%s").$(printf "${1#*.}" | ${BINARIES[sed]} 's/+.*//')"
         }
     }
     # unix to etag, with check if the string is in hexadecimal format (lowercase only)
     u2e(){
         [ -z "$1" ] || {
-            [[ "$1" =~ ^[0-9a-f-]+$ ]] && echo "$1" || date --utc --date="@$1" +"%Y-%m-%d %H:%M:%S".${1#*.}+00:00
+            [[ "$1" =~ ^[0-9a-f-]+$ ]] && echo "$1" || ${BINARIES[date]} --utc --date="@$1" +"%Y-%m-%d %H:%M:%S".${1#*.}+00:00
         }
     }
 
@@ -60,18 +59,18 @@ dl_appstore_json_db(){
         unix_etag="$(r_db "SELECT etag FROM $unit;")"
     fi
     etag="\"$(u2e $unix_etag)\""
-    response="$(curl -D - -H "If-None-Match: ${etag}" -s $appstore_url/$unit.json)"
-    http_code="$(echo "$response" | head -n 1 | awk 'tolower($0)~/http\//{print $2}')"
-    new_etag="$(echo "$response" | grep -ioPs 'etag: "\K[^"]+')"
+    response="$(${BINARIES[curl]} --compressed -D - -H "If-None-Match: ${etag}" -s $appstore_url/$unit.json)"
+    http_code="$(echo "$response" | ${BINARIES[head]} -n 1 | ${BINARIES[gawk]} 'tolower($0)~/http\//{print $2}')"
+    new_etag="$(echo "$response" | ${BINARIES[grep]} -ioPs 'etag: "\K[^"]+')"
     new_unix_etag="$(e2u "$new_etag")"
     if (( http_code == 200 )); then
         if [ "$unit" = "apps" ]; then
             local json_data_file="$(jsontf)"
-            echo "$response" | tail -n 1 > "$json_data_file"
-            rm -f "$(r_db "SELECT json_data_file FROM apps WHERE platform == '$p' AND etag == '$unix_etag'")"
+            echo "$response" | ${BINARIES[tail]} -n 1 > "$json_data_file"
+            ${BINARIES[rm]} -f "$(r_db "SELECT json_data_file FROM apps WHERE platform == '$p' AND etag == '$unix_etag'")"
             w_db apps "$p" "$new_unix_etag" "$json_data_file"
         else
-            w_db "$unit" "$new_unix_etag" "$(echo "$response" | tail -n 1)"
+            w_db "$unit" "$new_unix_etag" "$(echo "$response" | ${BINARIES[tail]} -n 1)"
         fi
     fi
     echo $http_code:$new_unix_etag
@@ -156,18 +155,18 @@ JQ
     if $new; then
         local json_filtered_data_file="$(jsontf)"
 $debug && set +x
-        jq --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" > $json_filtered_data_file
+        ${BINARIES[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" > $json_filtered_data_file
 $debug && set -x
-        rm -f "$(r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang'")"
+        ${BINARIES[rm]} -f "$(r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang'")"
         w_db filtered_apps "$platform" "$lang" "$unix_etag" "$json_filtered_data_file"
 $debug && set +x
         return 0
     elif $ids; then
-        local ids="$(jq -cr --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"|base64 -w 0)"
+        local ids="$(${BINARIES[jq]} -cr --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"|${BINARIES[base64]} -w 0)"
         w_db app_ids appstore_$platform "$unix_etag" "$ids"
         return 0
     fi
-    jq --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"
+    ${BINARIES[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"
     exit 0
 }
 
@@ -187,7 +186,7 @@ categories(){
 JQ
     [ -z "$extra_jq" ] || JQ_FILTER="$JQ_FILTER|$extra_jq"
     query="SELECT json_data FROM categories;"
-    json_data="$(r_db "$query" 2>/dev/null)"
-    jq --arg lang "$lang" -f <(echo "$JQ_FILTER") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
+    json_data="$(q2 r_db "$query")"
+    ${BINARIES[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
     exit 0
 }

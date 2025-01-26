@@ -10,6 +10,8 @@ __license__
 ${BASICS_BASHLIB:-false} && return
 BASICS_BASHLIB=:
 
+. <(lrequire binaries)
+
 declare invi="Invalid input."
 
 # Empty spaces
@@ -39,7 +41,7 @@ p_nosort_trim(){
 
 # printf sorted and remove duplicates
 p_sort(){
-    printf '%s\n' "$@" | sort -u
+    printf '%s\n' "$@" | ${BINARIES[sort]} -u
 }
 
 # printf sorted and remove duplicates
@@ -51,7 +53,7 @@ p_sort_trim(){
 
 # printf sorted and remove duplicates reverse order
 p_rsort(){
-    printf '%s\n' "$@" | sort -ru
+    printf '%s\n' "$@" | ${BINARIES[sort]} -ru
 }
 
 # printf sorted and remove duplicates reverse order
@@ -63,12 +65,12 @@ p_rsort_trim(){
 
 # version to integer
 v2i(){
-    awk '{print $1*1000000000+$2*1000000+$3*1000+$4}' <<< "${1//./ }"
+    ${BINARIES[gawk]} '{print $1*1000000000+$2*1000000+$3*1000+$4}' <<< "${1//./ }"
 }
 
 # htmldecode
 htmldecode(){
-    php -r "echo html_entity_decode('$*');"
+    ${BINARIES[php]} -r "echo html_entity_decode('$*');"
 }
 
 # no nullglob
@@ -79,10 +81,10 @@ nonullglob(){
 
 # check if bool
 boolean(){
-    if grep -qswiE "(on|1)" <<< "$1"; then
+    if ${BINARIES[grep]} -qswiE "(on|1)" <<< "$1"; then
         echo -n 'true'
         return 0
-    elif grep -qswiE "(off|0)" <<< "$1"; then
+    elif ${BINARIES[grep]} -qswiE "(off|0)" <<< "$1"; then
         echo -n 'false'
         return 0
     fi
@@ -93,4 +95,23 @@ boolean(){
 # a great bash include!
 escaped(){
     printf '%q' "$@"
+}
+
+# Pads a Base64 encoded string to ensure its length is divisible by 4 by adding '=' at the end if necessary.
+pad(){
+    local i="$1"
+    (($((${#i}%4)))) && i="${i}$(printf '=%.0s' $(${BINARIES[seq]} 1 $((4 - $((${#i} % 4))))))"
+    echo "$i"
+}
+
+q0(){
+  "$@" &>/dev/null
+}
+
+q1(){
+  "$@" >/dev/null
+}
+
+q2(){
+  "$@" 2>/dev/null
 }

@@ -10,9 +10,7 @@ __license__
 ${HELP_BASHLIB:-false} && return
 HELP_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire nc/nextcloud_logo)
 
 print_help(){
@@ -22,12 +20,12 @@ print_help(){
     fi
 
     local bak=false s
-    if (($(backups|wc -l)));then bak=true
+    if (($(backups|${BINARIES[wc]} -l)));then bak=true
         r_b(){ echo "$(f)    $me restore_backup";}
-        [ $(backups|wc -l) -gt 1 ]&&s=s||s=""
+        [ $(backups|${BINARIES[wc]} -l) -gt 1 ]&&s=s||s=""
     else r_b(){ :;}
     fi
-    cat <<HELP
+    ${BINARIES[cat]} <<HELP
 $(nextcloud_logo)
 
  $(line = P 81)
@@ -77,10 +75,10 @@ $(nextcloud_logo)
                 verify the integrity of this script with signature
 
 HELP
-    $bak&&cat<<BACKUP;exit 0
+    $bak&&${BINARIES[cat]}<<BACKUP; exit 0
     restore_backup
                 restore an older version of this script from backup
-                ($(backups|wc -l) backup$s available, you must be root)
+                ($(backups|${BINARIES[wc]} -l) backup$s available, you must be root)
 
 BACKUP
 }

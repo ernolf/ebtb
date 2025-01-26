@@ -32,4 +32,6 @@ LOCAL_SERVER_PORT=48484
 LOCAL_SERVER_BINARY='python3'
 # Server directory
 LOCAL_SERVER_DIRECTORY="$PREFIX/srv/$PROJECT"
+# Do not build modules or scripts with this sufixes (space separated, case insensitive)
+EXCLUDE_SUFIXES="~ .todo .test .new .ini"
 

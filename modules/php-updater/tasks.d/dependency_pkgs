@@ -14,7 +14,7 @@ remove_dependency_packages(){
     spinner C " . searching misconfigurations: dependency-packages ." &
     local pkg plu be modstring question
     local -a dependency_pkgs
-    for pkg in $(dpkg -l | awk '/^[hiu]i.*php/{print $2}'); do
+    for pkg in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php/{print $2}'); do
         if extension_is_ dependency "$pkg"; then
             rdepends -q "$pkg"||dependency_pkgs+=("$pkg")
         fi

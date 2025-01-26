@@ -10,22 +10,19 @@ __license__
 ${CONTRIBUTE_BASHLIB:-false} && return
 CONTRIBUTE_BASHLIB=:
 
+. <(lrequire binaries)
 . <(lrequire line)
 . <(lrequire fstring)
 
 contribute(){
-    cat <<CONTRIBUTE
+    ${BINARIES[cat]} <<CONTRIBUTE
 
 $(separator xGRAY)
-  $(GRAY;format_string "I have spent countless unpaid hours developing these scripts - and am still" 3)
-  $(GRAY;format_string "developing them further so that they can safely perform even more helpfull tasks" 3)
-  $(GRAY;format_string "for you in the future." 3)
-
   $(GRAY;format_string "If your problem has been resolved with this script, then I was able to help you," 3)
   $(GRAY;format_string "which fulfills the main motivation of my work!" 3)
 
-  $(W;format_string "I expect everyone who uses my scripts to contribute in some way, especially if" 3)
-  $(W;format_string "you use them for commercial or professional purposes." 3)
+  $(Cbg;format_string " I expect everyone who uses my scripts to contribute in some way, especially if $(N)" 3)
+  $(Cbg;format_string " you use it for commercial or professional purposes. $(N)" 3)
 
 $(Yi)                         This is how YOU can contribute:
 $(Yi)                         ===============================

@@ -559,8 +559,8 @@ ini_directives(){
         *)                                     def="NOT"                              chlog="NOT"
     esac
     case $2 in
-        default)    [ "$def" = "NOT" ]&&return 1||echo "$def";;
-        changelog)  [ "$chlog" = "NOT" ]&&return 1||echo "$chlog";;
+        default)    [ "$def" = "NOT" ] && return 1 || echo "$def";;
+        changelog)  [ "$chlog" = "NOT" ] && return 1 || echo "$chlog";;
     esac
     return 0
 }

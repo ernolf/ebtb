@@ -10,9 +10,7 @@ __license__
 ${EXIT_BASHLIB:-false} && return
 EXIT_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire ansi)
 
@@ -31,9 +29,19 @@ exit1(){
 exit_trap(){
     [ -f "$spinner_pid_file" ] && kill_spinner
     ${local_server:-false} && ls_ stop
-    nonullglob "$TMPDIR/${bm}$$_*" && (rm -f $TMPDIR/${bm}$$_*) 2>/dev/null
-    nonullglob "$TMPDIR/${bm:-$$}_*" && (rm -f $TMPDIR/${bm:-$$}_*) 2>/dev/null
+#    nonullglob "$TMPDIR/${bm}$$_*" && (${BINARIES[rm]} -f $TMPDIR/${bm}$$_*) 2>/dev/null
+#    nonullglob "$TMPDIR/${bm:-$$}_*" && (${BINARIES[rm]} -f $TMPDIR/${bm:-$$}_*) 2>/dev/null
+    nonullglob "$TMPDIR/${bm}$$_*" && q2 ${BINARIES[rm]} -f $TMPDIR/${bm}$$_*
+    nonullglob "$TMPDIR/${bm:-$$}_*" && q2 ${BINARIES[rm]} -f $TMPDIR/${bm:-$$}_*
     ansi_reset
+}
+
+cleanup(){
+    local garbage
+    for garbage in "$@"; do
+        [ -d "$garbage" ] && q2 ${BINARIES[rm]} -fr "$garbage"
+        [ -f "$garbage" ] && q2 ${BINARIES[rm]} -f "$garbage"
+    done
 }
 
 interrupted(){

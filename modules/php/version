@@ -7,13 +7,16 @@ __copyright__
 __license__
 #
 
+. <(lrequire binaries)
+. <(lrequire basics)
+
 ${VERSION_BASHLIB:-false} && return
 VERSION_BASHLIB=:
 
 php_ver(){
-    local php_version="$(php -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    local -a available_php_versions=($(ls $(command -v php)[78].[0-4] 2>/dev/null|sed "s|$(command -v php)||g"))
-    local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|tr ' ' '\n'|grep -v "^$php_version$"|tr '\n' ' '))
+    local php_version="$(${BINARIES[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+    local -a available_php_versions=($(q2 ${BINARIES[ls]} $(command -v php)[78].[0-4] | ${BINARIES[sed]} "s|$(command -v php)||g"))
+    local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|${BINARIES[tr]} ' ' '\n'|${BINARIES[grep]} -v "^$php_version$"|${BINARIES[tr]} '\n' ' '))
 
     if (($#)); then
         case $1 in alternatives) echo "${alternative_php_versions[@]}"; esac

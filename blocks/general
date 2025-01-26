@@ -1,4 +1,13 @@
 # general
+q0(){
+  "$@" &>/dev/null
+}
+q1(){
+  "$@" >/dev/null
+}
+q2(){
+  "$@" 2>/dev/null
+}
 log(){
     ( flock -x 200
       echo "$(ts) - $bm-$epoch - $(fp)$@" >> "$lf"
@@ -14,13 +23,17 @@ epch_() {
     awk '/^# v/{print$NF}' "$1"
 }
 fp() {
-    cat $lincld/fp 2>/dev/null
+    q2 cat $lincld/fp
 }
 hc() {
     local a=$1
     shift
     log "$1" &
-    curl -$a /dev/null -w %{http_code} -A "$(fp)$@"
+    $curlc -$a /dev/null -w %{http_code} -A "$(fp)$@"
+}
+checkbin() {
+    q1 type -t $1 || { echo -e "\n\e[31m - '$1' binary not found.\e[0m\n" > /dev/tty
+    kill -TERM $mpid; }
 }
 nohome() {
     echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $ca_me $my_url\n\n\e[31m   and start the script again.\e[0m\n" > /dev/tty
@@ -34,8 +47,8 @@ sourced() {
     ${am:-false}
 }
 json_etag() {
-    command -v jq >/dev/null || return 1
-    jq -r '.etag' "$1" 2>/dev/null
+    [ -n "${BINARIES[jq]}" ] || return 1
+    q2 ${BINARIES[jq]} -r '.etag' "$1"
 }
 c4u() {
     local -u m="${1#*/}_BASHLIB"
@@ -47,7 +60,7 @@ c4u() {
     }
 }
 req() {
-    sourced $1 || { local mc=$(curl -A "$(fp)req $1" $cargs/$rincld/$1); [ "${mc:0:9}" = "# BASHLIB" ] && @HEREDOC@ || nohome "$l"; }
+    sourced $1 || { local mc=$($curlc -A "$(fp)req $1" $cargs/$rincld/$1); [ "${mc:0:9}" = "# BASHLIB" ] && @HEREDOC@ || nohome "$l"; }
 }
 require() { req $@; }
 lreq() {
@@ -56,7 +69,7 @@ lreq() {
         sourced $1 || cat "$m"
     elif ! $rt; then
         req $1
-    elif (($(mkdir -p $(dirname $m); curl -o $m -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)) && [ "$(head -c9 $m 2>&1)" = "# BASHLIB" ]; then
+    elif (($(mkdir -p $(dirname $m); $curlc -o $m -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)) && [ "$(head -c9 $m 2>&1)" = "# BASHLIB" ]; then
         log REQ $1
         cat "$m"
     else
@@ -65,13 +78,13 @@ lreq() {
 }
 lrequire() { lreq $@; }
 module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
-declare lf version my_url cargs opt opts astr="$(id -un): " A="$(uname -a)"
-declare -i mpid epoch my_epoch my_size lce mje mjne w4uc
+declare -i mpid=$$ epoch my_epoch my_size lce mje mjne w4uc
+for bin in id uname mkdir awk cat curl; do checkbin $bin; done
+declare lf="$TMPDIR/ebtb-logfiles/$bm.log" version my_url curlc cargs opt opts astr="$(id -un): " A="$(uname -a)"
 declare -a args tntd
-mpid=$$ lf="$TMPDIR/ebtb-logfiles/$bm.log"
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"
-my_url="${my_home%/apps/raw}/script/$scriptname" cargs="-se $bm-$epoch $my_home"
+my_url="${my_home%/apps/raw}/script/$scriptname" curlc="/usr/bin/env LC_MESSAGES=C $(type -P curl) --compressed" cargs="-se $bm-$epoch $my_home"
 opts="rt run2 irun2 do_update do_restore_backup do_integrity_check"
 for opt in $opts; do declare $opt=false; done
 (($(id -u))) || rt=:

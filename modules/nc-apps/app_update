@@ -10,13 +10,11 @@ __license__
 ${APP_UPDATE_BASHLIB:-false} && return
 APP_UPDATE_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire nc/nextcloud)
 
 query_updates(){
-    occ app:update -n --no-warnings --allow-unstable --showonly --all | sed -e 's/ new version available: /#/' > $1
+    occ app:update -n --no-warnings --allow-unstable --showonly --all | ${BINARIES[sed]} -e 's/ new version available: /#/' > $1
 }
 
 # do_update_ $1=app-id or --all, $2= --allow-unstable

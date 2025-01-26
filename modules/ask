@@ -10,9 +10,6 @@ __license__
 ${ASK_BASHLIB:-false} && return
 ASK_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
 . <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire prefix)
@@ -116,13 +113,63 @@ ask(){
 
 bundle(){
     local hauler
-    local -a payload
     hauler="$1"
     shift
-    haul "$hauler $@"
-# TODO 2 -->
-#    sleep 1
-# TODO <-- 2
-    mapfile -t payload< <($hauler "$@" 2>&1)
-    for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
+    haul $hauler "$@"
+    case "$hauler" in
+      echo) echo -e "$@"
+        ;;
+       cat) local -a payload
+            mapfile -t payload< <(${BINARIES[cat]} "$@")
+            for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
+    esac
 }
+
+# Function for confirmation prompt
+confirm_choice() {
+    local choice message key
+    choice="$1" # User's initial choice (e.g., 1, 2, 3, etc.)
+    message="$2" # Custom message for confirmation
+    while :; do
+        echo -e "\n\n\t$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
+        read -rsn 1 key
+        case $key in
+            y)  return 0 # User confirms
+                ;;
+            n)  return 1 # User cancels
+                ;;
+            q)  exit 0   # Quit
+                ;;
+            *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
+        esac
+    done
+}
+# COMMENT -->
+#    # Example integration
+#    if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+#        echo "Confirmed choice $(button $key)"
+#        case $key in
+#            q)  cursor_ show
+#                f 2;break
+#                ;;
+#            1)  cursor_ show
+#                f
+#                php_a2module_2_fpm "$PHP_VERSION"
+#                apt_remove 'libapache2-mod-php*'
+#                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+#                anykey
+#                return 0
+#                ;;
+#            2)  cursor_ show
+#                f
+#                php_fpm_2_a2module $PHP_VERSION
+#                apt_remove 'php*-fpm'
+#                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+#                anykey
+#                return 0
+#        esac
+#    else
+#        echo -e "\n\tChoice $(button $key) cancelled\n"
+#        sleep 2
+#        te0 8
+#    fi

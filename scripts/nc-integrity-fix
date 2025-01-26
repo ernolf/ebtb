@@ -10,14 +10,17 @@ __license__
 __scriptname__
 
 dependencies=(
+    "gawk#gawk#GNU awk"
+    "grep#grep#GNU grep, egrep and fgrep"
     "curl#curl#Command line file transfer tool with URL syntax"
     "gpg#gnupg#GNU Privacy Guard"
     "xmlstarlet#xmlstarlet#Command line XML toolkit"
     "jq#jq#Command line JSON processor"
 )
 modules=(
-    basics awksed tempfile ansi prefix button fstring exit spinner anykey line
-    array ask sudo dependency vdir integrity xml nc/nextcloud nc/nextcloud_db
+    binaries basics awksed tempfile ansi prefix button fstring exit spinner
+    anykey line array ask sudo dependency vdir integrity xml nc/nextcloud
+    nc/nextcloud_db
 )
 __debug__
 __when__
@@ -58,7 +61,7 @@ integritycheck_json=$(tf) scan_result=$(tf)
 
 prune_arrays(){ FILE_MISSING=() INVALID_HASH=() EXTRA_FILE=() EXCEPTION=();}
 
-mapfile -t shipped_apps< <(occ app:list --shipped=true --output=json | jq  -r '.enabled | keys | sort []')
+mapfile -t shipped_apps< <(occ app:list --shipped=true --output=json | ${BINARIES[jq]}  -r '.enabled | keys | sort []')
 is_shipped_(){ [[ " ${shipped_apps[@]} " =~ " $1 " ]];}
 
 db_integritycheck_(){
@@ -77,7 +80,7 @@ db_integritycheck_(){
 
 
 json_2_array(){
-    jq -r '
+    ${BINARIES[jq]} -r '
         to_entries[]
         | select(.value | objects)
         | .key as $section
@@ -111,7 +114,7 @@ $debug || kill_spinner
 nc_download_default(){
     local app_id file version_tag path url url1 url2 tempfile
     app_id="$1" file="$2" path="$2"
-    version_tag="v$(awk -F\' '/String/{gsub(/ /,"");$2=tolower($2);print $2}' "$NC_DIR/version.php")"
+    version_tag="v$(${BINARIES[gawk]} -F\' '/String/{gsub(/ /,"");$2=tolower($2);print $2}' "$NC_DIR/version.php")"
     tempfile=$(tf)
     case "$app_id" in
       core) url1="$GITHUB_RAW/server/$version_tag/$file"
@@ -122,17 +125,17 @@ nc_download_default(){
                 url2="$GITHUB_RAW/$app_id/$version_tag/$file"
             else
                 xml_f="$NC_DIR/apps/$app_id/appinfo/info.xml"
-                repo="$(xmls -v "//info/repository" "$xml_f" | sed '2,$d;s|.git$||1')"
+                repo="$(xmls -v "//info/repository" "$xml_f" | ${BINARIES[sed]} '2,$d;s|.git$||1')"
                 if [ -z "$repo" ]; then
-                    issueTracker=$(xmls -v "//info/bugs" "$info_xml" | sed '2,$d')
-                    repo=$(sed 's|/issues$||1' <<< "${issueTracker%/}")
+                    issueTracker=$(xmls -v "//info/bugs" "$info_xml" | ${BINARIES[sed]} '2,$d')
+                    repo=$(${BINARIES[sed]} 's|/issues$||1' <<< "${issueTracker%/}")
                 fi
                 if [[ "$repo" =~ github.com ]]; then
-                    url="$(sed 's/github/raw.githubusercontent/' <<< "$repo")"
+                    url="$(${BINARIES[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
                 else
                     echo "download of '$path' failed. You must check this one yourself"
                 fi
-                version_tag="$(xmls -v "//info/version" "$xml_f" | sed '2,$d')"
+                version_tag="$(xmls -v "//info/version" "$xml_f" | ${BINARIES[sed]} '2,$d')"
                 path="apps/$app_id/$file"
                 url1="$url/$version_tag/$file"
                 url2="$url/v$version_tag/$file"
@@ -141,11 +144,11 @@ nc_download_default(){
 
 $debug && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag = $version_tag\nurl = $url\nurl1 = $url1\nurl2 = $url2";anykey;}
 
-    if (($(curl -so "$tempfile" -w %{http_code} "$url1") == 200)); then
+    if (($(${BINARIES[curl]} -so "$tempfile" -w %{http_code} "$url1") == 200)); then
         mv "$tempfile" "$NC_DIR/$path"
         chown "$NC_USER:$NC_USER" "$NC_DIR/$path"
         echo "download of '$file' from '$url1' succeeded"
-    elif (($(curl -so "$tempfile" -w %{http_code} "$url2") == 200)); then
+    elif (($(${BINARIES[curl]} -so "$tempfile" -w %{http_code} "$url2") == 200)); then
         mv "$tempfile" "$NC_DIR/$path"
         chown "$NC_USER:$NC_USER" "$NC_DIR/$path"
         echo "download of '$file' from '$url2' succeeded"
@@ -156,9 +159,9 @@ $debug && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag =
 
 db_integritycheck_ cull > $integritycheck_json
 
-$debug && { echo "integritycheck_json:";jq '.' $integritycheck_json;anykey;}
+$debug && { echo "integritycheck_json:";${BINARIES[jq]} '.' $integritycheck_json;anykey;}
 
-mapfile -t affected_apps< <(jq -r keys[] $integritycheck_json)
+mapfile -t affected_apps< <(${BINARIES[jq]} -r keys[] $integritycheck_json)
 
 if (( ${#affected_apps[@]} )); then
     if (( ${#affected_apps[@]} > 1 )); then
@@ -178,10 +181,10 @@ if (( ${#affected_apps[@]} )); then
         esac
         echo -n > $scan_result
         prune_arrays
-        json_2_array "$(jq ".$affected_app" "$integritycheck_json")" > $scan_result
+        json_2_array "$(${BINARIES[jq]} ".$affected_app" "$integritycheck_json")" > $scan_result
         . $scan_result
 
-$debug && { echo "scan_result:";cat $scan_result;anykey;}
+$debug && { echo "scan_result:";${BINARIES[cat]} $scan_result;anykey;}
 
         if (( ${#FILE_MISSING[@]} )); then
             if (( ${#FILE_MISSING[@]} > 1 )); then
@@ -239,7 +242,7 @@ $debug && { echo "scan_result:";cat $scan_result;anykey;}
         fi
         if (( ${#EXCEPTION[@]} )); then
             echo "This exception was detected for [$affected_app]:"
-            pf;echo "$(jq -r ".$affected_app.EXCEPTION.message" $integritycheck_json)"
+            pf;echo "$(${BINARIES[jq]} -r ".$affected_app.EXCEPTION.message" $integritycheck_json)"
             echo "This script cannot resolve integrity violations of type 'EXCEPTION'."
         fi
         separator

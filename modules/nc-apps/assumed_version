@@ -10,9 +10,6 @@ __license__
 ${ASSUMED_VERSION_BASHLIB:-false} && return
 ASSUMED_VERSION_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
 . <(lrequire $sin/db)
 
 # TODO 0 -->

@@ -10,9 +10,7 @@ __license__
 ${MIME_TYPES_BASHLIB:-false} && return
 MIME_TYPES_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire ansi)
 . <(lrequire basics)
 
@@ -165,39 +163,39 @@ mime_ext_regex_array=(
 # list_mimes $(echo "${mime_ext_regex_array[@]}")
 list_mimes(){
  ## declarations
-    local title="$1" column mers IFS;shift
+    local title="$1" column mers IFS; shift
   # "m" stands for mime, "e" stands for ext(ension) and "r" stands for regex
     local -a m_e_r_array=($@) columns=(m=Mimetype e=Extension r=Regex) a
-    for column in ${columns[@]};do
+    for column in ${columns[@]}; do
         local $column
       # "ml_*" stands for max length
         local -i ml_${column%=*}=$(printf ${column#*=}|wc -c)
     done
  ## calculate column width
   # "mers" stands for mime:ext:regex-string
-    for mers in "${m_e_r_array[@]}";do
+    for mers in "${m_e_r_array[@]}"; do
         IFS=":" read -ra a <<< "$mers"
       # "l_*" stands for length
-        local -i l_m=${#a[0]};((l_m>ml_m))&&ml_m=$l_m
-        local -i l_e=${#a[1]};((l_e>ml_e))&&ml_e=$l_e
-        local -i l_r=${#a[2]};((l_r>ml_r))&&ml_r=$l_r
+        local -i l_m=${#a[0]}; ((l_m>ml_m))&&ml_m=$l_m
+        local -i l_e=${#a[1]}; ((l_e>ml_e))&&ml_e=$l_e
+        local -i l_r=${#a[2]}; ((l_r>ml_r))&&ml_r=$l_r
     done
-    local line_m=$(printf "%0.s-" $(seq 1 $((ml_m+2))))
-    local line_e=$(printf "%0.s-" $(seq 1 $((ml_e+2))))
-    local line_r=$(printf "%0.s-" $(seq 1 $((ml_r+2))))
+    local line_m=$(printf "%0.s-" $(${BINARIES[seq]} 1 $((ml_m+2))))
+    local line_e=$(printf "%0.s-" $(${BINARIES[seq]} 1 $((ml_e+2))))
+    local line_r=$(printf "%0.s-" $(${BINARIES[seq]} 1 $((ml_r+2))))
     local line="$(o4)+$line_m+$line_e+$line_r+"
   # echo output
-    if [ "$title" = "all" ];then
-        f;echo "$(pf;o)all supported mimetypes:"
+    if [ "$title" = "all" ]; then
+        f; echo "$(pf; o)all supported mimetypes:"
     else
-        f;echo "$(pf;o)supported $title mimetypes:"
+        f; echo "$(pf; o)supported $title mimetypes:"
     fi
     echo "$line"
-    o4;printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" $m $e $r
+    o4; printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" $m $e $r
     echo "$line"
-    for mers in "${m_e_r_array[@]}";do
+    for mers in "${m_e_r_array[@]}"; do
         IFS=":" read -ra a <<< "$mers"
-        o4;printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" ${a[0]} ${a[1]} ${a[2]}
+        o4; printf "| %-${ml_m}s | %-${ml_e}s | %-${ml_r}s |\n" ${a[0]} ${a[1]} ${a[2]}
     done
-    echo "$line";echo
+    echo "$line"; echo
 }

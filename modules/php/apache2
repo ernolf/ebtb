@@ -10,16 +10,18 @@ __license__
 ${APACHE2_BASHLIB:-false} && return
 APACHE2_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire httpd)
 
 # globals
-if ! declare -p SAPI_A2 2>/dev/null | grep -qs 'declare -A'; then
+if ! q2 declare -p SAPI_A2 | ${BINARIES[grep]} -qs 'declare -A'; then
     unset SAPI_A2
-    declare -gA SAPI_A2 2>/dev/null || declare -A SAPI_A2
+    q2 declare -gA SAPI_A2 || declare -A SAPI_A2
 fi
 
 apache2_mpm(){
-    mpm_module="$(apachectl -M 2>/dev/null | awk '/mpm/{print $1}')"
+    mpm_module="$(q2 ${BINARIES[apache2ctl]} -M | ${BINARIES[gawk]} '/mpm/{print $1}')"
     case "$mpm_module" in
         mpm_event_module)   [ "$1" = "event" ] && return 0
                             ;;
@@ -56,7 +58,7 @@ php_fpm_conf_(){
                 ;;
        disable) a2disconf -mqp php*-fpm
                 ;;
-       switch2) a2disconf -mqp php*-fpm 2>/dev/null
+       switch2) q2 a2disconf -mqp php*-fpm
                 a2enconf -mq php$2-fpm
     esac
 }

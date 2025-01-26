@@ -30,7 +30,7 @@ source config/configure
 # Source the placeholders file
 source config/placeholders
 # source sed functions
-source <(tail -n +10 modules/awksed)
+source <(tail -n +14 modules/awksed)
 
 # Declare variables
 declare input_script output_script test_mode scriptname tempfile placeholder placeholder_pattern

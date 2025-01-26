@@ -10,13 +10,11 @@ __license__
 ${PHP_LOGO_BASHLIB:-false} && return
 PHP_LOGO_BASHLIB=:
 
-# for backwards compatibility
-declare -f lrequire &>/dev/null||lrequire(){ require $@;}
-
+. <(lrequire binaries)
 . <(lrequire ansi)
 
 php_logo(){
-    cat << PHPLOGO
+    ${BINARIES[cat]} << PHPLOGO
   $(dPHP)hhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhH$(N)
   $(dPHP)HhhHhhhHhhHhhHhhHhhhHhhHhhHhhhhPPPppPppPpppPpPPPPhhhHhhhHhhHhhHhhhHhhHhhHhhHhh$(N)
   $(dPHP)hhhhhhhhhhhhhhhhhhhhPPp$(lPHP):::;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)pppPhhhhhhhhhhhhhhhhhhhh$(N)

@@ -10,6 +10,8 @@ __license__
 ${SWITCH_BASHLIB:-false} && return
 SWITCH_BASHLIB=:
 
+. <(lrequire binaries)
+. <(lrequire basics)
 . <(lrequire httpd)
 . <(lrequire button)
 . <(lrequire exit)
@@ -36,15 +38,15 @@ php_fpm_sites_available_conf_(){
         sock_regex[$pool]="$(echo "${sock_n[$pool]}" | sed -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/g")"
         case $httpd in
             apache2)
-                mapfile -t sock_o< <(find ${A2CONFFILES[@]} 2>/dev/null -name "*.conf" -exec grep -Ehos "^[^#]*${sock_regex[$pool]//\./\\.}" {} + | grep -Eos "${sock_regex[$pool]//\./\\.}" | grep -Ev "${ver_n//\./\\.}" | sort -u)
-                mapfile -t conffiles< <(grep -Els "^[^#]*${sock_regex[$pool]//\./\\.}" ${A2CONFFILES[@]} | grep -E '\.conf$' | grep -Ev "${fpm_conf_regex//\./\.}" | sort -u)
+                mapfile -t sock_o< <(q2 ${BINARIES[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${BINARIES[grep]} -Ehos "^[^#]*${sock_regex[$pool]//\./\\.}" {} + | ${BINARIES[grep]} -Eos "${sock_regex[$pool]//\./\\.}" | ${BINARIES[grep]} -Ev "${ver_n//\./\\.}" | ${BINARIES[sort]} -u)
+                mapfile -t conffiles< <(${BINARIES[grep]} -Els "^[^#]*${sock_regex[$pool]//\./\\.}" ${A2CONFFILES[@]} | ${BINARIES[grep]} -E '\.conf$' | ${BINARIES[grep]} -Ev "${fpm_conf_regex//\./\.}" | ${BINARIES[sort]} -u)
                 if (( ${#conffiles[@]} )); then
                     o3; bundle echo "$(ipf; format_string "The apache2 server is connected to a PHP-FPM unix-socket, bypassing the usual SetHandler configuration mechanism." 6;N)"
                 fi
                 ;;
             nginx)
-                mapfile -t sock_o< <(find ${NGXCONFFILES[@]} 2>/dev/null ! -name "*.backup" -exec grep -Ehos "^[^#]*${sock_regex[$pool]//\./\.}" {} + | grep -Eos "${sock_regex[$pool]//\./\.}" | sort -u)
-                mapfile -t conffiles< <(grep -Els "^[^#]*${sock_regex[$pool]//\./\.}" ${NGXCONFFILES[@]} | grep -Ev '\.backup$' | sort -u)
+                mapfile -t sock_o< <(q2 ${BINARIES[find]} ${NGXCONFFILES[@]} ! -name "*.backup" -exec ${BINARIES[grep]} -Ehos "^[^#]*${sock_regex[$pool]//\./\.}" {} + | ${BINARIES[grep]} -Eos "${sock_regex[$pool]//\./\.}" | ${BINARIES[sort]} -u)
+                mapfile -t conffiles< <(${BINARIES[grep]} -Els "^[^#]*${sock_regex[$pool]//\./\.}" ${NGXCONFFILES[@]} | ${BINARIES[grep]} -Ev '\.backup$' | ${BINARIES[sort]} -u)
                 if (( ${#conffiles[@]} )); then
                     o3; bundle echo "$(ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6;N)"
                 fi
@@ -72,7 +74,7 @@ php_fpm_sites_available_conf_(){
             pf;bundle echo "$this $be the file$plu containing the PHP-FPM socket configuration:"
             for i in ${!conffiles[@]}; do
                 if [ -L "${conffiles[i]}" ]; then
-                    o3;pf;GRAY;bundle echo "${conffiles[i]} -> $(C)$(readlink -f "${conffiles[i]}")";N
+                    o3;pf;GRAY;bundle echo "${conffiles[i]} -> $(C)$(${BINARIES[readlink]} -f "${conffiles[i]}")";N
                 else
                     o3;pf;C;bundle echo "${conffiles[i]}";N
                 fi
@@ -84,7 +86,7 @@ php_fpm_sites_available_conf_(){
             f
             anykey
             for i in ${!conffiles[@]}; do
-                conffile="$(readlink -f "${conffiles[i]}")"
+                conffile="$(${BINARIES[readlink]} -f "${conffiles[i]}")"
 # TODO <2>
                 sed -E --in-place=.backup '/^\s*#/ !s#'${sock_regex[$pool]//\./\.}'#'${sock_n[$pool]}'#g' $conffile
                 o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conffile.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
@@ -165,7 +167,7 @@ switch_fpm_version(){
     local -a fpm_installed fpm_alternatives pools_o pools_n conffiles
     local -A fpm_switch
     ver_n="$1"
-    mapfile -t fpm_installed< <(dpkg -l | awk '/^[hiu]i.*'$PHPVREGEX'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
+    mapfile -t fpm_installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
     mapfile -t fpm_alternatives< <(for v in ${fpm_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
 
     (( ${#fpm_installed[@]} )) || return 2
@@ -219,9 +221,9 @@ switch_fpm_version(){
 #            if [[ "${WK_HTTPD_ACTIVE[@]}" =~ apache2 ]]; then
         if (( "${HTTPD[apache2]}" > 2 )); then
             for socket in $(fpm_sockets); do
-                pv="$(echo $socket | grep -Eo "${PHPVREGEX#php}")"
+                pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
                 [ "$pv" != "$ver_n" ] && continue
-                    if grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
+                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                         fpm_conf="/etc/apache2/conf-enabled/php${pv//\./\.}-fpm.conf"
                         if [[ " ${A2CONFFILES[@]} " =~ " $fpm_conf " ]]; then
                             o3; bundle echo "$(ipf; G; format_string "The SetHandler FastCGI configuration in apache2 is already switched to PHP-FPM version $(Y)$ver_n$(G)" 6;N)"
@@ -232,9 +234,9 @@ switch_fpm_version(){
         fi
         if (( "${HTTPD[nginx]}" > 2 )); then
             for socket in $(fpm_sockets); do
-                pv="$(echo $socket | grep -Eo "${PHPVREGEX#php}")"
+                pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
                 [ "$pv" != "$ver_n" ] && continue
-                mapfile -t conffiles< <(grep -Els "^[^#]*unix:$socket" ${NGXCONFFILES[@]} | grep -Ev '\.backup$' | sort -u)
+                mapfile -t conffiles< <(${BINARIES[grep]} -Els "^[^#]*unix:$socket" ${NGXCONFFILES[@]} | ${BINARIES[grep]} -Ev '\.backup$' | ${BINARIES[sort]} -u)
                 if (( ${#conffiles[@]} )); then
                     if (( ${#conffiles[@]} == 1 )); then
                         this='This' be='is' plu=''
@@ -245,7 +247,7 @@ switch_fpm_version(){
                     pf; bundle echo "$this $be the file$plu containing the PHP-FPM socket configuration:"
                     for i in ${!conffiles[@]}; do
                         if [ -L "${conffiles[i]}" ]; then
-                            o3; pf; GRAY; bundle echo "${conffiles[i]} -> $(C)$(readlink -f "${conffiles[i]}")";N
+                            o3; pf; GRAY; bundle echo "${conffiles[i]} -> $(C)$(${BINARIES[readlink]} -f "${conffiles[i]}")";N
                         else
                             o3; pf; C; bundle echo "${conffiles[i]}";N
                         fi
@@ -256,22 +258,22 @@ switch_fpm_version(){
             done
         fi
         for socket in $(fpm_sockets); do
-            pv="$(echo $socket | grep -Eo "${PHPVREGEX#php}")"
+            pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
             [ "$pv" = "$ver_n" ] && continue
             if (( ${HTTPD[apache2]} > 2 )); then
-                if apachectl configtest &>/dev/null && (( ${#A2CONFFILES[@]} )); then
-                    if grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
+                if q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
+                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                         fpm_conf="/etc/apache2/conf-enabled/php${pv//\./\.}-fpm.conf"
                         if [[ " ${A2CONFFILES[@]} " =~ " $fpm_conf " ]]; then
                             if php_fpm_conf_ switch2 $ver_n; then
                                 bundle echo "$(ipf; G; format_string "Successfully switched the SetHandler FastCGI configuration in apache2 from PHP-FPM version $(Y)$pv$(G) to $(Y)$ver_n$(G)" 3;N)"
-                                systemctl restart apache2 php$ver_n-fpm
+                                ${BINARIES[systemctl]} restart apache2 php$ver_n-fpm
                                 populate_a2conffiles
                             else
                                 bundle echo "$(xpf; R; format_string "Something went wrong while switching the SetHandler FastCGI Configuration in apache2 from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R)" 3;N)"
                             fi
                         fi
-                        if grep -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
+                        if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                             o 7; GRAY; bundle echo ".. searching for other configuration files that may have to be switched..";N
                             fpm_switch[apache2]+="ok"
                         fi
@@ -279,7 +281,7 @@ switch_fpm_version(){
                 else
                     bundle echo "$(xpf; R; format_string "Could not find a apache2 config file containing the information for the PHP-Fast Process Manager." 3;N)"
                     local -a a2errors
-                    mapfile -t a2errors< <(apachectl configtest 2>&1)
+                    mapfile -t a2errors< <(${BINARIES[apache2ctl]} configtest 2>&1)
                     if (( ${#a2errors[@]} )); then
                         f
                         for i in ${!a2errors[@]}; do
@@ -291,8 +293,8 @@ switch_fpm_version(){
                 fi
             fi
             if (( ${HTTPD[nginx]} > 2 )); then
-                if nginx -t &>/dev/null && (( ${#NGXCONFFILES[@]} )); then
-                    if grep -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]}; then
+                if q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )); then
+                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]}; then
                         fpm_switch[nginx]+="ok"
                     else
                         fpm_switch[nginx]+="nok"
@@ -300,7 +302,7 @@ switch_fpm_version(){
                 else
                     bundle echo "$(xpf; R; format_string "Could not find a nginx config file containing the information for the PHP-Fast Process Manager configuration." 3;N)"
                     local -a ngxerrors
-                    mapfile -t ngxerrors< <(nginx -t 2>&1)
+                    mapfile -t ngxerrors< <(${BINARIES[nginx]} -t 2>&1)
                     if (( ${#ngxerrors[@]} )); then
                         f
                         for i in ${!ngxerrors[@]}; do
@@ -320,7 +322,7 @@ switch_fpm_version(){
     for httpd in ${!fpm_switch[@]}; do
         if [[ "${fpm_switch[$httpd]}" =~ ok ]]; then
             php_fpm_sites_available_conf_ $httpd $ver_n
-            systemctl restart $httpd php$ver_n-fpm
+            ${BINARIES[systemctl]} restart $httpd php$ver_n-fpm
         elif [[ ! "${fpm_switch[$httpd]}" =~ set ]] && [[ "${fpm_switch[$httpd]}" =~ nok || "${fpm_switch[$httpd]}" =~ err ]]; then
             [[ "${fpm_switch[$httpd]}" =~ nok ]] && bundle echo "$(xpf; R; format_string "Could not find a $httpd config file containing the information for the PHP-Fast Process Manager configuration." 3;N)"
             o2; bundle echo "$(format_string "I am very sory, but you will have to edit your $httpd configuration by hand this time. Please give me feedback about how you configured it." 3;N)"
@@ -338,7 +340,7 @@ switch_a2module_version(){
 
     if (( ${HTTPD[apache2]} > 2 )); then
         apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
-        mapfile -t a2_installed< <(dpkg -l | awk '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
+        mapfile -t a2_installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
         mapfile -t a2_alternatives< <(for v in ${a2_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
 
         (( ${#a2_installed[@]} )) || return 2
@@ -419,10 +421,10 @@ switch_default_version(){
     local key
     local -a selections php_versions
     local -i i ret
-    mapfile -t php_versions< <(phpquery -V | sort)
+    mapfile -t php_versions< <(${BINARIES[phpquery]} -V | ${BINARIES[sort]})
     # update-alternatives
     cleanup_and_fix_alternatives before  # repair broken alternatives, remove not existing alternatives
-    mapfile -t selections< <(update-alternatives --get-selections | grep -E "ph(ar|p)")
+    mapfile -t selections< <(update-alternatives --get-selections | ${BINARIES[grep]} -E "ph(ar|p)")
     P;echo " -$(format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the Debian alternatives system. All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision. Therefore you can select the actually active version as well here. In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$me${FLAG[forceflag]} \$old \$new$(P), where $(C)\$old$(P) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(P) should be the version that you want to switch to here and now." 3)"
     echo "  $(format_string "In the subsequent next step it will switch your webserver to listen to the new php version as well. In some rare special cases, that step may fail though. You will have to fix it yourself then, by editing the config files of your webserver, to make it listen to the new php socket." 3;N)"
     f
@@ -441,7 +443,7 @@ switch_default_version(){
     f
     pf;Y;echo "Switch default php version to:"
     for i in ${!php_versions[@]}; do
-        f;o 10;echo "$(button $((i + 1))) - php${php_versions[i]}"
+        f;o 10;echo "$(button $((i + 1))) - php${php_versions[i]} $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${php_versions[i]} 5);Y)"
     done
     f;o 10;echo "$(button q) - do nothing, quit"
     N;f
@@ -453,10 +455,10 @@ switch_default_version(){
                         P;pf;echo "Your choice:$(Yi) php${php_versions[$key-1]}";N
                         anykey
                         separator
-                        apt-mark manual $(dpkg -l|awk '/^[hiu]i.*php*/{print $2}') >/dev/null 2>&1
+                        q0 apt-mark manual $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php*/{print $2}')
                         set_selections 'ph(ar|p)' 'manual' "${PHPVREGEX#php}" "${php_versions[$key-1]}"
                         cleanup_and_fix_alternatives afterwards  # repair broken alternatives, remove not existing alternatives
-                        mapfile -t selections< <(update-alternatives --get-selections | grep -E "ph(ar|p)")
+                        mapfile -t selections< <(update-alternatives --get-selections | ${BINARIES[grep]} -E "ph(ar|p)")
                         o3;dY;echo "alternatives system is now switch to:";N
                         f
                         for i in ${!selections[@]}; do
@@ -478,7 +480,7 @@ switch_default_version(){
                         if (( ret )); then
                             o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)Fast Process Manager SAPI $(GRAY)(php-fpm)$(R) version." 6;N)"
                             case $ret in
-                                2)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(GRAY) php-fpm$(R) is not installed in any version" 6;N)"
+                                2)  o3; bundle echo "$(xpf; R; format_string "From the point of view of this script, it looks like the $(dY)PHP Fast Process Manager$(GRAY) php-fpm$(R) is not installed in any version." 6;N)"
                                     ;;
                                 3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(php${php_versions[$key-1]}-fpm)$(R) is not installed." 6;N)"
                             esac
@@ -492,7 +494,7 @@ switch_default_version(){
                             if (( ret )); then
                                 o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(R) to version ${php_versions[$key-1]}." 6;N)"
                                 case $ret in
-                                    2)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(GRAY) libapache2-mod-php$(R) is not installed in any version" 6;N)"
+                                    2)  o3; bundle echo "$(xpf; R; format_string "From the point of view of this script, it looks like the $(dY)apache2handler SAPI$(GRAY) libapache2-mod-php$(R) is not installed in any version." 6;N)"
                                         ;;
                                     3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(libapache2-mod-php${php_versions[$key-1]})$(R) is not installed." 6;N)"
                                         ;;

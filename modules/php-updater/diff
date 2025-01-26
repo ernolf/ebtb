@@ -10,6 +10,7 @@ __license__
 ${DIFF_BASHLIB:-false} && return
 DIFF_BASHLIB=:
 
+. <(lrequire binaries)
 . <(lrequire line)
 . <(lrequire fstring)
 
@@ -19,7 +20,7 @@ diff_other_files(){
     c2=20 c3=25
     opath="$FILE"
     npath="${FILE//$OLD/$NEW}"
-    diff_output="$(ccdiff <(sed "s/$OLD/@VERSION@/" "$opath") <(sed "s/$NEW/@VERSION@/" "$npath") | grep -v "^[><]")"
+    diff_output="$(${BINARIES[ccdiff]} <(${BINARIES[sed]} "s/$OLD/@VERSION@/" "$opath") <(${BINARIES[sed]} "s/$NEW/@VERSION@/" "$npath") | ${BINARIES[grep]} -v "^[><]")"
     [ -n "$diff_output" ] || return # don't treat empty diffs
     echo " -$(format_string "The file $(C)$FILE$(N), which is part of the $(Y)$PKGOLD$(N) package has been changed after installation. This script can migrate those changes for you, so look exactly what it suggests to do. If it does not look good, simply answer $(box no) and edit the file yourself as you need it." 3)"
     f;os;echo "This is the detected diff:"
@@ -37,13 +38,13 @@ diff_other_files(){
     os;GRAY;echo "draft: (not yet written to file)$(f;o5)- config-file$(o $c2)-->$(o $c3)$npath"
     line '-' GRAY 2/78
     GRAY;echo -n "-->  begin";line "  -->" GRAY 14
-    sed "s/$OLD/$NEW/g" $opath
+    ${BINARIES[sed]} "s/$OLD/$NEW/g" $opath
     GRAY;echo -n "<--   end ";line "  <--" GRAY 14
     line '=' P 2/78 a2
     echo " -$(format_string "Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter [yes]." 3)"
     line '=' P 2/78 b1
     if ask "$(qpf)Apply changes to $npath as suggested" "$YES"; then
-        sed "s/$OLD/$NEW/g" $opath > $npath
+        ${BINARIES[sed]} "s/$OLD/$NEW/g" $opath > $npath
         line '-' GRAY 2/78;os;GRAY
         echo "new:$(f;o5)- config-file$(o $c2)-->$(o $c3)$npath"
         line '-' GRAY 2/78
