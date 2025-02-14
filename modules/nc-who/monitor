@@ -108,7 +108,9 @@ nc_monitor(){
 #            watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
 # TODO <-- 1
             ${BINARIES[cat]} <<-WATCH_COMMAND_TEMPFILE > $watch_command_tempfile
+. $lincld/binaries
 AIO="$AIO" DOCKER="$DOCKER" DB_STRG="$(${BINARIES[sed]} 's/\$/\\$/' <<< "$DB_STRG")" DB_EXEC="$DB_EXEC"
+$(declare -f q0)
 $(declare -f aio_wrapper)
 $(declare -f db_exec_)
 $db_query |
@@ -116,7 +118,7 @@ $sed_pre_html2text |
 $html2text_command |
 $sed_post_html2text
 WATCH_COMMAND_TEMPFILE
-            ${BINARIES[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
+            export BINARIES; ${BINARIES[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
             trap 'cleanup $watch_pid cls; interrupted INT' INT
             trap 'cleanup $watch_pid cls; interrupted TERM' TERM
             while :; do read -rsn 1 key
