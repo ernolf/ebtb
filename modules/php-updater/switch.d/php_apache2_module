@@ -1,0 +1,95 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SWITCH_PHP_APACHE2_MODULE_BASHLIB:-false} && return
+SWITCH_PHP_APACHE2_MODULE_BASHLIB=:
+
+switch_a2module_version(){
+    local ver_n ver_o pkg cf v
+    local -a a2_installed a2_alternatives
+    ver_n="$1"
+
+    if (( ${HTTPD[apache2]} > 2 )); then
+        apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
+        mapfile -t a2_installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
+        mapfile -t a2_alternatives< <(for v in ${a2_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
+
+        (( ${#a2_installed[@]} )) || return 2
+
+        if ! [[ " ${a2_installed[@]} " =~ " $ver_n " ]]; then
+            if (( ${#a2_alternatives[@]} == 1 )); then
+                ver_o=${a2_alternatives[0]}
+                o3;bundle echo "$(xpf;R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run" 6;N)"
+                f;G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n";N
+                f;o 5;bundle echo "$(R; format_string ".. to ensure that all required packages for a apache2handler version switch are installed." 6;N)"
+                f;O;echo "  $(format_string "or run it now:" 3;N)"
+                if ask "$(qpf)Do you want to run '$me${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
+                    $me${FLAG[forceflag]} $ver_o $ver_n
+                    exit 0
+                else
+                    return 3
+                fi
+            elif (( ${#a2_alternatives[@]} > 1 )); then
+                o3;bundle echo "$(xpf;R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run either one of" 6;N)"
+                f
+                for ver_o in  ${a2_alternatives[@]}; do
+                    G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n";N
+                done
+                f;o 5;bundle echo "$(R; format_string ".. to ensure that all required packages for a version switch are installed." 6;N)"
+                f;O;echo "  $(format_string "or run it now:" 3;N)"
+
+                pf;Y;echo "Either run"
+
+                for i in ${!a2_alternatives[@]}; do
+                    f;o 10;echo "$(button $((i + 1))) - $me${FLAG[forceflag]} ${a2_alternatives[i]} $ver_n"
+                done
+                f;o 10;echo "$(button q) - do nothing, quit"
+                N;f
+                while :;do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
+                    case $key in
+                            q)  f 2;break
+                                ;;
+                        [1-9])  P;pf;echo "Your choice:$(Yi) $me${FLAG[forceflag]} ${a2_alternatives[$key-1]} $ver_n";N
+                                anykey
+                                separator
+                                $me${FLAG[forceflag]} $ver_o $ver_n
+                                exit 0
+                    esac
+                done
+                return 3
+            fi
+        else
+            for cf in "${A2CONFFILES[@]##*/}"; do 
+                if [[ "$cf" =~ $PHPVREGEX\.load ]]; then 
+                    v="${cf#php}"
+                    v="${v%.load}"
+                    if [[ "${A2CONFFILES[@]}" =~ php$v\.conf && "${A2CONFFILES[@]}" =~ php$v\.load ]]; then
+                        ver_o="$v"
+                        break
+                    fi
+                fi
+            done
+            if [ "$ver_n" = "$ver_o" ]; then
+                o3; G; bundle echo "The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))"; N
+                return 0
+            fi
+            php_a2module_switch_2_ $ver_n
+            populate_a2conffiles
+            if [[ "${A2CONFFILES[@]}" =~ php$ver_n\.conf && "${A2CONFFILES[@]}" =~ php$ver_n\.load ]]; then
+                o3;G;bundle echo "Successfully switched the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)";N
+            else
+                return 1
+            fi
+            f
+            anykey
+        fi
+    else
+        return 4
+    fi
+}

@@ -21,401 +21,17 @@ SWITCH_BASHLIB=:
 . <(lrequire ask)
 . <(lrequire php/versions)
 . <(lrequire php/extensions)
+. <(lrequire php/nginx)
 . <(lrequire php/fpm)
 . <(lrequire php/apache2)
 . <(lrequire $sin/linstalled)
 
-php_fpm_sites_available_conf_(){
-    local httpd ver_n pool plu fpm_conf_regex
-    local -a pools sock_o conffiles
-    local -A sock_n sock_regex
-    local -i i
-    httpd="$1" ver_n="$2"
-    pools=($(fpm_socket "$ver_n"))
-    fpm_conf_regex="/etc/apache2/conf-enabled/$PHPVREGEX-fpm\.conf"
-    for pool in ${pools[@]}; do
-        sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
-        sock_regex[$pool]="$(echo "${sock_n[$pool]}" | sed -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/g")"
-        case $httpd in
-            apache2)
-                mapfile -t sock_o< <(q2 ${BINARIES[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${BINARIES[grep]} -Ehos "^[^#]*${sock_regex[$pool]//\./\\.}" {} + | ${BINARIES[grep]} -Eos "${sock_regex[$pool]//\./\\.}" | ${BINARIES[grep]} -Ev "${ver_n//\./\\.}" | ${BINARIES[sort]} -u)
-                mapfile -t conffiles< <(${BINARIES[grep]} -Els "^[^#]*${sock_regex[$pool]//\./\\.}" ${A2CONFFILES[@]} | ${BINARIES[grep]} -E '\.conf$' | ${BINARIES[grep]} -Ev "${fpm_conf_regex//\./\.}" | ${BINARIES[sort]} -u)
-                if (( ${#conffiles[@]} )); then
-                    o3; bundle echo "$(ipf; format_string "The apache2 server is connected to a PHP-FPM unix-socket, bypassing the usual SetHandler configuration mechanism." 6;N)"
-                fi
-                ;;
-            nginx)
-                mapfile -t sock_o< <(q2 ${BINARIES[find]} ${NGXCONFFILES[@]} ! -name "*.backup" -exec ${BINARIES[grep]} -Ehos "^[^#]*${sock_regex[$pool]//\./\.}" {} + | ${BINARIES[grep]} -Eos "${sock_regex[$pool]//\./\.}" | ${BINARIES[sort]} -u)
-                mapfile -t conffiles< <(${BINARIES[grep]} -Els "^[^#]*${sock_regex[$pool]//\./\.}" ${NGXCONFFILES[@]} | ${BINARIES[grep]} -Ev '\.backup$' | ${BINARIES[sort]} -u)
-                if (( ${#conffiles[@]} )); then
-                    o3; bundle echo "$(ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6;N)"
-                fi
-                ;;
-        esac
-        if (( ${#conffiles[@]} )); then
-            if (( ${#conffiles[@]} == 1 )); then
-                this='This' be='is' plu=''
-            else
-                this='These' be='are' plu='s'
-            fi
-            f
-            if (( ${#sock_o[@]} == 1 )); then
-                if [ "${sock_o[0]}" = "${sock_n[$pool]}" ]; then
-                    o3;pf;bundle echo "this is the socket: $(lG)${sock_o[0]}$(N), nothing to change"
-                    return 0
-                fi
-                o3;pf;bundle echo "this is the old socket: $(lG)${sock_o[0]}";N
-            else
-                o3;O;bundle echo "connections to multiple old sockets detected (will be fixed)";N
-                o3;pf;bundle echo "these are the old sockets: $(lG)${sock_o[@]}";N
-            fi
-            o3;pf;bundle echo "this is the new socket: $(lG)${sock_n[$pool]}";N
-            f
-            pf;bundle echo "$this $be the file$plu containing the PHP-FPM socket configuration:"
-            for i in ${!conffiles[@]}; do
-                if [ -L "${conffiles[i]}" ]; then
-                    o3;pf;GRAY;bundle echo "${conffiles[i]} -> $(C)$(${BINARIES[readlink]} -f "${conffiles[i]}")";N
-                else
-                    o3;pf;C;bundle echo "${conffiles[i]}";N
-                fi
-            done
-            f
-# TODO <0>
-            bundle echo " -$(format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
-# TODO <fi>
-            f
-            anykey
-            for i in ${!conffiles[@]}; do
-                conffile="$(${BINARIES[readlink]} -f "${conffiles[i]}")"
-# TODO <2>
-                sed -E --in-place=.backup '/^\s*#/ !s#'${sock_regex[$pool]//\./\.}'#'${sock_n[$pool]}'#g' $conffile
-                o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conffile.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
-# TODO <fi>
-            done
-            f
-            anykey
-        fi
-    done
-}
+${BINARIES[mkdir]} -p $lincld/$sin/switch.d
 
-switch_fpm_version(){
-    local httpd active_httpd infostring modstring modsubstring
-    if (( ${#HTTPD_ENABLED[@]} == ${#WK_HTTPD_ENABLED[@]} )); then
-        if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
-            httpd="${WK_HTTPD_ENABLED[0]}"
-            infostring="Detected httpd (webserver): $(C)$httpd$(N) (status inactive)"
-            if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                infostring="${infostring/inactive/active}"
-            fi
-        elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
-            httpd=both
-            modstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
-            infostring="Detected httpds (webservers): $modstring"
-            if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                active_httpd=${WK_HTTPD_ACTIVE[0]}
-                infostring="$infostring, but only $(C)$active_httpd$(N) seems to be active."
-            elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
-                active_httpd=both
-                infostring="$infostring, and $active_httpd seem to be active."
-            fi
-        fi
-    elif (( ${#HTTPD_ENABLED[@]} > ${#WK_HTTPD_ENABLED[@]} )); then
-        if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
-            httpd="${WK_HTTPD_ENABLED[0]}"
-            modstring="$(listify C ${HTTPD_ENABLED[@]})"
-            infostring="Detected httpds (webservers): $modstring. httpd with importance for this script: $(C)$httpd$(N) (status inactive)"
-            if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                infostring="${infostring/inactive/active}"
-            fi
-        elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
-            httpd=both
-            modstring="$(listify C ${HTTPD_ENABLED[@]})"
-            modsubstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
-            infostring="Detected httpds (webservers): $modstring. httpds with importance for this script: $modsubstring"
-            if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
-                active_httpd=${WK_HTTPD_ACTIVE[0]}
-                infostring="$infostring, but only $(C)$active_httpd$(N) seems to be active."
-            elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
-                active_httpd=both
-                infostring="$infostring, and $active_httpd seem to be active."
-            fi
-        fi
-    fi
-
-    case $httpd in
-       apache2) bundle echo "$(ipf; format_string "$infostring" 3;N)"
-                apache2_mpm event || return 0        # this is only for version switch, the modules must already be loaded
-                ;;
-         nginx) bundle echo "$(ipf; format_string "$infostring" 3;N)"
-                ;;
-          both) case $active_httpd in
-      apache2|both) bundle echo "$(ipf; format_string "$infostring" 3;N)"
-                    apache2_mpm event || return 0        # this is only for version switch, the modules must already be loaded
-                    ;;
-             nginx) bundle echo "$(ipf; format_string "$infostring" 3;N)"
-                    ;;
-                 *) o3;Pbg;bundle echo " - This script could not detect any enabled httpd (webserver). $(N)"
-                    exit0
-                esac
-                ;;
-             *) bundle echo "$(ipf; format_string "$infostring" 3;N)"
-                o3;Pbg;bundle echo " - This script can not (yet) switch the php version for this httpd. $(N)"
-                o3;bundle echo "-$(format_string "$(P)Please give me feedback on the way php is integrated into this web server so that I can add support for ${httpd:-this webserver} in future versions of this script." 6;N)"
-                exit0
-    esac
-    local ver_o ver_n pkg v pool fpm_conf
-    local -a fpm_installed fpm_alternatives pools_o pools_n conffiles
-    local -A fpm_switch
-    ver_n="$1"
-    mapfile -t fpm_installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
-    mapfile -t fpm_alternatives< <(for v in ${fpm_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
-
-    (( ${#fpm_installed[@]} )) || return 2
-
-    if ! [[ " ${fpm_installed[@]} " =~ " $ver_n " ]]; then
-        if (( ${#fpm_alternatives[@]} == 1 )); then
-            ver_o=${fpm_alternatives[0]}
-            o3;bundle echo "$(xpf;R; format_string "The $(dY)SetHandler FastCGI$(R) for version $(Y)$ver_n $(GRAY)(php$ver_n-fpm)$(R) is not installed. You should first run" 6;N)"
-            f;G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n";N
-            f;o 5;bundle echo "$(R; format_string ".. to ensure that all required packages for a php-fpm version switch are installed." 6;N)"
-            f;O;echo "  $(format_string "or run it now:" 3;N)"
-            if ask "$(qpf)Do you want to run '$me${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
-                $me${FLAG[forceflag]} $ver_o $ver_n
-                exit 0
-            else
-                return 3
-            fi
-        elif (( ${#fpm_alternatives[@]} > 1 )); then
-            o3;bundle echo "$(xpf;R; format_string "The $(dY)SetHandler FastCGI$(R) for version $(Y)$ver_n $(GRAY)(php$ver_n-fpm)$(R) is not installed. You should first run either one of" 6;N)"
-            f
-            for ver_o in  ${fpm_alternatives[@]}; do
-                G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n";N
-            done
-            f;o 5;bundle echo "$(R; format_string ".. to ensure that all required packages for a version switch are installed." 6;N)"
-            f;O;echo "  $(format_string "or run it now:" 3;N)"
-
-            pf;Y;echo "Either run"
-
-            for i in ${!fpm_alternatives[@]}; do
-                f;o 10;echo "$(button $((i + 1))) - $me${FLAG[forceflag]} ${fpm_alternatives[i]} $ver_n"
-            done
-            f;o 10;echo "$(button q) - do nothing, quit"
-            N;f
-            while :;do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
-                case $key in
-                        q)  f 2;break
-                            ;;
-                    [1-9])  P;pf;echo "Your choice:$(Yi) $me${FLAG[forceflag]} ${fpm_alternatives[$key-1]} $ver_n";N
-                            anykey
-                            separator
-                            $me${FLAG[forceflag]} $ver_o $ver_n
-                            exit 0
-                esac
-            done
-            return 3
-        fi
-    fi
-
-    local socket pv
-    if (( ${#WK_HTTPD_ACTIVE[@]} )); then
-#            if [[ "${WK_HTTPD_ACTIVE[@]}" =~ apache2 ]]; then
-        if (( "${HTTPD[apache2]}" > 2 )); then
-            for socket in $(fpm_sockets); do
-                pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
-                [ "$pv" != "$ver_n" ] && continue
-                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
-                        fpm_conf="/etc/apache2/conf-enabled/php${pv//\./\.}-fpm.conf"
-                        if [[ " ${A2CONFFILES[@]} " =~ " $fpm_conf " ]]; then
-                            o3; bundle echo "$(ipf; G; format_string "The SetHandler FastCGI configuration in apache2 is already switched to PHP-FPM version $(Y)$ver_n$(G)" 6;N)"
-                            fpm_switch[apache2]="set"
-                        fi
-                    fi
-            done
-        fi
-        if (( "${HTTPD[nginx]}" > 2 )); then
-            for socket in $(fpm_sockets); do
-                pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
-                [ "$pv" != "$ver_n" ] && continue
-                mapfile -t conffiles< <(${BINARIES[grep]} -Els "^[^#]*unix:$socket" ${NGXCONFFILES[@]} | ${BINARIES[grep]} -Ev '\.backup$' | ${BINARIES[sort]} -u)
-                if (( ${#conffiles[@]} )); then
-                    if (( ${#conffiles[@]} == 1 )); then
-                        this='This' be='is' plu=''
-                    else
-                        this='These' be='are' plu='s'
-                    fi
-                    o3; bundle echo "$(ipf; G; format_string "The SetHandler FastCGI configuration in nginx is already switched to PHP-FPM version $(Y)$ver_n$(G)" 6;N)"
-                    pf; bundle echo "$this $be the file$plu containing the PHP-FPM socket configuration:"
-                    for i in ${!conffiles[@]}; do
-                        if [ -L "${conffiles[i]}" ]; then
-                            o3; pf; GRAY; bundle echo "${conffiles[i]} -> $(C)$(${BINARIES[readlink]} -f "${conffiles[i]}")";N
-                        else
-                            o3; pf; C; bundle echo "${conffiles[i]}";N
-                        fi
-                    done
-                    f
-                    fpm_switch[nginx]="set"
-                fi
-            done
-        fi
-        for socket in $(fpm_sockets); do
-            pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
-            [ "$pv" = "$ver_n" ] && continue
-            if (( ${HTTPD[apache2]} > 2 )); then
-                if q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
-                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
-                        fpm_conf="/etc/apache2/conf-enabled/php${pv//\./\.}-fpm.conf"
-                        if [[ " ${A2CONFFILES[@]} " =~ " $fpm_conf " ]]; then
-                            if php_fpm_conf_ switch2 $ver_n; then
-                                bundle echo "$(ipf; G; format_string "Successfully switched the SetHandler FastCGI configuration in apache2 from PHP-FPM version $(Y)$pv$(G) to $(Y)$ver_n$(G)" 3;N)"
-                                ${BINARIES[systemctl]} restart apache2 php$ver_n-fpm
-                                populate_a2conffiles
-                            else
-                                bundle echo "$(xpf; R; format_string "Something went wrong while switching the SetHandler FastCGI Configuration in apache2 from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R)" 3;N)"
-                            fi
-                        fi
-                        if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
-                            o 7; GRAY; bundle echo ".. searching for other configuration files that may have to be switched..";N
-                            fpm_switch[apache2]+="ok"
-                        fi
-                    fi
-                else
-                    bundle echo "$(xpf; R; format_string "Could not find a apache2 config file containing the information for the PHP-Fast Process Manager." 3;N)"
-                    local -a a2errors
-                    mapfile -t a2errors< <(${BINARIES[apache2ctl]} configtest 2>&1)
-                    if (( ${#a2errors[@]} )); then
-                        f
-                        for i in ${!a2errors[@]}; do
-                            o5; bundle echo "- ${a2errors[i]}"
-                        done
-                        f
-                    fi
-                    fpm_switch[apache2]="err"
-                fi
-            fi
-            if (( ${HTTPD[nginx]} > 2 )); then
-                if q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )); then
-                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${NGXCONFFILES[@]}; then
-                        fpm_switch[nginx]+="ok"
-                    else
-                        fpm_switch[nginx]+="nok"
-                    fi
-                else
-                    bundle echo "$(xpf; R; format_string "Could not find a nginx config file containing the information for the PHP-Fast Process Manager configuration." 3;N)"
-                    local -a ngxerrors
-                    mapfile -t ngxerrors< <(${BINARIES[nginx]} -t 2>&1)
-                    if (( ${#ngxerrors[@]} )); then
-                        f
-                        for i in ${!ngxerrors[@]}; do
-                            o5; bundle echo "- ${ngxerrors[i]}"
-                        done
-                        f
-                    fi
-                    fpm_switch[nginx]="err"
-                fi
-            fi
-        done
-    else
-        o3; bundle echo "$(xpf; R) No active httpd detected!";N
-        o3; bundle echo "$(ipf; Yi; format_string "If you want this script to change your web server's PHP configuration to connect to the new PHP version, you will need to enable, activate and start (with systemd) the web server you want to use with the new PHP and repeat this step." 7;N)"
-        exit0
-    fi
-    for httpd in ${!fpm_switch[@]}; do
-        if [[ "${fpm_switch[$httpd]}" =~ ok ]]; then
-            php_fpm_sites_available_conf_ $httpd $ver_n
-            ${BINARIES[systemctl]} restart $httpd php$ver_n-fpm
-        elif [[ ! "${fpm_switch[$httpd]}" =~ set ]] && [[ "${fpm_switch[$httpd]}" =~ nok || "${fpm_switch[$httpd]}" =~ err ]]; then
-            [[ "${fpm_switch[$httpd]}" =~ nok ]] && bundle echo "$(xpf; R; format_string "Could not find a $httpd config file containing the information for the PHP-Fast Process Manager configuration." 3;N)"
-            o2; bundle echo "$(format_string "I am very sory, but you will have to edit your $httpd configuration by hand this time. Please give me feedback about how you configured it." 3;N)"
-            f
-            anykey
-        fi
-    done
-# TODO: <------->
-}
-
-switch_a2module_version(){
-    local ver_n ver_o pkg cf v
-    local -a a2_installed a2_alternatives
-    ver_n="$1"
-
-    if (( ${HTTPD[apache2]} > 2 )); then
-        apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
-        mapfile -t a2_installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
-        mapfile -t a2_alternatives< <(for v in ${a2_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
-
-        (( ${#a2_installed[@]} )) || return 2
-
-        if ! [[ " ${a2_installed[@]} " =~ " $ver_n " ]]; then
-            if (( ${#a2_alternatives[@]} == 1 )); then
-                ver_o=${a2_alternatives[0]}
-                o3;bundle echo "$(xpf;R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run" 6;N)"
-                f;G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n";N
-                f;o 5;bundle echo "$(R; format_string ".. to ensure that all required packages for a apache2handler version switch are installed." 6;N)"
-                f;O;echo "  $(format_string "or run it now:" 3;N)"
-                if ask "$(qpf)Do you want to run '$me${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
-                    $me${FLAG[forceflag]} $ver_o $ver_n
-                    exit 0
-                else
-                    return 3
-                fi
-            elif (( ${#a2_alternatives[@]} > 1 )); then
-                o3;bundle echo "$(xpf;R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run either one of" 6;N)"
-                f
-                for ver_o in  ${a2_alternatives[@]}; do
-                    G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n";N
-                done
-                f;o 5;bundle echo "$(R; format_string ".. to ensure that all required packages for a version switch are installed." 6;N)"
-                f;O;echo "  $(format_string "or run it now:" 3;N)"
-
-                pf;Y;echo "Either run"
-
-                for i in ${!a2_alternatives[@]}; do
-                    f;o 10;echo "$(button $((i + 1))) - $me${FLAG[forceflag]} ${a2_alternatives[i]} $ver_n"
-                done
-                f;o 10;echo "$(button q) - do nothing, quit"
-                N;f
-                while :;do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
-                    case $key in
-                            q)  f 2;break
-                                ;;
-                        [1-9])  P;pf;echo "Your choice:$(Yi) $me${FLAG[forceflag]} ${a2_alternatives[$key-1]} $ver_n";N
-                                anykey
-                                separator
-                                $me${FLAG[forceflag]} $ver_o $ver_n
-                                exit 0
-                    esac
-                done
-                return 3
-            fi
-        else
-            for cf in "${A2CONFFILES[@]##*/}"; do 
-                if [[ "$cf" =~ $PHPVREGEX\.load ]]; then 
-                    v="${cf#php}"
-                    v="${v%.load}"
-                    if [[ "${A2CONFFILES[@]}" =~ php$v\.conf && "${A2CONFFILES[@]}" =~ php$v\.load ]]; then
-                        ver_o="$v"
-                        break
-                    fi
-                fi
-            done
-            if [ "$ver_n" = "$ver_o" ]; then
-                o3; G; bundle echo "The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))"; N
-                return 0
-            fi
-            php_a2module_switch_2_ $ver_n
-            populate_a2conffiles
-            if [[ "${A2CONFFILES[@]}" =~ php$ver_n\.conf && "${A2CONFFILES[@]}" =~ php$ver_n\.load ]]; then
-                o3;G;bundle echo "Successfully switched the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)";N
-            else
-                return 1
-            fi
-            f
-            anykey
-        fi
-    else
-        return 4
-    fi
-}
+. <(lrequire $sin/switch.d/php_apache2_module)
+. <(lrequire $sin/switch.d/php_fpm)
+. <(lrequire $sin/switch.d/php_fpm_apache2)
+. <(lrequire $sin/switch.d/php_fpm_nginx)
 
 switch_default_version(){
     local key
@@ -424,9 +40,9 @@ switch_default_version(){
     mapfile -t php_versions< <(${BINARIES[phpquery]} -V | ${BINARIES[sort]})
     # update-alternatives
     cleanup_and_fix_alternatives before  # repair broken alternatives, remove not existing alternatives
-    mapfile -t selections< <(update-alternatives --get-selections | ${BINARIES[grep]} -E "ph(ar|p)")
-    P;echo " -$(format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the Debian alternatives system. All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision. Therefore you can select the actually active version as well here. In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$me${FLAG[forceflag]} \$old \$new$(P), where $(C)\$old$(P) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(P) should be the version that you want to switch to here and now." 3)"
-    echo "  $(format_string "In the subsequent next step it will switch your webserver to listen to the new php version as well. In some rare special cases, that step may fail though. You will have to fix it yourself then, by editing the config files of your webserver, to make it listen to the new php socket." 3;N)"
+    mapfile -t selections< <(list_alternatives)
+    P; echo " -$(format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the Debian alternatives system. All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision. Therefore you can select the actually active version as well here. In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$me${FLAG[forceflag]} \$old \$new$(P), where $(C)\$old$(P) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(P) should be the version that you want to switch to here and now." 3)"
+    echo "  $(format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3;N)"
     f
     o3;dY;echo "this is how the alternatives system is configured at present:";N
     f
@@ -465,7 +81,7 @@ switch_default_version(){
                             o3;pf;echo "$(lG)${selections[i]}";N
                         done
                         f
-                        Y;echo "  $(format_string "Please consider: $(dY)if some alternatives listed here are not in the expected php version, then the package that provides those binaries may not be installed in that version." 3)"
+                        Y;echo "  $(format_string "Please consider: $(dY)if some alternatives listed here are not switched to the selected version, then either the package that provides the binaries for that version is not installed or – in case of $(G)php-fpm.sock$(dY) – the default fpm-pool $(G)[www]$(dY) has been deactivated in the selected version but not in the version that it shows here." 3)"
                         f
                         anykey
                         separator
@@ -508,125 +124,24 @@ switch_default_version(){
                                 break
                             fi
                         fi
+                        separator
                         f
-                        o3;N;echo "You should once more run"
+                        o3;dY;echo "This is how php is connected to the httpd now:";N
+                        f
+                        list_installed_sapi
+                        N
+                        line '=' P 2/78 b1
+                        f
+                        anykey_noquit
+                        o3;N;echo "If everything has gone as expected up to this point, you should once more run"
                         f;G;echo "$(prompt;lB) $me${FLAG[forceflag]}$(C) --list-installed";N
-                        f;o2;echo "$(format_string ".. until the end (do not quit in between), not only to look if the switch worked but to scan once more for possible configuration errors from the point of view of the new version. If everything looks good and is working well, considder to completely remove the old php version." 3)"
+                        f;o2;echo "$(format_string ".. until the end (do not quit in between), not only to look if the switch worked but to scan once more for possible configuration errors from the point of view of the new version. If everything looks good and is working well, considder to completely remove the old php version, to free up system resources." 3)"
+                        f
+                        anykey_noquit
                         break
                     fi
         esac
     done
+    q0 di ff &
     contribute_
 }
-# COMMENT -->
-#########################################
-# TODO 0 -->
-if $verbose; then
-        bundle echo " -$(format_string "This script can replace $(listify Y ${sock_o[@]}) with $(Y)$sock_n$(N) for you, so look exactly what it suggests to do. If it does not look good, simply answer $(button no) and edit the file yourself as you need it." 3)"
-else
-# TODO <-- 0
-
-# TODO 2 -->
-if $verbose; then
-            local -i c2=20 c3=25
-            separator
-            line '=' P 2/78 b1  # old config
-            line '-' GRAY 2/78
-            os;GRAY;bundle echo "old:$(f;o5)- config-file$(o $c2)-->$(o $c3)$conffile"
-            line '-' GRAY 2/78
-            GRAY;bundle echo -n "-->  begin";line "  -->" GRAY 14
-            cat $conffile
-            GRAY;bundle echo -n "<--   end ";line "  <--" GRAY 14
-            line '=' P 2/78  # new config draft
-            line '-' GRAY 2/78
-            os;GRAY;bundle echo "draft: (not yet written to file)"
-            o5;bundle echo "- config-file$(o $c2)-->$(o $c3)$conffile"
-            line '-' GRAY 2/78
-            GRAY;bundle echo -n "-->  begin";line "  -->" GRAY 14
-            sed -E '/^\s*#/ !s#'${sock_regex//\./\.}'#'$sock_n'#g' $conffile
-            GRAY;bundle echo -n "<--   end ";line "  <--" GRAY 14
-            line '=' P 2/78 a2
-            bundle echo " -$(format_string "$(O)Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter $(N;box yes)" 3)"
-            f
-            if ask "$(qpf)Apply changes to $conffile as suggested" "$YES"; then
-                sed -E --in-place=.backup '/^\s*#/ !s#'${sock_regex//\./\.}'#'$sock_n'#g' $conffile
-                line '=' P 2/78 b1
-                line '-' GRAY 2/78
-                os;GRAY;bundle echo "new:$(f;o5)- config-file$(o $c2)-->$(o $c3)$conffile"
-                line '-' GRAY 2/78
-                GRAY;bundle echo -n "-->  begin";line "  -->" GRAY 14
-                cat $conffile
-                GRAY;bundle echo -n "<--   end ";line "  <--" GRAY 14
-                line '=' P 2/78
-                os;bundle echo "Changes written to disk."
-                f
-                o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conffile.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15)"
-                f
-                anykey
-            else
-                o3;C;bundle echo " -$(format_string "$conffile$(N) not changed. You can call this script again or edit $(C)$conffile$(N) with an editor of your choice." 3)"
-            fi
-            separator
-else
-# TODO <-- 2
-
-
--------
-    mapfile -t pools_n< <(fpm_socket "$ver_n")
-    mapfile -t pools_o< <(fpm_socket "$ver_o")
-    for pool in ${pools_n[@]}; do
-        case $httpd in
-# TODO 4 -->
-           apache2) if [[ "$pool" =~ " ${pools_o[@]} " && "$pool" == 'www' ]]; then
-# TODO <-- 4
-           apache2) if [ "$pool" = 'www' ]; then
-                        if php_fpm_conf_ switch2 $ver_n; then
-                            o3;G;bundle echo "Successfully switched php-fpm conf from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)";N
-                            SAPI_FPM[$ver_o]='i' SAPI_FPM[$ver_n]='a'
-                        else
-                            o3;R;bundle echo "Something went wrong while switching php-fpm from version $(Y)$ver_o$(R) to $(Y)$ver_n$(R)";N
-                        fi
-# TODO 5 -->
-                    elif [ "$pool" = 'www' ]; then
-                        php_fpm_conf_ enable $ver_n
-# TODO <-- 5
-                    else
-                        php_fpm_sites_available_conf_ $httpd $pool $ver_n
-                    fi
-                    ;;
-             nginx) php_fpm_sites_available_conf_ $httpd $pool $ver_n
-        esac
-    done
--------
-
-switch_httpd_version(){
-    bundle echo "  $(format_string "In the subsequent next step you can switch your webserver to listen to the new php version. In some rare special cases, this step may fail though. You will have to fix it yourself then, by editing the config files of your webserver, to make it listen to the new php socket." 3;N)"
-    local httpd
-#        populate_httpd_ enabled
-#        populate_httpd_ active
-    populate_wk_httpd_ enabled
-    populate_wk_httpd_ active
-    if (( ${#WK_HTTPD_ENABLED[@]} >= 1 && ${#WK_HTTPD_ACTIVE[@]} == 1 )) && [[ "${WK_HTTPD_ENABLED[@]}" =~ ${WK_HTTPD_ACTIVE[0]} ]]; then
-        httpd="${WK_HTTPD_ACTIVE[0]}"
-        if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
-            infostring="The only detected httpd (webserver) on this machine is $(C)$httpd$(N)"
-        elif (( ${#WK_HTTPD_ENABLED[@]} > 1 )); then
-            modstring="$(listify B ${WK_HTTPD_ENABLED[@]})"
-            infostring="There are multiple httpds (webservers) ($modstring) detected on this machine but only $(C)$httpd$(N) seems to be active."
-        fi
-    fi
-    case $httpd in
-       apache2) o3;bundle echo "$infostring"
-                apache2_mpm event || return         # this is only for version switch, the modules must already be loaded
-                apache2_module proxy_fcgi || return # "
-                apache2_module setenvif || return   # "
-                ;;
-         nginx) o3;bundle echo "$infostring"
-                ;;
-             *) o3;bundle echo "$infostring"
-                o3;Pbg;bundle echo " - This script can not (yet) switch the php version for this httpd. $(N)"
-                o3;bundle echo " -$(format_string "$(P)Please give me feedback on the way php is integrated into this web server so that I can add support for ${httpd:-this webserver} in future versions of this script." 6;N)"
-                exit0
-    esac
-}
-

@@ -1,0 +1,146 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SWITCH_PHP_FPM_NGINX_BASHLIB:-false} && return
+SWITCH_PHP_FPM_NGINX_BASHLIB=:
+
+php_fpm_sites_available_conf_nginx(){
+    local ver_n pool plu
+    local -a pools sock_o canonicalized_sock_o conffiles
+    local -A sock_n
+    local -i i
+    ver_n="$1"
+    mapfile -t pools< <(fpm_pools)
+    if (( ${#pools[@]} == 1 )); then
+        o3; ipf; bundle echo " This is systemwide the only fpm pool configured:"
+        f
+        bundle echo "    - ${pools[0]}"
+    elif (( ${#pools[@]} > 1 )); then
+        f
+        o3; ipf; bundle echo " These are systemwide the configured fpm pools:"
+        f
+        bundle echo "$(for pool in "${pools[@]}"; do echo "    - $pool"; done)"
+        f
+    fi
+    # we can only switch to existing pools with already created sockets for the new version
+    pools=($(fpm_socket "$ver_n"))
+    if (( ${#pools[@]} == 1 )); then
+        o3; ipf; bundle echo " This is the only fpm pool configured for the version you selected:"
+        f
+        bundle echo "    - $ver_n [${pools[0]}]"
+    elif (( ${#pools[@]} > 1 )); then
+        o3; ipf; bundle echo " These are the configured fpm pools for the version you selected:"
+        f
+        bundle echo "$(for pool in "${pools[@]}"; do echo "    - $ver_n [$pool]"; done)"
+    fi
+
+    for pool in ${pools[@]}; do
+
+        sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
+        canonicalized_sock_n[$pool]="$(canonicalize "${sock_n[$pool]}")"
+
+        mapfile -t sock_o< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ sockets "${sock_n[$pool]}" | ${BINARIES[sort]} -u)
+        mapfile -t canonicalized_sock_o< <(canonicalize_array "${sock_o[@]}")
+        mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles_regex "${sock_n[$pool]}" | ${BINARIES[sort]} -u)
+        if (( ${#conffiles[@]} )); then
+            f
+            o3; bundle echo "$(ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6;N)"
+
+            if (( ${#conffiles[@]} == 1 )); then
+                this='This' be='is' plu=''
+            else
+                this='These' be='are' plu='s'
+            fi
+
+            if (( ${#canonicalized_sock_o[@]} == 1 )); then
+                if [ "${canonicalized_sock_o[0]}" = "${canonicalized_sock_n[$pool]}" ]; then
+                    f
+                    o3;pf;bundle echo "this is the socket:"
+                    f
+                    o3;pf;bundle echo " - $(canonicalize_if_ ${sock_o[0]})"
+                    f
+                    o3;pf;bundle echo "nothing to change"
+                    continue
+                fi
+
+                o3;pf;bundle echo "this is the old socket:"
+                o3;pf;bundle echo " - $(canonicalize_if_ ${sock_o[0]})"
+            elif (( ${#canonicalized_sock_o[@]} > 1 )); then
+                o3; bundle echo "$(ipf; O; format_string "Multiple socket configurations detected, e.g. to more than one PHP version. If this is intentional, you can just skip ahead and edit only the sockets you want to change." 6; N)"
+                o3; pf; bundle echo "these are the configurations in detail:"; N
+
+                local -a sock_o_conf_files
+                for i in ${!sock_o[@]}; do
+                    mapfile -t sock_o_conf_files< <(p_nosort ${sock_o_conf_files[@]}; iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles "${sock_o[i]}")
+                done
+                mapfile -t sock_o_conf_files< <(p_sort ${sock_o_conf_files[@]})
+                for i in "${!sock_o_conf_files[@]}"; do
+                    f
+                    detect_nginx_php_fpm all verbose "${sock_o_conf_files[i]}"
+                done
+                unset sock_o_conf_files
+                f
+                anykey
+            fi
+            o3;pf;bundle echo "this is the new socket:"
+            o3;pf;bundle echo " - $(canonicalize_if_ ${sock_n[$pool]})"
+            f
+            pf;bundle echo "$this $be the file$plu containing the PHP-FPM socket configuration:"
+            for i in ${!conffiles[@]}; do
+                f
+                detect_nginx_php_fpm all verbose "${conffiles[i]}"
+            done
+
+#debug=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
+            local line conf sock question do_change changed xtemp=$(tf)
+            changed=false
+            for i in ${!conffiles[@]}; do
+                do_change=false
+                conf="$(${BINARIES[readlink]} -f "${conffiles[i]}")"
+                echo "${BINARIES[sed]} -E --in-place=.backup '" > "$xtemp"
+                for sock in ${sock_o[@]}; do
+                    line="$(detect_nginx_php_fpm lineonly quiet "${conffiles[i]}" "$sock")"
+                    [ -n "$line" ] || continue
+                    [[ "${line##*:}" != "${sock_n[$pool]}" ]] || continue
+                    question="Q:$(format_string "Do you want to replace \"$(Y)${line##*:}$(N)\" with \"$(Yi)${sock_n[$pool]}$(N)\" in line $(GRAYbg)\"${line%%:*}\"$(N) of $(C)$conf$(N)" 3)"
+                    separator
+                    if ask "$question" "$YES"; then
+                        echo "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" >> "$xtemp"
+                        do_change=:
+                    fi
+                done
+                echo "' $conf" >> "$xtemp"
+                if "$do_change"; then
+                    f
+                    bundle echo " -$(format_string "If you continue here, the changes will be written to file." 3)"
+                    f
+                    anykey
+                    . $xtemp
+                    changed=:
+                    o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
+                else
+                    f
+                    o3;bundle echo "$(P) Nothing selected to change in $(C)$conf."; N
+                    f
+                fi
+            done
+            "$changed" && ${BINARIES[systemctl]} restart nginx php$ver_n-fpm
+            rm -f "$xtemp"
+            unset line conf sock question do_change changed xtemp
+            f
+#            anykey_noquit
+        else
+            f
+            o3; bundle echo "$(ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected." 6; N)"
+            o3; bundle echo "- $(format_string "If this does not meet your expectations, you may not have created the fpm pool for the selected version you want to switch to. This script normaly creates the necessary pools in the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
+            f
+            anykey_noquit
+        fi
+    done
+}

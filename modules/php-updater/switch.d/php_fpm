@@ -1,0 +1,280 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SWITCH_PHP_FPM_BASHLIB:-false} && return
+SWITCH_PHP_FPM_BASHLIB=:
+
+switch_fpm_version(){
+    local ver_n
+    ver_n="$1"
+
+    ## preselection httpd
+    # populate vars for preselection
+    local httpd active_httpd infostring modstring modsubstring
+    if (( ${#WK_HTTPD_ACTIVE[@]} )); then
+        if (( ${#HTTPD_ENABLED[@]} == ${#WK_HTTPD_ENABLED[@]} )); then
+            if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                httpd="${WK_HTTPD_ENABLED[0]}"
+                infostring="Detected httpd (webserver): $(C)$httpd$(N) (status inactive)"
+                if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                    infostring="${infostring/inactive/active}"
+                fi
+            elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
+                httpd=both
+                modstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
+                infostring="Detected httpds (webservers): $modstring"
+                if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                    active_httpd=${WK_HTTPD_ACTIVE[0]}
+                    infostring="$infostring, but only $(C)$active_httpd$(N) seems to be active."
+                elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
+                    active_httpd=both
+                    infostring="$infostring, and $active_httpd seem to be active."
+                fi
+            fi
+        elif (( ${#HTTPD_ENABLED[@]} > ${#WK_HTTPD_ENABLED[@]} )); then
+            if (( ${#WK_HTTPD_ENABLED[@]} == 1 )); then
+                httpd="${WK_HTTPD_ENABLED[0]}"
+                modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                infostring="Detected httpds (webservers): $modstring. httpd with importance for this script: $(C)$httpd$(N) (status inactive)"
+                if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                    infostring="${infostring/inactive/active}"
+                fi
+            elif (( ${#WK_HTTPD_ENABLED[@]} == 2 )); then
+                httpd=both
+                modstring="$(listify C ${HTTPD_ENABLED[@]})"
+                modsubstring="$(listify C ${WK_HTTPD_ENABLED[@]})"
+                infostring="Detected httpds (webservers): $modstring. httpds with importance for this script: $modsubstring"
+                if (( ${#WK_HTTPD_ACTIVE[@]} == 1 )); then
+                    active_httpd=${WK_HTTPD_ACTIVE[0]}
+                    infostring="$infostring, but only $(C)$active_httpd$(N) seems to be active."
+                elif (( ${#WK_HTTPD_ACTIVE[@]} == 2 )); then
+                    active_httpd=both
+                    infostring="$infostring, and $active_httpd seem to be active."
+                fi
+            fi
+        fi
+    else
+        o3; bundle echo "$(xpf; R) No active httpd detected!"; N
+        o3; bundle echo "$(ipf; Yi; format_string "If you want this script to change your web server's PHP configuration to connect to the new PHP version, you will need to enable, activate and start (with systemd) the web server you want to use with the new PHP and repeat this step." 7; N)"
+        exit0
+    fi
+    # preselection case
+    case "$httpd" in
+        apache2)
+            bundle echo "$(ipf; format_string "$infostring" 3; N)"
+            apache2_mpm event || return 0        # this is only for version switch, the modules must already be loaded
+            ;;
+        nginx)
+            bundle echo "$(ipf; format_string "$infostring" 3; N)"
+            ;;
+        both)
+            case "$active_httpd" in
+                apache2|both)
+                    bundle echo "$(ipf; format_string "$infostring" 3; N)"
+                    apache2_mpm event || return 0        # this is only for version switch, the modules must already be loaded
+                    ;;
+                nginx)
+                    bundle echo "$(ipf; format_string "$infostring" 3; N)"
+                    ;;
+                *)  o3; Pbg; bundle echo " - This script could not detect any enabled httpd (webserver). $(N)"
+                    exit0
+            esac
+            ;;
+        *)  bundle echo "$(ipf; format_string "$infostring" 3; N)"
+            o3; Pbg; bundle echo " - This script can not (yet) switch the php version for this httpd. $(N)"
+            o3; bundle echo "-$(format_string "$(P)Please give me feedback on the way php is integrated into this httpd so that I can add support for ${httpd:-this webserver} in future versions of this script." 6; N)"
+            exit0
+    esac
+    unset httpd active_httpd infostring modstring modsubstring
+    # end of preselection <-
+
+    ## prechecks on installed fpm
+    # vars only needed for prechecks
+    local v ver_o key
+    local -i i
+    local -a fpm_installed fpm_alternatives
+    mapfile -t fpm_installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
+    mapfile -t fpm_alternatives< <(for v in ${fpm_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
+    # return with signal 2 if no fpm installed at all
+    (( ${#fpm_installed[@]} )) || return 2
+    # fork into new run or return with signal 3 if desired new php version is not installed
+    if ! [[ " ${fpm_installed[@]} " =~ " $ver_n " ]]; then
+        if (( ${#fpm_alternatives[@]} == 1 )); then
+            ver_o=${fpm_alternatives[0]}
+            o3; bundle echo "$(xpf;R; format_string "The $(dY)SetHandler FastCGI$(R) for version $(Y)$ver_n $(GRAY)(php$ver_n-fpm)$(R) is not installed. You should first run" 6; N)"
+            f; G; bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n"; N
+            f; o 5; bundle echo "$(R; format_string ".. to ensure that all required packages for a php-fpm version switch are installed." 6; N)"
+            f; O; echo "  $(format_string "or run it now:" 3; N)"
+            if ask "$(qpf)Do you want to run '$me${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
+                $me${FLAG[forceflag]} $ver_o $ver_n
+                exit 0
+            else
+                return 3
+            fi
+        elif (( ${#fpm_alternatives[@]} > 1 )); then
+            o3; bundle echo "$(xpf; R; format_string "The $(dY)SetHandler FastCGI$(R) for version $(Y)$ver_n $(GRAY)(php$ver_n-fpm)$(R) is not installed. You should first run either one of" 6; N)"
+            f
+            for ver_o in  ${fpm_alternatives[@]}; do
+                G; bundle echo "$(prompt; P) $me${FLAG[forceflag]} $ver_o $ver_n"; N
+            done
+            f; o 5; bundle echo "$(R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
+            f; O; echo "  $(format_string "or run it now:" 3; N)"
+
+            pf; Y; echo "Either run"
+
+            for i in ${!fpm_alternatives[@]}; do
+                f; o 10; echo "$(button $((i + 1))) - $me${FLAG[forceflag]} ${fpm_alternatives[i]} $ver_n"
+            done
+            f; o 10; echo "$(button q) - do nothing, quit"
+            N; f
+            while :; do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
+                case $key in
+                        q)  f 2; break
+                            ;;
+                    [1-9])  P; pf; echo "Your choice:$(Yi) $me${FLAG[forceflag]} ${fpm_alternatives[$key-1]} $ver_n"; N
+                            anykey
+                            separator
+                            $me${FLAG[forceflag]} $ver_o $ver_n
+                            exit 0
+                esac
+            done
+            return 3
+        fi
+    fi
+    unset v ver_o key i fpm_installed fpm_alternatives
+    # end of prechecks <-
+
+    local socket pv
+    local -a pools conffiles
+    local -A fpm_switch
+    pools=($(fpm_socket "$ver_n"))
+
+    ## check if already switched to new socket and mark as "set"
+    # apache2
+    if (( "${HTTPD[apache2]}" > 2 )); then
+        local fpmconffile
+        fpmconffile="$(q2 ${BINARIES[apache2ctl]} -t -D DUMP_INCLUDES | ${BINARIES[gawk]} '/php'$ver_n'-fpm/{print $NF}')"
+        if [[ -n "$fpmconffile" && " ${pools[@]} " =~ ' www ' ]]; then
+            f
+            o3; bundle echo "$(ipf; G; format_string "The SetHandler FastCGI configuration in apache2 is already switched to PHP-FPM version $(Y)$ver_n$(G)" 6; N)"
+            f
+            fpm_switch[apache2]='set'
+            anykey_noquit
+        fi
+        unset fpmconffile
+    fi
+    # nginx
+    if (( "${HTTPD[nginx]}" > 2 )); then
+        for socket in $(fpm_sockets); do
+            pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
+            [ "$pv" != "$ver_n" ] && continue
+            mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles "$socket" | ${BINARIES[sort]} -u)
+            if (( ${#conffiles[@]} )); then
+                if (( ${#conffiles[@]} == 1 )); then
+                    this='This' be='is' plu=''
+                else
+                    this='These' be='are' plu='s'
+                fi
+                f
+                o3; bundle echo "$(ipf; G; format_string "The SetHandler FastCGI configuration in nginx is already switched to PHP-FPM version $(Y)$ver_n$(G)" 6; N)"
+                pf; bundle echo "$this $be the file$plu containing the $(Yi)upstream$(N) server block and/or $(Yi)fastcgi_pass$(N) configuration:"
+                for i in ${!conffiles[@]}; do
+                    f
+                    detect_nginx_php_fpm all verbose "${conffiles[i]}"
+                done
+                f
+                fpm_switch[nginx]='set'
+                anykey_noquit
+            fi
+        done
+    fi
+
+    ## if still not set sockets
+    for socket in $(fpm_sockets); do
+        pv="$(echo $socket | ${BINARIES[grep]} -Eo "${PHPVREGEX#php}")"
+        [ "$pv" = "$ver_n" ] && continue
+        if (( ${HTTPD[apache2]} > 2 )); then
+            if q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
+                if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
+                    if [ "$(q2 ${BINARIES[apache2ctl]} -t -D DUMP_INCLUDES | ${BINARIES[gawk]} '/'$PHPVREGEX'-fpm/ { if (match($NF, /php([0-9]+\.[0-9]+)-fpm/, arr)) { print arr[1] } }')" = "$pv" ]; then
+                        if php_fpm_conf_ switch2 $ver_n; then
+                            bundle echo "$(ipf; G; format_string "Successfully switched the SetHandler FastCGI configuration in apache2 from PHP-FPM version $(Y)$pv$(G) to $(Y)$ver_n$(G)" 3; N)"
+                            ${BINARIES[systemctl]} restart apache2 php$ver_n-fpm
+                            populate_a2conffiles
+                        else
+                            bundle echo "$(xpf; R; format_string "Something went wrong while switching the SetHandler FastCGI Configuration in apache2 from version $(Y)$pv$(R) to $(Y)$ver_n$(R)" 3; N)"
+                        fi
+                    fi
+                    if ${BINARIES[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
+                        f
+                        o 7; GRAY; bundle echo ".. searching for other configuration files that may have to be switched..";N
+                        fpm_switch[apache2]+=' ok'
+                    fi
+                fi
+            else
+                bundle echo "$(xpf; R; format_string "Could not find a apache2 config file containing the information for the PHP-Fast Process Manager." 3; N)"
+                local -a a2errors
+                mapfile -t a2errors< <(${BINARIES[apache2ctl]} configtest 2>&1)
+                if (( ${#a2errors[@]} )); then
+                    f
+                    for i in ${!a2errors[@]}; do
+                        o5; bundle echo "- ${a2errors[i]}"
+                    done
+                    f
+                fi
+                fpm_switch[apache2]+=' err'
+            fi
+        fi
+        if (( ${HTTPD[nginx]} > 2 )); then
+            if q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )); then
+                mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles "$socket" | ${BINARIES[sort]} -u)
+                if (( ${#conffiles[@]} )); then
+                    fpm_switch[nginx]+=' ok'
+                else
+                    fpm_switch[nginx]+=' nok'
+                fi
+            else
+                bundle echo "$(xpf; R; format_string "Could not find an nginx config file containing the information for the PHP-Fast Process Manager configuration." 3; N)"
+                local -a ngxerrors
+                mapfile -t ngxerrors< <(${BINARIES[nginx]} -t 2>&1)
+                if (( ${#ngxerrors[@]} )); then
+                    f
+                    for i in ${!ngxerrors[@]}; do
+                        o5; bundle echo "- ${ngxerrors[i]}"
+                    done
+                    f
+                fi
+                fpm_switch[nginx]+=' err'
+            fi
+        fi
+    done
+    unset fpmconffile socket pv conffiles
+
+    # evaluate
+    # if nothing found yet:
+    local httpd
+    for httpd in apache2 nginx; do
+        if (( ${HTTPD[$httpd]} > 2 )) && [ -z "${fpm_switch[$httpd]}" ]; then
+            php_fpm_sites_available_conf_$httpd $ver_n
+        fi
+    done
+    # and if marked:
+    for httpd in ${!fpm_switch[@]}; do
+        if [[ "${fpm_switch[$httpd]} " =~ " ok " ]]; then
+            php_fpm_sites_available_conf_$httpd $ver_n
+            ${BINARIES[systemctl]} restart $httpd php$ver_n-fpm
+        elif [[ ! " ${fpm_switch[$httpd]} " =~ " set " ]] && [[ "${fpm_switch[$httpd]} " =~ " nok " || "${fpm_switch[$httpd]} " =~ " err " ]]; then
+            [ "${fpm_switch[$httpd]}" = 'nok' ] && bundle echo "$(xpf; R; format_string "Could not find a $httpd config file containing the information for the PHP-Fast Process Manager configuration." 3; N)"
+            o2; bundle echo "$(format_string "I am very sory, but you will have to edit your $httpd configuration by hand this time. Please give me feedback about how you configured it." 3; N)"
+            f
+            anykey
+        fi
+    done
+    unset httpd fpm_switch
+}
