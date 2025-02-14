@@ -19,6 +19,13 @@ disclaimer(){
 
     Using this script is not for free!
 
+    $(Cbg;format_string "  I expect everyone who uses this script to contribute in some way,  $(N)" 3)
+    $(Cbg;format_string "  especially if you use it for commercial or professional purposes.  $(N)" 3)
+
+    How you can contribute is shown at the end of this script or by running
+
+        - $me --contribute
+
     Data from your system can be transferred, such as
 
         - distribution
@@ -29,7 +36,7 @@ disclaimer(){
 
     The script’s activity is logged for reference. You can view this log under:
 
-        "/tmp/ebtb-logfiles/php-updater.log"
+        "/tmp/ebtb/logfiles/php-updater.log"
 
     An anonymized fingerprint is created for each computer using the machine ID
     associating the information with “a computer” but not with any individual.
@@ -43,7 +50,8 @@ disclaimer(){
     The data is used solely to optimize the script itself. During times when
     the script is not being actively developed, no data will be transmitted.
 
-    Please end the script now if you do not agree with these terms.
+    Please end the script now if you do not agree with these terms or if your
+    are not willing to contribute.
 
 DISCLAIMER
 anykey

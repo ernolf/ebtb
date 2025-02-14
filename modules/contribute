@@ -18,11 +18,11 @@ contribute(){
     ${BINARIES[cat]} <<CONTRIBUTE
 
 $(separator xGRAY)
-  $(GRAY;format_string "If your problem has been resolved with this script, then I was able to help you," 3)
-  $(GRAY;format_string "which fulfills the main motivation of my work!" 3)
 
-  $(Cbg;format_string " I expect everyone who uses my scripts to contribute in some way, especially if $(N)" 3)
-  $(Cbg;format_string " you use it for commercial or professional purposes. $(N)" 3)
+  $(GRAY;format_string "I hope this script is/was helpful!" 3)
+
+  $(Cbg;format_string " I expect everyone who uses this script to contribute in some way, $(N)" 3)
+  $(Cbg;format_string " especially if you use it for commercial or professional purposes. $(N)" 3)
 
 $(Yi)                         This is how YOU can contribute:
 $(Yi)                         ===============================
@@ -45,10 +45,7 @@ $(O)          \\$(dY)°$(O)     /             $(lG)0x72b7901b3daa45a7266A77Aa3B3
 $(O)           \`----'          $(GRAY)* $(C)Solana$(GRAY) to
                                $(lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(N)
 
-  $(W;format_string "I sincerely want to express my thanks to those who have shown their appreciation" 3)
-  $(W;format_string "with donations!" 3)
-
-  $(GRAY;format_string "… and if you don't want to spend money, spreading the word, a 'thank you'," 3)
+  $(GRAY;format_string "… or if you don't want to spend money, spreading the word, a 'thank you'," 3)
   $(GRAY;format_string "a $(R)❤️$(GRAY) or a 'like' at $(button 1;GRAY) are the least that everyone can afford." 3;N)
 
 $(button 1;W;pf)$1
