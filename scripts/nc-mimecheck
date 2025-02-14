@@ -46,17 +46,10 @@ __whoami_whereami__
 
 __vdirname__
 __tempdir__
-
-### module handling (minified)
 __module_server__
-## general
 __general__
-## include bashmodules (minified) ->
 __module_loader__
-# check module integrity if root is running script and remove tainted modules (minified)
 __module_integrity__
-## <- include bashmodules end #
-
 __nextcloud_updater__
 
 contribute_(){

@@ -1,16 +1,18 @@
-# check module integrity if root is running script and remove tainted modules
-$rt && {
-    [ -f "$lmj" ] || $curlc -o "$lmj" -A "$(fp)$A" $cargs/$rmj
-    q2 ${BINARIES[jq]} -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256
-    cd $lincld
-    tntd=($(
-        q2 ${BINARIES[sha256sum]} -c --ignore-missing --quiet modules.sha256 | ${BINARIES[sed]} 's/:.*//'
-    ))
-    ((${#tntd[@]})) && {
-        for tm in ${tntd[@]}; do ${BINARIES[rm]} "$tm"; done
+[ -f "$lmj" ] || $curlc -o "$lmj" -A "$(fp)$A" $cargs/$rmj
+q2 ${BINARIES[jq]} -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256
+cd $lincld
+tntd=($(
+    q2 ${BINARIES[sha256sum]} -c --ignore-missing --quiet modules.sha256 | ${BINARIES[sed]} 's/:.*//'
+))
+((${#tntd[@]})) && {
+    declare res=:
+    for tm in ${tntd[@]}; do
+        q0 ${BINARIES[rm]} "$tm" || res=false
+    done
+    $res && {
         "$me" "json=$my_json" $my_args
         exit 0
     }
-    cd
 }
-unset -v lcf tntd tm
+cd
+unset -v lcf tntd tm res

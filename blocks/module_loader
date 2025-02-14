@@ -2,10 +2,12 @@
 declare channel='prod' lincld rincld REQ mod check=false lmj lmjn rmj lcf fp
 w4uc=900
 [[ "$scriptname" =~ test ]] && { channel='test' w4uc=30; }
-lincld="${ca_dir%/*}/include/ebtb/$channel" rincld="modules/$channel"
-$rt && mkdir -p $lincld/$sin
+[ -z "$HOME" ] && eval HOME=~
+[[ -d "$HOME" && "$HOME" != / && -w "$HOME" ]] && lincld="$HOME/.ebtb/modules/$channel" || lincld="$TMPDIR/ebtb/modules/$channel"
+rincld="modules/$channel"
+mkdir -p "$lincld/$sin"
 REQ=". $lincld" lmj="$lincld/modules.json" rmj="$rincld/modules.json" lcf="$lincld/$sin/.checked"
-lmjn="$lmj~new" lce=$(q2 cat "$lcf") fp=$(q2 cat "$lincld/fp")
+lmjn="$lmj~new" lce=$(q2 cat "$lcf")
 $rt && ((rte - lce > w4uc)) && {
     $curlc -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
     if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && check=:; fi

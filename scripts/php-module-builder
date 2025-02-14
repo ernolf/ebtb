@@ -24,7 +24,7 @@ modules=(
     php/extensions $sin/disclaimer $sin/ini $sin/pecl $sin/patch
     $sin/data_refine
 )
-
+__debug__
 __when__
 
 __whoami_whereami__
@@ -34,16 +34,10 @@ declare vdirname='project_dir' # <-- don't change this!
 declare dflt_$vdirname='UNDEFINED' # <-- don't change this!
 declare $vdirname="UNDEFINED" # <-- don't change this!
 __tempdir__
-
-### module handling (minified)
 __module_server__
-## general
 __general__
-## include bashmodules (minified) ->
 __module_loader__
-# check module integrity if root is running script and remove tainted modules (minified)
 __module_integrity__
-## <- include bashmodules end #
 
 contribute_(){
     . <(require contribute)

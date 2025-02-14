@@ -45,17 +45,18 @@ minify() {
 }
 
 placeholder_replace(){
-    local placeholder
+    local placeholder minified
     placeholder="$1"
+    ${MINIFIED:-true}&&minified=" (minified)"||minified=''
     case $placeholder in
         shebang_bash)
             # https://stackoverflow.com/questions/10376206/what-is-the-preferred-bash-shebang#10383546
 #            echo "#!/bin/bash"
 #            echo "#!/usr/bin/env bash"
-            echo "#!/usr/bin/env -S LC_MESSAGES=C bash"
+            echo '#!/usr/bin/env -S LC_CTYPE=C.UTF-8 LC_MESSAGES=C bash'
             ;;
         bashlib)
-            echo "# BASHLIB"
+            echo '# BASHLIB'
             ;;
         path_and_scriptname)
             echo "# $BINDIR/$name"
@@ -75,7 +76,7 @@ placeholder_replace(){
         scriptname)
             echo "declare scriptname='$name'"
             echo 'declare sin=${scriptname%-test}'
-            echo "declare -a dependencies modules"
+            echo 'declare -a dependencies modules'
             ;;
         debug)
             if [ "$test_mode" = "test" ]; then
@@ -94,31 +95,40 @@ placeholder_replace(){
             cat "blocks/vdirname"
             ;;
         tempdir)
-            echo ': "${TMPDIR:=/tmp}"'
+            ${MINIFIED:-true} && echo '# read minified codeblocks here: https://github.com/ernolf/ebtb/tree/main/blocks'
+            echo "### find a writable tempdir$minified"
+            minify "blocks/tempdir"
             ;;
         module_server)
+            echo '### module handling'
             echo "declare my_home=$MY_HOME"
-            echo "# read minified codeblocks here: https://github.com/ernolf/ebtb/tree/main/blocks"
             if $LOCAL_SERVER; then
                 case $LOCAL_SERVER_BINARY in
                        php) http_server_string='php -S localhost:' ;;
                    python3) http_server_string='python3 -m http.server '
                 esac
-                echo "## local module server"
+                echo "## local module server$minified"
                 minify "blocks/module_server" | sed "s/__http_server__/$http_server_string/"
             fi
             ;;
         general)
+            echo "## general$minified"
             minify "blocks/general"
             ;;
         module_loader)
+            echo "## include bashmodules$minified ->"
             minify "blocks/module_loader"
             ;;
         module_integrity)
+            echo "# check module integrity and remove tainted modules$minified"
             minify "blocks/module_integrity"
+            echo '## <- include bashmodules end #'
             ;;
         nextcloud_updater)
-            cat "blocks/nextcloud_updater"
+            echo "## nextcloud updater$minified ->"
+            echo '# Update can be done by all but $NC_USER, since NC_USER normaly has no sudo rights.'
+            minify "blocks/nextcloud_updater"
+            echo '## <- nextcloud updater end #'
     esac
 }
 

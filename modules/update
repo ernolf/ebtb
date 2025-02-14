@@ -120,11 +120,13 @@ my_update_check(){
                 u)  my_update
                     ;;
                 i)  upinf="(update available)"
+                    q0 di &
                     break
             esac
         done
     elif (( my_epoch == epoch )); then
         upinf="(latest version)"
+        q0 di &
     fi
 }
 

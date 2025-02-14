@@ -12,9 +12,32 @@ TEMPFILE_BASHLIB=:
 
 . <(lrequire binaries)
 
-# tempfile creation $1=u (--dry-run)
+# standard for root:
 : "${TMPDIR:=/tmp}"
+[[ "$TMPDIR" == '/' || ! -d "$TMPDIR" ]] && TMPDIR='/tmp'
+[ -d "$TMPDIR" ] || TMPDIR='/temp'
 
+# unprivileged users need their own writable tmp dir:
+if (( $(${BINARIES[id]} -u) )); then
+    TMPDIR="${TMPDIR%/}"
+    if (( $(${BINARIES[gawk]} -F/ '{print NF-1}' <<< "$TMPDIR") == 1 )) && [ -w "$TMPDIR" ]; then
+        TMPDIR="$TMPDIR/user-$(${BINARIES[id]} -u)"
+    elif [ ! -w "$TMPDIR" ]; then
+        TMPDIR="$(${BINARIES[gawk]} -F/ '{print "/"$2}' <<< "$TMPDIR")/user-$(${BINARIES[id]} -u)"
+    fi
+    [ -d "$TMPDIR" ] || q0 ${BINARIES[mkdir]} -m 755 "$TMPDIR"
+fi
+declare ttf
+ttf="$(${BINARIES[mktemp]} -p "$TMPDIR")"
+if [[ -n "$ttf" && -f "$ttf" ]]; then
+    ${BINARIES[rm]} -f -- "$ttf"
+else
+    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '$(${BINARIES[id]} -un)'\e[0m" >&2
+    [ -t 0 ] || exit 1
+fi
+unset ttf
+
+# tempfile creation $1=u (--dry-run)
 tf(){
     local arg t u='' mode=''
     for arg in $@; do

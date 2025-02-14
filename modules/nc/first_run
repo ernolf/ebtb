@@ -20,13 +20,13 @@ FIRST_RUN_BASHLIB=:
 first_run(){
     te1
 
-    complete(){
+    finish(){
         mh "vdir: $1" &
         setvdir v "$1"
         f
-        o2; echo "- $(lG)first run wizard completed successfully."; N
+        o2; echo "- $(lG)first run wizard completed successfully. Please start script again"; N
+        o2; echo "- $(lG)No further root rights are required to use the script except for updating."; N
         f
-        $me "json=$my_json" $my_args
         exit 0
     }
 
@@ -54,7 +54,7 @@ first_run(){
             case ${ans:-y} in
                 q)  exit 0
                     ;;
-                y)  complete "$p"
+                y)  finish "$p"
                     ;;
                 n)  break
                     ;;
@@ -100,7 +100,7 @@ first_run(){
                                 ;;
                             n)  continue
                                 ;;
-                            y)  complete "$p"
+                            y)  finish "$p"
                                 ;;
                             *)  printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
                         esac
@@ -117,7 +117,7 @@ first_run(){
         read -rp "  --> " p
         te1
         [ "${p,}" = "q" ] && exit 0
-        [ -f "$p/occ" ] && complete "$p" || echo "$(Pbg)  * I can not detect a Nextcloud installation in \"$p\" $(N)"
+        [ -f "$p/occ" ] && finish "$p" || echo "$(Pbg)  * I can not detect a Nextcloud installation in \"$p\" $(N)"
     done
 }
 # COMMENT -->

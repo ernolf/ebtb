@@ -23,7 +23,7 @@ epch_() {
     awk '/^# v/{print$NF}' "$1"
 }
 fp() {
-    q2 cat $lincld/fp
+    q2 cat ${lf%/*}/fp
 }
 hc() {
     local a=$1
@@ -37,7 +37,7 @@ checkbin() {
 }
 nohome() {
     echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $ca_me $my_url\n\n\e[31m   and start the script again.\e[0m\n" > /dev/tty
-    [[ "$lincld" == *"/ebtb/"* ]] && rm -r "$lincld"
+    [[ "$lincld" == *"/ebtb/"* || "$lincld" == *"/.ebtb/"* ]] && rm -r "$lincld"
     kill -TERM $mpid
 }
 sourced() {
@@ -67,8 +67,6 @@ lreq() {
     local m="$lincld/$1"
     if [ -f "$m" ]; then
         sourced $1 || cat "$m"
-    elif ! $rt; then
-        req $1
     elif (($(mkdir -p $(dirname $m); $curlc -o $m -w %{http_code} -A "$(fp)REQ $1" $cargs/$rincld/$1) == 200)) && [ "$(head -c9 $m 2>&1)" = "# BASHLIB" ]; then
         log REQ $1
         cat "$m"
@@ -80,7 +78,7 @@ lrequire() { lreq $@; }
 module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
 declare -i mpid=$$ epoch my_epoch my_size lce mje mjne w4uc
 for bin in id uname mkdir awk cat curl; do checkbin $bin; done
-declare lf="$TMPDIR/ebtb-logfiles/$bm.log" version my_url curlc cargs opt opts astr="$(id -un): " A="$(uname -a)"
+declare lf="$TMPDIR/ebtb/logfiles/$bm.log" version my_url curlc cargs opt opts astr="$(id -un): " A="$(uname -a)"
 declare -a args tntd
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"

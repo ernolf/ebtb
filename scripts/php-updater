@@ -46,16 +46,10 @@ __whoami_whereami__
 # don't change this by hand, its done safe and interactively by the script:
 declare vdirname="" # <-- don't change this!
 __tempdir__
-
-### module handling (minified)
 __module_server__
-## general
 __general__
-## include bashmodules (minified) ->
 __module_loader__
-# check module integrity if root is running script and remove tainted modules (minified)
 __module_integrity__
-## <- include bashmodules end #
 
 contribute_(){
     . <(require contribute)
