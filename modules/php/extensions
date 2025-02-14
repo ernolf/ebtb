@@ -114,9 +114,14 @@ extension_include_dir_of_(){
 }
 
 detect_and_assign_extensions(){
-    local pv dpkg_package
+    local pv dpkg_package phpregex
     local -i i
     local -a exts_all exts_dpkg
+    if [ "${1:-}" = 'apache2' ]; then
+        phpregex="libapache2-mod-$PHPVREGEX"
+    else
+        phpregex="php"
+    fi
     spinner C " . detect extensions ." &
     for pv in $(${BINARIES[phpquery]} -V); do
 #        mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "$(extension_dir_of_ $pv)")
@@ -124,7 +129,7 @@ detect_and_assign_extensions(){
     done
     kill_spinner
     spinner C " . assign extensions ." &
-    for dpkg_package in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php/{print $2}'); do
+    for dpkg_package in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
         declare -ga ${dpkg_package//[.-]/_}
         mapfile -t "${dpkg_package//[.-]/_}"< <(${BINARIES[dpkg]} -L $dpkg_package|${BINARIES[grep]} "\.so$")
         mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};${BINARIES[dpkg]} -L $dpkg_package|${BINARIES[grep]} "\.so$"|${BINARIES[sort]})

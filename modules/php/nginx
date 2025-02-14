@@ -1,0 +1,162 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${NGINX_BASHLIB:-false} && return
+NGINX_BASHLIB=:
+
+. <(lrequire binaries)
+. <(lrequire basics)
+. <(lrequire httpd)
+
+# Extract all server lines in the upstream $name block with line numbers
+upstream_php_handler(){
+    local conf_file server_group_name
+    conf_file="$1"
+    server_group_name="${2:-php-handler}"
+    ${BINARIES[gawk]} '
+        /upstream '$server_group_name'\s*\{/ { in_block=1; next }
+        in_block && /server/ && !/^ *#/ {
+            gsub(/;/, "", $0)
+            print FNR ": " $0
+        }
+        in_block && /}/ { in_block=0 }
+    ' "$conf_file"
+}
+
+# Detect lines with fastcgi_pass that are not commented out
+# remove trailing smicolon
+# Print the line number (FNR) and the matching line
+fastcgi_pass(){
+    local conf_file
+    conf_file="$1"
+    ${BINARIES[gawk]} '
+        /^[[:space:]]*fastcgi_pass[[:space:]]+/ && !/^[[:space:]]*#/ {
+            gsub(/;/, "", $0)
+            print FNR ": " $0
+        }
+    ' "$conf_file"
+}
+
+detect_nginx_php_fpm(){
+    local type conf_file quiet sock socketonly fileonly lineonly conf_file_printed pass_line socket sock_regex socket_in_group plu
+    local -a pass_lines sockets_in_group
+    type="$1" quiet="${2:-quiet}" conf_file="$3" sock="$4" socketonly=false fileonly=false lineonly=false conf_file_printed=false
+    sock_regex='(unix:|\[[0-9a-fA-F:]+\]:[0-9]+|[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+:[0-9]+|[a-zA-Z0-9.-]+:[0-9]+)'
+    pass_line_regex='^([0-9]+:)?[[:space:]]+fastcgi_pass[[:space:]]+((unix:[^[:space:]]+)|((([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)|(\[[0-9a-fA-F:]+\])|([a-zA-Z0-9.-]+))):([0-9]+))'
+    server_line_regex='^([0-9]+:)?[[:space:]]+server[[:space:]]+((unix:[^[:space:]]+)|((([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+)|(\[[0-9a-fA-F:]+\])|([a-zA-Z0-9.-]+))):([0-9]+))'
+    case $type in
+        socketonly)
+            socketonly=:
+            ;;
+        fileonly)
+            fileonly=:
+            ;;
+        lineonly)
+            lineonly=:
+            ;;
+        *)  :
+    esac
+    mapfile -t pass_lines < <(fastcgi_pass "$conf_file")
+    (( ${#pass_lines[@]} )) || return 1
+    for pass_line in "${pass_lines[@]}"; do
+        # Check if pass_line contains a direct socket specification:
+        # It can be one of:
+        # - a Unix socket (starting with "unix:")
+        # - an IPv4 address:port (e.g. 127.0.0.1:9000)
+        # - an IPv6 address:port (e.g. [::1]:9000)
+        # - a hostname:port (e.g. localhost:9000 or my-server.example.com:9000)
+        if [[ "${pass_line##* }" =~ $sock_regex ]]; then
+            $fileonly && return 0
+            if $socketonly; then
+                if [[ "$pass_line" =~ $pass_line_regex ]]; then
+                    echo "${BASH_REMATCH[2]#unix:}"
+                fi
+            else
+                $conf_file_printed || {
+                    "$lineonly" || readlink_if_ "$conf_file" $quiet
+                    conf_file_printed=:
+                }
+                if [ "$quiet" = 'verbose' ]; then
+                    socket="${pass_line##* }"
+                    o 6; C; bundle echo "Direct socket '$(Y)${socket#unix:}$(C)' found:"; N
+                    o 6; bundle echo "Line-Nr. $pass_line"
+                elif "$lineonly"; then
+                    [[ "$pass_line" =~ $sock ]] && echo "$pass_line"
+                fi
+            fi
+        elif [ -n "${pass_line##* }" ]; then
+            # Otherwise, assume pass_line contains an upstream server-group name.
+            mapfile -t sockets_in_group < <(upstream_php_handler "$conf_file" "${pass_line##* }")
+            if (( ${#sockets_in_group[@]} )) && [[ "${sockets_in_group[@]}" =~ $sock_regex ]]; then
+                $fileonly && return 0
+                $socketonly || {
+                    if (( ${#sockets_in_group[@]} == 1 )); then
+                        plu=''
+                    elif (( ${#sockets_in_group[@]} > 1 )); then
+                        plu='s'
+                    fi
+                    $conf_file_printed || {
+                        "$lineonly" || readlink_if_ "$conf_file" $quiet
+                        conf_file_printed=:
+                    }
+                    if [ "$quiet" = 'verbose' ]; then
+                        o 6; C; bundle echo "Upstream server group '$(Y)${pass_line##* }$(C)' found."; N
+                        o 6; C; bundle echo "Configured server socket$plu in this block:"; N
+                    fi
+                }
+                for socket_in_group in "${sockets_in_group[@]}"; do
+                    if [[ "$socket_in_group" =~ $server_line_regex ]]; then
+                        socket="${BASH_REMATCH[2]#unix:}"
+                        if $socketonly; then
+                            echo "${BASH_REMATCH[2]#unix:}"
+                        else
+                            if [ "$quiet" = 'verbose' ]; then
+                                o 6; bundle echo "Line-Nr. $socket_in_group"
+                            elif "$lineonly"; then
+                                [[ "$socket_in_group" =~ $sock ]] && echo "$socket_in_group"
+                            fi
+                        fi
+                    fi
+                done
+            fi
+        fi
+    done
+    $fileonly && return 1
+}
+
+detect_matching_nginx_php_fpm_(){
+    local task socket conf_file configured_socket canonical_socket_regex canonical_socket canonical_configured_socket
+    local -a configured_sockets
+    task="$1" socket="$2" conf_file="$3"
+    if detect_nginx_php_fpm fileonly quiet "$conf_file"; then
+        mapfile -t configured_sockets< <(detect_nginx_php_fpm socketonly quiet "$conf_file")
+        if (( ${#configured_sockets[@]} )); then
+            case $task in
+                sockets|configfiles_regex)
+                    canonical_socket_regex="$(canonicalize "$socket" | ${BINARIES[sed]} -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/")"
+                    ;;
+                configfiles)
+                    canonical_socket="$(canonicalize "$socket")"
+            esac
+            for configured_socket in "${configured_sockets[@]}"; do
+                canonical_configured_socket="$(canonicalize "$configured_socket")"
+                case $task in
+                    sockets|configfiles_regex)
+                        if [[ "$canonical_configured_socket" =~ $canonical_socket_regex ]]; then
+                            [ "$task" = 'sockets' ] && echo "$configured_socket"
+                            [ "$task" = 'configfiles_regex' ] && echo "$conf_file"
+                        fi
+                        ;;
+                    configfiles)
+                        [ "$canonical_socket" = "$canonical_configured_socket" ] && echo "$conf_file"
+                esac
+            done
+        fi
+    fi
+}

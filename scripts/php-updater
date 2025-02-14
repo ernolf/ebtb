@@ -16,6 +16,7 @@ dependencies=(
 #    "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
 #    "sponge#moreutils#additional Unix utilities"
 #    "lsof#lsof#Unix-specific diagnostic tool to LiSt Open Files"
+#    "dos2unix#dos2unix#Convert text file line endings between CRLF and LF"
 # TODO <-- 0
     "gawk#gawk#GNU awk"
     "grep#grep#GNU grep, egrep and fgrep"
@@ -33,7 +34,7 @@ dependencies=(
 modules=(
     binaries today interval basics awksed tempfile prompt ansi prefix button
     fstring exit sort spinner anykey line array httpd sudo context php/version
-    php/apache2 php/fpm php/versions dpkg php/extensions php/sury ask
+    php/nginx php/apache2 php/fpm php/versions dpkg php/extensions php/sury ask
     dependency vdir integrity dist/os_release php.net/ini_directives $sin/inp
     $sin/pdiff $sin/merge $sin/diff $sin/pool $sin/tasks $sin/linstalled
     $sin/help $sin/chfiles $sin/switch
@@ -94,20 +95,52 @@ key_(){ case $1 in name)trim "${2%%=*}";;val)trim "${2##*=}";esac;}
 # messages
 call_help(){ o2;GRAY;echo "You can call the help with:$(o 35;B)$me --help";line '-' dP 2/78;}
 call_me(){ o2;GRAY;echo "You can call this list with:$(o 35;B)$me --list-$1";line '-' dP 2/78 a${2:-1};}
-version_mismatch(){ f;o;Pbg;pf;echo "A version mismatch has been detected which cannot be resolved by this script$(pf;N)";exit1;}
+version_mismatch(){
+    f; o; Pbg; pf; echo "A version mismatch has been detected which cannot be resolved by this script$(pf;N)"
+    exit1
+}
 wrong_first_argument(){ local -i a=$2
-    f;o;Pbg;pf;printf "First argument must be the version of an installed php but "
+    f; o; Pbg; pf; printf "First argument must be the version of an installed php but "
     if ((a));then
-        bundle echo "php$1 is not installed$(pf;N)";f;list_candidates;call_me candidates;call_help;f
+        bundle echo "php$1 is not installed$(pf;N)";f;list_candidates
+        call_me candidates
+        call_help
+        f
     else
         bundle echo "\"$1\" is not an existing php version$(pf;N)"
-        list_existing;call_me existing;call_help;f
+        list_existing
+        call_me existing
+        call_help
+        f
     fi
     exit1
 }
-does_not_exist(){ f;o;Pbg;pf;echo "\"$1\" is not an existing php version$(pf;N)";list_existing;call_me existing;call_help;f;exit1;}
-no_candidate(){ f;os;Pbg;pf;echo "Version \"$1\" cannot be installed with your Apt sources$(pf;N;f)";list_candidates;call_me candidates;need_sury_repo;call_help;f;}
-no_higher_candidate(){ f;pf;echo "The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources.";list_candidates;call_me candidates;need_sury_repo;downgrade_possible;anykey;}
+does_not_exist(){
+    f; o; Pbg; pf; echo "\"$1\" is not an existing php version$(pf;N)"
+    list_existing
+    call_me existing
+    call_help
+    f
+    exit1
+}
+no_candidate(){
+    f; os; Pbg; pf; echo "Version \"$1\" cannot be installed with your Apt sources$(pf;N;f)"
+    list_candidates
+    call_me candidates
+    anykey_noquit
+    need_sury_repo
+    call_help
+    f
+}
+no_higher_candidate(){
+    f; pf; echo "The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources."
+    list_candidates
+    call_me candidates
+    anykey_noquit
+    need_sury_repo
+    downgrade_possible
+    anykey
+}
 need_ppa(){ need_sury_repo;}
 downgrade_possible(){ pf;echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it";}
 
@@ -217,6 +250,7 @@ case $1 in
         ;;
     --list-candidates)
         list_candidates
+        anykey_noquit
         need_sury_repo
         exit 0
         ;;
@@ -262,6 +296,7 @@ if ${FLAG[supported]}; then
         anykey
         list_candidates
         call_me candidates
+        anykey_noquit
         need_sury_repo
         anykey
         separator
@@ -390,6 +425,7 @@ if ${FLAG[supported]}; then
         separator
         list_candidates
         call_me candidates
+        anykey_noquit
         need_sury_repo
         anykey
         separator
@@ -407,6 +443,7 @@ else
     separator
     list_candidates
     call_me candidates
+    anykey_noquit
     separator
     need_sury_repo
     anykey

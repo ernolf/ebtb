@@ -19,25 +19,25 @@ SURY_BASHLIB=:
 
 sury(){
     # return codes:
-    # 0 = OK: 1 or more correct apt sources
-    # 33 = OK but 1 or more wrong protocol (http instead of https)
-    # 34 = OK but 1 or more wrong architecture
+    #    0 = OK: 1 or more correct apt sources
+    #   32 = No sury repo detected
+    #   33 = OK but 1 or more wrong protocol (http instead of https)
+    #   34 = OK but 1 or more wrong architecture
     #   35 = 33 and 34
-    # 36 = 1 or more wrong suite (apt source codename)
+    #   36 = 1 or more wrong suite (apt source codename)
     #   37 = 36 and 33
     #   38 = 36 and 34
     #   39 = 36, 33 and 34
-    # 40 = 1 or more wrong suit AND wrong protocol
+    #   40 = 1 or more wrong suit AND wrong protocol
     #   41 = 40 and 33
     #   42 = 40 and 34
     #   43 = 40, 33 and 34
     #   44 = 40 and 36
     #   45 = 40, 36 and 33
     #   46 = 40, 36, 33 and 34
-    # 48 = 1 or more wrong apt source (debian <-> ubuntu)
-    # 32 = No sury repo detected
-    # 64 = Not-OK
-    # 128 = unknown distributor
+    #   48 = 1 or more wrong apt source (debian <-> ubuntu)
+    #   64 = Not-OK
+    #  128 = unknown distributor
     local -i r=128 i
     local -l id codename wrong_codename architecture aptsource wrong_aptsource asu asd return
     local -a architectures aptsources

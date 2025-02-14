@@ -194,7 +194,7 @@ rdepends(){
     fi
     glob="$1"
     if "$quiet"; then
-        (( q2 $(${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${BINARIES[wc]} -l) - 1 )) # && return 0 || return 1
+        (( $(q2 ${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${BINARIES[wc]} -l) - 1 )) # && return 0 || return 1
     else
         q2 ${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${BINARIES[gawk]} '{print $2}'
     fi
@@ -341,4 +341,41 @@ list_apt_sources(){
         mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${BINARIES[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
         for i in ${!aptsourcesfiles[@]}; do o2;pf;GRAY;echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}";N; done
     fi
+}
+
+list_alternatives(){
+    local regex target target_version name mode path
+    regex="${1:-ph(ar|p)}"
+    ${BINARIES[update-alternatives]} --get-selections 2>&1 | ${BINARIES[grep]} -E "$regex" | while read -r name mode path; do
+        if target="$(q2 ${BINARIES[readlink]} -e "$path")"; then
+            target_version="$(q2 ${BINARIES[echo]} "$target" | ${BINARIES[grep]} -o "[0-9.]*")"
+            if [[ "$path" =~ default ]]; then
+                printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(GRAY)-> ${path//.default/${target_version%.}}$(N)"
+            else
+                printf "%-30s %-8s %-30s\n" "$name" "$mode" "$path"
+            fi
+        else
+            printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(xpf)no target - dead link!"
+        fi
+    done
+}
+
+list_alternatives_extended(){
+    [ -n "${BINARIES[update-alternatives]}" ] || { echo -e "\e[31mERROR: no 'update-alternatives' binary\e[0m" >&2; return 1; }
+    local regex candidate key value
+    regex="${1:-ph(ar|p)}"
+    for candidate in $(q2 ${BINARIES[update-alternatives]} --get-selections | ${BINARIES[gawk]} '/'$regex'/{print $1}'); do
+        echo -e "Name: $candidate"
+        ${BINARIES[update-alternatives]} --query "$candidate" | ${BINARIES[grep]} -Ev '(^$|Name:)' | while IFS= read -r line; do
+            if [[ "$line" =~ (Slaves|Priority) ]]; then
+                echo "  \`- $line"
+            elif [[ "$line" =~ ^([^:]+):\ (.*) ]]; then
+                key="${BASH_REMATCH[1]}"
+                value="${BASH_REMATCH[2]}"
+                pf; echo "$key: $value"
+            else
+                echo "    \`- $line"
+            fi
+        done
+    done
 }

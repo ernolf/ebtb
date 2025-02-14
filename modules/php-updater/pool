@@ -91,6 +91,6 @@ check_fpm_pool_files(){
                 separator
             fi
         fi
-        systemctl restart "$pkgnew"
+        ${BINARIES[systemctl]} restart "$pkgnew"
     fi
 }

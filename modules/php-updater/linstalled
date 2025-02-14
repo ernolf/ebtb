@@ -29,28 +29,30 @@ LINSTALLED_BASHLIB=:
 
 list_installed_sapi(){
     cursor_ hide
-    local sapi pkg fullpath pv httpd modstring
+    local sapi pkg fullpath pv httpd modstring q0 bundle quiet
     local -a sockets
     local -i c2 c3 i
+    if [ "$1" = 'quiet' ]; then
+        q0='q0' bundle='' quiet=:
+    else
+        q0='' bumdle='bundle' quiet=false
+    fi
     c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
+    $q0 detect_and_assign_extensions apache2
     populate_httpd_ active
-
-    for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
-
-    for pkg in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
-        if [[ "$pkg" =~ libapache2-mod-$PHPVREGEX ]]; then
-            SAPI_A2[${pkg#libapache2-mod-php}]='installed'
-        elif [[ "$pkg" =~ $PHPVREGEX-fpm ]]; then
-            pkg=${pkg#php}
-            SAPI_FPM[${pkg%-fpm}]='installed'
-        fi
+    $quiet || for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
+    for pv in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} -v pvrx=${PHPVREGEX//\./\\.} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
+        SAPI_A2[$pv]='installed'
+    done
+    for pv in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} -v pvrx=${PHPVREGEX//\./\\.} '/^[hiu]i.*'$PHPVREGEX'-fpm/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
+        SAPI_FPM[$pv]='installed'
     done
     if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && (( ${#SAPI_A2[@]} )); then
         if ! apache2_mpm prefork; then
             modstring="$(listify C $(p_sort ${!SAPI_A2[@]}))"
-            bundle echo "$(xpf;format_string "$(R)The Apache2handler libapache2-mod-php is installed$(N) for $modstring, $(R)but the mpm_prefork module required by this SAPI is not loaded, so this SAPI is effectively inactive." 3;N)"
+            $bundle echo "$(xpf;format_string "$(R)The Apache2handler libapache2-mod-php is installed$(N) for $modstring, $(R)but the mpm_prefork module required by this SAPI is not loaded, so this SAPI is effectively inactive." 3;N)"
             if apache2_mpm event; then
-                bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3;N)"
+                $bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3;N)"
             fi
             f
         fi
@@ -58,7 +60,7 @@ list_installed_sapi(){
             pkg="libapache2-mod-php$pv"
             Y;echo "$(pf)$pkg";N
             fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
-            o5;fO;echo -n "\\apache2handler$(O) $fullpath";N
+            o3;fO;echo -n "  \`-apache2handler$(O) $fullpath";N
             if (( ${HTTPD[apache2]} > 2 )); then
                 if [[ "${A2CONFFILES[@]}" =~ php$pv.conf && "${A2CONFFILES[@]}" =~ php$pv.load ]]; then
                     SAPI_A2[$pv]='a'
@@ -76,21 +78,21 @@ list_installed_sapi(){
     if (( ${#SAPI_FPM[@]} )); then
         if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && ! apache2_mpm event; then
             modstring="$(listify C $(p_sort ${!SAPI_FPM[@]}))"
-            bundle echo "$(xpf;format_string "$(R)The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3;N)"
-            bundle echo "  $(format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3;N)"
+            $bundle echo "$(xpf;format_string "$(R)The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3;N)"
+            $bundle echo "  $(format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3;N)"
             if apache2_mpm prefork; then
-                bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3;N)"
+                $bundle echo "$(ipf;format_string "$(Yi)Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3;N)"
                 if (( ${#SAPI_A2[@]} )); then
-                    bundle echo "$(ipf;format_string "$(Yi)Apache2handler (libapache2-mod-php) is installed for version $(listify C ${!SAPI_A2[@]})" 3;N)"
-                    bundle echo "$(ipf;format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the SAPI" 3;N)"
+                    $bundle echo "$(ipf;format_string "$(Yi)Apache2handler (libapache2-mod-php) is installed for version $(listify C ${!SAPI_A2[@]})" 3;N)"
+                    $bundle echo "$(ipf;format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the SAPI" 3;N)"
                 else
-                    bundle echo "$(ipf;format_string "$(Yi)But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3;N)"
+                    $bundle echo "$(ipf;format_string "$(Yi)But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3;N)"
                     php_a2module_ disable
                     php_fpm_module_ enable
                     ${BINARIES[systemctl]} restart apache2
                 fi
             else
-                bundle echo "$(ipf;format_string "$(Yi)But since the mpm_prefork module is not loaded either, I will try to load the mpm_event_module and other required modules for fpm to work.." 3;N)"
+                $bundle echo "$(ipf;format_string "$(Yi)But since the mpm_prefork module is not loaded either, I will try to load the mpm_event_module and other required modules for fpm to work.." 3;N)"
                 php_fpm_module_ enable
                 ${BINARIES[systemctl]} restart apache2
             fi
@@ -128,7 +130,7 @@ list_installed_sapi(){
                             esac
                         done
                     fi
-                    o $((5+i));fO;printf "\\listening on unix socket$(O) $socket";N
+                    o $((3+i));fO;printf "  \`-listening on unix socket$(O) $socket";N
                     if [ -z "$connected_httpd" ]; then
                         SAPI_FPM[$pv]='i';W;echo " <<NOT CONNECTED";N
                     else

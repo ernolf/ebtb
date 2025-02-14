@@ -19,10 +19,18 @@ if ! q2 declare -p SAPI_FPM | ${BINARIES[grep]} -qs 'declare -A'; then
     q2 declare -gA SAPI_FPM || declare -A SAPI_FPM
 fi
 
+fpm_conf_regex(){
+    [ -n "${BINARIES[apache2ctl]}" ] || return
+    fpm_conf="$(q2 ${BINARIES[apache2ctl]} -t -D DUMP_INCLUDES | ${BINARIES[gawk]} '/'$PHPVREGEX'-fpm/{print $NF}' | ${BINARIES[sed]} -E "s/$PHPVREGEX/$PHPVREGEX/")"
+    [ -n "$fpm_conf" ] || fpm_conf="$(unquote $(q2 ${BINARIES[apache2ctl]} -t -D DUMP_RUN_CFG | ${BINARIES[awk]} '/ServerRoot/{print $NF}'))/conf-enabled/$PHPVREGEX-fpm\.conf"
+    printf %s "$fpm_conf"
+}
+
 fpm_configfile(){
     local ver conf
     local -i r
     ver="$1"
+    [ -n "${BINARIES[php-fpm$ver]}" ] || return 1
     conf="$(${BINARIES[php-fpm$ver]} -t 2>&1 | ${BINARIES[grep]} -o "/[^ ':]*\.conf" | ${BINARIES[sort]} -u)"
     [ -f "$conf" ] && r=0 || r=1
     printf '%s' "$conf"
@@ -32,7 +40,7 @@ fpm_configfile(){
 fpm_include(){
     local ver conf include
     ver=$1
-    conf="$(fpm_configfile $ver)" || return=1
+    conf="$(fpm_configfile $ver)" || return 1
     include="$(${BINARIES[gawk]} -F' |=' '/^\s*include/ {print $NF}' $conf)"
     case $2 in
       glob) echo "$include"
@@ -99,8 +107,9 @@ fpm_pools(){
 fpm_listen(){
     local poolfile listen
     poolfile="$1"
+    [ -n "$poolfile" ] || return 1
     listen="$(${BINARIES[gawk]} -F '\\s*=\\s*' '/^\s*listen/ { sub(/;$/, "", $2); print $2; exit }' "$poolfile")"
-    case $2 in
+    case ${2:-full} in
         brief)
             echo "${listen//\"/}"
             ;;
@@ -129,6 +138,8 @@ fpm_listen(){
                     print "IPv4: " $1 ":" $2
                 }
             }'
+            ;;
+        *)  :
     esac
 }
 
@@ -141,20 +152,188 @@ fpm_sockets(){
 }
 
 fpm_socket(){
-    local ver glob poolfile pool
-    local -i r
+    local ver qpool glob poolfile pool
     local -A pools
-    ver=$1
-    glob=$(fpm_include "$ver" glob) && r=0 || r=1
+    ver=$1 qpool="$2"
+    glob=$(fpm_include "$ver" glob) || return 1
 #    for poolfile in $(q2 ${BINARIES[ls]} $glob); do
     for poolfile in $glob; do # bash has its builtin glob functionality
         pool="$(${BINARIES[sed]} -n '/^\[.*\]$/ {s/^\[\(.*\)\]$/\1/p}' "$poolfile")"
         pools[$pool]="$(fpm_listen "$poolfile" brief)"
     done
-    if [[ " ${!pools[@]} " =~ " $2 " ]]; then
-        echo "${pools[$2]}"
+    (( ${#pools[@]} )) || return 1
+    if [[ " ${!pools[@]} " =~ " $qpool " ]]; then
+        echo "${pools[$qpool]}"
     else
         echo "${!pools[@]}"
     fi
-    return $r
+}
+
+canonicalize_if_(){
+    local sock canonicalized_sock
+    sock="$1"
+    canonicalized_sock="$(${BINARIES[readlink]} -f "$sock")"
+    if [ "$sock" = "$canonicalized_sock" ]; then
+        echo "$(Yi)$sock$(N)"
+    else
+        echo "$(GRAY)$sock -> $(Yi)$canonicalized_sock$(N)"
+    fi
+}
+
+fpm_connections_tag(){
+    local conf_file
+    conf_file="$1"
+    ${BINARIES[gawk]} '
+    BEGIN {
+        in_block = 0;
+        block = "";
+        relevant = 0;
+    }
+    # Detect the start of a block (FilesMatch or LocationMatch)
+    /^[[:space:]]*<(FilesMatch|LocationMatch)[^>]*>/ {
+        # Skip block if the opening tag is commented out
+        if ($0 ~ /^[[:space:]]*#/) {
+            in_block = 0;
+            next;
+        }
+        in_block = 1;
+        block = FNR ": " $0 "\n";  # prepend line number
+        relevant = 0;
+        next;
+    }
+    # If we are inside a block, process the lines
+    in_block {
+        # Skip commented lines
+        if ($0 ~ /^[[:space:]]*#/) next;
+        block = block FNR ": " $0 "\n";  # prepend line number for each line
+        # Check if the line contains a PHP-FPM related directive
+        if ($0 ~ /SetHandler[[:space:]]*".*proxy:unix:/ || $0 ~ /ProxyPass[[:space:]]*".*unix:/) {
+            relevant = 1;
+        }
+        # If end of block is reached, output if relevant and reset
+        if ($0 ~ /<\/(FilesMatch|LocationMatch)>/) {
+            if (relevant) {
+                sub(/\n$/, "", block);  # remove trailing newline
+                print block;
+            }
+            in_block = 0;
+            block = "";
+            relevant = 0;
+        }
+        next;
+    }
+    ' "$conf_file"
+}
+
+fpm_connections_line(){
+    local conf_file
+    conf_file="$1"
+    ${BINARIES[gawk]} '
+        # Ignore commented lines
+        /^[[:space:]]*#/ { next }
+        # Print complete line with line number if SetHandler with proxy:unix: is found
+        /SetHandler/ && /proxy:unix:/ { print FNR ": " $0 }
+        # Print complete line with line number if ProxyPass (or ProxyPassMatch) with unix: is found
+        (/ProxyPass/ || /ProxyPassMatch/) && /unix:/ { print FNR ": " $0 }
+        # Print complete line with line number if FastCgiExternalServer with -socket is found
+        /FastCgiExternalServer/ && /-socket/ { print FNR ": " $0 }
+    ' "$conf_file"
+}
+
+fpm_connections_socket(){
+    local conf_file
+    conf_file="$1"
+    ${BINARIES[gawk]} '
+        /SetHandler/ && /proxy:unix:/ && !/^ *#/ {
+            match($0, /proxy:unix:[^|"]+/)
+            if (RSTART > 0) print FNR ": " substr($0, RSTART, RLENGTH)
+        }
+        /ProxyPass/ && /unix:/ && !/^ *#/ {
+            match($0, /unix:[^|"]+/)
+            if (RSTART > 0) print FNR ": " substr($0, RSTART, RLENGTH)
+        }
+        /ProxyPassMatch/ && /unix:/ && !/^ *#/ {
+            match($0, /unix:[^|"]+/)
+            if (RSTART > 0) print FNR ": " substr($0, RSTART, RLENGTH)
+        }
+        /FastCgiExternalServer/ && /-socket/ && !/^ *#/ {
+            match($0, /-socket[[:space:]]+[^ ]+/)
+            if (RSTART > 0) print FNR ": " substr($0, RSTART + 8, RLENGTH - 8)
+        }
+    ' "$conf_file"
+}
+
+detect_apache2_php_fpm_(){
+    local type conf_file connection socket
+    local -a fpm_connections
+    type="$1" conf_file="$2" socket=false
+#    [[ "$conf_file" =~ $(fpm_conf_regex) ]] && return
+    case $type in
+        _test_)
+            mapfile -t fpm_connections < <(fpm_connections_socket "$conf_file")
+            ;;
+        tag)
+            mapfile -t fpm_connections < <(fpm_connections_tag "$conf_file")
+            ;;
+        line)
+            mapfile -t fpm_connections < <(fpm_connections_line "$conf_file")
+            ;;
+        socket)
+            mapfile -t fpm_connections < <(fpm_connections_socket "$conf_file")
+            ;;
+        socket_only)
+            mapfile -t fpm_connections < <(fpm_connections_socket "$conf_file")
+            socket=:
+    esac
+    # Output or process the results
+    if (( "${#fpm_connections[@]}" )); then
+        if [ "$type" = '_test_' ]; then
+            return 0
+        fi
+        $socket || readlink_if_ "$conf_file" quiet
+        for connection in "${fpm_connections[@]}"; do
+            if [[ -n "$connection" ]]; then
+                # Extract the actual connection string
+                conn_string="${connection#*: }"
+                # Match IPv4 address with port
+                if [[ "$conn_string" =~ fcgi://([0-9]+\.[0-9]+\.[0-9]+\.[0-9]+):([0-9]+) ]]; then
+                    $socket || echo -n "Tcp4 socket: "
+                    echo "${BASH_REMATCH[1]}:${BASH_REMATCH[2]}"
+                # Match IPv6 address with port
+                elif [[ "$conn_string" =~ fcgi://\[([0-9a-fA-F:]+)\]:([0-9]+) ]]; then
+                     $socket || echo -n "Tcp6 socket: "
+                    echo "[${BASH_REMATCH[1]}]:${BASH_REMATCH[2]}"
+                # Match only port (listen on all interfaces)
+                elif [[ "$conn_string" =~ fcgi://:([0-9]+) ]]; then
+                     $socket || echo -n "Tcp socket: "
+                    echo "*:${BASH_REMATCH[1]}"
+                # Match Unix socket
+                elif [[ "$conn_string" =~ unix:([^[:space:]]+) ]]; then
+                     $socket || echo -n "Unix socket: "
+                    echo "${BASH_REMATCH[1]}"
+                fi
+            fi
+        done
+        $socket || for connection in "${fpm_connections[@]}"; do echo "Line-Nr. $connection"; done
+    elif [ "$type" = '_test_' ]; then
+        return 1
+    fi
+}
+
+detect_matching_apache2_php_fpm_configfiles_(){
+    local socket type conf_file configured_socket canonical_socket canonical_configured_socket
+    local -a configured_sockets
+    socket="$1" conf_file="$2"
+    if detect_apache2_php_fpm_ _test_ "$conf_file"; then
+        mapfile -t configured_sockets< <(detect_apache2_php_fpm_ "socket_only" "$conf_file")
+        if (( ${#configured_sockets[@]} )) && [[ ! "$conf_file" =~ $(fpm_conf_regex) ]]; then
+            canonical_socket="$(canonicalize "$socket")"
+            for configured_socket in "${configured_sockets[@]}"; do
+                canonical_configured_socket="$(canonicalize "$configured_socket")"
+                if [ "$canonical_socket" = "$canonical_configured_socket" ]; then
+                    echo "$conf_file"
+                fi
+            done
+        fi
+    fi
 }

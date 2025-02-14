@@ -14,7 +14,7 @@ declare -g OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
 declare -gl OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
 
 source_os_release(){
-    if [ -f /etc/os-release ] || [ -f /usr/lib/os-release ]; then
+    if [[ -f /etc/os-release || -f /usr/lib/os-release ]]; then
         local os_release
         [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
         . <(${BINARIES[sed]} 's/^/OS_/g' $os_release)

@@ -72,8 +72,8 @@ detect_httpd(){
             conffiles=("${NGXCONFFILES[@]}") # Copy the array values
         fi
         (( ${#conffiles[@]} )) || return 1
-        for p in q2 $(${BINARIES[grep]} -ER "^\s*(<Directory|root)" "${conffiles[@]}" | \
-            ${BINARIES[gawk]} -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
+        for p in $(q2 ${BINARIES[grep]} -ER "^\s*(<Directory|root)" "${conffiles[@]}" | \
+            q2 ${BINARIES[gawk]} -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
             case $1 in
    nextcloud_server) if q0 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;; then
                          nextcloud_server["$2"]=true
@@ -82,7 +82,7 @@ detect_httpd(){
 nextcloud_directory) q2 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;
                      ;;
                 all) if [ -L "${p%%;*}" ]; then
-                         echo "${p%%;*}->$(${BINARIES[readlink]} -f ${p%%;*}) - ${p##*;}"
+                         echo "${p%%;*} -> $(${BINARIES[readlink]} -f ${p%%;*}) - ${p##*;}"
                      else
                          echo "${p%%;*} - ${p##*;}"
                      fi
@@ -118,7 +118,7 @@ wk_enabled) for httpd in ${wellknown_httpdaemons[@]}; do (( ${HTTPD["$httpd"]} >
        all) for httpd in "${wellknown_httpdaemons[@]}"; do
                 if "${nextcloud_server["$httpd"]}"; then
                     echo "$httpd:"
-                        check_ all "$httpd" | ${BINARIES[sort]} -u
+                    p_sort_numerate "$(check_ all "$httpd")"
                 fi
             done
             ;;
@@ -163,6 +163,49 @@ load_server_status(){
             fi
         fi
     done
+}
+
+iterate_conf_files_() {
+    local httpd conf_file
+    local -a task
+    httpd="$1"
+    shift
+    task=("$@")
+    case $httpd in
+        apache2|a2)
+            (( ${#A2CONFFILES[@]} )) && for conf_file in "${A2CONFFILES[@]}"; do
+                [[ "$conf_file" =~ \.backup$ ]] || "${task[@]}" "$conf_file"
+            done
+        ;;
+        nginx|ngx)
+            (( ${#NGXCONFFILES[@]} )) && for conf_file in "${NGXCONFFILES[@]}"; do
+                [[ "$conf_file" =~ \.backup$ ]] || "${task[@]}" "$conf_file"
+            done
+    esac
+}
+
+readlink_if_(){
+    local conf_file quiet
+    conf_file="$1" quiet=false
+    [ "${2:-}" = 'quiet' ] && quiet=:
+    if [ -L "$conf_file" ]; then
+        if $quiet; then
+            echo "Configfile: $(GRAY)$conf_file -> $(C)$(${BINARIES[readlink]} -f "$conf_file")";N
+        else
+            o3; pf; GRAY; bundle echo "$conf_file -> $(C)$(${BINARIES[readlink]} -f "$conf_file")";N
+        fi
+    else
+        if $quiet; then
+            echo "Configfile: $(C)$conf_file";N
+        else
+            o3; pf; C; bundle echo "$conf_file";N
+        fi
+    fi
+}
+
+a2serverroot(){
+    [ -n "${BINARIES[apache2ctl]}" ] || return
+    unquote $(q2 ${BINARIES[apache2ctl]} -t -D DUMP_RUN_CFG | ${BINARIES[awk]} '/ServerRoot/{print $NF}')
 }
 
 load_server_status

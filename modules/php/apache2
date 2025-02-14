@@ -38,28 +38,28 @@ apache2_module(){
 
 php_a2module_(){
     case $1 in
-        enable) a2enmod -mq mpm_prefork php$2
+        enable) ${BINARIES[a2enmod]} -mq mpm_prefork php$2
                 ;;
-       disable) a2dismod -mqf mpm_prefork
+       disable) ${BINARIES[a2dismod]} -mqf mpm_prefork
     esac
 }
 
 php_fpm_module_(){
     case $1 in
-        enable) a2enmod -mq mpm_event proxy_fcgi setenvif
+        enable) ${BINARIES[a2enmod]} -mq mpm_event proxy_fcgi setenvif
                 ;;
-       disable) a2dismod -mqf mpm_event
+       disable) ${BINARIES[a2dismod]} -mqf mpm_event
     esac
 }
 
 php_fpm_conf_(){
     case $1 in
-        enable) a2enconf -mq php$2-fpm
+        enable) ${BINARIES[a2enconf]} -mq php$2-fpm
                 ;;
-       disable) a2disconf -mqp php*-fpm
+       disable) ${BINARIES[a2disconf]} -mqp php*-fpm
                 ;;
-       switch2) q2 a2disconf -mqp php*-fpm
-                a2enconf -mq php$2-fpm
+       switch2) q2 ${BINARIES[a2disconf]} -mqp php*-fpm
+                ${BINARIES[a2enconf]} -mq php$2-fpm
     esac
 }
 
@@ -67,18 +67,18 @@ php_fpm_2_a2module(){
     php_fpm_conf_ disable
     php_fpm_module_ disable
     php_a2module_ enable $2
-    systemctl restart apache2 php$2-fpm
+    ${BINARIES[systemctl]} restart apache2 php$2-fpm
 }
 
 php_a2module_2_fpm(){
     php_a2module_ disable # $ver
     php_fpm_module_ enable
     php_fpm_conf_ enable $1
-    systemctl restart apache2 php$1-fpm
+    ${BINARIES[systemctl]} restart apache2 php$1-fpm
 }
 
 php_a2module_switch_2_(){
-    a2dismod -mqf php*
-    a2enmod -mq php$1
-    systemctl restart apache2
+    ${BINARIES[a2dismod]} -mqf php*
+    ${BINARIES[a2enmod]} -mq php$1
+    ${BINARIES[systemctl]} restart apache2
 }

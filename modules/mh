@@ -18,13 +18,17 @@ q0 declare -f lrequire || lrequire(){ require $@;}
 . <(lrequire awksed)
 . <(lrequire tempfile)
 
-if [[ "$lincld" =~ ebtb ]] && ! ${BINARIES[grep]} -qsr 'include/ernolf' /usr/local/bin/; then
-    [ -d "${ca_dir%/*}/include/ernolf" ]&&[ -d "${ca_dir%/*}/include/ebtb" ]&&${BINARIES[rm]} -r "${ca_dir%/*}/include/ernolf"
+if ${rt:-false}; then
+    if ! ${BINARIES[grep]} -qlr '${ca_dir%/\*}/include/ebtb' /usr/local/bin; then
+        [ -d "${ca_dir%/*}/include/ebtb" ]&&${BINARIES[rm]} -r "${ca_dir%/*}/include/ebtb"
+    fi
+    if [[ "$lincld" =~ ebtb ]] && ! ${BINARIES[grep]} -qlr '${ca_dir%/\*}/include/ernolf' /usr/local/bin/; then
+        [ -d "${ca_dir%/*}/include/ernolf" ]&&${BINARIES[rm]} -r "${ca_dir%/*}/include/ernolf"
+    fi
 fi
 
-lf="$TMPDIR/ebtb-logfiles/$bm.log"
+lf="$TMPDIR/ebtb/logfiles/$bm.log"
 [ -d "${lf%/*}" ] || ${BINARIES[mkdir]} -p "${lf%/*}"
-
 [ -n "$rincld" ]||rincld="includes/prod"
 
 declare machineid
@@ -49,11 +53,11 @@ machine_id(){
 
 fp(){
     local fingerprint
-    if [ -f "$lincld/fp" ]; then
+    if [ -f "${lf%/*}/fp" ]; then
         local -i fpe
-        fpe=$(${BINARIES[stat]} -c %Z "$lincld/fp")
-        ((rte-fpe>3600)) && echo > "$lincld/fp"
-        fingerprint=$(< "$lincld/fp")
+        fpe=$(${BINARIES[stat]} -c %Z "${lf%/*}/fp")
+        (( rte-fpe > 3600 )) && echo > "${lf%/*}/fp"
+        fingerprint=$(< "${lf%/*}/fp")
     fi
     if (( ${#fingerprint} == 7 )); then
         echo $fingerprint
@@ -75,10 +79,7 @@ fp(){
             decimal_number=$checksum
         done
         fingerprint=":${machineid:14:4}${checksum}:"
-        echo $fingerprint
-        if ${rt:-false}; then
-            echo "$fingerprint" > "$lincld/fp"
-        fi
+        echo "$fingerprint" | ${BINARIES[tee]} "${lf%/*}/fp"
     fi
 }
 
@@ -188,13 +189,15 @@ mh_apt_purge(){
 mh_selections(){
     if [ -n "${BINARIES[update-alternatives]}" ]; then
         local -a selections
-        mapfile -t selections< <(${BINARIES[update-alternatives]} --get-selections | ${BINARIES[grep]} -E "ph(ar|p)")
+#        mapfile -t selections< <(${BINARIES[update-alternatives]} --get-selections | ${BINARIES[grep]} -E "ph(ar|p)")
+        mapfile -t selections< <(list_alternatives 2>&1)
         if (( ${#selections[@]} )); then
             [[ "$1" ]]&&mh "selections - $1"
             for i in ${!selections[@]}; do mh "selections-$(printf '%02d' $((i+1))): ${selections[i]}"; done
         fi
     fi
 }
+
 cleanup_and_fix_alternatives(){
     if [ -n "${BINARIES[update-alternatives]}" ]; then
         yes '' | q0 ${BINARIES[update-alternatives]} --force --all # repair broken alternatives, remove not existing alternatives
@@ -203,198 +206,182 @@ cleanup_and_fix_alternatives(){
     fi
 }
 
-gzipenc64(){
-    [ -n "${BINARIES[$1]}" ] && mh -L "$1: da $(${BINARIES[$1]} ${@:2} 2>&1  | ${BINARIES[gzip]}  2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
+gze64(){
+    local bin bin1
+    mh -L "da $( (
+        echo
+        for bin in "$@"; do
+            case ${bin%% *} in
+             echo)  bin="${bin#* }"
+                    bin1="${bin%%: *}:"
+                    echo -e "$bin\n$(line - N ${#bin1})\n" 2>&1
+                ;;
+            title)  bin1="${bin#* }"
+                    echo "$bin1$(line - N ${#bin1} b1)" 2>&1
+                ;;
+        title_end)  bin1="<- ${bin#* }"
+                    echo -e "$bin1$(line - N ${#bin1} b1)\n" 2>&1
+                ;;
+             true)  echo -e "${bin#* }\n" 2>&1
+#             true)  noansi "${bin#* }" 2>&1; echo
+                ;;
+           p_sort)  bin1="${bin//p_sort/cat}:"
+                    [ -n "${BINARIES[cat]}" ] && echo -e "$bin1\n$(line - N ${#bin1})\n$(p_sort -V $(<${bin#* }) 2>&1)\n"
+                ;;
+                *)  bin1="${bin% --}:"
+                    [ -n "${BINARIES[${bin%% *}]}" ] && echo -e "$bin1\n$(line - N ${#bin1})\n$(${BINARIES[${bin%% *}]} ${bin#* } 2>&1)\n"
+            esac
+        done
+    ) | ${BINARIES[gzip]}  2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
 }
+declare -a inf # inf1 inf2 inf3
 
-distinf(){ # clf=lock_file, ctf=timestamp_file
-    ${BINARIES[sleep]} 3
+di(){ # clf=lock_file, ctf=timestamp_file
+#return 0
+    didebug=false
+    ${BINARIES[sleep]} .5
     local hash lock_hash clf ctf p
-    local -i cte i
+    local -i cte i inactive # return if last output less then "inactive" seconds ago
+    [ "$1" = 'ff' ] && ff=: inactive=5 || ff=false inactive=3600
+    $didebug&&mh -L "rte: $rte"
+    $didebug&&mh -L "ff: $ff"
+    $didebug&&mh -L "inactive: $inactive"
     hash="$(echo $machineid | ${BINARIES[sha512sum]} | ${BINARIES[tr]} -d ' -')"
+    $didebug&&mh -L "hash: $hash"
     lock_hash="$(echo "lock-${FUNCNAME[0]}" | ${BINARIES[sha512sum]} | ${BINARIES[tr]} -d ' -')"
-    # return if another process is already running this function
+    $didebug&&mh -L "lock_hash: $lock_hash"
+    $ff&&{
+        local -i timeout start_time
+        timeout=30 start_time=$(now)
+        while true; do
+            $didebug&&mh -L "timeout-count: $(now)"
+            q2 detect_hashed_file $lock_hash false || break
+            (( $(now) - start_time >= timeout )) && return 1
+            sleep 1
+        done
+    }
     if q2 detect_hashed_file $lock_hash false; then
         return 0
     else
         clf="$(create_hashed_file $lock_hash)" # lockfile
     fi
+    $didebug&&mh -L "clf: $clf"
+    $ff&&{
+        if ctf="$(q2 detect_hashed_file $hash true)"; then
+            ${BINARIES[rm]} -f "$ctf"
+        fi
+    }
     if ctf="$(q2 detect_hashed_file $hash true)"; then
+        $didebug&&mh -L "ctf: $ctf"
         cte=$(${BINARIES[stat]} -c %Z $ctf)
-        ((rte-cte>3600))&&{
-#            (q2 ${BINARIES[touch]} $ctf)
+        $didebug&&mh -L "cte: $cte"
+        ((rte-cte > inactive))&&{
             q2 ${BINARIES[touch]} $ctf
         }
     else
         ctf=$(create_hashed_file $hash)
+        $didebug&&mh -L "ctf: $ctf"
         cte=0
+        $didebug&&mh -L "cte: $cte"
     fi
     p="${ctf##*/}"
-    # return if last output less then 1 hour ago
-    if ((rte-cte < 3600)); then
+    if ((rte-cte < inactive)); then
         ${BINARIES[rm]} -f "$clf"
         return 0
     fi
 
 ## it beginns here:
     ## machine-id
-    mh -L "machine-id: $machineid"
+    $ff || mh -L "machine-id: $machineid"
+    inf+=("echo machine-id: $machineid  $(fp)")
+    $ff || {
+        ## Hypervisor
+        local hypervisor
+        hypervisor="$(${BINARIES[dmesg]} -t 2>&1 | ${BINARIES[gawk]} 'tolower($0) ~ /^hypervisor/ {print $NF}')"
+        inf+=("echo hypervisor: ${hypervisor:-bare-metal}")
 
-    ## Hypervisor
-    local hypervisor
-    hypervisor="$(${BINARIES[dmesg]} -t 2>&1 | ${BINARIES[gawk]} 'tolower($0) ~ /^hypervisor/ {print $NF}')"
-    mh "hypervisor: ${hypervisor:-bare-metal}"
-
-    ## PID 1
-    mh "pid1: $(${BINARIES[ps]} -p 1 -o comm= 2>&1)"
-
-    ## ENV:
-    $(gzipenc64 env)
-
-    ## TERM:
-    mh "tput longname: $(${BINARIES[tput]} longname 2>&1)"
-    
-    ## readlink /proc/self/fd/0
-    mh "readlink /proc/self/fd/0: $(${BINARIES[readlink]} /proc/self/fd/0 2>&1)"
-
-    ## Parent process command
-    mh -L "parent process: $(${BINARIES[ps]} -o cmd= $(${BINARIES[ps]} -o ppid= $$) 2>&1)"
-
-    ## are we running inside of a container?
-    #    if [ -f /run/.dockerenv ] || ${BINARIES[grep]} -qE "/docker|/kubepods" /proc/self/cgroup; then
-    #        echo "Running inside a Docker container"
-    #        exit 1
-    #    fi
-    [ -f /run/.dockerenv ] && mh "file exists: /run/.dockerenv"
-    # Cgroups (Control Groups)
-    local -a selfcgroup
-    mapfile -t selfcgroup< <(${BINARIES[cat]} /proc/self/cgroup)
-    for i in ${!selfcgroup[@]}; do mh "/proc/self/cgroup - $(printf '%02d' $((i+1))): ${selfcgroup[i]}"; done
-    local -a onecgroup
-    mapfile -t onecgroup< <(${BINARIES[cat]} /proc/1/cgroup)
-    for i in ${!onecgroup[@]}; do mh "/proc/1/cgroup - $(printf '%02d' $((i+1))): ${onecgroup[i]}"; done
-
-    $ext_inf && {
-        ## prompt
-#            $ext_inf && . <(lrequire prompt)
-        mh -L "prompt: $(prompt 2>&1)"
-    } # end $ext_inf
-
-    ## os-release
-    if [ -f /etc/os-release ]||[ -f /usr/lib/os-release ]; then
-        local os_release
-        [ -f /etc/os-release ]&&os_release="/etc/os-release"||os_release="/usr/lib/os-release"
-        mh -L OS_PRETTY_NAME: "$OS_PRETTY_NAME - da $(${BINARIES[gzip]} -c $os_release  2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
-    fi
-
-    ## locales
-    # localectl status
-    $(gzipenc64 localectl --no-pager status)
-
-    $ext_inf && {
-        ## hostname
-        # /etc/hostname
-        if [ -f /etc/hostname ]; then
-            mh -L "/etc/hostname: $(< /etc/hostname)"
-        fi
-        # hostname -A, hostname -I
-        if [ -n "${BINARIES[hostname]}" ]; then
-            mh -L "hostname -A: $(${BINARIES[hostname]} -A 2>&1)"
-            mh -L "hostname -I: $(${BINARIES[hostname]} -I 2>&1)"
-        fi
-
-## user (schon in env)
-#        # $USER
-#        [ -z "$USER" ] || mh -L "\$USER: $USER"
-#        # $SUDO_USER
-#        [ -z "$SUDO_USER" ] || mh -L "\$SUDO_USER: $SUDO_USER"
-#        # id
-#        mh -L "id -a: $(id -a 2>&1)"
-
-## who
-        $(gzipenc64 who)
-
-## uptime
-        [ -n "${BINARIES[uptime]}" ] && mh -L "uptime: $(${BINARIES[uptime]} 2>&1)"
-
-        $ext_ext_inf && {
-## lscpu
-            if [ -n "${BINARIES[lscpu]}" ]; then
-                local -a lscpu
-                mapfile -t lscpu< <(${BINARIES[lscpu]} 2>&1 | ${BINARIES[grep]} -iv "not affected")
-                for i in ${!lscpu[@]}; do
-                    mh -L "lscpu - $(printf '%02d' $((i+1))): ${lscpu[i]}"
-                done
-            fi
-        } # end $ext_ext_inf
-
-## free
-        $(gzipenc64 free -hwt)
-    } # end $ext_inf
-
-# TODO 1 -->
-## root stuff (this is redundant)
-#    $rt && {
-# TODO <-- 1
-## All-in-One
+    ## All-in-One
         if [[ " $leftstring_aio " =~ " $bm " ]]; then
-#            [ -z "$AIO" ] && . <(lrequire nc/nextcloud_aio)
             mh "AIO = $AIO - DOCKER = $DOCKER"
         fi
 
-        $ext_ext_inf && {
-## SELinux
-            if [ -n "${BINARIES[sestatus]}" ]; then
-                if [ "$(${BINARIES[sestatus]} | ${BINARIES[gawk]} '{print $NF}')" != "disabled" ]; then
-                    local -a selinuxstatus selinuxbooleans
-                    mapfile -t selinuxstatus< <(${BINARIES[sestatus]} -v 2>&1)
-                    for i in ${!selinuxstatus[@]}; do mh -L "sestatus -v - $(printf '%02d' $((i+1))): ${selinuxstatus[i]}"; done
-                    mapfile -t selinuxbooleans< <(${BINARIES[sestatus]} -b 2>&1)
-                    for i in ${!selinuxbooleans[@]}; do mh -L "sestatus -b - $(printf '%02d' $((i+1))): ${selinuxbooleans[i]}"; done
-                    mh -L "id -Z: $(id -Z 2>&1)"
-                fi
-            fi
+        ## PID 1
+        mh "pid1: $(${BINARIES[ps]} -p 1 -o comm= 2>&1)"
+        inf+=("echo pid1: $(${BINARIES[ps]} -p 1 -o comm= 2>&1)")
 
-## AppArmor
-            if [ -n "${BINARIES[aa-status]}" ]; then
-                local -a aastatus
-                mapfile -t aastatus< <(${BINARIES[aa-status]} 2>&1)
-                for i in ${!aastatus[@]}; do mh -L "aa-status - $(printf '%02d' $((i+1))): ${aastatus[i]}"; done
-            fi
+        ## prompt
+        [ "$(type -t prompt)" = 'function' ] && inf+=("echo prompt: $(prompt 2>&1)")
 
-## dmidecode
-            if [ -n "${BINARIES[dmidecode]}" ]; then
-                local -a dmidecode
-                mapfile -t dmidecode< <(${BINARIES[dmidecode]} -qt 1,11 2>&1 | ${BINARIES[grep]} -v "^$")
-                for i in ${!dmidecode[@]}; do
-                    mh -L "dmidecode -t 1,11 - $(printf '%02d' $((i+1))): ${dmidecode[i]}"
-                done
-            fi
-        }
+        ## os-release
+        . <(require dist/os_release)
+        mh -L OS_PRETTY_NAME: "$OS_PRETTY_NAME"
+        if [[ -f /etc/os-release || -f /usr/lib/os-release ]]; then
+            local os_release
+            [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
+            inf+=("cat $os_release")
+        elif [ -n "${BINARIES[lsb_release]}" ]; then
+            inf+=("lsb_release -a")
+        fi
 
-# TODO 2 -->
-#    } # end $rt
+        ## ENV:
+        inf+=("env --")
 
-# TODO <-- 2
+        ## locales
+        # localectl status
+        inf+=("localectl --no-pager status")
+
+        ## Parent process command
+        inf+=("title parent process (ps -o cmd= \$(ps -o ppid= \$\$)):")
+        inf+=("true $(${BINARIES[ps]} -o cmd= $(${BINARIES[ps]} -o ppid= $$) 2>&1)")
+
+        ## TERM:
+        inf1=("echo tput longname: $(${BINARIES[tput]} longname)")
+
+#        ## readlink /proc/self/fd/0, 1, 2
+#        inf+=("echo readlink /proc/self/fd/0: $(${BINARIES[readlink]} /proc/self/fd/0 2>&1)")
+#        inf+=("echo readlink /proc/self/fd/1: $(${BINARIES[readlink]} /proc/self/fd/1 2>&1)")
+#        inf+=("echo readlink /proc/self/fd/2: $(${BINARIES[readlink]} /proc/self/fd/2 2>&1)")
+
+        # Cgroups (Control Groups)
+        inf+=("p_sort /proc/self/cgroup")
+        inf+=("p_sort /proc/1/cgroup")
+
+        $ext_inf && {
+            inf+=("cat /etc/hostname")
+            inf+=("hostname -A")
+            inf+=("hostname -I")
+            inf+=("ip address")
+            inf+=("ip route")
+            inf+=("ip neighbour")
+            inf+=("who --")
+            inf+=("uptime --")
+            inf+=("lscpu --")
+            inf+=("free -hwt")
+#            inf+=("free -hwt")
+#            inf+=("sestatus -v")
+#            inf+=("sestatus -b")
+#            inf+=("aa-status --verbose")
+            inf+=("dmidecode -t 1,11")
+        } # end $ext_inf
+
+    } # end $ff
+
     if [[ " $leftstring_php " =~ " $bm " ]]; then
 ## dpkg
     # dpkg (debian) based like architecture apt sources
-        if [ -n "${BINARIES[dpkg]}" ]; then
+        if ! $ff && [ -n "${BINARIES[dpkg]}" ]; then
             local -a aptgetversion foreign_architectures
-            if q0 ${BINARIES[dpkg]} --robot --version; then
-                mh "dpkg --robot --version: $(${BINARIES[dpkg]} --robot --version 2>&1)"
+            if dpkg_version="$(q2 ${BINARIES[dpkg]} --robot --version)"; then
+                inf+=("echo dpkg --robot --version: $dpkg_version")
             else
                 dpkg_version="$(q2 ${BINARIES[dpkg]} --version | ${BINARIES[grep]} -oP '\d+(\.\d+){1,3} \(\S+\)')"
-                [ -z "$dpkg_version" ] || mh "dpkg --version: $dpkg_version"
+                [ -z "$dpkg_version" ] || inf+=("echo dpkg --version: $dpkg_version")
             fi
-            mh "dpkg --print-architecture: $(${BINARIES[dpkg]} --print-architecture 2>&1)"
+            inf+=("echo dpkg --print-architecture: $(${BINARIES[dpkg]} --print-architecture 2>&1)")
             mapfile -t foreign_architectures< <(${BINARIES[dpkg]} --print-foreign-architectures 2>&1)
-            if (( ${#foreign_architectures[@]} )); then
-                for i in ${!foreign_architectures[@]}; do mh "dpkg --print-foreign-architectures $((i+1)): ${foreign_architectures[i]}"; done
-            fi
-            mapfile -t aptgetversion< <(${BINARIES[apt-get]} --version 2>&1)
-            mh "apt-get --version: da $(echo "${aptgetversion[@]/%/;}" | ${BINARIES[gzip]} 2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
-            mh "apt --version: $(${BINARIES[apt]} -v 2>&1)"
+            (( ${#foreign_architectures[@]} )) && inf+=("echo dpkg --print-foreign-architectures: ${foreign_architectures[@]}")
+            inf+=("echo apt --version: $(${BINARIES[apt]} -v 2>&1)")
+            inf+=("apt-get --version")
 
 #            local -a dpkg_locks
 #            mapfile -t dpkg_locks< <(check_lockfiles -v 2>&1)
@@ -404,33 +391,30 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
 
         # apt sources
             if [ -d /var/lib/apt/lists ]; then
-#                local -a aptsources apturls aptsourcesfiles sury_aptsourcesfiles file_content
-#                mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;${BINARIES[ls]} *Packages|${BINARIES[sed]} 's/_Packages.*$//;s/-deb.*$//;s/_dists/ /;s/_binary-/ /')")
-#                for i in ${!aptsources[@]}; do mh "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|${BINARIES[sed]} 's/\(.*\)\/\(.*\)/\1 \2/')"; done
-                mh -L "aptsources: da $(p_sort "$(cd /var/lib/apt/lists/;${BINARIES[ls]} *Packages|${BINARIES[sed]} 's/_Packages.*$//;s/-deb.*$//;s/_dists/ /;s/_binary-/ /')" | ${BINARIES[gzip]} 2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
+                inf+=("title aptsources:")
+                inf+=("true $(p_sort_numerate "$(cd /var/lib/apt/lists/; ${BINARIES[ls]} *Packages | ${BINARIES[sed]} 's/_Packages.*$//; s/-deb.*$//; s/_dists/ /; s/_binary-/ /' 2>&1)" 2>&1)")
+
+            # sury
+                local sury
+                local -i sury_r
+                sury="$(sury)"
+                sury_r=$?
+#                mh "sury: r=$sury_r, $sury"
+                inf+=("echo sury: r=$sury_r, $sury")
 
         # apt sources files
                 local -a apturls
                 mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;${BINARIES[ls]} *Packages|${BINARIES[sed]} 's/_dists.*$//')")
-# TODO 3 -->
-    #            mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${BINARIES[grep]} -v ':\s*#'|${BINARIES[grep]} -E "*.(list|sources)\:"|${BINARIES[gawk]} -F':' '{print $1}'; done))
-# TODO <-- 3
-#                mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do [[ "${apturls[i]}" =~ (ondrej|sury) ]] || ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${BINARIES[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
-#                for i in ${!aptsourcesfiles[@]}; do mh "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; done
-                mh -L "aptsourcesfiles: da $(p_sort $(for i in "${!apturls[@]}";do [[ "${apturls[i]}" =~ (ondrej|sury) ]] || ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${BINARIES[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done) | ${BINARIES[gzip]} 2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
-
+                inf+=("title aptsourcesfiles:")
+                inf+=("true $(p_sort_numerate "$(for i in "${!apturls[@]}";do ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${BINARIES[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}' 2>&1; done)" 2>&1)")
+        # sury apt sources files
                 local -a sury_aptsourcesfiles
                 mapfile -t sury_aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do [[ "${apturls[i]}" =~ (ondrej|sury) ]] && ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${BINARIES[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done))
                 if (( ${#sury_aptsourcesfiles[@]} )); then
                     for i in ${!sury_aptsourcesfiles[@]}; do
                         if [ -s "${sury_aptsourcesfiles[i]}" ]; then
-                            mh "sury-aptsourcefile-$(printf '%02d' $((i+1))): ${sury_aptsourcesfiles[i]} da $(${BINARIES[gzip]} -c ${sury_aptsourcesfiles[i]} 2>&1 | ${BINARIES[base64]} -w 0 2>&1)"
+                            inf+=("cat ${sury_aptsourcesfiles[i]}")
                         fi
-    #                    mapfile -t file_content < ${sury_aptsourcesfiles[i]}
-    #                    mh "sury aptsourcefile-$(printf '%02d' $((i+1))): ${sury_aptsourcesfiles[i]}"
-    #                    for j in ${!file_content[@]}; do
-    #                        mh "sury aptsourcefile-$(printf '%02d' $((i+1)))/$(printf '%02d' $((j+1))): ${file_content[j]}"
-    #                    done
                     done
                 fi
 
@@ -438,62 +422,48 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
 
         fi
 
-## php
-    # sury
-#        . <(require php/sury)
-        local sury
-        local -i sury_r
-        sury="$(sury)"
-        sury_r=$?
-        mh "sury: r=$sury_r, $sury"
+        $ff || {
+    ## php
+        # php-version
+            if [ -n "${BINARIES[php]}" ]; then
+                inf+=("echo php-version: php$(php_ver)")
+            else
+                inf+=("echo php-version: no php binary detected")
+            fi
+        }
 
-    # php-version
-        if [ -n "${BINARIES[php]}" ]; then
-#            . <(lrequire php/version)
-            mh "php-version: php$(php_ver)"
-        else
-            mh "php-version: no php binary detected"
+        # php candidates
+        if [ -n "${BINARIES[apt-cache]}" ]; then
+            inf+=("echo php-candidates: $(${BINARIES[apt-cache]} search "^$PHPVREGEX$" | ${BINARIES[gawk]} '{print substr($1,4,3)}' | ${BINARIES[sort]} -u | ${BINARIES[paste]} -sd ' ')")
         fi
 
-        mh_selections distinf
-
-    # php candidates
-        if [ -n "${BINARIES[apt-cache]}" ]; then
-            local -a candidates
-            mapfile -t candidates< <(${BINARIES[apt-cache]} search "^$PHPVREGEX$"|${BINARIES[gawk]} '{print substr($1,4,3)}' | ${BINARIES[sort]} -ru)
-            mh "php-candidates: ${candidates[@]}"
+        # alternatives selections
+        if [ -n "${BINARIES[update-alternatives]}" ]; then
+            inf+=("title list_alternatives:")
+            inf+=("true $(list_alternatives 2>&1)")
+            inf+=("title list_alternatives_extended:")
+            inf+=("true $(list_alternatives_extended 2>&1)")
         fi
 
     # installed php packages
         local pv
         local -a pkgs_by_dpkg
         collect_pkgs_by_dpkg(){
-            ${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i\s+[^\s]*php/{print $2}' | ${BINARIES[grep]} -Ev "$PHPVREGEX" | ${BINARIES[sort]} | ${BINARIES[gawk]} '{printf (NR==1?"":";") $0}'
+            local packages
+            packages="$(${BINARIES[dpkg]} -l 2>&1 | ${BINARIES[gawk]} '/^[hiu]i\s+[^\s]*php/{print $2}' 2>&1 | ${BINARIES[grep]} -Ev "$PHPVREGEX" 2>&1 | ${BINARIES[sort]} 2>&1 | ${BINARIES[gawk]} '{printf (NR==1?"":" ") $0}' 2>&1)"
+            inf+=("title PHP packages:")
+            inf+=("true $packages")
             echo
             for pv in $(${BINARIES[phpquery]} -V | ${BINARIES[sort]}); do
-                ${BINARIES[dpkg]} -l | ${BINARIES[gawk]} "/^[hiu]i\s+[^\s]*php$pv/{printf \$2 \";\"}" | ${BINARIES[sort]}
+                packages="$(${BINARIES[dpkg]} -l 2>&1 | ${BINARIES[gawk]} '/^[hiu]i\s+[^\s]*php'$pv'/{print $2}' 2>&1 | ${BINARIES[sort]} 2>&1 | ${BINARIES[gawk]} '{printf (NR==1?"":" ") $0}' 2>&1)"
+                inf+=("title PHP$pv packages:")
+                inf+=("true $packages")
             done
         }
-        mapfile -t pkgs_by_dpkg< <(collect_pkgs_by_dpkg 2>&1)
-        for i in ${!pkgs_by_dpkg[@]}; do
-            mh "PHP-pkg-$(printf '%02d' $((i+1))): ${pkgs_by_dpkg[i]}"
-        done
+        q0 collect_pkgs_by_dpkg
 
     # pecl
-        if [ -n "${BINARIES[pecl]}" ]; then
-            local -a pecl_list
-            mapfile -t pecl_list< <(pecl list 2>&1|${BINARIES[sort]} -u)
-            for i in ${!pecl_list[@]}; do
-                if [[ "$(trim "${pecl_list[i]}")" ]]; then
-                    if [[ "${pecl_list[i]}" =~ Warning ]]; then
-                        mh "pecl list $(printf '%02d' $((i+1))): pecl throws errors."
-                        break
-                    else
-                        mh "pecl list $(printf '%02d' $((i+1))): ${pecl_list[i]}"
-                    fi
-                fi
-            done
-        fi
+        inf+=("pecl list")
 
         detect_wrong_extensions(){
             local pv sapi php_ini ini_scan_dir ini_file
@@ -512,10 +482,6 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
         }
 
         collect_php_config(){
-#            if ! q1 command -v php_ini_local; then
-                EXTENSIONS_BASHLIB=false
-                . <(lrequire php/extensions)
-#            fi
             local err pv sapi ini_file ini_scan_dir wrong_extensions config
             local -a locals defaults
             err="$1"
@@ -524,141 +490,192 @@ distinf(){ # clf=lock_file, ctf=timestamp_file
                     ini_file="/etc/php/$pv/$sapi/php.ini"
                     if  [[ -f "$ini_file" || -L "$ini_file" ]]; then
                         if [[ "$sapi" == 'apache2' && -n "${BINARIES[apache2]}" ]] || [[ "$sapi" == 'fpm' && -n "${BINARIES[php-fpm$pv]}" ]] || [[ "$sapi" == 'cli' && -n "${BINARIES[php$pv]}" ]]; then
-                            wrong_extensions="$(output=$(detect_wrong_extensions "$pv" "$sapi");[[ -n "$output" ]] && printf "%s\n" "== WRONG EXTENSIONS in ${SAPIS[$sapi]/@VER@/$pv}:" "$output" | ${BINARIES[gzip]} -c | ${BINARIES[base64]} -w 0 || echo "";)"
-                            config="$(output=$(php_ini_local $pv $sapi $err | ${BINARIES[sort]});[[ -n "$output" ]] && printf "%s\n" "== CONFIG of ${SAPIS[$sapi]/@VER@/$pv}:" "$output" | ${BINARIES[gzip]} -c | ${BINARIES[base64]} -w 0 || echo "";)"
-                            [ -s "$err" ] && echo "${SAPIS[$sapi]/@VER@/$pv} ERROR: $(${BINARIES[sed]} ':a;N;$!ba;s/\n/; /g' "$err")"
-                            [[ -n "$wrong_extensions" ]] && echo "${SAPIS[$sapi]/@VER@/$pv} WRONG EXTENSIONS: da $wrong_extensions"
-                            [[ -n "$config" ]] && echo "${SAPIS[$sapi]/@VER@/$pv} CONFIG: dp $config"
+                            wrong_extensions="$(output=$(detect_wrong_extensions "$pv" "$sapi"); [[ -n "$output" ]] && printf "%s\n" "$output" || echo "";)"
+                            config="$(output=$(php_ini_local $pv $sapi $err | ${BINARIES[sort]}); [[ -n "$output" ]] && printf "%s\n" "$output" || echo "";)"
+                            if [ -s "$err" ]; then
+                                inf+=("title ${SAPIS[$sapi]/@VER@/$pv} ERROR:")
+                                inf+=("true $(${BINARIES[cat]} $err)")
+                            fi
+                            if [[ -n "$wrong_extensions" ]]; then
+                                inf+=("title ${SAPIS[$sapi]/@VER@/$pv} WRONG EXTENSIONS:")
+                                inf+=("true $(${BINARIES[echo]} "$wrong_extensions")")
+                            fi
+                            if [[ -n "$config" ]]; then
+                                inf+=("title ${SAPIS[$sapi]/@VER@/$pv} CONFIG:")
+                                inf+=("true $(${BINARIES[echo]} "$config")")
+                            fi
                         fi
                     fi
                 done
             done
         }
         local errorlog=$(tf)
-        local -a php_config
-        mapfile -t php_config< <(collect_php_config $errorlog 2>&1)
-        for i in ${!php_config[@]}; do
-            mh -L "PHP-config-$(printf '%02d' $((i+1))): ${php_config[i]}"
-        done
+        q0 collect_php_config $errorlog
         q2 ${BINARIES[rm]} -f $errorlog
         unset errorlog
 
 #        . <(lrequire php/fpm)
-
-        local -a fpm_test
         for pv in $(${BINARIES[phpquery]} -V | ${BINARIES[sort]}); do
-            if [ -n "${BINARIES[php-fpm$pv]}" ]; then
-                mapfile -t fpm_test< <(${BINARIES[php-fpm$pv]} -t 2>&1)
-                mh "php-fpm$pv -t: ${fpm_test[@]}"
-            fi
+            inf+=("php-fpm$pv -t")
         done
 
         local -a fpmpools
 #        mapfile -t fpmpools< <(fpm_ps_info brief 2>&1)
         mapfile -t fpmpools< <(fpm_pools 2>&1)
         if (( ${#fpmpools[@]} )); then
-            for i in ${!fpmpools[@]}; do
-                mh "PHP-FPM pool-$(printf '%02d' $((i+1))): ${fpmpools[i]}"
-            done
+            inf+=("title PHP-FPM pools:")
+            inf+=("true $(fpm_pools 2>&1)")
         else
-            mh "PHP-FPM pool: none"
+            inf+=("echo PHP-FPM pools: none")
         fi
 
         local -a fpmsockets
         mapfile -t fpmsockets< <(fpm_sockets 2>&1 | ${BINARIES[sort]})
         if (( ${#fpmsockets[@]} )); then
-            for i in ${!fpmsockets[@]}; do
-                mh "PHP-FPM socket-$(printf '%02d' $((i+1))): ${fpmsockets[i]}"
-            done
+            inf+=("title PHP-FPM sockets:")
+            inf+=("true $(fpm_sockets 2>&1 | ${BINARIES[sort]})")
         else
-            mh "PHP-FPM socket: none"
+            inf+=("echo PHP-FPM sockets: none")
         fi
 
+        . <(require php-updater/linstalled)
+        inf+=("title installed PHP sapi:")
+        inf+=("true $(noansi "$(list_installed_sapi quiet 2>&1)")")
     fi # End " php-module-builder php-updater "
 # TODO TODO TODO
 #    if [ -n "${BINARIES[snap]}" ]; then
 #        mh ""
 #    fi
+    #    . <(lrequire httpd)
+    populate_httpd_ known
+    if (( "${#HTTPD_KNOWN[@]}" )); then
+        inf+=("title httpd known:")
+        inf+=("true $(p_sort_numerate "${HTTPD_KNOWN[@]}")")
+    fi
+    populate_httpd_ enabled
+    if (( "${#HTTPD_ENABLED[@]}" )); then
+        inf+=("title httpd enabled:")
+        inf+=("true $(p_sort_numerate "${HTTPD_ENABLED[@]}")")
+    fi
+    populate_httpd_ active
+    if (( "${#HTTPD_ACTIVE[@]}" )); then
+        inf+=("title httpd active:")
+        inf+=("true $(p_sort_numerate "${HTTPD_ACTIVE[@]}")")
+    fi
 
-#    . <(lrequire httpd)
-    if (( ${HTTPD[apache2]} )); then
-        ( q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )) ) || {
-            local -a a2errors
-            mapfile -t a2errors< <(${BINARIES[apache2ctl]} configtest 2>&1)
-            for i in ${!a2errors[@]}; do
-                mh "apache2 error-$(printf '%02d' $((i+1))): ${a2errors[i]}"
-            done
-        }
-        local a2mod common_a2mods missing_a2mods uncommon_a2mods
-        common_a2mods="access_compat alias auth_basic authn_core authn_file authz_core authz_host authz_user deflate dir env filter mime negotiation reqtimeout ssl"
-        populate_a2modules shared
-        if (( ${#A2MODULES[@]} )); then
-            for a2mod in $common_a2mods; do
-                if ! [[ "${A2MODULES[@]%_module}" =~ $a2mod ]]; then
-                    missing_a2mods+=" $a2mod"
+    for enabled_httpd in "${HTTPD_ENABLED[@]}"; do
+        inf+=("title $enabled_httpd details:")
+        inf+=("systemctl cat $enabled_httpd")
+        case $enabled_httpd in
+            apache2)
+                ( q0 ${BINARIES[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )) ) || inf+=("apache2ctl configtest")
+                local a2mod common_a2mods loaded_common_a2mods missing_common_a2mods uncommon_a2mods
+                common_a2mods="access_compat alias auth_basic authn_core authn_file authz_core authz_host authz_user deflate dir env filter mime negotiation reqtimeout ssl"
+                inf+=("apache2ctl -V")
+                populate_a2modules static
+                if (( ${#A2MODULES[@]} )); then
+                    inf+=("echo apache2 static (compiled in) modules: $(echo ${A2MODULES[@]%_module})")
                 fi
-            done
-            missing_a2mods="$(trim "$missing_a2mods")"
-            [ -z "$missing_a2mods" ] || mh "apache2 missing common modules: $missing_a2mods"
-            for a2mod in ${A2MODULES[@]%_module}; do
-                if ! [[ "$common_a2mods" =~ $a2mod ]]; then
-                    uncommon_a2mods+=" $a2mod"
+                populate_a2modules shared
+                if (( ${#A2MODULES[@]} )); then
+                    for a2mod in $common_a2mods; do
+                        if [[ "${A2MODULES[@]%_module}" =~ $a2mod ]]; then
+                            loaded_common_a2mods+=" $a2mod"
+                        else
+                            missing_common_a2mods+=" $a2mod"
+                        fi
+                    done
+                    inf+=("title apache2 loaded common modules:")
+                    inf+=("true $(echo $loaded_common_a2mods)")
+                    missing_common_a2mods="$(trim "$missing_common_a2mods")"
+                    if [ -n "$missing_common_a2mods" ]; then
+                        inf+=("echo apache2 not loaded common modules: $(echo $missing_common_a2mods)")
+                    else
+                        inf+=("echo apache2 not loaded common modules: all common modules are loaded, none missing.")
+                    fi
+                    for a2mod in ${A2MODULES[@]%_module}; do
+                        if ! [[ "$common_a2mods" =~ $a2mod ]]; then
+                            uncommon_a2mods+=" $a2mod"
+                        fi
+                    done
+                    uncommon_a2mods="$(trim "$uncommon_a2mods")"
+                    if [ -n "$uncommon_a2mods" ]; then
+                        inf+=("title apache2 special-usecase modules:")
+                        inf+=("true $(echo $uncommon_a2mods)")
+                    fi
                 fi
-            done
-            uncommon_a2mods="$(trim "$uncommon_a2mods")"
-            [ -z "$uncommon_a2mods" ] || mh "apache2 uncommon modules: $uncommon_a2mods"
-        fi
-        unset -v a2mod common_a2mods missing_a2mods uncommon_a2mods
+                unset -v a2mod common_a2mods missing_common_a2mods uncommon_a2mods
+                inf+=("apache2ctl -S")
+#                inf+=("title apache2 PHP-FPM configuration - socket:")
+#                inf+=("true $(iterate_conf_files_ a2 detect_apache2_php_fpm_ socket)")
+#                inf+=("title apache2 PHP-FPM configuration - line:")
+#                inf+=("true $(iterate_conf_files_ a2 detect_apache2_php_fpm_ line)")
+                inf+=("title apache2 PHP-FPM configuration - tag:")
+                inf+=("true $(iterate_conf_files_ a2 detect_apache2_php_fpm_ tag)")
+                inf+=("title_end end of $enabled_httpd details")
+            ;;
+            nginx)
+                if ( q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )) ); then
+                    inf+=("nginx -V")
+                    populate_ngxmodules static
+                    if (( ${#NGXMODULES[@]} )); then
+                        inf+=("title nginx static (compiled in) modules:")
+                        inf+=("true $(echo ${NGXMODULES[@]//_module/})")
+                    fi
+                    populate_ngxmodules shared
+                    if (( ${#NGXMODULES[@]} )); then
+                        inf+=("title nginx loaded shared (dynamic) modules:")
+                        inf+=("true $(echo ${NGXMODULES[@]%_module})")
+                    fi
+                    inf+=("nginx -T")
+                else
+                    inf+=("nginx -t")
+                fi
+
+                inf+=("title detect nginx php-fpm:")
+                inf+=("true $(iterate_conf_files_ ngx detect_nginx_php_fpm all verbose)")
+
+                inf+=("title_end end of $enabled_httpd details")
+            ;;
+            caddy)
+                inf+=("echo caddy version: $(${BINARIES[caddy]} version)")
+                caddyfile="/etc/caddy/Caddyfile"
+                [[ -e "$caddyfile" && ! -d "$caddyfile" ]] && inf+=("cat $caddyfile")
+                inf+=("title_end end of $enabled_httpd details")
+            ;;
+            *)
+                inf+=("title_end end of $enabled_httpd details")
+        esac
+    done
+
+    populate_httpd_ all
+    if (( "${#HTTPD_ALL[@]}" )); then
+        inf+=("title httpd configured directories:")
+        inf+=("true $(p_nosort "${HTTPD_ALL[@]}")")
     fi
-    if (( ${HTTPD[nginx]} )); then
-        ( q0 ${BINARIES[nginx]} -t && (( ${#NGXCONFFILES[@]} )) ) || {
-            local -a ngxerrors
-            mapfile -t ngxerrors< <(${BINARIES[nginx]} -t 2>&1)
-            for i in ${!ngxerrors[@]}; do
-                mh "nginx error-$(printf '%02d' $((i+1))): ${ngxerrors[i]}"
-            done
-        }
-        populate_ngxmodules shared
-        (( ${#NGXMODULES[@]} )) && mh "nginx shared modules: ${NGXMODULES[@]%_module}"
+    populate_httpd_ nextcloud
+    if (( "${#HTTPD_NEXTCLOUD[@]}" )); then
+        inf+=("title httpd serving nextcloud:")
+        inf+=("true $(p_sort_numerate "${HTTPD_NEXTCLOUD[@]}")")
     fi
+    populate_httpd_ nc-dir
+    if (( "${#HTTPD_NC_DIR[@]}" )); then
+        inf+=("title httpd configured directories with a nextcloud installation:")
+    else
+        mapfile -t HTTPD_NC_DIR< <(q2 ${BINARIES[find]} -L /var /srv -name occ -type f -exec dirname {} \; | ${BINARIES[grep]} -Ev '(/updater-oc|/overlay)' | ${BINARIES[sort]})
+        (( "${#HTTPD_NC_DIR[@]}" )) && inf+=("title httpd detected nextcloud directories (none configured):")
+    fi
+    (( "${#HTTPD_NC_DIR[@]}" )) && inf+=("true $(p_sort_numerate "${HTTPD_NC_DIR[@]}")")
+    gze64 "${inf[@]}"
+    c2j(){ jq_(){ echo "$@"|${BINARIES[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)';}
+        C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
+        if nonullglob "$1/*\.config\.php";then jq_ $(echo "$C2J"|${BINARIES[php]} -- $1/config.php $1/*.config.php)|${BINARIES[gzip]}|${BINARIES[base64]} -w 0;else jq_ $(echo "$C2J"|${BINARIES[php]} -- $1/config.php)|${BINARIES[gzip]}|${BINARIES[base64]} -w 0;fi
+    }
+    encr(){
+        ${BINARIES[php]} -r "\$d='$1';\$p='$p';\$iv=random_bytes(openssl_cipher_iv_length('aes-256-cbc'));\$encrypted=openssl_encrypt(\$d,'aes-256-cbc',\$p,OPENSSL_RAW_DATA,\$iv);echo rtrim(base64_encode(\$iv . \$encrypted),'=');"
+    }
+    ! $ff && [ -d "${HTTPD_NC_DIR[0]/%//config}" ] && mh -L "dj $(q2 pad ${p#*_}$(q2 encr "$(q2 c2j "${HTTPD_NC_DIR[0]/%//config}")")${p%_*})"
 
     ${BINARIES[rm]} -f "$clf"
     return 0
-} # end distinf
-
-if ( ${rt:-false} && $testing && [[ " $leftstring_test " =~ " $bm " ]] ) || ( ${rt:-false} && [[ " $leftstring_notest " =~ " $bm " ]] ); then
-    $ext_inf && . <(lrequire prompt)
-    . <(lrequire dist/os_release)
-    [[ " $leftstring_aio " =~ " $bm " ]] && . <(lrequire nc/nextcloud_aio)
-    if [[ " $leftstring_php " =~ " $bm " ]]; then
-        if [[ "$(type -t check_lockfiles)" != 'function' ]]; then
-            DPKG_BASHLIB=false
-            . <(lrequire dpkg)
-        fi
-        if [[ "$(type -t sury)" != 'function' ]]; then
-            SURY_BASHLIB=false
-            . <(lrequire php/sury)
-        fi
-        if [[ "$(type -t php_ver)" != 'function' ]]; then
-            VERSION_BASHLIB=false
-            . <(lrequire php/version)
-        fi
-        if ! [[ "$PHPVREGEX" =~ php ]]; then
-            VERSIONS_BASHLIB=false
-            . <(lrequire php/versions)
-        fi
-        if ! q2 declare -p SAPIS | ${BINARIES[grep]} -qs 'declare -A'; then
-            EXTENSIONS_BASHLIB=false
-            . <(lrequire php/extensions)
-        fi
-        if [[ "$(type -t fpm_pools)" != 'function' || "$(type -t fpm_sockets)" != 'function' ]]; then
-            FPM_BASHLIB=false
-            . <(lrequire php/fpm)
-        fi
-    fi
-    if [[ "$(type -t populate_httpd)" != 'function' ]]; then
-        HTTPD_BASHLIB=false
-        . <(lrequire httpd)
-    fi
-    distinf &
-fi
+}

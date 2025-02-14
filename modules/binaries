@@ -31,7 +31,7 @@ glob_path(){
     local path binary
     local -a paths results
     # standard paths take precedence
-    PATH=$(printf "%s" "/usr/sbin:/usr/bin:/sbin:/bin:$PATH" | ${BINARIES[gawk]} -v RS=: -v ORS=: '!seen[$0]++' | ${BINARIES[sed]} 's/:$//')
+    PATH=$(printf "%s" "/usr/sbin:/usr/bin:/sbin:/bin:$PATH" | ${BINARIES[gawk]} -v RS=: -v ORS=: '!seen[$0]++' | ${BINARIES[sed]} 's/::/:/g;s/:$//')
     mapfile -t paths< <(printf "%s\n" ${PATH//:/ })
     shopt -s nullglob
     for path in "${paths[@]}"; do
@@ -47,10 +47,6 @@ mapfile -t binaries < <(glob_path)
 for binary in "${binaries[@]}"; do
     [ -z "${BINARIES[${binary##*/}]}" ] || continue
     [ -x "$binary" ] || continue
-    if [ -L "$binary" ]; then
-        BINARIES[${binary##*/}]="${BINARIES[env]} LC_MESSAGES=C $(${BINARIES[readlink]} -f $binary)"
-    else
-        BINARIES[${binary##*/}]="${BINARIES[env]} LC_MESSAGES=C $binary"
-    fi
+    BINARIES[${binary##*/}]="${BINARIES[env]} LC_MESSAGES=C $binary"
 done
 unset -v binary binaries

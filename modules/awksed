@@ -217,7 +217,7 @@ noansi_perl(){
     ' <<< "$*"
 }
 
-noansi(){ noansi_perl $*; }
+noansi(){ printf '%s\n' "$(noansi_perl "$@")"; }
 
 urldecode(){
     echo -n "${*//+/ }" | ${BINARIES[sed]} 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | ${BINARIES[xargs]} -0 printf

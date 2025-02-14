@@ -41,7 +41,14 @@ p_nosort_trim(){
 
 # printf sorted and remove duplicates
 p_sort(){
-    printf '%s\n' "$@" | ${BINARIES[sort]} -u
+    local arg
+    if [ "$1" = '-V' ]; then
+        arg="-V"
+        shift
+    else
+        arg='-'
+    fi
+    printf '%s\n' "$@" | ${BINARIES[sort]} ${arg}u
 }
 
 # printf sorted and remove duplicates
@@ -61,6 +68,14 @@ p_rsort_trim(){
     if [[ "$(trim "$@")" ]]; then
         p_rsort "$@"
     fi
+}
+
+# printf sorted, remove duplicates, and numerate lines dynamically based on line count
+p_sort_numerate(){
+    local -i line_count digits
+    line_count=$(p_sort "$@" | ${BINARIES[wc]} -l)
+    digits=$(( line_count < 10 ? 1 : (line_count < 100 ? 2 : 3) ))
+    p_sort "$@" | ${BINARIES[nl]} -v 1 -n rz -w "$digits" -s ': '
 }
 
 # version to integer
@@ -114,4 +129,33 @@ q1(){
 
 q2(){
   "$@" 2>/dev/null
+}
+
+canonicalize_array(){
+    local path
+    local -a ca
+    mapfile -t ca< <(for path in "$@"; do
+            printf '%s\n' "$(${BINARIES[readlink]} -f "$path")"
+        done)
+    p_sort "${ca[@]}"
+}
+
+canonicalize(){
+    local target
+    if ! [ -e "$1" ]; then 
+        printf '%s' "$1"
+        return 1
+    fi
+    target="$(${BINARIES[readlink]} -f "$1")"
+    if [ "$1" = "$target" ]; then
+        printf '%s' "$1"
+        return 1
+    else
+        printf '%s' "$target"
+        return 0
+    fi
+}
+
+is_unix(){
+    ${BINARIES[file]} "$1" | ${BINARIES[grep]} -q "CRLF" && return 1 || return 0
 }
