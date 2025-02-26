@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${UBUNTU_BASHLIB:-false} && return
+${UBUNTU_BASHLIB:-_} && return
 UBUNTU_BASHLIB=:
 
 . <(lrequire binaries)
@@ -176,35 +176,33 @@ is_ubuntu_lts(){
     local version="$1"
     [[ "${!UBUNTU_VERSIONS[@]}" =~ $version ]] && version="${UBUNTU_VERSIONS[$version]}"
     [[ "${UBUNTU_VERSIONS[@]}" =~ $version ]] || return 1
-    return $(echo "$version" | ${BINARIES[gawk]} -F'.' '{if ($1 % 2 == 0 && $2 != 10) printf 0; else printf 1}')
+    return $(echo "$version" | ${X[gawk]} -F'.' '{if ($1 % 2 == 0 && $2 != 10) printf 0; else printf 1}')
 }
 
 list_supported_ubuntu(){
-
-    local -i eos c2=10 c3=20 c4=59 c5=69
     local sus ver lts ss
+    local -i eos c2 c3 c4 c5
     local -l vercode
-    sus="$(supported_suites_ ubuntu)"
-
+    sus="$(supported_suites_ ubuntu)" c2=10 c3=20 c4=59 c5=69
     line '=' P 2/78 b1
-
-    o2;B;echo "This is a list of recent ubuntu versions for your information.";N
-    Y;o2;echo "Version$(o $c2)Codename$(o $c3)End of support$(o $c4)LTS  sury-php-repo";N
+    o2; B; echo "This is a list of recent ubuntu versions for your information."; N
+    o2; Y; echo "Version$(o $c2)Codename$(o $c3)End of support$(o $c4)LTS  sury-php-repo"; N
     line '-' dP 2/78
-
     for ver in $(p_rsort ${!UBUNTU_VERSIONS_DATA[@]}); do
         eos=${UBUNTU_VERSIONS_DATA[$ver]##*;}
         vercode=${UBUNTU_VERSIONS_DATA[$ver]%% *}
-        is_ubuntu_lts $ver&&lts="$(check OK)" || lts="$(check NOK)"
+        is_ubuntu_lts $ver && lts="$(check OK)" || lts="$(check NOK)"
         [[ "$sus" =~ $vercode ]] && ss="$(check OK)" || ss="$(check NOK)"
-        if [ $today -le $eos ] && is_ubuntu_lts $ver;then o3; lG
+        if [ $today -le $eos ] && is_ubuntu_lts $ver; then
+            o3; lG
             echo "$ver$(o $c2)$vercode$(o $c3)$(ut2udF $eos) ($(interval $eos))$(o $c4)$lts$(o $c5)$ss"; N
-        elif [ $today -le $eos ]; then o3;G
+        elif [ $today -le $eos ]; then
+            o3; G
             echo "$ver$(o $c2)$vercode$(o $c3)$(ut2udF $eos) ($(interval $eos))$(o $c4)$lts$(o $c5)$ss"; N
-        else o3; GRAY
+        else
+            o3; GRAY
             echo "$ver$(o $c2)$vercode$(o $c3)$(ut2udF $eos) ($(interval $eos))$(o $c4)$lts$(o $c5)$ss"; N
         fi
     done
-
     line '-' dP 2/78
 }

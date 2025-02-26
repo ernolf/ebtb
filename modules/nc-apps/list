@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${LIST_BASHLIB:-false} && return
+${LIST_BASHLIB:-_} && return
 LIST_BASHLIB=:
 
 . <(lrequire binaries)
@@ -19,62 +19,99 @@ LIST_BASHLIB=:
 
 declare -i count=0
 list(){
-    # declare and preset id and bools
-    local id=$1 md=false supp=false unsupp=false is_shipped=false inappstore=false
-    # shift $1=id out from parameter array
+    local id var
+    id="$1"
     shift
+    # declare and preset local bools
+    local -a bools
+    bools=(md supp unsupp is_shipped inappstore use_json_all)
+    local -A bool
+    for var in "${bools[@]}"; do bool[$var]=_; done #; unset -v bools
     # overwrite bools with parameter values
-    local var; for var in "$@"; do local $var; done #; unset -v var
+# TODO 5 -->
+#    for var in "$@"; do bool[${var%=*}]=${var#*=}; done #; unset -v var
+# TODO <-- 5
+    for var in "$@"; do bool[$(varname "$var")]=$(varval "$var"); done #; unset -v var
     # app meta data
     local info_xml apps_path tag name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
     local -a types apps_paths
     # app belongs to section (either "enabled", "disabled", "store" or "na")
     local section="$(get_applist_section_ $id)"
     # nextcloud version used for database queries must exist
-    local query_version=$nc_version
-    (( $(v2i $nc_version) > $(v2i $nc_master) )) && query_version="$nc_master"
+    local query_version
+    (( $(v2i "$nc_version") > $(v2i "$nc_master") )) && query_version="$nc_master" || query_version="$nc_version"
     # eather a="shipped and alwaysEnabled", d="shipped and defaultEnabled", s="shipped"
-    # if a, d or s, set is_shipped=true
+    # if a, d or s, set bool[is_shipped]=:
+
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_stack_trace >/dev/tty
+        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+            local iter
+            echo -n "local bool values   -" >/dev/tty
+            for iter in ${!bool[@]}; do echo -n " $iter=${bool[$iter]}" >/dev/tty; done; echo >/dev/tty
+            unset iter
+        fi
+        echo "app_id              - $id" >/dev/tty
+        echo "section             - $section" >/dev/tty
+        echo "nc_version          - $nc_version" >/dev/tty
+        echo "nc_key              - $nc_key" >/dev/tty
+        echo -e "==TRACE=end===\n" >/dev/tty
+    fi
+
     local shipped
-    if shipped=$(is_shipped_ "$id"); then
-        is_shipped=true
+    if shipped="$(is_shipped_ "$id")"; then
+        bool[is_shipped]=:
     else
         local platform app_json
         for platform in $(r_db "SELECT platform FROM filtered_apps WHERE platform <= '$query_version' AND platform >= '$nc_min_version' ORDER BY platform DESC;"); do
-#            if $(q2 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}"); then
-            if q0 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}"; then
-                inappstore=true
-                app_json="$(${BINARIES[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[$platform]}")"
+            if $(q2 ${X[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}"); then
+                bool[inappstore]=:
+                app_json="$(${X[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[$platform]}")"
                 break
             fi
         done
 
-#        if ( $use_json_all && ! $inappstore && $(q2 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}") ); then
-        if ( $use_json_all && ! $inappstore && q2 ${BINARIES[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}" ); then
-            inappstore=true
-            app_json="$(${BINARIES[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[all]}")"
+        if ( ${bool[use_json_all]} && ! ${bool[inappstore]} && $(q2 ${X[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[all]}") ); then
+            bool[inappstore]=:
+            app_json="$(${X[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[all]}")"
         fi
 
-        if $inappstore; then
+        if ${bool[inappstore]}; then
             # eval json values into sh vars
-            eval "$(echo "$app_json" | ${BINARIES[jq]} -r 'keys[] as $key | "\($key)=\(.[$key] | @sh)"')"
+            eval "$(echo "$app_json" | ${X[jq]} -r 'keys[] as $key | "\($key)=\(.[$key] | @sh)"')"
             (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section=store
         fi
     fi
-# TODO 0 -->
-$debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
-# TODO <-- 0
-    case $section in
+
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_funcname >/dev/tty
+        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+            local iter
+            echo -n "local bool values   -" >/dev/tty
+            for iter in ${!bool[@]}; do echo -n " $iter=${bool[$iter]}" >/dev/tty; done; echo >/dev/tty
+            unset iter
+        fi
+        echo "app_id              - $id" >/dev/tty
+        echo "section             - $section" >/dev/tty
+        echo "shipped             - $shipped" >/dev/tty
+        echo "v2i nc_version      - $(v2i ${nc_version%.*})" >/dev/tty
+        echo "v2i nc_key          - $(v2i $nc_key)" >/dev/tty
+        echo -e "==TRACE=end===\n" >/dev/tty
+    fi
+
+    case "$section" in
         enabled|disabled|na)
-            mapfile -t apps_paths < <(nc_configkey apps_paths | ${BINARIES[jq]} -r 'if . == null then "apps" else .[] | .path | split("/")[-1] end')
+            mapfile -t apps_paths < <(nc_configkey apps_paths | ${X[jq]} -r 'if . == null then "apps" else .[] | .path | split("/")[-1] end')
             for apps_path in ${apps_paths[@]}; do
                 [ -f "$NC_DIR/$apps_path/$id/appinfo/info.xml" ] && info_xml="$NC_DIR/$apps_path/$id/appinfo/info.xml"
             done
-            if $is_shipped && (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )); then
+            if ${bool[is_shipped]} && (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )); then
                 tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
-                local rawURLserver=$GITHUB_RAW/server/$tag/apps/$id/appinfo/info.xml
-                local rawURLapp=$GITHUB_RAW/$id/$tag/appinfo/info.xml
-                local github_info_xml=$(tf)
+                local rawURLserver="$GITHUB_RAW/server/$tag/apps/$id/appinfo/info.xml"
+                local rawURLapp="$GITHUB_RAW/$id/$tag/appinfo/info.xml"
+                local github_info_xml="$(tf)"
                 if (( $(hc sD $bm-$epoch -o $github_info_xml $rawURLserver) == 200 )); then
                     info_xml=$github_info_xml
                 elif (( $(hc sD $bm-$epoch -o $github_info_xml $rawURLapp) == 200 )); then
@@ -84,7 +121,7 @@ $debug && { echo -e "app_id = $id\ninsappstore = $inappstore"; anykey; }
             if [ ! -f "$info_xml" ]; then
                 if [ "$command" = "ids" -o "$command" = "name" ]; then
 # TODO 1 -->
-$debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
+            ${B[debug]} &&  #  echo "Unsupported App: $id";line '-' GRAY 80
 # TODO <-- 1
                    return
                 else
@@ -94,41 +131,41 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
                     exit 0
                 fi
             fi
-            name=$(xmls -v "(//info/name)" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            summary=$(xmls -v "//info/summary[@lang='$lang']" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            [ -n "$summary" ] || summary=$(xmls -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            categories="$(xmls -v "(//info/category)" "$info_xml" | ${BINARIES[tr]} '\n' ' ')"
-            version=$(xmls -v "//info/version" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            userDocs=$(xmls -v "//info/documentation/user" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            adminDocs=$(xmls -v "//info/documentation/admin" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            developerDocs=$(xmls -v "//info/documentation/developer" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            repo=$(xmls -v "//info/repository" "$info_xml" | ${BINARIES[sed]} '2,$d;s|.git$||1')
-            issueTracker=$(xmls -v "//info/bugs" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            website=$(xmls -v "//info/website" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            name=$(xmls -v "(//info/name)" "$info_xml" | ${X[sed]} '2,$d')
+            summary=$(xmls -v "//info/summary[@lang='$lang']" "$info_xml" | ${X[sed]} '2,$d')
+            [ -n "$summary" ] || summary=$(xmls -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | ${X[sed]} '2,$d')
+            categories="$(xmls -v "(//info/category)" "$info_xml" | ${X[tr]} '\n' ' ')"
+            version=$(xmls -v "//info/version" "$info_xml" | ${X[sed]} '2,$d')
+            userDocs=$(xmls -v "//info/documentation/user" "$info_xml" | ${X[sed]} '2,$d')
+            adminDocs=$(xmls -v "//info/documentation/admin" "$info_xml" | ${X[sed]} '2,$d')
+            developerDocs=$(xmls -v "//info/documentation/developer" "$info_xml" | ${X[sed]} '2,$d')
+            repo=$(xmls -v "//info/repository" "$info_xml" | ${X[sed]} '2,$d;s|.git$||1')
+            issueTracker=$(xmls -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
+            website=$(xmls -v "//info/website" "$info_xml" | ${X[sed]} '2,$d')
             databases=$(xmls -m "//info/dependencies/database" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
             phpExtensions=$(xmls -m "//info/dependencies/lib" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
-            phpMinIntSize=$(xmls -v "//info/dependencies/php/@min-int-size" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            phpMin=$(xmls -v "//info/dependencies/php/@min-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            phpMax=$(xmls -v "//info/dependencies/php/@max-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            NCmin=$(xmls -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
-            NCmax=$(xmls -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | ${BINARIES[sed]} '2,$d')
+            phpMinIntSize=$(xmls -v "//info/dependencies/php/@min-int-size" "$info_xml" | ${X[sed]} '2,$d')
+            phpMin=$(xmls -v "//info/dependencies/php/@min-version" "$info_xml" | ${X[sed]} '2,$d')
+            phpMax=$(xmls -v "//info/dependencies/php/@max-version" "$info_xml" | ${X[sed]} '2,$d')
+            NCmin=$(xmls -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | ${X[sed]} '2,$d')
+            NCmax=$(xmls -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | ${X[sed]} '2,$d')
             ;;
         *)  :
     esac
 
     if [[ "$issueTracker" =~ github.com ]]; then
         if [[ "${issueTracker%/}" =~ /issues$ ]]; then
-            [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${BINARIES[sed]} 's|/issues$||1')
+            [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${X[sed]} 's|/issues$||1')
         else
             issueTracker="${issueTracker%/}/issues"
         fi
     fi
-    [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${BINARIES[sed]} 's|/issues$||1')
+    [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${X[sed]} 's|/issues$||1')
     (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section="$(get_applist_section_ $id)"
 
     if [ -z "$info_xml" ]; then
         if [[ "$repo" =~ github.com ]]; then
-            local url="$(${BINARIES[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
+            local url="$(${X[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
             local github_info_xml=$(tf)
             for tag in "$version" "v$version" master main; do
                 if (( $(hc sD $bm-$epoch -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
@@ -166,13 +203,13 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
     }
 
   # Check the conditions for further processing
-    if $supp; then
+    if ${bool[supp]}; then
         if ( [ -n "$NCmax" ]  && (( ${nc_version%%.*} > ${NCmax%%.*} )) ) ||
            ( [ -n "$NCmin" ]  && (( ${nc_version%%.*} < ${NCmin%%.*} )) ) ||
            ( [ -n "$phpMax" ] && (( $(v2i $php_version) > $(v2i $phpMax) )) ); then
             return 0
         fi
-    elif $unsupp; then
+    elif ${bool[unsupp]}; then
         if ( [ -z "$NCmax" ]  || (( ${NCmax%%.*} >= ${nc_version%%.*} )) ) &&
            ( [ -z "$phpMax" ] || (( $(v2i $phpMax) >= $(v2i $php_version) )) ); then
             return 0
@@ -185,7 +222,7 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
 
     known_issues
 
-    if $md; then
+    if ${bool[md]}; then
         echo -e "| | |\n| - | - |"
         in="|"
         mid="$(N)|"
@@ -206,140 +243,135 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
     ((count++))
 
     # App-ID
-    if ! $md; then
+    if ! ${bool[md]}; then
         local counter="$(printf "%7d" $count)"
     fi
-    echo "${in}App-Id${counter:-}$(Yi)$mid$($md||es 3)$id"
+    echo "${in}App-Id${counter:-}$(Yi)$mid$(${bool[md]} || es 3)$id"
 
     # Name
-    echo "${in}App-Name$(Bi)$mid$($md||es 8)$name"
+    echo "${in}App-Name$(Bi)$mid$(${bool[md]} || es 8)$name"
 
     # Summary
     if [ -n "$summary" ]; then
-        echo "${in}Summary$(C)$mid$($md||es 9)$(htmldecode "$summary")"
+        echo "${in}Summary$(C)$mid$(${bool[md]} || es 9)$(htmldecode "$summary")"
     fi
 
     # not restrictable to groups
     if not_restrictable_to_groups; then
-        echo "$in $(O)$mid$($md||es 15)App can not be restricted to groups"
+        echo "$in $(O)$mid$(${bool[md]} || es 15)App can not be restricted to groups"
 # TODO 4 -->
 #    else
-#        echo "$in $(G)$mid$($md||es 15)App can be restricted to groups"
+#        echo "$in $(G)$mid$(${bool[md]} || es 15)App can be restricted to groups"
 # TODO <-- 4
     fi
 
     # Categories
     if [ -n "$categories" ]; then
-        echo "${in}Categories$(Y)$mid$($md||es 6)$categories"
+        echo "${in}Categories$(Y)$mid$(${bool[md]} || es 6)$categories"
     fi
 
     # Version
-    if ( ! $md && [[ " ${availupd[@]%%#*} " =~ " $id " ]] ); then
-        printf "$(Pbg)==> $(N) $(GRAY)App-Version$(B)$mid$($md||es 5)$version  $(Obg) -->  "
+    if ( ! ${bool[md]} && [[ " ${availupd[@]%%#*} " =~ " $id " ]] ); then
+        printf "$(Pbg)==> $(N) $(GRAY)App-Version$(B)$mid$(${bool[md]} || es 5)$version  $(Obg) -->  "
         echo "new version available: $(a_fld availupd '#' $id 2)  <-- $(N)"
     else
-        echo "${in}App-Version$(N)$mid$($md||es 5)$version"
+        echo "${in}App-Version$(N)$mid$(${bool[md]} || es 5)$version"
     fi
 
     # Website
     if [[ -n "$website" && "$(tlwr ${website%/})" != "$(tlwr ${repo%/})" ]]; then
-        echo "${in}Website$(W)$mid$($md||es 9)$website"
+        echo "${in}Website$(W)$mid$(${bool[md]} || es 9)$website"
     fi
 
     # Repo
     if [ -n "$repo" ]; then
-        echo "${in}Repository$(W)$mid$($md||es 6)$repo"
+        echo "${in}Repository$(W)$mid$(${bool[md]} || es 6)$repo"
     fi
 
     # Issues
     if [ -n "$issueTracker" ]; then
-        echo "${in}Issue-Tracker$(W)$mid$($md||es 3)$issueTracker"
+        echo "${in}Issue-Tracker$(W)$mid$(${bool[md]} || es 3)$issueTracker"
     fi
 
     # User manual
     if [[ -n "$userDocs" && "$(tlwr ${repo%/})" != "$(tlwr ${userDocs%/})" ]]; then
-        echo "${in}User-Doc.$(W)$mid$($md||es 7)$userDocs"
+        echo "${in}User-Doc.$(W)$mid$(${bool[md]} || es 7)$userDocs"
     fi
 
     # Admin manual
     if [ -n "$adminDocs" ]; then
         [[ "$(tlwr ${repo%/})"     = "$(tlwr ${adminDocs%/})" ||
-           "$(tlwr ${userDocs%/})" = "$(tlwr ${adminDocs%/})" ]] || echo "${in}Admin-Doc.$(W)$mid$($md||es 6)$adminDocs"
+           "$(tlwr ${userDocs%/})" = "$(tlwr ${adminDocs%/})" ]] || echo "${in}Admin-Doc.$(W)$mid$(${bool[md]} || es 6)$adminDocs"
     fi
 
     # Developer manual
     if [ -n "$developerDocs" ]; then
         [[ "$(tlwr ${repo%/})"      = "$(tlwr ${developerDocs%/})" ||
            "$(tlwr ${userDocs%/})"  = "$(tlwr ${developerDocs%/})" ||
-           "$(tlwr ${adminDocs%/})" = "$(tlwr ${developerDocs%/})" ]] || echo "${in}Developer-Doc.$(W)$mid$($md||es 2)$developerDocs"
+           "$(tlwr ${adminDocs%/})" = "$(tlwr ${developerDocs%/})" ]] || echo "${in}Developer-Doc.$(W)$mid$(${bool[md]} || es 2)$developerDocs"
     fi
 
     # PHP min / max
     if ! [[ -z "$phpMin" && -z "$phpMax" ]]; then
-        if ( ! $md && [ -n "$phpMax" ] && (( $(v2i $php_version) > $(v2i $phpMax) )) ); then
+        if ( ! ${bool[md]} && [ -n "$phpMax" ] && (( $(v2i $php_version) > $(v2i $phpMax) )) ); then
             phpMax="$(blinkR)$phpMax$(N)"
-        elif ( ! $md && [ -z "$phpMax" ] || (( $(v2i $php_version) <= $(v2i $phpMax) )) ); then
+        elif ( ! ${bool[md]} && [ -z "$phpMax" ] || (( $(v2i $php_version) <= $(v2i $phpMax) )) ); then
             phpMax="$(lG)$phpMax$(N)"
         fi
-        echo "${in}PHP min/max$(N)$mid$($md||es 5)$phpMin / $phpMax"
+        echo "${in}PHP min/max$(N)$mid$(${bool[md]} || es 5)$phpMin / $phpMax"
     fi
 
     # PHP intsize
     if [ -n "$phpMinIntSize" ]; then
-        echo "${in}PHP min-intsize$(N)$mid$($md||es 1)$phpMinIntSize"
+        echo "${in}PHP min-intsize$(N)$mid$(${bool[md]} || es 1)$phpMinIntSize"
     fi
 
     # PHP extensions
     if [ -n "$phpExtensions" ]; then
-        phpExtensions="$(htmldecode $phpExtensions | ${BINARIES[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')"
-        echo "${in}php-Extensions$(N)$mid$($md||es 2)$phpExtensions"
+        phpExtensions="$(htmldecode $phpExtensions | ${X[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')"
+        echo "${in}php-Extensions$(N)$mid$(${bool[md]} || es 2)$phpExtensions"
     fi
 
     # Databases
     if [ -n "$databases" ]; then
-        databases=$(htmldecode $databases | ${BINARIES[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')
-        echo "${in}Databases$(N)$mid$($md||es 7)$databases"
+        databases=$(htmldecode $databases | ${X[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')
+        echo "${in}Databases$(N)$mid$(${bool[md]} || es 7)$databases"
     fi
 
     # Nextcloud min / max
-    if ( ! $md && [ -n "$NCmax" ] && (( ${nc_version%%.*} > ${NCmax%%.*} )) ); then
+    if ( ! ${bool[md]} && [ -n "$NCmax" ] && (( ${nc_version%%.*} > ${NCmax%%.*} )) ); then
         NCmax="$(blinkR)$NCmax$(N)"
-    elif ( ! $md && [ -n "$NCmax" ] && (( ${nc_version%%.*} <= ${NCmax%%.*} )) ); then
+    elif ( ! ${bool[md]} && [ -n "$NCmax" ] && (( ${nc_version%%.*} <= ${NCmax%%.*} )) ); then
         NCmax="$(lG)$NCmax$(N)"
     fi
-    echo "${in}NC min/max$(N)$mid$($md||es 6)$NCmin / $NCmax"
+    echo "${in}NC min/max$(N)$mid$(${bool[md]} || es 6)$NCmin / $NCmax"
 
     # shipped or appstore
-    if $is_shipped; then
-        case $shipped in
-            a) printf "$in $(dG)$mid$($md||es 15)Shipped (included), always enabled App"
-               ;;
-            d) printf "$in $(G)$mid$($md||es 15)Shipped (included), default enabled App"
-               ;;
-            s) printf "$in $(G)$mid$($md||es 15)Shipped (included) App"
+    if ${bool[is_shipped]}; then
+        case "$shipped" in
+            a) printf "$in $(dG)$mid$(${bool[md]} || es 15)Shipped (included), always enabled App" ;;
+            d) printf "$in $(G)$mid$(${bool[md]} || es 15)Shipped (included), default enabled App" ;;
+            s) printf "$in $(G)$mid$(${bool[md]} || es 15)Shipped (included) App"
         esac
-        $md && f
+        ${bool[md]} && f
     else
-        printf "$in $(lG)$mid$($md||es 15)Not-shipped (not included) App"
-        $md && echo " available in appstore"
+        printf "$in $(lG)$mid$(${bool[md]} || es 15)Not-shipped (not included) App"
+        ${bool[md]} && echo " available in appstore"
     fi
 
     # Section
-    if ! $md; then
-        case $section in
-            enabled)  echo ", $(G)enabled"
-                      ;;
-            disabled) echo ", $(Y)disabled"
-                      ;;
-            store)    echo ", $(Y)available in appstore"
-                      ;;
-            na)       echo ", $(Y)not installed, unknown origin"
+    if ! ${bool[md]}; then
+        case "$section" in
+          enabled) echo ", $(G)enabled"               ;;
+         disabled) echo ", $(Y)disabled"              ;;
+            store) echo ", $(Y)available in appstore" ;;
+               na) echo ", $(Y)not installed, unknown origin"
         esac
     fi
 
     # Appstore link
-    printf "${in}Appstore$(W)$mid$($md||es 8)"
-    if $inappstore; then
+    printf "${in}Appstore$(W)$mid$(${bool[md]} || es 8)"
+    if ${bool[inappstore]}; then
         echo "https://apps.nextcloud.com/apps/$id"
     else
         echo "This app is currently not published in the Nextcloud app store."
@@ -347,12 +379,12 @@ $debug &&  #  echo "Unsupported App: $id";line '-' GRAY 80
 
     # Creation date
     if [ -n "$created" ]; then
-        echo "${in}Created$(W)$mid$($md||es 9)$created"
+        echo "${in}Created$(W)$mid$(${bool[md]} || es 9)$created"
     fi
 
     # Last modified
     if [ -n "$lastModified" ]; then
-        echo "${in}Last modified$(W)$mid$($md||es 3)$lastModified"
+        echo "${in}Last modified$(W)$mid$(${bool[md]} || es 3)$lastModified"
     fi
 
     line '-' GRAY 80

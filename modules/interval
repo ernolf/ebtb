@@ -7,13 +7,14 @@ __copyright__
 __license__
 #
 
-${INTERVAL_BASHLIB:-false} && return
+${INTERVAL_BASHLIB:-_} && return
 INTERVAL_BASHLIB=:
 
 . <(lrequire binaries)
 . <(lrequire today)
 
 interval(){
+    require_arg $@
     local until since years months and N_D_F O_D_F
     local -i UT_1 UT_2 N_D O_D N_Y N_M N_DAY O_Y O_M O_DAY IY IM ID
     UT_1=$1 UT_2=$2 until='' since='' years=' year' months=' month' and=' and '
@@ -21,8 +22,8 @@ interval(){
     (( UT_1 > UT_2 )) && N_D=$UT_1 O_D=$UT_2 || N_D=$UT_2 O_D=$UT_1
     (( N_D == today )) && since=" ago"
     (( O_D == today )) && until="in "
-    N_D_F=$(${BINARIES[date]} -ud @$N_D +%Y-%-m-%-d)
-    O_D_F=$(${BINARIES[date]} -ud @$O_D +%Y-%-m-%-d)
+    N_D_F=$(${X[date]} -ud @$N_D +%Y-%-m-%-d)
+    O_D_F=$(${X[date]} -ud @$O_D +%Y-%-m-%-d)
     read -r N_Y N_M N_DAY <<< ${N_D_F//-/ }
     read -r O_Y O_M O_DAY <<< ${O_D_F//-/ }
     IY=$((N_Y-O_Y)) IM=$((N_M-O_M)) ID=$((N_DAY-O_DAY))
@@ -44,6 +45,7 @@ interval(){
 
 # from seconds to human readable
 sec2hr(){
+    require_arg $@
     local outstring
     local -i seconds minutes hours days
     seconds=${1%.*}

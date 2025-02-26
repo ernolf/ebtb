@@ -7,16 +7,17 @@ __copyright__
 __license__
 #
 
-${VERBOSE_BASHLIB:-false} && return
+${VERBOSE_BASHLIB:-_} && return
 VERBOSE_BASHLIB=:
 
+. <(lrequire binaries)
 . <(lrequire button)
 . <(lrequire exit)
 . <(lrequire anykey)
 
 # error handling
 error(){
-    if ! ${quiet:-false}; then
+    if ! ${B[quiet]:-_}; then
         R; echo "ERROR: $*$(N)" >&2
         exit1
     fi
@@ -24,14 +25,14 @@ error(){
 
 # verbose-echo
 v_echo(){
-    if ${verbose:-false}; then
+    if ${B[verbose]:-_}; then
         R; echo "VERBOSE:$(N) $*"
     fi
 }
 
 # verbose-echo
 d_echo(){
-    if ${debug:-false}; then
+    if ${B[debug]:-_}; then
         R; echo "DEBUG:$(N) $*"
         anykey
     fi

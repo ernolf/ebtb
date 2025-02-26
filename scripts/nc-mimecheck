@@ -25,21 +25,15 @@ __license__
 
 __scriptname__
 
-deps=(
-    "gawk#gawk#GNU awk"
-    "grep#grep#GNU grep, egrep and fgrep"
-    "gpg#gnupg#GNU Privacy Guard"
-    "jq#jq#command-line JSON processor"
-)
 modules=(
-    binaries basics awksed tempfile ansi prefix button exit anykey verbose line
-    array ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
-    $sin/mime_types $sin/help $sin/functions
+    binaries basics awksed tempfile ansi filter prefix button exit anykey line
+    verbose array ask sudo dependency vdir integrity nc/nextcloud
+    nc/nextcloud_db $sin/mime_types $sin/help $sin/functions
 )
 
-# make module loading quiet if -q or --quiet is passed
-for a in "$@";do [[ "$a" == '-q'||"$a" == '--quiet' ]]&&declare pager=:;done;unset -v a
 __debug__
+# make module loading quiet if -q or --quiet is passed
+for a in "$@"; do [[ "$a" == '-q' || "$a" == '--quiet' ]] && B[pager]=:; done; unset -v a
 __when__
 
 __whoami_whereami__
@@ -58,56 +52,63 @@ contribute_(){
 }; donate_(){ contribute_;}
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
-declare bools="listmimes recursive dryrun verbose debug quiet bak enabled_user"
-# declare options
+declare -a bools vars
+bools=(listmimes recursive dryrun verbose debug quiet enabled_user)
+vars=(grepopts gg mimedetector options bool basepath nc_path tempfile iid blacklist listmimesoftype wom1 wom2)
+
+# set all ${bools[@]} to '_'
 reset_bools(){ local bool
-    for bool in $bools;do declare -g $bool=false;done
-}
+    for bool in ${bools[@]}; do B[$bool]=_; done
+}; reset_bools
 
-declare variables="options basepath nc_path tempfile
-                   iid blacklist listmimesoftype wom1 wom2"
-for undeclared_option in $bools $variables;do
-   declare $undeclared_option
+# declare all ${vars[@]}
+declare var
+for var in ${vars[@]}; do
+   declare $var
 done
-declare grepopts='-qs'
-# "woa" stands for wrong options array
-# "woi" stands for wrong option index
-declare -a woa;declare -i woi=0
-# green good
-declare gg="$(lG)Good!$(N)"
+unset -v var
 
-declare mimedetector="mimetype -b"
+grepopts='-qs'
+# green good:
+gg="$(lG)Good!$(N)"
+# the default mimedetector
+mimedetector="mimetype -b"
 #mimedetector="file -b --mime-type"
 
-# set all bools to 'false'
-reset_bools
+# TODO: does this have to be global?
+# "woa" stands for wrong options array
+declare -a woa
+# "woi" stands for wrong option index
+declare -i woi=0
 
 # parsing options
 # Check if -l|--list option has an argument and add 'all' if missing
+declare -a shiftedoption
 shopt -s extglob
 while (($#));do
     case "$1" in
         -l|--list)
-            if [[ -n "${2}"&&"${2}" != -* ]];then :;else
-                shift;set -- "-l" "all" "$@"
+            if ! [[ -n "$2" && "$2" != -* ]]; then
+                shift
+                set -- "-l" "all" "$@"
             fi
             break 2
             ;;
         --detector)
-            if [[ -n "${2}"&&"${2}" != -* ]];then
-                shiftedoption="$shiftedoption ${1} ${2}"
+            if [[ -n "$2" && "$2" != -* ]]; then
+                shiftedoption+=("$1" "$2")
                 shift 2
             fi
             ;;
         @(-)+([a-z])p)
-            if [[ -n "${2}"&&"${2}" != -* ]];then
-                shiftedoption="$shiftedoption ${1} ${2}"
+            if [[ -n "$2" && "$2" != -* ]]; then
+                shiftedoption+=("$1" "$2")
                 shift 2
             fi
             ;;
         @(-)+([a-z])l)
-            if [[ -n "${2}"&&"${2}" != -* ]];then :;else
-                set -- "${1}" "all" "${@:2}"
+            if ! [[ -n "$2" && "$2" != -* ]]; then
+                set -- "$1" "all" "${@:2}"
             fi
             break 2
             ;;
@@ -117,25 +118,24 @@ while (($#));do
             ;;
         --) break 2
             ;;
-        *)  shiftedoption="$shiftedoption ${1}"
+        *)  shiftedoption+=("$1")
             shift
-            ;;
     esac
 done
 shopt -u extglob
-[ -n "$shiftedoption" ]&&set -- $shiftedoption $@
-unset shiftedoption
+(( ${#shiftedoption[@]} )) && set -- "${shiftedoption[@]}" "$@"
+unset -v shiftedoption
 
-options=$(${BINARIES[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$me" -- "$@")
-if (($?==0));then
+options=$(${X[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$me" -- "$@")
+if (($?==0)); then
     eval set -- "$options"
-    while :;do
-        case $1 in
+    while :; do
+        case "$1" in
             -h|--help)
                 print_help
                 ;;
             -l|--listmimes)
-                listmimes=true
+                B[listmimes]=:
                 if [ -n "$2" ];then
                     listmimesoftype="$2"
                     shift 2
@@ -145,33 +145,27 @@ if (($?==0));then
                 fi
                 ;;
             --detector)
-                mimedetector=$2
+                mimedetector="$2"
                 shift 2
                 ;;
             -d|--dryrun)
-                dryrun=true
+                B[dryrun]=:
                 shift
                 ;;
             -r|--recursive)
-                recursive=true
+                B[recursive]=:
                 shift
                 ;;
             -q|--quiet)
-                quiet=true
+                B[quiet]=:
                 shift
                 ;;
             -v|--verbose)
-                if $verbose;then
-                    debug=true;grepopts=''
-                else
-                    verbose=true;grepopts='-q'
-                fi
+                ${B[verbose]} && B[debug]=: grepopts='' || B[verbose]=: grepopts='-q'
                 shift
                 ;;
             --debug)
-                verbose=true
-                debug=true
-                grepopts=''
+                B[verbose]=: B[debug]=: grepopts=''
                 shift
                 ;;
             --) shift
@@ -179,31 +173,31 @@ if (($?==0));then
                 ;;
             *)  wrong_option -r "Missing or unknown option $1"
                 shift
-                ;;
         esac
     done
 else
     wrong_option "Missing or unknown option"
 fi
 
-$debug&&set -x
+${B[debug]} && set -x
 
 # some verbose echos
 v_echo "$(P)all available options after parsing arguments:$(N)"
-v_echo "$(pf;Y)detector$(N)=\"$(G)$mimedetector$(N)\""
-for bool in $bools;do
-    eval v_echo \"\$\(pf\;Y\)$bool\$\(N\)=\$$bool\"
+v_echo "$(pf; Y)detector$(N)=\"$(G)$mimedetector$(N)\""
+for bool in ${bools[@]}; do
+    v_echo "$(pf; Y)$bool$(N)=${B[$bool]}"
 done
-v_echo "$(pf;Y)basepath$(N)=\"$(G)$*$(N)\""
+unset -v bool
+v_echo "$(pf; Y)basepath$(N)=\"$(G)$*$(N)\""
 
 # print suported mimes and exit, no further checks
-$listmimes&&{
-    if [ $listmimesoftype != 'false' ];then
-        if [ $listmimesoftype = 'all' ];then
+${B[listmimes]} && {
+    if [ $listmimesoftype != '_' ]; then
+        if [ $listmimesoftype = 'all' ]; then
             list_mimes "all" $(echo "${mime_ext_regex_array[@]}")
             exit 0
         else
-            for ((i=0;i<${#listmimesoftype};i++));do
+            for ((i=0;i<${#listmimesoftype};i++)); do
                 case ${listmimesoftype:i:1} in
                 i) list_mimes image $(echo "${mime_ext_regex_image[@]}")
                    ;;
@@ -229,7 +223,7 @@ $listmimes&&{
 # gathering all further errors in array, then echo all of them together
 
 # check path
-if ! $listmimes; then
+if ! ${B[listmimes]}; then
     if [ -z "$*" ]; then
         wrong_option -r "Missing path to directory or file to scan"
     else
@@ -247,17 +241,17 @@ fi
 wrong_option -x
 
 # cd into NC_DATADIR because nextcloud understands pathes from there
-if nc_configkey_exist_ datadirectory;then
+if nc_configkey_exist_ datadirectory; then
     NC_DATADIR="$(nc_configkey datadirectory)"
-    if [ -d "$NC_DATADIR" ];then
-        v_echo "$(pf;Y)the nextcloud data directory is$(N) \"$(B)$NC_DATADIR$(N)\""
+    if [ -d "$NC_DATADIR" ]; then
+        v_echo "$(pf; Y)the nextcloud data directory is$(N) \"$(B)$NC_DATADIR$(N)\""
     else
         error "can not find nextcloud data directory."
     fi
-elif [ -d "$NC_DIR/data" ];then
+elif [ -d "$NC_DIR/data" ]; then
     NC_DATADIR="$NC_DIR/data"
-    v_echo "$(pf;Y)no information about the nextcloud data directory,$(N)"
-    v_echo "$(pf;Y)use the default directory$(N) \"$(B)$NC_DATADIR$(N)\""
+    v_echo "$(pf; Y)no information about the nextcloud data directory,$(N)"
+    v_echo "$(pf; Y)use the default directory$(N) \"$(B)$NC_DATADIR$(N)\""
 else
     error "can not find nextcloud data directory."
 fi
@@ -265,16 +259,16 @@ fi
 cd "$NC_DATADIR"
 
 # remove absolute path to NC_DATADIR if not invoked by nextcloud flow
-basepath="$(echo "$*"|${BINARIES[sed]} 's\'$NC_DATADIR'/\\1')"
+basepath="$(echo "$*" | ${X[sed]} 's\'$NC_DATADIR'/\\1')"
 user2check="$(check_username_case "${basepath%%/*}")"
-[ "$user2check" = "${basepath%%/*}" ]||{
-    v_echo "$(pf;Y)user case corrected:$(N) from \"$(B)${basepath%%/*}$(N)\" to \"$(B)$user2check$(N)\" "
+[ "$user2check" = "${basepath%%/*}" ] || {
+    v_echo "$(pf; Y)user case corrected:$(N) from \"$(B)${basepath%%/*}$(N)\" to \"$(B)$user2check$(N)\" "
 }
 basepath="$user2check/${basepath#*/}"
-v_echo "$(pf;Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
+v_echo "$(pf; Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
 
 # now as we entered the data dir, we can check relative dir (or file)
-if [ ! -e "$basepath" ];then
+if [ ! -e "$basepath" ]; then
     wom1="$(Pbg)$*$(R) does not exist"
     wom2="path must look like: $(GRAY)($PWD/)$(Y)%USER%/files/path..$(N)"
     wrong_option -r "$wom1#$wom2"
@@ -284,24 +278,24 @@ fi
 # thoroughly but slowly tests
 iid="$(nc_configkey instanceid)"
 blacklist="appdata_$iid|updater-$iid"
-if echo "$basepath"|${BINARIES[grep]} -Eqs  "$blacklist";then
+if echo "$basepath" | ${X[grep]} -Eqs  "$blacklist"; then
     wrong_option "blacklisted filepath $(Pbg)$basepath$(N)"
 else
-    v_echo "$(pf;Y)basepath is no system dir (appdata or backup). $gg"
+    v_echo "$(pf; Y)basepath is no system dir (appdata or backup). $gg"
 fi
 
 # TODO: enable groupfolders
 #    groupfolder = __groupfolders/$groupfolder_id/
 # if groupfolder, not occ files:scan but occ groupfolders:scan
-if echo "$basepath"|${BINARIES[grep]} $grepopts "__groupfolders/[0-9]";then
+if echo "$basepath" | ${X[grep]} $grepopts "__groupfolders/[0-9]"; then
     wrong_option "groupfolders not (yet) supported"
 else
-    v_echo "$(pf;Y)basepath is not a groupfolder. $gg"
+    v_echo "$(pf; Y)basepath is not a groupfolder. $gg"
 fi
 
 # check if basepath is a user
 #       user dir = $user_id/files/
-#occ user:info "${basepath%%/*}"|${BINARIES[grep]} $grepopts "enabled: true"
+#occ user:info "${basepath%%/*}"|${X[grep]} $grepopts "enabled: true"
     # this does not work with usernames containing spaces:
     #if enabled_user="$(occ user:info --output=json -- "'$user2check'"|jq '.enabled')"; then
 if $(user_exists "$user2check"); then
@@ -310,12 +304,12 @@ if $(user_exists "$user2check"); then
         wrong_option "\"${basepath%%/*}\" is not an enabled user"
     else
         v_echo "$(pf)\"$(C)${basepath%%/*}$(N)\"$(Y) is an enabled user. $gg"
-        if [ "${basepath%%/*}" = "$basepath" ];then
+        if [ "${basepath%%/*}" = "$basepath" ]; then
             basepath="$basepath/files/"
-            v_echo "$(pf;Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
+            v_echo "$(pf; Y)relative basepath now is:$(N) \"$(B)$basepath$(N)\""
         fi
-        if echo "$basepath/"|${BINARIES[grep]} $grepopts "^${basepath%%/*}/files/";then
-            v_echo "$(pf;Yi)basepath check succeeded. $gg"
+        if echo "$basepath/"|${X[grep]} $grepopts "^${basepath%%/*}/files/"; then
+            v_echo "$(pf; Yi)basepath check succeeded. $gg"
         else
             wom1="basepath $(Pbg)$basepath$(R)"
             wom2="is not in /files/ directory of user \"${basepath%%/*}\""
@@ -330,71 +324,71 @@ else
 fi
 
 # checks are done, now the work can begin
-$quiet||echo "$(Y)cd into nextcloud data directory:$(N) \"$(B)$NC_DATADIR$(N)\""
-v_echo "$(pf;Y)working directory (PWD) now is:$(N) \"$(B)$PWD$(N)\""
+${B[quiet]} || echo "$(Y)cd into nextcloud data directory:$(N) \"$(B)$NC_DATADIR$(N)\""
+v_echo "$(pf; Y)working directory (PWD) now is:$(N) \"$(B)$PWD$(N)\""
 
-$recursive&&v_echo "$(pf;Y)recursive set to$(N) \"$recursive\""
+${B[recursive]} && v_echo "$(pf; Y)recursive set to$(N) \"$recursive\""
 
 # define a temporary file
 tempfile="$(tf)"
-v_echo "$(pf;Y)temporary file:$(N) \"$(B)$tempfile$(N)\"$(Y) created$(N)"
+v_echo "$(pf; Y)temporary file:$(N) \"$(B)$tempfile$(N)\"$(Y) created$(N)"
 
 # function to write and read in the temporary file,
-# returns 'true'' or 'false'
-do_occ_filesscan(){ [ "$1" = "set" ]&&echo "$2" > $tempfile||cat $tempfile;}
-do_occ_filesscan set false
+# returns ':'' or '_'
+do_occ_filesscan(){ [ "$1" = "set" ] && echo "$2" > $tempfile || ${X[cat]} $tempfile; }
+do_occ_filesscan set _
 
-v_echo "$(pf;Y)do_occ_filesscan preset to$(N) $(do_occ_filesscan)"
+v_echo "$(pf; Y)do_occ_filesscan preset to$(N) $(do_occ_filesscan)"
 
-if [ -d "$basepath" ];then
+if [ -d "$basepath" ]; then
     # if $actualpath a directory, all files inside will be treated
     path="${basepath%/}"
-    if $recursive;then
-        $quiet||echo "$(G)check all files in$(N) \"$(B)$path$(N)\"$(G) recursively$(N)"
-        v_echo "$(pf;Y)do_occ_filesscan$(N)=$(do_occ_filesscan)"
-        find "$path" -type d|while read subpath;do
-            $quiet||echo "   $(pf;B)$subpath$(N)"
+    if $recursive; then
+        ${B[quiet]} || echo "$(G)check all files in$(N) \"$(B)$path$(N)\"$(G) recursively$(N)"
+        v_echo "$(pf; Y)do_occ_filesscan$(N)=$(do_occ_filesscan)"
+        find "$path" -type d | while read subpath; do
+            ${B[quiet]} || echo "   $(pf;B)$subpath$(N)"
             scan_dir "$subpath"
-            if [ $? -eq 0 ];then
-                v_echo "$(pf;Y)changed path:$(N) \"$(B)$subpath$(N)\""
-                v_echo "$(pf;Y)do_occ_filesscan$(N)=$(do_occ_filesscan)"
+            if [ $? -eq 0 ]; then
+                v_echo "$(pf; Y)changed path:$(N) \"$(B)$subpath$(N)\""
+                v_echo "$(pf; Y)do_occ_filesscan$(N)=$(do_occ_filesscan)"
             fi
         done
     else
-        $quiet||echo "check all files in: \"$path\""
+        ${B[quiet]} || echo "check all files in: \"$path\""
         scan_dir "$path"
     fi
 #set -x
 else
 # if $actualpath is a file, only that file will be treated.
     #exract path for occ files:scan at the end
-    path="$(${BINARIES[dirname]} "$basepath")"
+    path="$(${X[dirname]} "$basepath")"
     mimetype="$($mimedetector "$basepath")"
-    echo "${mime_ext_regex_array[@]%%:*}"|${BINARIES[grep]} -qsw "$mimetype"||error "MIME type '$mimetype' not supported"
+    echo "${mime_ext_regex_array[@]%%:*}" | ${X[grep]} -qsw "$mimetype" || error "MIME type '$mimetype' not supported"
     extension="$(a_fld mime_ext_regex_array ':' "$mimetype" 2)"
     regex="$(a_fld mime_ext_regex_array ':' "$mimetype" 3)"
     main "$basepath" "$regex" "$extension" "$mimetype"
 fi
-v_echo "$(pf;Y)do_occ_filesscan at end of script:$(N) $(do_occ_filesscan)"
+v_echo "$(pf; Y)do_occ_filesscan at end of script:$(N) $(do_occ_filesscan)"
 # if anything changed, $(occ files:scan) the affected directory
 if $(do_occ_filesscan);then
-    $recursive&&occshallow=""||occshallow=" --shallow"
+    ${B[recursive]} && occshallow="" || occshallow=" --shallow"
     occdebug=""
-    $quiet&&occdebug=" --quiet"
-    $verbose&&occdebug=" -v"
-    $debug&&occdebug=" -vvv"
+    ${B[quiet]} && occdebug=" --quiet"
+    ${B[verbose]} && occdebug=" -v"
+    ${B[debug]} && occdebug=" -vvv"
     occcommand="files:scan"
     occstring="$occcommand$occshallow$occdebug"
-    $quiet||G;echo "running$(N;f)$PWD# occ $occstring --path=\"$(B)$path$(N)\""
-    if $dryrun;then
+    ${B[quiet]} || G; echo "running$(N; f)$PWD# occ $occstring --path=\"$(B)$path$(N)\""
+    if ${B[dryrun]}; then
         echo " -$(G) option$(N) --dryrun$(G) was set, nothing changed$(N)"
     else
         occ $occstring --path="$path"
     fi
 else
-    $quiet||echo " -$(G) nothing changed$(N)"
+    ${B[quiet]} || echo " -$(G) nothing changed$(N)"
 fi
-$debug&&set +x
+${B[debug]} && set +x
 
-$quiet&&exit 0||exit0
+${B[quiet]} && exit 0 || exit0
 

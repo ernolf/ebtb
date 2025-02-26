@@ -1,4 +1,4 @@
-if [ "$(${BINARIES[id]} -un)" = "$NC_USER" ]; then
+if [ "$(${X[id]} -un)" = "$NC_USER" ]; then
     if ((my_epoch>epoch)); then
         upinf="(update available)"
         f

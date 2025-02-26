@@ -7,9 +7,9 @@ PREFIX='/usr/local'
 # Directory for scripts
 BINDIR="$PREFIX/bin"
 # Directory for modules
-INCLUDEDIR="$PREFIX/include/$PROJECT"
+INCLUDEDIR="~/.$PROJECT/modules"
 # Directory for module channel
-MODULEDIR="$INCLUDEDIR/$channel"
+MODULEDIR="$INCLUDEDIR/@channel@"
 # Directory for scripts
 SCRIPTS_DIR='scripts'
 # Directory for modules

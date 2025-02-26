@@ -7,57 +7,58 @@ __copyright__
 __license__
 #
 
-${PATCH_BASHLIB:-false} && return
+${PATCH_BASHLIB:-_} && return
 PATCH_BASHLIB=:
 
 . <(lrequire binaries)
 
 patch_84() {
-    local include_dirs files file headers header found dir alt_header
+    local include_dirs files file headers header dir alt_header
+    local -A bool
 
     # Get the PHP include directories (retrieved from php-config) and sort by length (longest first)
-    include_dirs=$(${BINARIES[php-config$php_version]} --includes | ${BINARIES[sed]} 's/-I//g' | ${BINARIES[tr]} ' ' '\n' | ${BINARIES[gawk]} '{ print length, $0 }' | ${BINARIES[sort]} -nr | ${BINARIES[cut]} -d" " -f2-)
+    include_dirs=$(${X[php-config$php_version]} --includes | ${X[sed]} 's/-I//g' | ${X[tr]} ' ' '\n' | ${X[gawk]} '{ print length, $0 }' | ${X[sort]} -nr | ${X[cut]} -d" " -f2-)
 
     # Find all source files that include PHP headers
-    files=$(${BINARIES[grep]} -rl '#include [<"]' --include="*.c" --include="*.h" .)
+    files=$(${X[grep]} -rl '#include [<"]' --include="*.c" --include="*.h" .)
 
     # Loop through each file to verify header paths
     for file in $files; do
 
         # Check for occurrences of php_rand.h and rename them to php_random.h
-        ${BINARIES[sed]} -i 's|#include [<"]\(.*\)/php_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_rand.h to php_random.h in $file"
-        ${BINARIES[sed]} -i 's|#include [<"]\(.*\)/php_mt_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_mt_rand.h to php_random.h in $file"
+        ${X[sed]} -i 's|#include [<"]\(.*\)/php_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_rand.h to php_random.h in $file"
+        ${X[sed]} -i 's|#include [<"]\(.*\)/php_mt_rand.h>|#include <\1/php_random.h>|g' "$file" && echo "Correcting php_mt_rand.h to php_random.h in $file"
 
         # Replace php_rand() with php_mt_rand() in the source file https://github.com/php/php-src/commit/8cf8751533aa37479f8f2e229e407e9bf6025237
-        ${BINARIES[sed]} -i 's/php_rand(/php_mt_rand(/g' "$file" && echo "Correcting php_rand() to php_mt_rand() in $file"
+        ${X[sed]} -i 's/php_rand(/php_mt_rand(/g' "$file" && echo "Correcting php_rand() to php_mt_rand() in $file"
 
         # Replace deprecated PHP string functions with the new ones
-        ${BINARIES[sed]} -i 's/php_strtoupper(/zend_str_toupper(/g' "$file" && echo "Correcting php_strtoupper() to zend_str_toupper() in $file"
-        ${BINARIES[sed]} -i 's/php_string_toupper(/zend_string_toupper(/g' "$file" && echo "Correcting php_string_toupper() to zend_string_toupper() in $file"
-        ${BINARIES[sed]} -i 's/php_strtolower(/zend_str_tolower(/g' "$file" && echo "Correcting php_strtolower() to zend_str_tolower() in $file"
-        ${BINARIES[sed]} -i 's/php_string_tolower(/zend_string_tolower(/g' "$file" && echo "Correcting php_string_tolower() to zend_string_tolower() in $file"
+        ${X[sed]} -i 's/php_strtoupper(/zend_str_toupper(/g' "$file" && echo "Correcting php_strtoupper() to zend_str_toupper() in $file"
+        ${X[sed]} -i 's/php_string_toupper(/zend_string_toupper(/g' "$file" && echo "Correcting php_string_toupper() to zend_string_toupper() in $file"
+        ${X[sed]} -i 's/php_strtolower(/zend_str_tolower(/g' "$file" && echo "Correcting php_strtolower() to zend_str_tolower() in $file"
+        ${X[sed]} -i 's/php_string_tolower(/zend_string_tolower(/g' "$file" && echo "Correcting php_string_tolower() to zend_string_tolower() in $file"
 
         # Find all included headers in the source file
-        headers=$(${BINARIES[grep]} -o '#include <[^>]\+>' "$file" | ${BINARIES[sed]} 's/#include <\(.*\)>/\1/')
+        headers=$(${X[grep]} -o '#include <[^>]\+>' "$file" | ${X[sed]} 's/#include <\(.*\)>/\1/')
 
         # Check each header file if it exists in one of the PHP include directories
         for header in $headers; do
-            found=false
+            bool[found]=_
             for dir in $include_dirs; do
                 if [[ -f "$dir/$header" ]]; then
-                    found=true
+                    bool[found]=:
                     break
                 fi
             done
 
             # If not found in the default path, try to find it in alternative directories
-            if ! $found; then
+            if ! ${bool[found]}; then
                 # Search in all directories for the header
                 for dir in $include_dirs; do
-                    alt_header=$(find "$dir" -name "$(${BINARIES[basename]} "$header")" -print -quit)
+                    alt_header=$(find "$dir" -name "$(${X[basename]} "$header")" -print -quit)
                     if [[ -n "$alt_header" ]]; then
                         echo "Correcting $header to ${alt_header#$dir/} in $file"
-                        ${BINARIES[sed]} -i "s|#include <$header>|#include <${alt_header#$dir/}>|" "$file"
+                        ${X[sed]} -i "s|#include <$header>|#include <${alt_header#$dir/}>|" "$file"
                         break
                     fi
                 done
@@ -74,7 +75,7 @@ patch_code() {
 
 patch_m4(){
     if [ -n "$m4_patch" ]; then
-        B;echo "- patching config.m4";N
-        ${BINARIES[sed]} -i "$m4_patch" config.m4
+        B; echo "- patching config.m4"; N
+        ${X[sed]} -i "$m4_patch" config.m4
     fi
 }

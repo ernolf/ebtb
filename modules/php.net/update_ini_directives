@@ -7,15 +7,15 @@ __copyright__
 __license__
 #
 
-${UPDATE_INI_DIRECTIVES_BASHLIB:-false} && return
+${UPDATE_INI_DIRECTIVES_BASHLIB:-_} && return
 UPDATE_INI_DIRECTIVES_BASHLIB=:
 
 . <(lrequire awksed)
 . <(lrequire php.net/ini_directives)
 
 update_ini_directives(){
-    [ -z "$1" ]&&local dryrun=:||local "$@"
-    $dryrun&&set -x
+    [ -z "$1" ] && local dryrun=: || local "$@"
+    $dryrun && set -x
     local phpneturl='https://www.php.net/manual/en' url
     local ini_list_php='ini.list.php' ini_core_php='ini.core.php#ini.extension'
     local -a extensions=($(curl -s $phpneturl/extensions.alphabetical.php|grep -vE "book\.(com|wincache|wkhtmltox)\."|grep -o 'book\.[^.]*'|sed 's/book\.//g'))
@@ -134,4 +134,4 @@ PARSE_DIRECTIVES_AWK
     ' "$working_copy" > "$myoutfile"
     exit 0
 }
-[ "$1" = "--update_ini_directives" ] && update_ini_directives $@ # --update_ini_directives dryrun=false includedir=$includedir
+[ "$1" = "--update_ini_directives" ] && update_ini_directives $@ # --update_ini_directives dryrun=_ includedir=$includedir

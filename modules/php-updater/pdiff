@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${PDIFF_BASHLIB:-false} && return
+${PDIFF_BASHLIB:-_} && return
 PDIFF_BASHLIB=:
 
 . <(lrequire binaries)
@@ -21,14 +21,12 @@ packages_diff(){
         local v x
         v="$1"
         shift
-        (   ${BINARIES[dpkg]} -l | awk '/^[hiu]i.*php'$v'/{print $2}' | ${BINARIES[sed]} "s/$v//"
+        (   ${X[dpkg]} -l | awk '/^[hiu]i.*php'$v'/{print $2}' | ${X[sed]} "s/$v//"
             for x in $@; do
-                case $x in
-                    libapache2-mod-php) echo $x
-                                        ;;
-                                 embed) echo libphp-$x
-                                        ;;
-                                     *) echo php-$x
+                case "$x" in
+            libapache2-mod-php) echo $x        ;;
+                         embed) echo libphp-$x ;;
+                             *) echo php-$x
                 esac
             done
         ) | sort -u
@@ -38,20 +36,21 @@ packages_diff(){
     local -a eia x1 x2
     local -i i
     pvo="$1" pvn="$2" sapi="$3"
+    local -n C4EIBY4_pvo="C4EIBY4_${pvo//./}"
 # TODO 0 -->
 #    x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip)  ! igbinary and redis must be detected
 # TODO <-- 0
     x1=(apcu bcmath bz2 curl gd gmp intl mbstring xml zip)
     x2=(libapache2-mod-php fpm cli cgi embed phpdbg common json opcache readline)
     if (( ${#EXTS_ADMIN[@]} )); then
-        for i in $(eval echo \${!C4EIBY4_${pvo//./}[@]}); do
-            pkgmod="$(eval echo \"\${C4EIBY4_${pvo//./}[i]}\")"
+        for i in ${!C4EIBY4_pvo[@]}; do
+            pkgmod="${C4EIBY4_pvo[i]}"
             pkg=${pkgmod%:*}
             [[ " $pkg" =~ " php$pvo-" ]] && eia+=("${pkg#*-}")
         done
     fi
-    for pkg in $(${BINARIES[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${BINARIES[sed]} "s/php/php$2/"); do
-        if echo "$pkg" | ${BINARIES[grep]} -Eqsvw "^$PHPVREGEX$"; then
+    for pkg in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${X[sed]} "s/php/php$2/"); do
+        if echo "$pkg" | ${X[grep]} -Eqsvw "^$PHPVREGEX$"; then
             q0 apt_exist "$pkg" && echo $pkg
         fi
     done

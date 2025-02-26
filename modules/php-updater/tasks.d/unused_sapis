@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${TASKS_UNUSED_SAPIS_BASHLIB:-false} && return
+${TASKS_UNUSED_SAPIS_BASHLIB:-_} && return
 TASKS_UNUSED_SAPIS_BASHLIB=:
 
 remove_unused_sapis(){

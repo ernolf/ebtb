@@ -7,24 +7,27 @@ __copyright__
 __license__
 #
 
-${TODAY_BASHLIB:-false} && return
+${TODAY_BASHLIB:-_} && return
 TODAY_BASHLIB=:
 
 . <(lrequire binaries)
 
 # when
 # today 00:00 in unixtime
-declare -i today=$(${BINARIES[date]} -ud 'today 00:00' +%s)
+declare -i today=$(${X[date]} -ud 'today 00:00' +%s)
 
 # from unix to utc day
 ut2udF(){
-    ${BINARIES[date]} -ud @$1 +%F
+    require_arg $@
+    ${X[date]} -ud @$1 +%F
 }
 
 date2unix0hr(){
-    ${BINARIES[date]} -ud "$1 00:00" +%s
+    require_arg $@
+    ${X[date]} -ud "$1 00:00" +%s
 }
 
 now(){
-    ${BINARIES[date]} +%s
+#    ${X[date]} +%s
+    printf '%d' $EPOCHSECONDS
 }

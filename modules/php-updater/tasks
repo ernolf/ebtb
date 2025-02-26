@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${TASKS_BASHLIB:-false} && return
+${TASKS_BASHLIB:-_} && return
 TASKS_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire button)
@@ -21,16 +21,7 @@ TASKS_BASHLIB=:
 . <(lrequire php/apache2)
 . <(lrequire php/fpm)
 
-if (( epoch < 1731244919 )); then
-    sourced() {
-        local am
-        local -u m="${1/\.d\//_}_BASHLIB"
-        eval am="\$${m#*/}"
-        ${am:-false}
-    }
-fi
-
-${BINARIES[mkdir]} -p $lincld/$sin/tasks.d
+${X[mkdir]} -p $lincld/$sin/tasks.d
 
 . <(lrequire $sin/tasks.d/replace_aim)
 . <(lrequire $sin/tasks.d/unused_sapis)

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${GITHUB_API_BASHLIB:-false} && return
+${GITHUB_API_BASHLIB:-_} && return
 GITHUB_API_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,9 +16,9 @@ GITHUB_API_BASHLIB=:
 github_api(){
     local URL="https://api.github.com/repos/$1/$2?per_page=$3"
     case $2 in
-          tags) ${BINARIES[curl]} -s "$URL" | ${BINARIES[jq]} -r '.[] | .name'     | ${BINARIES[sed]} 's/^v//' | ${BINARIES[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${BINARIES[grep]} -iv a
+          tags) ${X[curl]} -s "$URL" | ${X[jq]} -r '.[] | .name'     | ${X[sed]} 's/^v//' | ${X[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${X[grep]} -iv a
                 ;;
-      releases) ${BINARIES[curl]} -s "$URL" | ${BINARIES[jq]} -r '.[] | .tag_name' | ${BINARIES[sed]} 's/^v//' | ${BINARIES[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${BINARIES[grep]} -iv a
+      releases) ${X[curl]} -s "$URL" | ${X[jq]} -r '.[] | .tag_name' | ${X[sed]} 's/^v//' | ${X[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${X[grep]} -iv a
     esac
 }
 

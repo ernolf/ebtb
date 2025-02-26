@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} && return
+${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,21 +16,20 @@ HELP_BASHLIB=:
 . <(lrequire $sin/l10n)
 
 print_help(){
-    # for backwards compatibilty
-    if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
-        declare upinf="$updateinfo"
-    fi
-
-    local bak=false s htf=$(tf) cat_or_pager
+    local s htf cat_or_pager
+    local -A bool
+    bool[bak]=_ htf=$(tf)
     case "${1:---pager}" in
-        --cat)  cat_or_pager='cat' ;;
-      --pager)  cat_or_pager='less -R'
+        --cat)  cat_or_pager="${X[cat]}" ;;
+      --pager)  cat_or_pager="${X[less]} -R"
                 nextcloud_logo
     esac
-    if (($(backups|${BINARIES[wc]} -l)));then bak=true
-        r_b(){ echo -e "\n    $me restore_backup";}
-        [ $(backups|${BINARIES[wc]} -l) -gt 1 ]&&s=s||s=""
-    else r_b(){ :;}
+    if (($(backups | ${X[wc]} -l))); then
+        bool[bak]=:
+        r_b(){ echo -e "\n    $me restore_backup"; }
+        [ $(backups | ${X[wc]} -l) -gt 1 ] && s=s || s=""
+    else
+        r_b(){ :;}
     fi
     local phpversionoption=""
     local -a alternative_php_versions=($(php_ver alternatives))
@@ -38,7 +37,7 @@ print_help(){
         phpversionoption=" [ --php=PHP-VERSION ]"
     fi
 
-    ${BINARIES[cat]}<<HELP >>$htf
+    ${X[cat]}<<HELP >>$htf
 $(nextcloud_logo)
 
 
@@ -139,13 +138,13 @@ $(nextcloud_logo)
 HELP
     if ((${#alternative_php_versions[@]})); then
         local plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
-        ${BINARIES[cat]} << --PHP >>$htf
+        ${X[cat]} << --PHP >>$htf
    --php=PHP-VERSION        use another installed php version for updates. Possible (installed) PHP-VERSION$plural: $(echo "${alternative_php_versions[@]}")
                             example: --php=${alternative_php_versions[0]}
 
 --PHP
     fi
-    ${BINARIES[cat]} <<HELP >>$htf
+    ${X[cat]} <<HELP >>$htf
     *) NC-VER = only 2 digits
 
    --version=NC-VER*)       simulates an assumed nextcloud version instead of actual installed real nextcloud version.
@@ -159,14 +158,14 @@ HELP
    integrity_check          Verify the integrity of this script with signature
 
 HELP
-    if $bak;then
-        ${BINARIES[cat]} <<BACKUP >>$htf
+    if ${bool[bak]}; then
+        ${X[cat]} <<BACKUP >>$htf
    restore_backup           restore an older version of this script from backup
-                            ($(backups|${BINARIES[wc]} -l) backup$s available, you must be root)
+                            ($(backups|${X[wc]} -l) backup$s available, you must be root)
 
 BACKUP
     fi
-    ${BINARIES[cat]}<<EXAMPLES >>$htf
+    ${X[cat]}<<EXAMPLES >>$htf
 
  $(line = P 81)
   $(Bi)Here some examples

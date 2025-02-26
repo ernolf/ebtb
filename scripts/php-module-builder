@@ -9,19 +9,11 @@ __license__
 
 __scriptname__
 
-dependencies=(
-    "gawk#gawk#GNU awk"
-    "grep#grep#GNU grep, egrep and fgrep"
-    "lsb_release#lsb-release#Tool to detect the Linux standard base version"
-    "curl#curl#Command line file transfer tool with URL syntax"
-    "gpg#gnupg#GNU Privacy Guard"
-    "jq#jq#Command-line JSON processor"
-)
 modules=(
-    binaries today interval basics awksed tempfile prompt ansi prefix button
-    fstring exit spinner anykey line array httpd sudo php/version php/versions
-    dpkg ask dependency php/fpm vdir integrity dist/os_release php/sury
-    php/extensions $sin/disclaimer $sin/ini $sin/pecl $sin/patch
+    binaries today interval basics awksed tempfile prompt ansi filter prefix
+    button fstring exit spinner anykey line array httpd sudo php/version
+    php/versions dpkg ask dependency php/fpm vdir integrity dist/os_release
+    php/sury php/extensions $sin/disclaimer $sin/ini $sin/pecl $sin/patch
     $sin/data_refine
 )
 __debug__
@@ -46,122 +38,134 @@ contribute_(){
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
 ## it starts here:
-###############################################################################
 # you MUST be root:
 su_root "to run this script"
 my_update_check
-[[ " $(tail -n3 "$ca_me"|head -n1) " =~ " distrib_checked " ]]||. <(require $sin/distrib)
-###############################################################################
+tnh1_strg distrib_checked || . <(require $sin/distrib)
 
 ##########
 ## void ##
 ##########
 # first search for options "--firstrun" "--remove" "--force" and remove from @() array
 # and then add the remaining arguments into the new array
-declare firstrun=false remove=false force=false step=false quiet=false
-declare -a args
-for arg in $@;do
-    if [ "$arg" = "--firstrun" ];then firstrun=true
-    elif [ "$arg" = "--remove" ];then remove=true
-    elif [ "$arg" = "--force" ];then force=true # step=true
-    elif [ "$arg" = "--step" ];then step=true
-    elif [ "$arg" = "--quiet" ];then quiet=true
-    else args+=("$arg");fi
-done;set -- "${args[@]}"&&unset args
+declare bool arg
+declare -a bools args
+bools=(firstrun remove force step quiet module_is_built supported module_is_installed)
+for bool in ${bools[@]}; do B[$bool]=false; done
+unset -v bool bools
 
-declare project="PHP-Extensions"
-if $firstrun||[[ -z "$project_dir"||! -d "$project_dir"||"$project_dir" = "UNDEFINED" ]];then
-    . <(require $sin/first_run)&&first_run
+for arg in "$@"; do
+    case "$arg" in
+        --firstrun) B[firstrun]=true ;;
+        --remove)   B[remove]=true   ;;
+        --force)    B[force]=true    ;;
+        --step)     B[step]=true     ;;
+        --quiet)    B[quiet]=true    ;;
+        *)          args+=("$arg")
+    esac
+done
+set -- "${args[@]}" && unset -v args
+
+
+declare project
+project="PHP-Extensions"
+if ${B[firstrun]} || [[ -z "$project_dir" || ! -d "$project_dir" || "$project_dir" = "UNDEFINED" ]]; then
+    . <(require $sin/first_run) && first_run
 fi
 
-declare php_version="$1" # e.g. 8.3
-declare module="$2" # e.g. igbinary
-declare etc_dir="/etc/php/$php_version"
-declare ini_dir="$etc_dir/mods-available"
-declare supported_php_versions="8.0 8.1 8.2 8.3 8.4"
-declare supported_modules="apcu brotli decimal excimer facedetect igbinary imagick inotify lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd"
-declare not_supported_modules="xmlrpc zmq"
-declare module_is_built=false
-declare -A built_modules;while read pv m;do built_modules[$pv]+="$m ";done < <(find_built_modules)
-declare -A built_module_versions;while read pv mv;do built_module_versions[$pv]+="$mv ";done < <(find_built_module_versions)
+declare php_version module etc_dir ini_dir pv m mv configure_opts need m4_patch mver ini extension_dir extension_include_dir installed_modules extension
+declare -i priority
+declare -a supported_php_versions supported_modules not_supported_modules basics ini_file
+declare -A built_modules built_module_versions
+
+php_version="$1" # e.g. 8.3
+module="$2" # e.g. igbinary
+etc_dir="/etc/php/$php_version"
+ini_dir="$etc_dir/mods-available"
+
+supported_php_versions=(8.0 8.1 8.2 8.3 8.4)
+supported_modules=(apcu brotli decimal excimer facedetect igbinary imagick inotify lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd)
+not_supported_modules=(xmlrpc zmq)
+
+while read pv m; do built_modules[$pv]+="$m "; done < <(find_built_modules)
+while read pv mv; do built_module_versions[$pv]+="$mv "; done < <(find_built_module_versions)
 
 ext_state cleanup
 ext_state fix
 
-[ "$#" -ne 2 ]&&{
+[ "$#" -ne 2 ] && {
     echo "$(Pbg)Usage:$(B) $me <php_version> <module> [--firstrun] [--remove] [--force] [--step]"
-    o 9;B;echo "--firstrun  - first run wizard"
-    o 9;B;echo "--remove    - remove module instead if install"
-    o 9;B;echo "--force     - install or remove modules even though the script does not know if it works"
-    o 9;B;echo "--step      - run everything step by step"
+    o 9; B; echo "--firstrun  - first run wizard"
+    o 9; B; echo "--remove    - remove module instead if install"
+    o 9; B; echo "--force     - install or remove modules even though the script does not know if it works"
+    o 9; B; echo "--step      - run everything step by step"
     echo
-    B;echo "- supported PHP-versions:     $(G)$supported_php_versions"
-    B;echo "- supported (tested) modules: $(G)$supported_modules"
-    B;echo "- Built and installed modules:"
-    for phpver in "${!built_module_versions[@]}";do
-        o2;B;echo "- PHP Version:$(G)     $phpver"
-        o4;B;echo "Module Versions:$(G) ${built_module_versions[$phpver]}"
-        o2;B;echo "---------------------"
+    B; echo "- supported PHP-versions:     $(G)${supported_php_versions[@]}"
+    B; echo "- supported (tested) modules: $(G)${supported_modules[@]}"
+    B; echo "- Built and installed modules:"
+    for phpver in "${!built_module_versions[@]}"; do
+        o2; B; echo "- PHP Version:$(G)     $phpver"
+        o4; B; echo "Module Versions:$(G) ${built_module_versions[$phpver]}"
+        o2; B; echo "---------------------"
     done
     GRAY;echo "- you can try to build a not tested module with \"--force\", please give me feedback about the result.";N
     exit 1
 }
 
-declare basics="build-essential php-pear php$php_version-dev php$php_version-xml"
-declare supported=true
-declare -i priority=20
-declare configure_opts="" need="" m4_patch="" mver="" ini
-declare -a ini_file=(
+basics=(build-essential php-pear php$php_version-dev php$php_version-xml)
+B[supported]=true
+priority=20
+ini_file=(
     "; php $module module built by $me"
     "; build dir $project_dir/$project/$php_version/$module"
     "; if you want to completely remove this php $module module run"
     "; $me $php_version $module --remove"
     ";")
-[ -z "$module" ]||echo "${built_modules[$php_version]}"|${BINARIES[grep]} -wqs "$module"&&module_is_built=true
-declare extension_dir=$(extension_dir_of_ $php_version)
-declare extension_include_dir=$(extension_include_dir_of_ $php_version)
-#declare installed_modules="$(php$php_version -m|${BINARIES[grep]} -Pv '(^\[|Zend)')"   # <- not clean enough
-#declare installed_modules=$(/usr/sbin/phpquery -v $php_version -M)                  # <- not complete
-declare installed_modules="$([ -d "$extension_dir" ]&&cd "$extension_dir";echo *.so|${BINARIES[sed]} 's/\.so//g')" # <- this sworks
-declare module_is_installed=false;[[ " $installed_modules " =~ " $module " ]]&&module_is_installed=true
-# declare sapis="$(ls $(dirname $extension_dir)/$php_version/sapi/)"
-declare sapis="$(/usr/sbin/phpquery -S -v $php_version)"
+[ -z "$module" ] || echo "${built_modules[$php_version]}"|${X[grep]} -wqs "$module" && B[module_is_built]=true
 
-if $remove;then
-    declare extension="$(extension_ini_case $module|${BINARIES[sed]} 's/^.*extension=//;s/\.so.*$//')"
-    if $module_is_built;then
-        lG;echo "- php$php_version-$module seems to be installed by this script"
-        $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\"";}
-        ${step:-false}&&anykey
-        o2;B;echo "rm -r \"$project_dir/$project/$php_version/$module\""
-        rm -r "$project_dir/$project/$php_version/$module"
-        $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\"";}
-        ${step:-false}&&anykey
-        o2;B;echo "rm \"$extension_dir/$extension.{so,la}\""
-        rm -f "$extension_dir/$extension".{so,la}
-        [ -d "$extension_include_dir/$module" ]&&rm -fr "$extension_include_dir/$module"
+extension_dir=$(extension_dir_of_ $php_version)
+extension_include_dir=$(extension_include_dir_of_ $php_version)
+
+#installed_modules="$(php$php_version -m|${X[grep]} -Pv '(^\[|Zend)')"   # <- not clean enough
+#installed_modules=$(/usr/sbin/phpquery -v $php_version -M)                  # <- not complete
+installed_modules="$([ -d "$extension_dir" ] && cd "$extension_dir"; echo *.so | ${X[sed]} 's/\.so//g')" # <- this sworks
+[[ " $installed_modules " =~ " $module " ]] && B[module_is_installed]=true
+
+if ${B[remove]}; then
+    extension="$(extension_ini_case "$module" | ${X[sed]} 's/^.*extension=//;s/\.so.*$//')"
+    if ${B[module_is_built]}; then
+        lG; echo "- php$php_version-$module seems to be installed by this script"
+        ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\""; }
+        ${B[step]:-false} && anykey
+        o2; B; echo "rm -r \"$project_dir/$project/$php_version/$module\""
+        ${X[rm]} -r "$project_dir/$project/$php_version/$module"
+        ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""; }
+        ${B[step]:-false} && anykey
+        o2; B; echo "rm \"$extension_dir/$extension.{so,la}\""
+        ${X[rm]} -f "$extension_dir/$extension".{so,la}
+        [ -d "$extension_include_dir/$module" ] && ${X[rm]} -fr "$extension_include_dir/$module"
         module_ini
         ext_state purge "$module" "$php_version"
-    elif $module_is_installed;then
+    elif ${B[module_is_installed]}; then
         line ' ' Pbg 2/76 a0
-        o4;echo "$(Pbg)php$php_version-$module is installed but there is no build directory in$(N)"
+        o4; echo "$(Pbg)php$php_version-$module is installed but there is no build directory in$(N)"
         line ' ' Pbg 2/76 a0
-        o4;echo "$(Pbg)$project_dir. So it is treated like a foreign module.$(N)"
+        o4; echo "$(Pbg)$project_dir. So it is treated like a foreign module.$(N)"
         line ' ' Pbg 2/76 a0
-        o4;printf "$(Pbg)But$(N)"
-        if $force;then
-            o 8;echo "$(Pbg)--force has been passed.$(N)"
-            $quiet||{ f;GRAY;echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\"";}
-            ${step:-false}&&anykey
-            o2;B;echo "rm \"$extension_dir/$extension.{so,la}\""
-            rm -f "$extension_dir/$extension.{so,la}"
-            [ -d "$extension_include_dir/$module" ]&&rm -fr "$extension_include_dir/$module"
+        o4; printf "$(Pbg)But$(N)"
+        if ${B[force]}; then
+            o 8; echo "$(Pbg)--force has been passed.$(N)"
+            ${B[quiet]} || { f ;GRAY; echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""; }
+            ${B[step]:-false} && anykey
+            o2; B; echo "rm \"$extension_dir/$extension.{so,la}\""
+            ${X[rm]} -f "$extension_dir/$extension.{so,la}"
+            [ -d "$extension_include_dir/$module" ] && ${X[rm]} -fr "$extension_include_dir/$module"
             module_ini
             ext_state purge $module $php_version
         else
-            o 8;echo "$(Pbg)if you know what you are doing, you can remove the module and$(N)"
+            o 8; echo "$(Pbg)if you know what you are doing, you can remove the module and$(N)"
             line ' ' Pbg 2/76 a0
-            o4;echo "$(Pbg)ini-files using --force$(N)"
+            o4; echo "$(Pbg)ini-files using --force$(N)"
             exit1
         fi
     else
@@ -170,26 +174,26 @@ if $remove;then
         exit 1
     fi
 else
-    if ! echo "$supported_php_versions"|${BINARIES[grep]} -wqs "$php_version";then
-        R;echo "- \"$php_version\" is not a supported PHP vesion. Supported versions are $supported_php_versions"
+    if ! echo "${supported_php_versions[@]}" | ${X[grep]} -wqs "$php_version"; then
+        R; echo "- \"$php_version\" is not a supported PHP vesion. Supported versions are ${supported_php_versions[@]}"
         exit 1
     fi
-    if $module_is_built;then
-        lG;echo "- php$php_version-$module seems already to be built and installed by this script"
-        o2;lG;echo "if you want to update or reinstall $module, you should first remove it."
+    if ${B[module_is_built]}; then
+        lG; echo "- php$php_version-$module seems already to be built and installed by this script"
+        o2; lG; echo "if you want to update or reinstall $module, you should first remove it."
         exit 1
-    elif $module_is_installed;then
+    elif ${B[module_is_installed]}; then
         echo "$(Pbg)- php$php_version-$module is already installed but apperently not built by this script $(N)"
         exit 1
     else
-        if ! echo "$supported_modules"|${BINARIES[grep]} -wqs "$module";then supported=false
-            if echo "$not_supported_modules"|${BINARIES[grep]} -wqs "$module";then
+        if ! echo "${supported_modules[@]}" | ${X[grep]} -wqs "$module"; then supported=false
+            if echo "${not_supported_modules[@]}" | ${X[grep]} -wqs "$module"; then
                 echo "$(Pbg)- This script has already been tested to build \"php-$module\" but it failed. $(N)"
                 echo "$(Pbg)  please give me feedback if you have working patches to make build process succeed. $(N)"
                 exit 1
             else
                 echo "$(Pbg)- This script has not yet been tested to build \"php-$module\". $(N)"
-                if $force;then
+                if ${B[force]}; then
                     echo "$(Pbg)  but \"--force\" has been passed, so lets give it a try, $(N)"
                     echo "$(Pbg)  please give me feedback about the result. $(N)"
                 else
@@ -200,147 +204,148 @@ else
         fi
     fi
 
-    [ -d "$project_dir/$project/$php_version/$module" ]||${BINARIES[mkdir]} -p $project_dir/$project/$php_version/$module
+    [ -d "$project_dir/$project/$php_version/$module" ]||${X[mkdir]} -p $project_dir/$project/$php_version/$module
     cd $project_dir/$project/$php_version/$module
 
     case "$module" in
-          apcu) apt_install $basics
+          apcu) apt_install ${basics[@]}
                 check_conflicts "xcache yac"
                 pecl_download
                 ;;
-        brotli) apt_install $basics libbrotli-dev
+        brotli) apt_install ${basics[@]} libbrotli-dev
                 configure_opts="--with-libbrotli"
                 pecl_download
                 ;;
-       decimal) apt_install $basics libmpdec-dev
+       decimal) apt_install ${basics[@]} libmpdec-dev
                 priority=30
                 pecl_download
                 ;;
-    facedetect) apt_install $basics git libopencv-dev
+    facedetect) apt_install ${basics[@]} git libopencv-dev
                 mver=$module-1.1.0
                 git clone https://github.com/infusion/PHP-Facedetect.git $mver
                 cd $mver
                 ;;
-      igbinary) apt_install $basics
+      igbinary) apt_install ${basics[@]}
                 pecl_download
                 ;;
-       imagick) apt_install $basics libmagickwand-dev
+       imagick) apt_install ${basics[@]} libmagickwand-dev
                 pecl_download
                 ;;
-       inotify) apt_install $basics
+       inotify) apt_install ${basics[@]}
                 priority=30
                 pecl_download
                 ;;
-#   libvirt-php) apt_install $basics php$php_version-imagick git libvirt-dev;configure_opts="--with-libvirt"
+#   libvirt-php) apt_install ${basics[@]} php$php_version-imagick git libvirt-dev;configure_opts="--with-libvirt"
 #                mver=$module-0.5.8;git clone https://gitlab.com/libvirt/libvirt-php.git $mver;cd $mver/src  ;;
 #                ;;
-           lua) apt_install $basics liblua5.4-dev git
+           lua) apt_install ${basics[@]} liblua5.4-dev git
                 configure_opts="--with-lua-version=5.4"
                 mver=$module-2.0.7
                 git clone https://github.com/badoo/php-lua.git $mver
                 cd $mver
                 ;;
-           lz4) apt_install $basics liblz4-dev git
+           lz4) apt_install ${basics[@]} liblz4-dev git
                 mver=$module-0.4.3
                 git clone --recursive --depth=1 https://github.com/kjdev/php-ext-lz4.git $mver
                 cd $mver
                 ;;
-     memcached) apt_install $basics
+     memcached) apt_install ${basics[@]}
                 pecl_download
                 priority=25 need="msgpack"
                 ;;
-         redis) apt_install $basics liblz4-dev libzstd-dev
+         redis) apt_install ${basics[@]} liblz4-dev libzstd-dev
                 priority=25 need="igbinary"
                 configure_opts="--enable-redis-igbinary --enable-redis-lzf --enable-redis-zstd --enable-redis-lz4 --with-liblz4"
                 pecl_download
                 ;;
-           rrd) apt_install $basics librrd-dev
+           rrd) apt_install ${basics[@]} librrd-dev
                 pecl_download
                 ;;
-          solr) apt_install $basics libcurl4-openssl-dev
+          solr) apt_install ${basics[@]} libcurl4-openssl-dev
                 ln -s /usr/include/x86_64-linux-gnu/curl /usr/include/curl
                 pecl_download
                 ;;
-          ssh2) apt_install $basics libssh2-1-dev
+          ssh2) apt_install ${basics[@]} libssh2-1-dev
                 pecl_download
                 ;;
-     smbclient) apt_install $basics libsmbclient-dev
+     smbclient) apt_install ${basics[@]} libsmbclient-dev
                 pecl_download
                 ;;
-        swoole) apt_install $basics
+        swoole) apt_install ${basics[@]}
                 pecl_download
                 priority=25 need="mysql"
                 ;;
-      tideways) apt_install $basics git
+      tideways) apt_install ${basics[@]} git
                 mver=$module-5.0.4
                 git clone https://github.com/tideways/php-xhprof-extension.git $mver
                 cd $mver
                 ;;
-          vips) apt_install $basics libvips-dev
+          vips) apt_install ${basics[@]} libvips-dev
                 priority=30
                 pecl_download
                 ;;
-        xdebug) apt_install $basics
+        xdebug) apt_install ${basics[@]}
                 pecl_download
                 ;;
-        xhprof) apt_install $basics git
+        xhprof) apt_install ${basics[@]} git
                 mver=$module-2.3.10
                 git clone https://github.com/longxinH/xhprof.git $mver
                 cd $mver/extension
                 ;;
-           yac) apt_install $basics
+           yac) apt_install ${basics[@]}
                 check_conflicts "apcu xcache"
                 pecl_download
                 ;;
-          yaml) apt_install $basics libyaml-dev
+          yaml) apt_install ${basics[@]} libyaml-dev
                 pecl_download
                 ;;
 # does not compile:
-#           zmq) apt_install $basics libzmq3-dev
+#           zmq) apt_install ${basics[@]} libzmq3-dev
 #                pecl_download channel://pecl.php.net/zmq-1.1.3
 #                ;;
-          zstd) apt_install $basics libzstd-dev
+          zstd) apt_install ${basics[@]} libzstd-dev
                 priority=30
                 pecl_download
                 ;;
-             *) apt_install $basics
+             *) apt_install ${basics[@]}
                 pecl_download
     esac
     case $need in
-      igbinary) [ -d "$extension_include_dir/$need/src/php7" ]||{
-                    f
-                    o2;R;echo "The $module module depends on $need but it could not be found."
-                    o2;R;echo "You must first install or build php$php_version-$need:"
-                    f;G;echo "$(prompt;P) $me $php_version $need"
-                    cd;f;o2;G;echo -n "cleaning up..."
-                    "$me" "json=$my_json" $php_version $module --remove &>/dev/null
-                    te1;exit0;}
+      igbinary) [ -d "$extension_include_dir/$need/src/php7" ] || {
+                    f; o2; R; echo "The $module module depends on $need but it could not be found."
+                    o2; R; echo "You must first install or build php$php_version-$need:"
+                    f; G; echo "$(prompt; P) $me $php_version $need"
+                    cd; f; o2; G; echo -n "cleaning up..."
+                    q0 "$me" "json=$my_json" $php_version $module --remove
+                    te1; exit0
+                }
                 ;;
     esac
     patch_m4
-    ${step:-false}&&anykey
+    ${B[step]:-false} && anykey
     patch_code
-    ${step:-false}&&anykey
-    declare phpize_output=$(${BINARIES[phpize$php_version]} 2>&1 | ${BINARIES[tee]} /dev/tty)
-    declare autoupdate_required=$(echo "$phpize_output" | ${BINARIES[grep]} -c "You should run autoupdate")
-    ${step:-false}&&anykey
-    (("$autoupdate_required"))&&{ echo "running autoupdate.."; ${BINARIES[autoupdate]};}
-    ${step:-false}&&anykey
-    if ./configure --with-php-config=/usr/bin/php-config$php_version $configure_opts && ${BINARIES[make]};then
-        lG;echo "- from the point of view of this script, it looks like the build process was a success!"
-        $supported||{ o2;lG;echo "even though this module was not tested. Please give me feedback.";}
-        ${step:-false}&&anykey
-        f;GRAY;echo "- next step: $(B)make install:"
-        ${step:-false} && anykey
-        f;C;${BINARIES[make]} install
+    ${B[step]:-false} && anykey
+    declare phpize_output autoupdate_required
+    phpize_output=$(${X[phpize$php_version]} 2>&1 | ${X[tee]} /dev/tty)
+    autoupdate_required=$(echo "$phpize_output" | ${X[grep]} -c "You should run autoupdate")
+    ${B[step]:-false} && anykey
+    (("$autoupdate_required")) && { echo "running autoupdate.."; ${X[autoupdate]}; }
+    ${B[step]:-false} && anykey
+    if ./configure --with-php-config=/usr/bin/php-config$php_version $configure_opts && ${X[make]}; then
+        lG; echo "- from the point of view of this script, it looks like the build process was a success!"
+        $supported||{ o2; lG; echo "even though this module was not tested. Please give me feedback."; }
+        ${B[step]:-false} && anykey
+        f; GRAY; echo "- next step: $(B)make install:"
+        ${B[step]:-false} && anykey
+        f; C; ${X[make]} install
         module_ini
     else
-        R;echo "- from the point of view of this script, it looks like the build process failed! "
-        $supported&&{ o2;R;echo "even though it has successfully been tested before. Please give me feedback";}
+        R; echo "- from the point of view of this script, it looks like the build process failed! "
+        $supported && { o2; R; echo "even though it has successfully been tested before. Please give me feedback"; }
     fi
 fi
 
-$quiet&&exit 0 || exit0
+${B[quiet]} && exit 0 || exit0
 # COMMENT -->
 <<EOF
 Module         8.0 8.1 8.2 8.3 8.4 Supported

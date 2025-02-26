@@ -7,48 +7,32 @@ __copyright__
 __license__
 #
 
-${ASK_BASHLIB:-false} && return
+${ASK_BASHLIB:-_} && return
 ASK_BASHLIB=:
 
 . <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire prefix)
 . <(lrequire awksed)
-. <(require mh)
 
-# ask handling
+# declare globals for ask handling
 declare YES NO Yes No
 YES="$(lG)yes$(N)"
 NO="$(R)no$(N)"
 Yes="[$(lG)y$(N)]es"
 No="[$(R)n$(N)]o"
-# TODO 0 -->
-#YES="[$(lG)y$(N)]es"
-#NO="[$(R)n$(N)]o"
-# TODO <-- 0
 
-flat(){
-    echo "$1" | sed -e 's/\[//' -e 's/\]//'
-}
-
-abrv(){
-    echo "$1" | sed -e 's/.*\[//' -e 's/\].*//'
-}
-
-# TODO 1 -->
-#spacefrom(){ echo "$1"|sed 's/[^[:space:]].*//';}
-
-# TODO <-- 1
 first_idx(){
-    local str="$1" qpref="$(qpf)"
-    local -i i=0
+    local str qpref
+    local -i i
+    str="$1" qpref="$(qpf)" i=0
     # remove the prefix (qpref) from the beginning of the string.
     str="${str/#$qpref/$(printf '%*s' "${#qpref}" '')}"
     # iterates through the characters of the modified string
     # and print the index of the first non-space character.
     while (( i < ${#str} )); do
         char="${str:$i:1}"
-        [ "$char" = " " ] || {
+        [ "$char" = ' ' ] || {
             echo "$i"
             return
         }
@@ -60,18 +44,19 @@ first_idx(){
 
 # $1 Question, $2 Default Answer, $3 Answer that returns 0 (true), $4 Answer that returns 1 (false)
 ask(){
+    required_args 2 "$@"
     local question d_answer yes no noansi_question_lastline noansi_d_answer noansi_yes noansi_no newline cursor
     local -l answer
-    local -i lll lda ly ln ml fidx=$(first_idx "$question") r
-    question="$1"
-    d_answer="$2"
-    mh "$(noansi "$question")"
+    local -i lll lda ly ln ml fidx r
+    question="$1" d_answer="$2"
+    fidx=$(first_idx "$question")
+    mh "$(${X[ansifilter]} <<< "$question")"
     [ -z "$3" ] && yes="$Yes" || yes="$3"
     [ -z "$4" ] && no="$No" || no="$4"
-    noansi_question_lastline="$(noansi "${question##*\\n}")"
-    noansi_d_answer="$(noansi "$d_answer")"
-    noansi_yes="$(noansi "$yes")"
-    noansi_no="$(noansi "$no")"
+    noansi_question_lastline="$(${X[ansifilter]} <<< "${question##*\\n}")"
+    noansi_d_answer="$(${X[ansifilter]} <<< "$d_answer")"
+    noansi_yes="$(${X[ansifilter]} <<< "$yes")"
+    noansi_no="$(${X[ansifilter]} <<< "$no")"
     lll=${#noansi_question_lastline}
     lda=${#noansi_d_answer}
     ly=${#noansi_yes}
@@ -87,7 +72,7 @@ ask(){
         ml=$(($(tput cols)-23))
     fi
     if (( $(( lll + lda + ly + ln )) > ml )); then
-        newline="$(f;o $fidx;N)Make your choice: "
+        newline="$(f; o $fidx; N)Make your choice: "
     else
         newline="$(N) "
     fi
@@ -96,15 +81,15 @@ ask(){
         printf "$question?$newline($yes or $no) [$d_answer]: "
         read -r answer
         mh "A: ${answer:="$noansi_d_answer"}"
-        if [ "$answer" = "$(flat "${noansi_yes,,}")" ] || [ "$answer" = "$(abrv "${noansi_yes,,}")" ]; then
+        if [ "$answer" = "$(desquare "${noansi_yes,,}")" ] || [ "$answer" = "$(insquare "${noansi_yes,,}")" ]; then
             r=0
             break
-        elif [ "$answer" = "$(flat "${noansi_no,,}")" ] || [ "$answer" = "$(abrv "${noansi_no,,}")" ]; then
+        elif [ "$answer" = "$(desquare "${noansi_no,,}")" ] || [ "$answer" = "$(insquare "${noansi_no,,}")" ]; then
             r=1
             break
         else
             o $fidx
-            echo "- Please answer $(flat "$noansi_yes") ($(abrv "$noansi_yes")) or $(flat "$noansi_no") ($(abrv "$noansi_no"))."
+            echo "- Please answer $(desquare "$noansi_yes") ($(insquare "$noansi_yes")) or $(desquare "$noansi_no") ($(insquare "$noansi_no"))."
         fi
     done
     cursor_ $cursor
@@ -119,14 +104,15 @@ bundle(){
     case "$hauler" in
       echo) echo -e "$@"
         ;;
-       cat) local -a payload
-            mapfile -t payload< <(${BINARIES[cat]} "$@")
+       cat) local -a payload; local -i i
+            mapfile -t payload< <(${X[cat]} "$@")
             for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
     esac
 }
 
 # Function for confirmation prompt
 confirm_choice() {
+#    required_args 2 "$@" # 1st argument can be empty!
     local choice message key
     choice="$1" # User's initial choice (e.g., 1, 2, 3, etc.)
     message="$2" # Custom message for confirmation

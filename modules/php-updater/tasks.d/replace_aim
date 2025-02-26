@@ -7,28 +7,28 @@ __copyright__
 __license__
 #
 
-${TASKS_REPLACE_AIM_BASHLIB:-false} && return
+${TASKS_REPLACE_AIM_BASHLIB:-_} && return
 TASKS_REPLACE_AIM_BASHLIB=:
 
 replace_aim(){ # replace admin installed modules
     replace_(){
         local ini_dir mod
-        if [ "$(${BINARIES[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ] && ((imb)); then
-            if $pmb; then
+        if [ "$(${X[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ] && ((imb)); then
+            if ${bool[pmb]}; then
                 for i in ${!mods[@]}; do
                     ver=${mods[i]#*php}
                     ver=${ver%)}
                     mod=${mods[i]%(*}
-                    ${BINARIES[php-module-builder]} $ver $mod --remove --force --quiet
+                    ${X[php-module-builder]} $ver $mod --remove --force --quiet
                     ext_state purge $mod $ver
                 done
             fi
         else
             ini_dir="/etc/php/$PHP_VERSION/mods-available"
-            ${BINARIES[pecl]} uninstall ${mods[@]%(*}
+            ${X[pecl]} uninstall ${mods[@]%(*}
             for mod in ${mods[@]%(*}; do
-                ${BINARIES[pecl]} uninstall $mod # for the sake of stability, if something went wrong 2 lines before
-                ${BINARIES[phpdismod]} -p -v $PHP_VERSION -s ALL $mod
+                ${X[pecl]} uninstall $mod # for the sake of stability, if something went wrong 2 lines before
+                ${X[phpdismod]} -p -v $PHP_VERSION -s ALL $mod
                 ext_state purge $mod $ver
                 rm -f "$ini_dir/$mod.ini"
             done
@@ -38,42 +38,47 @@ replace_aim(){ # replace admin installed modules
         ext_state fix
         apt_install_prechecked --yes ${pakages[@]}
     }
-    if [ -n "${BINARIES[pecl]}" ]; then
-        local pmb ver module pakage pkgmod modstring serializers compression replaced
-        local -i iam imb pecli=0
+    if [ -n "${X[pecl]}" ]; then
+        local ver module pakage pkgmod modstring serializers compression
+        local -i iam imb pecli
         local -a ibymb pkgmods mods pakages
-        replaced=false
-        for pv in $(${BINARIES[phpquery]} -V | ${BINARIES[sort]}); do
-            eval iam+=\${#C4EIBY4_${pv//./}[@]}
+        local -A bool
+        pecli=0 bool[replaced]=_
+        for pv in $(${X[phpquery]} -V | ${X[sort]}); do
+            local -n C4EIBY4_pv=C4EIBY4_${pv//./}
+            iam+=${#C4EIBY4_pv[@]}
+            unset C4EIBY4_pv
         done
-        [ -n "${BINARIES[php-module-builder]}" ] && pmb=true || pmb=false
-        mapfile -t ibymb< <(${BINARIES[grep]} -lr "module built by php-module-builder" /etc/php/)
+        [ -n "${X[php-module-builder]}" ] && bool[pmb]=: || bool[pmb]=_
+        mapfile -t ibymb< <(${X[grep]} -lr "module built by php-module-builder" /etc/php/)
         imb=${#ibymb[@]}
         if (( iam )); then
-            if [ "$(${BINARIES[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ]; then
+            if [ "$(${X[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ]; then
                 spinner C " . search packages for modules installed by the php-module-builder script ." &
                 if ((imb)); then
                     for inifile in ${ibymb[@]}; do
                         ver=${inifile#/etc/php/}
                         ver=${ver%%/*}
-                        module=$(${BINARIES[basename]} ${inifile%.ini})
+                        module=$(${X[basename]} ${inifile%.ini})
                         pakage="php$ver-$module"
                         if apt_exist "$pakage"; then ((pecli++))
                             pakages+=("$pakage")
-                            mods+=("$(${BINARIES[gawk]} 'NR==1 {print $3}' $inifile)(php$ver)")
+                            mods+=("$(${X[gawk]} 'NR==1 {print $3}' $inifile)(php$ver)")
                         fi
                     done
                 fi
                 kill_spinner
             else
-                for i in $(eval echo \${!C4EIBY4_${PHP_VERSION//./}[@]}); do
-                    pkgmod="$(eval echo \"\${C4EIBY4_${PHP_VERSION//./}[i]}\")"
-                    if (( $(${BINARIES[pecl]} list | ${BINARIES[grep]} -wc "${pkgmod#*:}") )); then
+                local -n C4EIBY4_pv=C4EIBY4_${PHP_VERSION//./}
+                for i in ${!C4EIBY4_pv[@]}; do
+                    pkgmod="${C4EIBY4_pv[i]}"
+                    if (( $(${X[pecl]} list | ${X[grep]} -wc "${pkgmod#*:}") )); then
                         (( pecli++ ))
                         pakages+=("${pkgmod%:*}")
                         mods+=("${pkgmod#*:}(php$PHP_VERSION)")
                     fi
                 done
+                unset C4EIBY4_pv
             fi
         fi
         if (( pecli )); then
@@ -83,18 +88,18 @@ replace_aim(){ # replace admin installed modules
                 plu='s' modstring="$(listify B ${mods[@]})"
             fi
             if [[ "${mods[@]}" =~ redis ]]; then
-                serializers="$(${BINARIES[php]} -i | ${BINARIES[grep]} "Available serializers" | ${BINARIES[sed]} 's/.*=> //;s/,//g')"
-                compression="$(${BINARIES[php]} -i | ${BINARIES[grep]} "Available compression" | ${BINARIES[sed]} 's/.*=> //;s/,//g')"
+                serializers="$(${X[php]} -i | ${X[grep]} "Available serializers" | ${X[sed]} 's/.*=> //;s/,//g')"
+                compression="$(${X[php]} -i | ${X[grep]} "Available compression" | ${X[sed]} 's/.*=> //;s/,//g')"
                 if [[ ! "$serializers" =~ igbinary ]] && [ -z "$compression" ]; then
                     bundle echo "$(xpf;format_string "$(Y)The actually installed $(C)redis$(Y) module was poorly built without enabled igbinary serializer support and without any compression ($(dY)lzf, zstd, and/or lz4$(Y)) support enabled, which results in a loss of performance." 3;N)"
                 fi
             fi
             bundle echo "$(ipf;format_string "The php module$plu $modstring can be replaced by this script. You can answer $(box no) here, but then you may be confronted with some error messages after the upgrade while migrating the settings." 3)"
-            ask "$(qpf)Do you want to replace $modstring now" "$YES" && { replaced=true; replace_;}
+            ask "$(qpf)Do you want to replace $modstring now" "$YES" && { bool[replaced]=:; replace_;}
             separator
         fi
     else
         bundle echo "$(xpf;format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
     fi
-    $replaced && "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+    ${bool[replaced]} && "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
 }

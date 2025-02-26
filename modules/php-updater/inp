@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${INP_BASHLIB:-false} && return
+${INP_BASHLIB:-_} && return
 INP_BASHLIB=:
 
 . <(lrequire binaries)
@@ -37,8 +37,8 @@ install_new_php(){
         # update first?
         f; echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
         if ask "$(qpf)Do you want to update the system first " "$NO"; then
-            q0 ${BINARIES[apt-mark]} hold $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php*/{print $2}') # hold php as it is for this step.
-            ${BINARIES[apt-get]} dist-upgrade
+            q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}') # hold php as it is for this step.
+            ${X[apt-get]} dist-upgrade
             pf; echo "$(lG)system updated$(N)"
             anykey
         fi
@@ -47,12 +47,12 @@ install_new_php(){
         search_candidates_4_extensions_installed_by_admin $old
         spinner C " . performing thorough review (dry run) of package sources and for candidate availability ." &
         mapfile -t packages< <(packages_diff $old $new)
-        mapfile -t sapi_packages< <(for sapi in $(${BINARIES[comm]} -23 <(p_sort $(${BINARIES[phpquery]} -v $old -S)) <(p_sort $(${BINARIES[phpquery]} -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
+        mapfile -t sapi_packages< <(for sapi in $(${X[comm]} -23 <(p_sort $(${X[phpquery]} -v $old -S)) <(p_sort $(${X[phpquery]} -v $new -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
 # TODO 2 -->
-        mapfile -t sapi_not< <(for sapi in $(${BINARIES[comm]} -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(${BINARIES[phpquery]} -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
+        mapfile -t sapi_not< <(for sapi in $(${X[comm]} -23 <(p_sort ${!SAPIS[@]}) <(p_sort $(${X[phpquery]} -v $old -S))); do echo "${SAPIS[$sapi]/@VER@/$new}"; done)
 # TODO <-- 2
-        q0 ${BINARIES[apt-mark]} unhold *php*
-        [ -z "${BINARIES[needrestart]}" ] || export NEEDRESTART_SUSPEND=1
+        q0 ${X[apt-mark]} unhold *php*
+        [ -z "${X[needrestart]}" ] || export NEEDRESTART_SUSPEND=1
         kill_spinner
         if ((${#sapi_packages[@]})) || ((${#packages[@]})); then
             apt_install_prechecked --yes ${sapi_packages[@]} ${packages[@]}
@@ -62,7 +62,7 @@ install_new_php(){
             apt_remove --yes ${sapi_not[@]}
         fi
 # TODO <-- 3
-        [ -z "${BINARIES[needrestart]}" ] || ${BINARIES[needrestart]} -r a
+        [ -z "${X[needrestart]}" ] || ${X[needrestart]} -r a
     else f
         no_candidate "$new"
         exit1

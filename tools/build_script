@@ -19,7 +19,7 @@ fi
 # Ensure that the first argument exists
 if ! [ -f "$1" ]; then
     echo "\"$1\" does not exist"
-    echo "Usage: $0 <input_module> <output_module>"
+    echo "Usage: $0 <input_script> <output_script>"
     exit 1
 fi
 
@@ -40,30 +40,30 @@ input_script="$1" output_script="$2" test_mode="$3"
 if [ "$test_mode" = 'test' ]; then
     scriptname="$(basename $input_script)-test"
 else
-    scriptname=$(basename $input_script)
+    scriptname="$(basename $input_script)"
 fi
 
 # copy the input script to the output script
 cp $input_script $output_script
 
 for i in $(seq 0 9); do
-    delx2yi "# TODO $i -->" "# TODO <-- $i" $output_script
+    delx2yi "# TODO $i -->" "# TODO <-- $i" "$output_script"
 done
 
-delp2ei '# COMMENT -->' $output_script
+delp2ei '# COMMENT -->' "$output_script"
 
-tempfile=$(mktemp)
+tempfile="$(mktemp)"
 
 # Replace placeholders with their actual contents
 for placeholder in "${placeholders[@]}"; do
     placeholder_pattern="__${placeholder}__"
-    awk '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$test_mode'"); next } 1' $output_script > $tempfile
-    cat $tempfile > $output_script
+    [ -f "$output_script" ] && ${X[cat]} "$output_script" > "$tempfile"
+    ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
 done
-rm -f $tempfile
+rm -f "$tempfile"
 
 # disable integrity check for local server
-$LOCAL_SERVER&&echo -e "v=true\nnohash" >> "$output_script"
+$LOCAL_SERVER && echo -e "v=true\nnohash" >> "$output_script"
 
 exit 0
 

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${MERGE_BASHLIB:-false} && return
+${MERGE_BASHLIB:-_} && return
 MERGE_BASHLIB=:
 
 . <(lrequire binaries)
@@ -23,16 +23,16 @@ last_occurrence(){
     key="$1" path="$2"
     if [ "$key" = "extension" ]; then
         # find the line number of the last occurrence of the extension setting, including uncommented lines
-        llnr=$(${BINARIES[grep]} -n "^\s*;\{0,1\}\s*extension" "$path" | ${BINARIES[tail]} -1 | ${BINARIES[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*;\{0,1\}\s*extension" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     elif [[ "${key}" =~ ^\[.*\]$ ]]; then
         # find the section opener
-        llnr=$(${BINARIES[grep]} -n "^\s*$(escaped $key)" "$path" | ${BINARIES[tail]} -1 | ${BINARIES[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*$(escaped $key)" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     elif [[ "${key: -1}" = "." ]]; then
         # find the last line of the section, including uncommented lines
-        llnr=$(${BINARIES[grep]} -n "^\s*;\{0,1\}\s*$(escaped $key)" "$path" | ${BINARIES[tail]} -1 | ${BINARIES[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*;\{0,1\}\s*$(escaped $key)" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     else
         # find the line numbers of last occurrences of the setting name, ignoring uncommented lines
-        llnr=$(${BINARIES[grep]} -n "^\s*;\s*$(escaped $key)\s*=.*" "$path" | ${BINARIES[tail]} -1 | ${BINARIES[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*;\s*$(escaped $key)\s*=.*" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     fi
     echo $llnr
 }
@@ -54,10 +54,10 @@ merge_settings(){
             fi
             if changelog="$(ini_directives "$key" changelog)"; then
                 if [ -n "$changelog" ]; then
-                    if ${BINARIES[grep]} -iqs "removed" <<< "$changelog"; then
+                    if ${X[grep]} -iqs "removed" <<< "$changelog"; then
                         tip="\nTIP: $(O)do $(Rbg) not $(O) integrate this directive into the new config if it got removed as off the new version.\n$(R)NOTE: The default answer here is $(box no). You should always accept the default answer (press ENTER) when $(box no) is given, unless you are absolutely sure what you are doing.$(N)"
                         r=1
-                    elif ${BINARIES[grep]} -iqs "deprecated" <<< "$changelog"; then
+                    elif ${X[grep]} -iqs "deprecated" <<< "$changelog"; then
                         tip="\nTIP: $(O)consider to $(Rbg) not $(O) integrate this directive into the new config if it got marked as deprecated as off the new version.\n$(R)NOTE: The default answer here is $(box no). You can simply accept the default answer (press ENTER) when $(box no) is given, unless you know what you are doing.$(N)"
                         r=1
                     fi
@@ -71,7 +71,7 @@ merge_settings(){
         return $r
     }
     comm_(){
-        is_extension(){ ${BINARIES[grep]} -Eqs "^\s*extension\s*=.*" <<< "$1"; }
+        is_extension(){ ${X[grep]} -Eqs "^\s*extension\s*=.*" <<< "$1"; }
 
         local old new opath npath key val nval
         local -i oi ni i j
@@ -80,28 +80,28 @@ merge_settings(){
         npath="${opath/$old/$new}"
         mapfile -t osettings< <(stripconf "$opath")
         # add the extensions loaded by mods-available to prevent loading multiple times
-        mapfile -t nsettings< <(stripconf "$npath"; ${BINARIES[grep]} -Ehr "^\s*(zend_)?extension\s*=.*" "/etc/php/$new/mods-available")
+        mapfile -t nsettings< <(stripconf "$npath"; ${X[grep]} -Ehr "^\s*(zend_)?extension\s*=.*" "/etc/php/$new/mods-available")
         # get all settings from the old ini file and store the settings in an array
         for oi in "${!osettings[@]}"; do
-            key="$(key_ name "${osettings[oi]}")"; osettings_names+=("$key")
+            key="$(varname "${osettings[oi]}")"; osettings_names+=("$key")
         done
         # get all settings from the new ini file and store the settings in an array
         for ni in "${!nsettings[@]}"; do
-            key="$(key_ name "${nsettings[ni]}")"; nsettings_names+=("$key")
+            key="$(varname "${nsettings[ni]}")"; nsettings_names+=("$key")
         done
         case $1 in
             1)  # get the settings that are in the old settings array but not in the new settings array
-                mapfile -t diff1_names< <(${BINARIES[comm]} -23 <(p_sort "${osettings_names[@]}") <(p_sort "${nsettings_names[@]}"))
+                mapfile -t diff1_names< <(${X[comm]} -23 <(p_sort "${osettings_names[@]}") <(p_sort "${nsettings_names[@]}"))
                 # get the values for the settings in diff1_names
                 for i in "${!diff1_names[@]}"; do
-                    val="$(key_ val "$(${BINARIES[grep]} -E "^\s*$(escaped ${diff1_names[i]})\s*=.*" "$opath")")"
+                    val="$(varval "$(${X[grep]} -E "^\s*$(escaped ${diff1_names[i]})\s*=.*" "$opath")")"
                     diff1_names_with_values+=("${diff1_names[i]}=$val")
                 done
                 # add all occurrences of "extension=*" to diff1_names_with_values
                 for oi in "${!osettings[@]}"; do
-                    is_extension "${osettings[oi]}"&&{ val="$(key_ val "${osettings[oi]}")"
+                    is_extension "${osettings[oi]}" && { val="$(varval "${osettings[oi]}")"
                         for ni in "${!nsettings[@]}"; do
-                            is_extension "${nsettings[ni]}"&&{ nval="$(key_ val "${nsettings[ni]}")"; [ "$val" = "$nval" ]&&break 2; }
+                            is_extension "${nsettings[ni]}"&&{ nval="$(varval "${nsettings[ni]}")"; [ "$val" = "$nval" ]&&break 2; }
                         done
                         diff1_names_with_values+=("extension=$val")
                     }
@@ -109,10 +109,10 @@ merge_settings(){
                 p_sort "${diff1_names_with_values[@]}" # remove duplicates
                 ;;
             2)  # get the settings that are in the new settings array but not in the old settings array
-                mapfile -t diff2_names< <(${BINARIES[comm]} -13 <(p_sort "${osettings_names[@]}") <(p_sort "${nsettings_names[@]}"))
+                mapfile -t diff2_names< <(${X[comm]} -13 <(p_sort "${osettings_names[@]}") <(p_sort "${nsettings_names[@]}"))
                 # get the values for the settings in diff2_names
                 for j in "${!diff2_names[@]}"; do
-                    val="$(key_ val "$(${BINARIES[grep]} -E "^\s*$(escaped ${diff2_names[j]})\s*=.*" "$npath")")"
+                    val="$(varval "$(${X[grep]} -E "^\s*$(escaped ${diff2_names[j]})\s*=.*" "$npath")")"
                     diff2_names_with_values+=("${diff2_names[j]}=$val")
                 done
                 p_sort "${diff2_names_with_values[@]}" # remove duplicates
@@ -128,13 +128,13 @@ merge_settings(){
         mapfile -t osettings< <(stripconf "$opath")
         mapfile -t nsettings< <(stripconf "$npath")
         for i in ${!osettings[@]}; do
-            key="$(key_ name "${osettings[i]}")"
-            val="$(key_ val "${osettings[i]}")"
+            key="$(varname "${osettings[i]}")"
+            val="$(varval "${osettings[i]}")"
             for ni in "${!nsettings[@]}"; do
-                nkey="$(key_ name "${nsettings[ni]}")"
+                nkey="$(varname "${nsettings[ni]}")"
                 spinner dO " . comparing $npath with $opath ." &
                 if [ "$key" = "$nkey" ]; then
-                    nval="$(key_ val "${nsettings[ni]}")"
+                    nval="$(varval "${nsettings[ni]}")"
                     if [ "${val/$old/}" != "${nval/$new/}" ]; then
                         kill_spinner
                         f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
@@ -145,7 +145,7 @@ merge_settings(){
                         else
                             question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                             if ask "$question" "$YES"; then
-                                ${BINARIES[sed]} -i "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$old/$new}|" "$npath"
+                                ${X[sed]} -i "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$old/$new}|" "$npath"
                                 echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                             fi
                         fi
@@ -166,56 +166,58 @@ merge_settings(){
         if [ "${path##*/}" = "php.ini" ]; then
             f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="at the end of the $(bY; section "${key%.*}"; N) section" nl='\n'
-        elif [ "${path##*.}" = "conf" ]; then
+        elif [ "$(sufix "$path")" = "conf" ]; then
             f; echo " -$(format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="under the other environment variables" nl=''
         fi
         defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
         question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) $section" 3)"
         if ask "$question" "$defaultanswer"; then
-            ${BINARIES[sed]} -i "${last}a\\$nl$key = $val" "$path"
+            ${X[sed]} -i "${last}a\\$nl$key = $val" "$path"
             echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) at the end of the $(Y; section "${key%.*}"; N) section in $(B)$path" 3; N)"
         fi
         separator
     }
     append2eof(){
         # append the val to the end of the file
-        local key val path ael defaultanswer question
-        key="$1" val="$2" path="$3" ael="$4"
+        local key val path defaultanswer question
+        local -A bool
+        key="$1" val="$2" path="$3" bool[ael]="$4"
         kill_spinner
         f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
         defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
         question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
         if ask "$question" "$defaultanswer"; then
-            ${ael:-false} && echo >> "$path"
+            ${bool[ael]:-_} && echo >> "$path"
             echo "$key = $val" >> "$path"
             echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) appended to the end of $(B)$path" 3; N)"
         fi
         separator
     }
     first_step $@
-    local old new opkg npkg opath npath key val ael question
+    local old new opkg npkg opath npath key val question
     local -a settings2merge1_ settings2merge2_
     local -i i1 i2 last
-    old="$1" new="$2" opkg="$3" opath="$4" ael=:
+    local -A bool
+    old="$1" new="$2" opkg="$3" opath="$4" bool[ael]=:
     npkg="${opkg/$old/$new}"
     npath="${opath/$old/$new}"
     last=0
     mapfile -t settings2merge1_< <(comm_ 1 "$old" "$new" "$opath")
     for i1 in "${!settings2merge1_[@]}"; do
         spinner dO " . comparing $npath with $opath ." &
-        key="$(key_ name "${settings2merge1_[i1]}")"
-        val="$(key_ val "${settings2merge1_[i1]}")"
+        key="$(varname "${settings2merge1_[i1]}")"
+        val="$(varval "${settings2merge1_[i1]}")"
         [ "$key" = "" ] && continue
         last=$(last_occurrence "$key" "$npath") # find the last occurrence of the commented setting_name
-        if ${BINARIES[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
+        if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
             kill_spinner
-            lnr=$(${BINARIES[grep]} -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | ${BINARIES[cut]} -d ":" -f 1)
+            lnr=$(${X[grep]} -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | ${X[cut]} -d ":" -f 1)
             f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
             question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
-                ${BINARIES[sed]} -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" "$npath"
+                ${X[sed]} -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" "$npath"
                 echo "R:$(format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3; N)"
             fi
             separator
@@ -226,7 +228,7 @@ merge_settings(){
             defaults_and_changelog "$key"
             question="Q:$(format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
             if ask "$question" "$YES"; then
-                ${BINARIES[sed]} -i "${last}a\\$key = $val" "$npath"
+                ${X[sed]} -i "${last}a\\$key = $val" "$npath"
                 echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) after line $last in $(B)$npath" 3; N)"
             fi
             separator
@@ -235,35 +237,35 @@ merge_settings(){
             if (($last))&&[ "${npath##*/}" = "php.ini" ]; then
                 append2eos "$key" "$val" "$npath" $last
             else
-                append2eof "$key" "$val" "$npath" $ael
-                ael=false
+                append2eof "$key" "$val" "$npath" ${bool[ael]}
+                bool[ael]=_
             fi
         elif [[ "$key" == *"["* ]]; then
             last=$(last_occurrence "${key%[*}." "$npath") # find the last line of the section
             if (($last))&&[ "${npath##*.}" = "conf" ]; then
                 append2eos "$key" "$val" "$npath" $last
             else
-                append2eof "$key" "$val" "$npath" $ael
-                ael=false
+                append2eof "$key" "$val" "$npath" ${bool[ael]}
+                bool[ael]=_
             fi
         else
-            append2eof "$key" "$val" "$npath" $ael
-            ael=false
+            append2eof "$key" "$val" "$npath" ${bool[ael]}
+            bool[ael]=_
         fi
     done
     mapfile -t settings2merge2_< <(comm_ 2 "$old" "$new" "$opath")
     for i2 in "${!settings2merge2_[@]}"; do
         spinner dO " . comparing $npath with $opath ." &
-        key="$(key_ name "${settings2merge2_[i2]}")"
-        val="$(key_ val "${settings2merge2_[i2]}")"
+        key="$(varname "${settings2merge2_[i2]}")"
+        val="$(varval "${settings2merge2_[i2]}")"
         [ "$key" = "" ] && continue
-        if ${BINARIES[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
+        if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
             kill_spinner
             f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
             defaults_and_changelog "$key"
             question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
-                ${BINARIES[sed]} -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" "$npath"
+                ${X[sed]} -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" "$npath"
                 echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3; N)"
             fi
             separator

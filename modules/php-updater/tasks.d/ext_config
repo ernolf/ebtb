@@ -7,14 +7,15 @@ __copyright__
 __license__
 #
 
-${TASKS_EXT_CONFIG_BASHLIB:-false} && return
+${TASKS_EXT_CONFIG_BASHLIB:-_} && return
 TASKS_EXT_CONFIG_BASHLIB=:
 
 message_(){
+    require_arg "$@"
     local pv
-    pv=$1
-    if [ "$OLD" = "$pv" ] && [[ "$NEW" ]]; then
-        case $2 in
+    pv="$1"
+    if [[ "$OLD" == "$pv" && "$NEW" ]]; then
+        case "$2" in
             will_be_fixed)
                 echo "This errors must be fixed before this script can migrate the settings from $(C)php-$OLD$(P) to $(C)php-$NEW$(P)."
                 ;;
@@ -28,7 +29,7 @@ message_(){
                 echo "This is not an error but about a possible optimization that is missing which you can add, before updating from $(C)php-$OLD$(P) to $(C)php-$NEW$(P). You can answer $(box no) here to leave it unchanged but then it will miss in the new version as well."
         esac
     else
-        case $2 in
+        case "$2" in
             will_be_fixed)
                 echo "This errors must be fixed before this script can migrate the settings from $(C)php$pv$(P) to an other php version."
                 ;;
@@ -44,33 +45,79 @@ message_(){
     fi
 }
 
+detect_(){
+    required_args 2 "$@"
+    local selector ini_file
+    selector="$1"
+    shift
+    case "$selector" in
+        invalid_sections)
+            ini_file="$1"
+            ${X[grep]} -En '^\s*\[[^]]*\][^#]*[^\s]|^\s*\[[^]]*$|^\s*[^[]*\]' "$ini_file" | ${X[sort]} -n -t: -k1,1
+            ;;
+        missing_equalsigns)
+            ini_file="$1"
+#            stripconf "$1" | ${X[grep]} -Ev '^\s*[a-zA-Z._]+\s*=\s*[^#;]*'
+#            stripconf "$1" | ${X[grep]} -Ev '^\s*([a-z._]|SMTP|1867)+\s*=\s*[^#;]*'
+            stripconf "$ini_file" | ${X[grep]} -Ev '^\s*([a-z._]|SMTP|1867)+\s*=\s*[^#;]*' | ${X[grep]} -v '='
+            ;;
+        ini_directive)
+            required_args 2 "$@"
+            local pv ini_directive result
+            pv="$1" ini_directive="$2"
+            ${X[find]} /etc/php/$pv -name "*.ini" ! -type l | while read -r ini_file; do
+                if result="$(stripconf "$ini_file" | ${X[grep]} "$ini_directive")"; then
+                    echo "$ini_file:$result"
+                fi
+            done
+            ;;
+        ini_double_definitions)
+            ini_file="$1"
+            stripconf "$ini_file" | ${X[gawk]} -F'=' '
+                # Handle exceptions for "extension=" and "zend_extension="
+                $1 ~ /^\s*extension\s*$/ || $1 ~ /^\s*zend_extension\s*$/ {next}
+                # Trim leading/trailing whitespace from the key
+                {key = $1; gsub(/^[ \t]+|[ \t]+$/, "", key)}
+                # Count occurrences of each key
+                {count[key]++}
+                # After processing, print duplicates
+                END {
+                    for (k in count)
+                        if (count[k] > 1)
+                            print k, count[k]
+                }
+            '
+            ;;
+    esac
+}
+
 check_invalid_sections(){
-    local pv xtmp itmp sapi ini_file plu infstr invalid_section content
+    require_arg "$@"
+    local pv xtmp itmp infstr errstr sapi ini_file plu invalid_section content
     local -i line
     local -a invalid_sections failed_ini_files
-    pv="$1"
-    xtmp=$(tf) itmp=$(tf)
-    for sapi in $(${BINARIES[phpquery]} -v "$pv" -S); do
+    pv="$1" xtmp="$(tf)" itmp="$(tf)"
+    infstr="Section titles in a PHP configuration (.ini) file must always be enclosed in square brackets ('[' and ']') without additional content outside these brackets. Invalid section titles might result from manual changes or file corruption. You can either fix these issues manually and restart this script or allow the script to correct the invalid section titles by adding missing brackets where required. This change will ensure the file is parsed correctly."
+    errstr="This has been recognized as an error, but the attempt to fix it failed. No working routine for fixing this specific error has been implemented yet. Please correct the corresponding line manually and run this script again."
+    for sapi in $(${X[phpquery]} -v "$pv" -S); do
         ini_file="/etc/php/$pv/$sapi/php.ini"
-        mapfile -t invalid_sections < <(${BINARIES[grep]} -En '^\s*\[[^]]*\][^#]*[^\s]|^\s*\[[^]]*$|^\s*[^[]*\]' "$ini_file" | sort -n -t: -k1,1)
+        mapfile -t invalid_sections < <(detect_ invalid_sections "$ini_file")
         if (( ${#invalid_sections[@]} )); then
             if (( ${#invalid_sections[@]} > 1 )); then plu='s'; else plu=''; fi
-            >"$xtmp"; >"$itmp"
-            infstr="Section titles in a PHP configuration (.ini) file must always be enclosed in square brackets ('[' and ']') without additional content outside these brackets. Invalid section titles might result from manual changes or file corruption. You can either fix these issues manually and restart this script or allow the script to correct the invalid section titles by adding missing brackets where required. This change will ensure the file is parsed correctly."
             echo -e "\n   - $(O)Invalid section title$plu detected in $(C)$ini_file$(O):\n" >>"$itmp"
             for invalid_section in "${invalid_sections[@]}"; do
                 line="${invalid_section%%:*}"
                 content="${invalid_section#*:}"
                 echo -e "$(C)Line $(printf "%5d" $line):$(N) $(R)$content$(N)" >>"$itmp"
-                echo "${BINARIES[sed]} -i '${line}{s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/; s/\[\[*/[/g; s/\]*\]/]/g;}' $ini_file" >>"$xtmp"
-#                echo "${BINARIES[sed]} -i '${line}{/^[[].*[]]$/! {s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/;}}' $ini_file" >>"$xtmp"
+                echo "${X[sed]} -i '${line}{s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/; s/\[\[*/[/g; s/\]*\]/]/g;}' $ini_file" >>"$xtmp"
+#                echo "${X[sed]} -i '${line}{/^[[].*[]]$/! {s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/;}}' $ini_file" >>"$xtmp"
             done
             echo >>"$itmp"
-            C; echo "info$(N):$(W;format_string "$infstr" 6;N)" >>"$itmp"
         fi
     done
     uniq_lines "$xtmp"
-    if (( $(${BINARIES[wc]} -c <"$xtmp") )); then
+    if (( $(${X[wc]} -c <"$xtmp") )); then
+        C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >>"$itmp"
         kill_spinner
         separator
         bundle cat "$itmp"
@@ -78,42 +125,55 @@ check_invalid_sections(){
         haul cat "$xtmp"
         anykey
         . "$xtmp"
-        for sapi in $(${BINARIES[phpquery]} -v "$pv" -S); do
+        # recheck the result and provide the unfixed line numbers
+        >"$itmp"
+        for sapi in $(${X[phpquery]} -v "$pv" -S); do
             ini_file="/etc/php/$pv/$sapi/php.ini"
-            mapfile -t invalid_sections < <(${BINARIES[grep]} -En '^\s*\[[^]]*\][^#]*[^\s]|^\s*\[[^]]*$|^\s*[^[]*\]' "$ini_file")
-            (( ${#invalid_sections[@]} )) && failed_ini_files+=("$ini_file")
+            mapfile -t invalid_sections < <(detect_ invalid_sections "$ini_file")
+            if (( ${#invalid_sections[@]} )); then
+                failed_ini_files+=("$ini_file")
+                if (( ${#invalid_sections[@]} > 1 )); then plu='s'; else plu=''; fi
+                echo -e "\n   - $(O)Remaining ($(GRAY)unfixed$(O)) invalid section title$plu detected in $(C)$ini_file$(O):\n" >>"$itmp"
+                for invalid_section in "${invalid_sections[@]}"; do
+                    line="${invalid_section%%:*}"
+                    content="${invalid_section#*:}"
+                    echo -e "$(C)Line $(printf "%5d" $line):$(N) $(R)$content$(N)" >>"$itmp"
+                done
+                echo >>"$itmp"
+            fi
         done
         if (( ${#failed_ini_files[@]} )); then
-            bundle echo "R: $(R)Something went wrong, it looks like this step failed. This error will be analysed to be fixed soon.$(N)"
+            something_went_wrong "$errstr"
+            bundle cat "$itmp"
+            anykey_noquit
+            exit1
         else
-            bundle echo "R: $(lG)All invalid section titles successfully corrected.$(N)"
+            bundle echo "R: $(lG)All invalid section titles successfully corrected."; N
         fi
         anykey
     fi
 }
 
 ext_missing_equalsigns(){
-    local pv xtmp itmp sapi ini_file plu infstr ext
+    require_arg "$@"
+    local pv xtmp itmp infstr errstr sapi ini_file plu ext
     local -i i
     local -a missing_equalsigns failed_ini_files
-    pv="$1"
-    xtmp=$(tf) itmp=$(tf)
-    for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+    pv="$1" xtmp="$(tf)" itmp="$(tf)"
+    infstr="Extension definitions in this file always consist of a name and its value with an '=' in between. The value can be empty, but the '=' sign must not be missing. Such lines can arise due to unintentional changes that were made to the file.
+You can either fix it manually and restart this script, or let the script comment out the problematic line. It will then be marked with: \"$(GRAY)# Commented out by php-updater script due to missing = sign.$(W)\". This allows you to see exactly what was changed in case you want to review or modify the file(s) later on."
+    errstr="This has been recognized as an error, but the attempt to fix it failed. No working routine for fixing this specific error has been implemented yet. Please correct the corresponding line manually and run this script again."
+    for sapi in $(${X[phpquery]} -v $pv -S); do
         ini_file="/etc/php/$pv/$sapi/php.ini"
-#        mapfile -t no_extensions< <(stripconf "$ini_file" | ${BINARIES[grep]} -Ev '^\s*[a-zA-Z._]+\s*=\s*[^#;]*')
-#        mapfile -t no_extensions< <(stripconf "$ini_file" | ${BINARIES[grep]} -Ev '^\s*([a-z._]|SMTP|1867)+\s*=\s*[^#;]*')
-        mapfile -t missing_equalsigns< <(stripconf "$ini_file" | ${BINARIES[grep]} -Ev '^\s*([a-z._]|SMTP|1867)+\s*=\s*[^#;]*' | ${BINARIES[grep]} -v '=')
+        mapfile -t missing_equalsigns< <(detect_ missing_equalsigns "$ini_file")
         if (( ${#missing_equalsigns[@]} )); then
             if (( ${#missing_equalsigns[@]} > 1 )); then plu='s'; else plu=''; fi
-            > $xtmp; > $itmp
-            infstr="Extension definitions in this file always consist of a name and its value with an '=' in between. The value can be empty, but the '=' sign must not be missing. Such lines can arise due to unintentional changes that were made to the file.
-You can either fix it manually and restart this script, or let the script comment out the problematic line. It will then be marked with: \"$(GRAY)# Commented out by php-updater script due to missing = sign.$(W)\". This allows you to see exactly what was changed in case you want to review or modify the file later on."
             echo -e "\n   - $(O)Invalid definition$plu detected in $(C)$ini_file$(O):\n" >> $itmp
             for i in ${!missing_equalsigns[@]}; do
                 ext=${missing_equalsigns[i]}
-                echo -e "$(C)${ext%% *}$(GRAY)$(echo "$ext" | ${BINARIES[sed]} "s/^${ext%% *}//")$(N)" >> $itmp
+                echo -e "$(C)${ext%% *}$(GRAY)$(echo "$ext" | ${X[sed]} "s/^${ext%% *}//")$(N)" >> $itmp
                 echo -e "   - $(R)is invalid $(N)($(GRAY)missing$(N) '$(C)=$(N)' $(GRAY)after $(C)${ext%% *}$(N))" >> $itmp
-                echo "${BINARIES[sed]} -i '$(${BINARIES[gawk]} -v pattern="^\\\s*$ext\\\s*$" '
+                echo "${X[sed]} -i '$(${X[gawk]} -v pattern="^\\\s*$ext\\\s*$" '
                     $0 ~ pattern {
                         print NR "s/^/;/"
                         print NR "s/$/ # Commented out by php-updater script due to missing = sign./"
@@ -121,11 +181,11 @@ You can either fix it manually and restart this script, or let the script commen
                 ' "$ini_file")' $ini_file" >> "$xtmp"
             done
             echo >> $itmp
-            C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
         fi
     done
     uniq_lines "$xtmp"
-    if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+    if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
+        C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
         kill_spinner
         separator
         bundle cat "$itmp"
@@ -133,59 +193,45 @@ You can either fix it manually and restart this script, or let the script commen
         haul cat "$xtmp"
         anykey
         . $xtmp
-        for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+        # recheck the result and provide the unfixed line numbers
+        >"$itmp"
+        for sapi in $(${X[phpquery]} -v $pv -S); do
             ini_file="/etc/php/$pv/$sapi/php.ini"
-            mapfile -t missing_equalsigns< <(stripconf "$ini_file" | ${BINARIES[grep]} -v '=')
-            (( ${#missing_equalsigns[@]} )) && failed_ini_files+=("$ini_file")
+            mapfile -t missing_equalsigns< <(detect_ missing_equalsigns "$ini_file")
+            if (( ${#missing_equalsigns[@]} )); then
+                failed_ini_files+=("$ini_file")
+                if (( ${#missing_equalsigns[@]} > 1 )); then plu='s'; else plu=''; fi
+                echo -e "\n   - $(O)Remaining ($(GRAY)unfixed$(O)) invalid definition$plu detected in $(C)$ini_file$(O):\n" >> $itmp
+                for i in ${!missing_equalsigns[@]}; do
+                    ext=${missing_equalsigns[i]}
+                    echo -e "$(C)${ext%% *}$(GRAY)$(echo "$ext" | ${X[sed]} "s/^${ext%% *}//")$(N)" >> $itmp
+                    echo -e "   - $(R)is invalid $(N)($(GRAY)missing$(N) '$(C)=$(N)' $(GRAY)after $(C)${ext%% *}$(N))" >> $itmp
+                done
+                echo >> $itmp
+            fi
         done
         if (( ${#failed_ini_files[@]} )); then
-            bundle echo "R: $(R)Something went wrong, it looks like this step failed. This error will be analised to be fixed soon.$(N)"
+            something_went_wrong "$errstr"
+            bundle cat "$itmp"
+            anykey_noquit
+            exit1
         else
-            bundle echo "R: $(lG)All invalid definitions successfully commented out.$(N)"
+            bundle echo "R: $(lG)All invalid definitions successfully commented out."; N
         fi
         anykey
     fi
 }
 
-ini_directive_detect(){
-    local pv ini_directive result
-    pv="$1" ini_directive="$2"
-    find /etc/php/$pv -name "*.ini" ! -type l | while read -r file; do
-        if result="$(stripconf "$file" | ${BINARIES[grep]} "$ini_directive")"; then
-            echo "$file:$result"
-        fi
-    done
-}
-
-ini_double_definitions_detect(){
-    local ini_file
-    ini_file="$1"
-    stripconf "$ini_file" | \
-    ${BINARIES[gawk]} -F'=' '
-        # Handle exceptions for "extension=" and "zend_extension="
-        $1 ~ /^\s*extension\s*$/ || $1 ~ /^\s*zend_extension\s*$/ {next}
-        # Trim leading/trailing whitespace from the key
-        {key = $1; gsub(/^[ \t]+|[ \t]+$/, "", key)}
-        # Count occurrences of each key
-        {count[key]++}
-        # After processing, print duplicates
-        END {
-            for (k in count)
-                if (count[k] > 1)
-                    print k, count[k]
-        }
-    '
-}
-
 ext_double_definitions(){
-    local pv xtmp itmp sapi ini_file plu be infstr ext
+    require_arg "$@"
+    local pv xtmp itmp infstr sapi ini_file plu be ext
     local -i i rep
     local -a double_definitions failed_ini_files
-    pv="$1"
-    xtmp=$(tf) itmp=$(tf)
-    for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+    pv="$1" xtmp="$(tf)" itmp="$(tf)"
+    infstr="Extensions that are defined more than once are always a misconfiguration. While PHP itself simply takes the last value read for the extension, it interferes with the functionality of this script. The extension$plu that $be defined multiple times will therefore be commented out (not deleted) without further prompt, and marked with \"$(GRAY)# Commented out by php-updater script due to multiple definitions.$(W)\" This makes it possible for you to see exactly what happened in case you want to change things later on. The last definition is kept, so that PHP's behavior remains unchanged."
+    for sapi in $(${X[phpquery]} -v $pv -S); do
         ini_file="/etc/php/$pv/$sapi/php.ini"
-        mapfile -t double_definitions< <(ini_double_definitions_detect "$ini_file")
+        mapfile -t double_definitions< <(detect_ ini_double_definitions "$ini_file")
         if (( ${#double_definitions[@]} )); then
             if (( ${#double_definitions[@]} > 1 )); then
                 plu='s' be='are'
@@ -193,13 +239,12 @@ ext_double_definitions(){
                 plu='' be='is'
             fi
             > $xtmp; > $itmp
-            infstr="Extensions that are defined more than once are always a misconfiguration. While PHP itself simply takes the last value read for the extension, it interferes with the functionality of this script. The extension$plu that $be defined multiple times will therefore be commented out (not deleted) without further prompt, and marked with \"$(GRAY)# Commented out by php-updater script due to multiple definitions.$(W)\" This makes it possible for you to see exactly what happened in case you want to change things later on. The last definition is kept, so that PHP's behavior remains unchanged."
             echo -e "\n   - $(O)Double definition$plu detected in $(C)$ini_file$(O):\n" >> $itmp
             for i in ${!double_definitions[@]}; do
                 ext=${double_definitions[i]% *}
                 rep=${double_definitions[i]#* }
                 echo -e "$(R)$ext is defined $rep times$(N)" >> $itmp
-                echo "${BINARIES[sed]} -i '$(${BINARIES[gawk]} -v var=$ext -v n=$rep '
+                echo "${X[sed]} -i '$(${X[gawk]} -v var=$ext -v n=$rep '
                     BEGIN {
                         count = 0;
                     }
@@ -212,11 +257,11 @@ ext_double_definitions(){
                     }' $ini_file)' $ini_file" >> $xtmp
             done
             echo >> $itmp
-            C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+            C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
         fi
     done
     uniq_lines "$xtmp"
-    if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+    if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
         kill_spinner
         separator
         bundle cat "$itmp"
@@ -224,21 +269,22 @@ ext_double_definitions(){
         haul cat "$xtmp"
         anykey
         . $xtmp
-        for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+        for sapi in $(${X[phpquery]} -v $pv -S); do
             ini_file="/etc/php/$pv/$sapi/php.ini"
-            mapfile -t double_definitions< <(ini_double_definitions_detect "$ini_file")
+            mapfile -t double_definitions< <(detect_ ini_double_definitions "$ini_file")
             (( ${#double_definitions[@]} )) && failed_ini_files+=("$ini_file")
         done
         if (( ${#failed_ini_files[@]} )); then
-            bundle echo "R: $(R)Something went wrong, it looks like this step failed. This error will be analised to be fixed soon.$(N)"
+            something_went_wrong
         else
-            bundle echo "R: $(lG)All double definitions successfully commented out.$(N)"
+            bundle echo "R: $(lG)All double definitions successfully commented out."; N
         fi
         anykey
     fi
 }
 
 ext_double_loaders(){
+    required_args 2 "$@"
     # get rid of double extension loaders
     local pv ext ext_ini xtmp itmp pattern sapi line plu be a ini_string ini_string_ ini_lnk_string infstr symlinkstring
     local -a php_inis inifiles sapis
@@ -246,9 +292,9 @@ ext_double_loaders(){
     pv="$1" ext="$2"
     ext_ini="/etc/php/$pv/mods-available/$ext.ini"
     [ -f "$ext_ini" ] || return
-    xtmp=$(tf) itmp=$(tf)
+    xtmp="$(tf)" itmp="$(tf)"
     pattern="^\s*(zend_)?extension\s*=\s*$ext[^_]*$"
-    for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+    for sapi in $(${X[phpquery]} -v $pv -S); do
         if nonullglob "/etc/php/$pv/$sapi/conf.d/[0-9][0-9]-$ext.ini"; then
             ext_ini_lnk[$sapi]="$(echo /etc/php/$pv/$sapi/conf.d/[0-9][0-9]-$ext.ini)"
             if [ -f "/etc/php/$pv/$sapi/php.ini" ]; then
@@ -257,27 +303,27 @@ ext_double_loaders(){
         fi
     done
     (( ${#php_inis[@]} )) || return # TODO: create link
-    mapfile -t inifiles< <(${BINARIES[grep]} -Eslix "$pattern" ${php_inis[@]})
+    mapfile -t inifiles< <(${X[grep]} -Eslix "$pattern" ${php_inis[@]})
     if (( ${#inifiles[@]} )); then
-        line=$(${BINARIES[grep]} -Eix "$pattern" ${inifiles[0]})
+        line=$(${X[grep]} -Eix "$pattern" ${inifiles[0]})
         if (( ${#inifiles[@]} == 1 )); then
             plu='' be=is a=" a" ini_string_="$(C)${inifiles[0]}$(O)" ini_string="$(C)${inifiles[0]}$(W)"
             sapi="${inifiles[0]#/etc/php/$pv/}"
             ini_lnk_string="$(Yi)${ext_ini_lnk[${sapi%/*}]}"
-            [ "$(readlink ${ext_ini_lnk[${sapi%/*}]})" = "$ext_ini" ] && ext_ini_islnk[${sapi%/*}]=true || ext_ini_islnk[${sapi%/*}]=false
+            [ "$(readlink ${ext_ini_lnk[${sapi%/*}]})" = "$ext_ini" ] && ext_ini_islnk[${sapi%/*}]=: || ext_ini_islnk[${sapi%/*}]=_
         else
             plu='es' be=are a="" ini_string_="$(listify_ C O ${inifiles[@]})" ini_string="$(listify_ C W ${inifiles[@]})"
             sapis=("${inifiles[@]#/etc/php/$pv/}")
             ini_lnk_string="$(listify_ Yi W $(for sapi in ${sapis[@]%/*}; do echo "${ext_ini_lnk[$sapi]}"; done))"
             for sapi in ${sapis[@]%/*}; do
-                [ "$(readlink ${ext_ini_lnk[$sapi]})" = "$ext_ini" ] && ext_ini_islnk[$sapi]=true || ext_ini_islnk[$sapi]=false
+                [ "$(readlink ${ext_ini_lnk[$sapi]})" = "$ext_ini" ] && ext_ini_islnk[$sapi]=: || ext_ini_islnk[$sapi]=_
             done
         fi
         echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
 
-        if [[ "${ext_ini_islnk[@]}" =~ "true" && ! "${ext_ini_islnk[@]}" =~ "false" ]]; then
+        if [[ "${ext_ini_islnk[@]}" =~ : && ! "${ext_ini_islnk[@]}" =~ _ ]]; then
             infstr="This extension $(GRAY)(module)$(W) is already loaded by $ini_lnk_string $(GRAY)(which $be$a symlink${plu#e} to $(dB)$ext_ini$(GRAY))$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from $(C)$ini_string$(W)."
-        elif [[ "${ext_ini_islnk[@]}" =~ "false" && ! "${ext_ini_islnk[@]}" =~ "true" ]]; then
+        elif [[ "${ext_ini_islnk[@]}" =~ _ && ! "${ext_ini_islnk[@]}" =~ : ]]; then
             infstr="This extension $(GRAY)(module)$(W) is already loaded by $ini_lnk_string $(GRAY)(which btw. $be not$a symlink${plu#e} to $ext_ini, which is strange)$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from $(C)$ini_string$(W)."
         else
             for sapi in ${sapis[@]%/*}; do
@@ -290,25 +336,25 @@ ext_double_loaders(){
             infstr="This extension $(GRAY)(module)$(W) is already loaded by $ini_lnk_string $(GRAY)(where${symlinkstring%,})$(W) and does therefore not belong in $(C)$ini_string$(W) so this line will be removed from $(C)$ini_string$(W)."
         fi
         echo -e "\n$(R)$line$(N)" >> $itmp
-        C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+        C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
         for i in ${!inifiles[@]}; do
-            line=$(${BINARIES[grep]} -Eix "$pattern" ${inifiles[i]})
-            echo "${BINARIES[sed]} -i '/^$line$/d' '${inifiles[i]}'" >> $xtmp
+            line=$(${X[grep]} -Eix "$pattern" ${inifiles[i]})
+            echo "${X[sed]} -i '/^$line$/d' '${inifiles[i]}'" >> $xtmp
         done
-        if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+        if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
             kill_spinner
             separator
             bundle cat "$itmp"
             f
-            if ask "$(qpf)Do you want to apply this fix$plu" "$YES";then
+            if ask "$(qpf)Do you want to apply this fix$plu" "$YES"; then
                 . $xtmp
-                if ${BINARIES[grep]} -Eqslix "$pattern" ${php_inis[@]}; then
-                    bundle echo "R: $(R)removal from $(listify_ Yi R ${inifiles[@]}) failed.$(N)"
+                if ${X[grep]} -Eqslix "$pattern" ${php_inis[@]}; then
+                    something_went_wrong "removal from $(listify_ Yi R ${inifiles[@]}) failed."
                 else
-                    bundle echo "R: $(lG)removal from $(listify_ Y G ${inifiles[@]}) was successfull.$(N)"
+                    bundle echo "R: $(lG)removal from $(listify_ Y G ${inifiles[@]}) was successfull."; N
                 fi
             else
-                bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                bundle echo "R: $(R)you answered $(box no), nothing changed."; N
             fi
             anykey
             spinner C " . ext_config_fix() searching known configuration errors in php$pv: checking $ext ." &
@@ -317,72 +363,73 @@ ext_double_loaders(){
 }
 
 core_config_fix(){
+    require_arg "$@"
     local pv xtmp itmp pattern sapi php_ini line plu be ini_string ini_string_ key val basic_infstr infstr infstr1 infstr2 infstr3 infstr4 oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
     local -a lines indexes inifiles1_ inifiles2_ php_inis
     local -i i
     pv="$1"
-    xtmp=$(tf) itmp=$(tf)
+    xtmp="$(tf)" itmp="$(tf)"
     ## output_buffering
     inifiles1_=() php_inis=()
-    mapfile -t inifiles1_< <(ini_directive_detect "$pv" "output_buffering")
+    mapfile -t inifiles1_< <(detect_ ini_directive "$pv" "output_buffering")
     mapfile -t php_inis< <(
         for wob in "${inifiles1_[@]}"; do
-            [[ " $(key_ val "${wob##*:}") " =~ " "[Oo][Ff][Ff]" " && "${wob%%:*}" != "/etc/php/$pv/cli/php.ini" && -f "${wob%%:*}" ]] && echo "${wob%%:*}"
+            [[ " $(varval "${wob##*:}") " =~ " "[Oo][Ff][Ff]" " && "${wob%%:*}" != "/etc/php/$pv/cli/php.ini" && -f "${wob%%:*}" ]] && echo "${wob%%:*}"
         done; unset -v wob
     )
     if (( ${#php_inis[@]} )); then
         > $xtmp; > $itmp
-        echo -e "\n -$(P;format_string "$(message_ $pv should_be_fixed)" 3;N)" > $itmp
+        echo -e "\n -$(P; format_string "$(message_ $pv should_be_fixed)" 3; N)" > $itmp
         pattern='^\s*output_buffering\s*=\s*[Oo][Ff][Ff]\s*$'
-        line=$(${BINARIES[grep]} -ix "$pattern" ${php_inis[0]})
+        line=$(${X[grep]} -ix "$pattern" ${php_inis[0]})
         if (( ${#php_inis[@]} == 1 )); then
             plu='' be=is ini_string_="$(C)${php_inis[0]}$(O)" ini_string="$(C)${php_inis[0]}$(W)"
         else
             plu='s' be=are ini_string_="$(listify_ C O ${php_inis[@]})" ini_string="$(listify_ C W ${php_inis[@]})"
         fi
         echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-        infstr1="The default value is \"0\", i.e. off. However, if it is litaraly set to \"$(${BINARIES[grep]} -io off <<<$line)\", then according to PHP's syntax rules for boolean values ​​it would actually be interpreted as \"true\" $(GRAY)(see https://www.php.net/manual/en/language.types.boolean.php for details)$(W). For backwards compatibility reasons, this is still interpreted as 0 though, but it internaly throws this warning:"
-        infstr2="\nPHP Warning: Invalid output_buffering setting. Invalid quantity $(${BINARIES[grep]} -io off <<<$line): no valid leading digits, interpreting as 0 for backwards compatibility in Unknown on line 0\n"
+        infstr1="The default value is \"0\", i.e. off. However, if it is litaraly set to \"$(${X[grep]} -io off <<<$line)\", then according to PHP's syntax rules for boolean values ​​it would actually be interpreted as \"true\" $(GRAY)(see https://www.php.net/manual/en/language.types.boolean.php for details)$(W). For backwards compatibility reasons, this is still interpreted as 0 though, but it internaly throws this warning:"
+        infstr2="\nPHP Warning: Invalid output_buffering setting. Invalid quantity $(${X[grep]} -io off <<<$line): no valid leading digits, interpreting as 0 for backwards compatibility in Unknown on line 0\n"
         infstr3="therefore, if this value is to be switched off $(GRAY)(which is mandatory for operating a nextcloud server)$(W), it should be commented out with a ';' at the beginning of the line or set to 0. However, to make it easy for you to remember that output_buffering is turned off, it will be set to 0 in $ini_string instead of simply commenting it out."
         infstr4="$(GRAY)In PHP-CLI this directive is always off, so it does not matter whatever quantity or value output_buffering in $(dB)/etc/php/$pv/cli/php.ini$(GRAY) has."
         echo -e "\n$(R)$line$(N)" >> $itmp
-        C;echo "info$(N):$(W;format_string "$infstr1" 6;N)" >> $itmp
-        echo "$(R;format_string "$infstr2" 4;N)" >> $itmp
-        echo "$(o5;W;format_string "$infstr3" 6;N)" >> $itmp
-        echo "$(o5;W;format_string "$infstr4" 6;N)" >> $itmp
+        C; echo "info$(N):$(W; format_string "$infstr1" 6; N)" >> $itmp
+        echo "$(R; format_string "$infstr2" 4; N)" >> $itmp
+        echo "$(o5; W; format_string "$infstr3" 6; N)" >> $itmp
+        echo "$(o5; W; format_string "$infstr4" 6; N)" >> $itmp
         for i in ${!php_inis[@]}; do
-            line=$(${BINARIES[grep]} -ix "$pattern" ${php_inis[i]})
+            line=$(${X[grep]} -ix "$pattern" ${php_inis[i]})
             if [[ -n "$line" && "$line" =~ $pattern ]]; then
-                echo "${BINARIES[sed]} -i 's/^$line$/output_buffering=0/' '${php_inis[i]}'" >> $xtmp
+                echo "${X[sed]} -i 's/^$line$/output_buffering=0/' '${php_inis[i]}'" >> $xtmp
             fi
         done
     fi
     uniq_lines "$xtmp"
-    if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+    if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
         kill_spinner
         separator
         bundle cat "$itmp"
         f
-        if ask "$(qpf)Do you want to apply this fix" "$YES";then
+        if ask "$(qpf)Do you want to apply this fix" "$YES"; then
             haul cat "$xtmp"
             . $xtmp
-            if ${BINARIES[grep]} -Eqsiw "$pattern" ${php_inis[@]}; then
-                bundle echo "R: $(R)this step failed.$(N)"
+            if ${X[grep]} -Eqsiw "$pattern" ${php_inis[@]}; then
+                something_went_wrong
             else
-                if [[ "$(echo $(${BINARIES[grep]} -Eil "^output_buffering=0" ${php_inis[@]}))" == "${php_inis[@]}" ]]; then
-                    bundle echo "R: $(lG)output_buffering successfully set to 0 in $(listify_ C lG ${php_inis[@]}).$(N)"
+                if [[ "$(echo $(${X[grep]} -Eil "^output_buffering=0" ${php_inis[@]}))" == "${php_inis[@]}" ]]; then
+                    bundle echo "R: $(lG)output_buffering successfully set to 0 in $(listify_ C lG ${php_inis[@]})."; N
                 else
                     for php_ini in ${php_inis[@]}; do
-                        if [ "$(${BINARIES[grep]} -Eil "^output_buffering=0" $php_ini)" == "$php_ini" ]; then
-                            bundle echo "R: $(lG)output_buffering successfully set to 0 in $(C)$php_ini$(lG).$(N)"
+                        if [ "$(${X[grep]} -Eil "^output_buffering=0" $php_ini)" == "$php_ini" ]; then
+                            bundle echo "R: $(lG)output_buffering successfully set to 0 in $(C)$php_ini$(lG)."; N
                         else
-                            bundle echo "R: $(R)Setting output_buffering to 0 in $(C)$php_ini$(R) failed.$(N)"
+                            something_went_wrong "Setting output_buffering to 0 in $(C)$php_ini$(R) failed."
                         fi
                     done
                 fi
             fi
         else
-            bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+            bundle echo "R: $(R)you answered $(box no), nothing changed."; N
         fi
         anykey
     fi
@@ -390,76 +437,77 @@ core_config_fix(){
 }
 
 ext_config_fix(){
+    required_args 2 "$@"
     local pv ext ext_ini xtmp itmp pattern sapi php_ini line plu be ini_string ini_string_ key val basic_infstr infstr infstr1 infstr2 infstr3 infstr4 oldstring optionblock optionblock_r optionblock_sorted optionblock_rsorted
     local -a lines indexes inifiles1_ inifiles2_ php_inis
     local -i i
     pv="$1" ext="$2"
     ext_ini="/etc/php/$pv/mods-available/$ext.ini"
     [[ "$ext" == "core" || -f "$ext_ini" ]] || return
-    xtmp=$(tf) itmp=$(tf)
+    xtmp="$(tf)" itmp="$(tf)"
     case $ext in
 #TODO 0-->
         core)
             inifiles1_=() php_inis=()
-            mapfile -t inifiles1_< <(ini_directive_detect "$pv" "output_buffering")
+            mapfile -t inifiles1_< <(detect_ ini_directive "$pv" "output_buffering")
             mapfile -t php_inis< <(
                 for wob in "${inifiles1_[@]}"; do
-                    [[ " $(key_ val "${wob##*:}") " =~ " "[Oo][Ff][Ff]" " && "${wob%%:*}" != "/etc/php/$pv/cli/php.ini" && -f "${wob%%:*}" ]] && echo "${wob%%:*}"
+                    [[ " $(varval "${wob##*:}") " =~ " "[Oo][Ff][Ff]" " && "${wob%%:*}" != "/etc/php/$pv/cli/php.ini" && -f "${wob%%:*}" ]] && echo "${wob%%:*}"
                 done; unset -v wob
             )
             if (( ${#php_inis[@]} )); then
                 > $xtmp; > $itmp
-                echo -e "\n -$(P;format_string "$(message_ $pv should_be_fixed)" 3;N)" > $itmp
+                echo -e "\n -$(P; format_string "$(message_ $pv should_be_fixed)" 3; N)" > $itmp
                 pattern='^\s*output_buffering\s*=\s*[Oo][Ff][Ff]\s*$'
-                line=$(${BINARIES[grep]} -ix "$pattern" ${php_inis[0]})
+                line=$(${X[grep]} -ix "$pattern" ${php_inis[0]})
                 if (( ${#php_inis[@]} == 1 )); then
                     plu='' be=is ini_string_="$(C)${php_inis[0]}$(O)" ini_string="$(C)${php_inis[0]}$(W)"
                 else
                     plu='s' be=are ini_string_="$(listify_ C O ${php_inis[@]})" ini_string="$(listify_ C W ${php_inis[@]})"
                 fi
                 echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                infstr1="The default value is \"0\", i.e. off. However, if it is litaraly set to \"$(${BINARIES[grep]} -io off <<<$line)\", then according to PHP's syntax rules for boolean values ​​it would actually be interpreted as \"true\" $(GRAY)(see https://www.php.net/manual/en/language.types.boolean.php for details)$(W). For backwards compatibility reasons, this is still interpreted as 0 though, but it internaly throws this warning:"
-                infstr2="\nPHP Warning: Invalid output_buffering setting. Invalid quantity $(${BINARIES[grep]} -io off <<<$line): no valid leading digits, interpreting as 0 for backwards compatibility in Unknown on line 0\n"
+                infstr1="The default value is \"0\", i.e. off. However, if it is litaraly set to \"$(${X[grep]} -io off <<<$line)\", then according to PHP's syntax rules for boolean values ​​it would actually be interpreted as \"true\" $(GRAY)(see https://www.php.net/manual/en/language.types.boolean.php for details)$(W). For backwards compatibility reasons, this is still interpreted as 0 though, but it internaly throws this warning:"
+                infstr2="\nPHP Warning: Invalid output_buffering setting. Invalid quantity $(${X[grep]} -io off <<<$line): no valid leading digits, interpreting as 0 for backwards compatibility in Unknown on line 0\n"
                 infstr3="therefore, if this value is to be switched off $(GRAY)(which is mandatory for operating a nextcloud server)$(W), it should be commented out with a ';' at the beginning of the line or set to 0. However, to make it easy for you to remember that output_buffering is turned off, it will be set to 0 in $ini_string instead of simply commenting it out."
                 infstr4="$(GRAY)In PHP-CLI this directive is always off, so it does not matter whatever quantity or value output_buffering in $(dB)/etc/php/$pv/cli/php.ini$(GRAY) has."
                 echo -e "\n$(R)$line$(N)" >> $itmp
-                C;echo "info$(N):$(W;format_string "$infstr1" 6;N)" >> $itmp
-                echo "$(R;format_string "$infstr2" 4;N)" >> $itmp
-                echo "$(o5;W;format_string "$infstr3" 6;N)" >> $itmp
-                echo "$(o5;W;format_string "$infstr4" 6;N)" >> $itmp
+                C; echo "info$(N):$(W; format_string "$infstr1" 6; N)" >> $itmp
+                echo "$(R; format_string "$infstr2" 4; N)" >> $itmp
+                echo "$(o5; W; format_string "$infstr3" 6; N)" >> $itmp
+                echo "$(o5; W; format_string "$infstr4" 6; N)" >> $itmp
                 for i in ${!php_inis[@]}; do
-                    line=$(${BINARIES[grep]} -ix "$pattern" ${php_inis[i]})
+                    line=$(${X[grep]} -ix "$pattern" ${php_inis[i]})
                     if [[ -n "$line" && "$line" =~ $pattern ]]; then
-                        echo "${BINARIES[sed]} -i 's/^$line$/output_buffering=0/' '${php_inis[i]}'" >> $xtmp
+                        echo "${X[sed]} -i 's/^$line$/output_buffering=0/' '${php_inis[i]}'" >> $xtmp
                     fi
                 done
             fi
             uniq_lines "$xtmp"
-            if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
                 kill_spinner
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to apply this fix" "$YES";then
+                if ask "$(qpf)Do you want to apply this fix" "$YES"; then
                     haul cat "$xtmp"
                     . $xtmp
-                    if ${BINARIES[grep]} -Eqsiw "$pattern" ${php_inis[@]}; then
-                        bundle echo "R: $(R)this step failed.$(N)"
+                    if ${X[grep]} -Eqsiw "$pattern" ${php_inis[@]}; then
+                        something_went_wrong
                     else
-                        if [[ "$(echo $(${BINARIES[grep]} -Eil "^output_buffering=0" ${php_inis[@]}))" == "${php_inis[@]}" ]]; then
-                            bundle echo "R: $(lG)output_buffering successfully set to 0 in $(listify_ C lG ${php_inis[@]}).$(N)"
+                        if [[ "$(echo $(${X[grep]} -Eil "^output_buffering=0" ${php_inis[@]}))" == "${php_inis[@]}" ]]; then
+                            bundle echo "R: $(lG)output_buffering successfully set to 0 in $(listify_ C lG ${php_inis[@]})."; N
                         else
                             for php_ini in ${php_inis[@]}; do
-                                if [ "$(${BINARIES[grep]} -Eil "^output_buffering=0" $php_ini)" == "$php_ini" ]; then
-                                    bundle echo "R: $(lG)output_buffering successfully set to 0 in $(C)$php_ini$(lG).$(N)"
+                                if [ "$(${X[grep]} -Eil "^output_buffering=0" $php_ini)" == "$php_ini" ]; then
+                                    bundle echo "R: $(lG)output_buffering successfully set to 0 in $(C)$php_ini$(lG)."; N
                                 else
-                                    bundle echo "R: $(R)Setting output_buffering to 0 in $(C)$php_ini$(R) failed.$(N)"
+                                    something_went_wrong "Setting output_buffering to 0 in $(C)$php_ini$(R) failed."
                                 fi
                             done
                         fi
                     fi
                 else
-                    bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                    bundle echo "R: $(R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
             fi
@@ -468,10 +516,10 @@ ext_config_fix(){
         redis)
             local -a sessionsavehandler
             inifiles1_=() inifiles2_=()
-            mapfile -t sessionsavehandler< <(ini_directive_detect "$pv" "session.save_handler")
+            mapfile -t sessionsavehandler< <(detect_ ini_directive "$pv" "session.save_handler")
             if (( ${#sessionsavehandler[@]} )); then
                 for i in ${!sessionsavehandler[@]}; do
-                    if [[ "$(key_ val ${sessionsavehandler[i]##*:})" == "redis" && "${sessionsavehandler[i]%%:*}" == "/etc/php/$pv/mods-available/redis.ini" ]]; then
+                    if [[ "$(varval ${sessionsavehandler[i]##*:})" == "redis" && "${sessionsavehandler[i]%%:*}" == "/etc/php/$pv/mods-available/redis.ini" ]]; then
                         > $xtmp; > $itmp
                         basic_infstr="The redis module is installed on this server and if you want to use redis for session management, these directives should be added. The best place for this directives is $(C)$ext_ini$(W)"
                         optionblock="redis.session.locking_enabled=1\nredis.session.lock_wait_time=10000\nredis.session.lock_retries=-1"
@@ -479,17 +527,17 @@ ext_config_fix(){
                         optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
                         optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
                         pattern='redis\.session\.lock'
-                        if ! p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock" &&
-                           ! p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_r" &&
-                           ! p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_sorted" &&
-                           ! p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_rsorted"; then
-                            for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+                        if ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock" &&
+                           ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_r" &&
+                           ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_sorted" &&
+                           ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                            for sapi in $(${X[phpquery]} -v $pv -S); do
                                 php_ini="/etc/php/$pv/$sapi/php.ini"
                                 if [ -f "$php_ini" ]; then
-                                    if p_sort "$(stripconf "$php_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock" ||
-                                       p_sort "$(stripconf "$php_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_r" ||
-                                       p_sort "$(stripconf "$php_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_sorted" ||
-                                       p_sort "$(stripconf "$php_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_rsorted"; then
+                                    if p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock" ||
+                                       p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_r" ||
+                                       p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_sorted" ||
+                                       p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_rsorted"; then
                                         inifiles1_+=("$php_ini")
                                     else
                                         inifiles2_+=("$php_ini")
@@ -497,11 +545,11 @@ ext_config_fix(){
                                 fi
                             done
                             if (( ${#inifiles1_[@]} == 0 )); then
-                                echo -e "\n -$(P;format_string "$(message_ $pv good_to_be_fixed)" 3;N)" > $itmp
+                                echo -e "\n -$(P; format_string "$(message_ $pv good_to_be_fixed)" 3; N)" > $itmp
                                 echo -e "\n   - $(O)Missing directives for redis session management feature in php$pv configuration:" >> $itmp
                                 infstr="$basic_infstr."
                                 echo -e "\n$(R)$optionblock$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+                                C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
                                 echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
                             elif (( ${#inifiles2_[@]} )); then
                                 if (( ${#inifiles1_[@]} == 1 )); then
@@ -509,41 +557,41 @@ ext_config_fix(){
                                 else
                                     ini_string="$(listify_ C W ${inifiles1_[@]})"
                                 fi
-                                echo -e "\n -$(P;format_string "$(message_ $pv good_to_be_fixed)" 3;N)" > $itmp
+                                echo -e "\n -$(P; format_string "$(message_ $pv good_to_be_fixed)" 3; N)" > $itmp
                                 echo -e "\n   - $(O)(Partially) missing directives for redis session management feature:" >> $itmp
                                 infstr="$basic_infstr but it is only located in $ini_string. So this lines will be removed from there and appended to $(C)$ext_ini$(W) to make it available to all SAPIs."
                                 echo -e "\n$(R)$optionblock$(N)" >> $itmp
-                                C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+                                C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
                                 for i in ${!inifiles1_[@]}; do
-                                    echo "${BINARIES[sed]} -i '/$pattern/d' '${inifiles1_[i]}'" >> $xtmp
+                                    echo "${X[sed]} -i '/$pattern/d' '${inifiles1_[i]}'" >> $xtmp
                                 done
                                 echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
                             fi
                         fi
-                        if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+                        if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
                             kill_spinner
                             separator
                             bundle cat "$itmp"
                             f
-                            if ask "$(qpf)Do you want to apply this directives as suggested" "$YES";then
+                            if ask "$(qpf)Do you want to apply this directives as suggested" "$YES"; then
                                 . $xtmp
-                                if p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock" ||
-                                   p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_r" ||
-                                   p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_sorted" ||
-                                   p_sort "$(stripconf "$ext_ini"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock_rsorted"; then
-                                    bundle echo "R: $(lG)Directives successfully written in $ext_ini.$(N)"
+                                if p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock" ||
+                                   p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_r" ||
+                                   p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_sorted" ||
+                                   p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                                    bundle echo "R: $(lG)Directives successfully written in $ext_ini."; N
                                     for i in ${!inifiles1_[@]}; do
-                                        if p_sort "$(stripconf "${inifiles1_[i]}"|${BINARIES[sed]} -n "/$pattern/{s/\s*=/=/;s/=\s*/=/p}")"|${BINARIES[grep]} -qsPzw "$optionblock"; then
-                                            bundle echo "R: $(R)removal from ${inifiles1_[i]} failed.$(N)"
+                                        if p_sort "$(stripconf "${inifiles1_[i]}"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock"; then
+                                            something_went_wrong "removal from ${inifiles1_[i]} failed."
                                         else
-                                            bundle echo "R: $(lG)removal from ${inifiles1_[i]} was successfull.$(N)"
+                                            bundle echo "R: $(lG)removal from ${inifiles1_[i]} was successfull."; N
                                         fi
                                     done
                                 else
-                                    bundle echo "R: $(R)this step failed.$(N)"
+                                    something_went_wrong
                                 fi
                             else
-                                bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                                bundle echo "R: $(R)you answered $(box no), nothing changed."; N
                             fi
                             anykey
                         fi
@@ -554,196 +602,200 @@ ext_config_fix(){
             ;;
         apcu)
             > $xtmp; > $itmp
-            echo -e "\n -$(P;format_string "$(message_ $pv should_be_fixed)" 3;N)" > $itmp
+            echo -e "\n -$(P; format_string "$(message_ $pv should_be_fixed)" 3; N)" > $itmp
             pattern='^\s*apc.enable_cli\s*=\s*(on|1)\s*$' inifiles1_=() inifiles2_=() php_inis=()
-            for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+            for sapi in $(${X[phpquery]} -v $pv -S); do
                 if [[ "$sapi" != 'cli' && -f "/etc/php/$pv/$sapi/php.ini" ]]; then
                     php_inis+=("/etc/php/$pv/$sapi/php.ini")
                 fi
             done
             [ -f "${php_inis[0]}" ] || return
-            mapfile -t inifiles1_< <(${BINARIES[grep]} -Eslix "$pattern" ${php_inis[@]})
+            mapfile -t inifiles1_< <(${X[grep]} -Eslix "$pattern" ${php_inis[@]})
             if (( ${#inifiles1_[@]} )); then
-                line=$(${BINARIES[grep]} -Eix "$pattern" ${inifiles1_[0]})
+                line=$(${X[grep]} -Eix "$pattern" ${inifiles1_[0]})
                 if (( ${#inifiles1_[@]} == 1 )); then
                     plu='' be=is ini_string_="$(C)${inifiles1_[0]}$(O)" ini_string="$(C)${inifiles1_[0]}$(W)"
                 else
                     plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
                 fi
                 echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                if (( $(${BINARIES[grep]} -Eix "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini"|${BINARIES[wc]} -l) == 0 )); then
+                if (( $(${X[grep]} -Eix "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini"|${X[wc]} -l) == 0 )); then
                     infstr="This directive has absolutely no effect in $ini_string. It is meant to enable the APCu (Alternative PHP user Cache) for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the APCu is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$pv/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$pv/cli/php.ini$(W)."
                     echo -e "\n$(R)$line$(N)" >> $itmp
-                    C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+                    C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
                     for i in ${!inifiles1_[@]}; do
-                        line=$(${BINARIES[grep]} -Eix "$pattern" ${inifiles1_[i]})
-                        echo "${BINARIES[sed]} -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
+                        line=$(${X[grep]} -Eix "$pattern" ${inifiles1_[i]})
+                        echo "${X[sed]} -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
                     done
                     echo "echo 'apc.enable_cli=1' >> /etc/php/$pv/cli/php.ini" >> $xtmp
                 fi
             fi
             uniq_lines "$xtmp"
-            if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
                 kill_spinner
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to apply this fixes" "$YES";then
+                if ask "$(qpf)Do you want to apply this fixes" "$YES"; then
                     haul cat "$xtmp"
                     . $xtmp
-                    if ${BINARIES[grep]} -Eqsiw "$pattern" /etc/php/$pv/cli/php.ini; then
-                        bundle echo "R: $(lG)Directive successfully written in /etc/php/$pv/cli/php.ini.$(N)"
-                        mapfile -t inifiles2_< <(${BINARIES[grep]} -Eslix "$pattern" ${php_inis[@]})
+                    if ${X[grep]} -Eqsiw "$pattern" /etc/php/$pv/cli/php.ini; then
+                        bundle echo "R: $(lG)Directive successfully written in /etc/php/$pv/cli/php.ini."; N
+                        mapfile -t inifiles2_< <(${X[grep]} -Eslix "$pattern" ${php_inis[@]})
                         if (( ${#inifiles2_[@]} )); then
-                            ls]}echo "R: $(R)removal from ${inifiles2_[@]} failed.$(N)"
+                            something_went_wrong "removal from ${inifiles2_[@]} failed."
                         else
-                            bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull.$(N)"
+                            bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull."; N
                         fi
                     else
-                        bundle echo "R: $(R)this step failed.$(N)"
+                        something_went_wrong
                     fi
                 else
-                    bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                    bundle echo "R: $(R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
             fi
             ;;
         opcache)
             > $xtmp; > $itmp
-            echo -e "\n -$(P;format_string "$(message_ $pv should_be_fixed)" 3;N)" > $itmp
+            echo -e "\n -$(P; format_string "$(message_ $pv should_be_fixed)" 3; N)" > $itmp
             pattern='^\s*opcache.enable_cli\s*=\s*(on|1)\s*$' inifiles1_=() inifiles2_=() php_inis=()
-            for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+            for sapi in $(${X[phpquery]} -v $pv -S); do
                 if [[ "$sapi" != 'cli' && -f "/etc/php/$pv/$sapi/php.ini" ]]; then
                     php_inis+=("/etc/php/$pv/$sapi/php.ini")
                 fi
             done
             [ -f "${php_inis[0]}" ] || return
-            mapfile -t inifiles1_< <(${BINARIES[grep]} -Eslix "$pattern" ${php_inis[@]})
+            mapfile -t inifiles1_< <(${X[grep]} -Eslix "$pattern" ${php_inis[@]})
             if (( ${#inifiles1_[@]} )); then
-                line=$(${BINARIES[grep]} -Eix "$pattern" ${inifiles1_[0]})
+                line=$(${X[grep]} -Eix "$pattern" ${inifiles1_[0]})
                 if (( ${#inifiles1_[@]} == 1 )); then
                     plu='' be=is ini_string_="$(C)${inifiles1_[0]}$(O)" ini_string="$(C)${inifiles1_[0]}$(W)"
                 else
                     plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
                 fi
                 echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                if (( $(${BINARIES[grep]} -Exi "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini"|${BINARIES[wc]} -l) == 0 )); then
+                if (( $(${X[grep]} -Exi "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini"|${X[wc]} -l) == 0 )); then
                     infstr="This directive has absolutely no effect in $ini_string. It is meant to enable the opcode cache for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the opcode cache is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$pv/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$pv/cli/php.ini$(W)."
                     echo -e "\n$(R)$line$(N)" >> $itmp
-                    C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+                    C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
                     for i in ${!inifiles1_[@]}; do
-                        line=$(${BINARIES[grep]} -Eix "$pattern" ${inifiles1_[i]})
-                        echo "${BINARIES[sed]} -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
+                        line=$(${X[grep]} -Eix "$pattern" ${inifiles1_[i]})
+                        echo "${X[sed]} -i '/^$line$/d' '${inifiles1_[i]}'" >> $xtmp
                     done
                     local -i last=0 sect=0 sectend=0
                     last=$(last_occurrence "opcache.enable_cli" "/etc/php/$pv/cli/php.ini") # find the last occurrence of the commented setting_name
                     sect=$(last_occurrence "[opcache]" "/etc/php/$pv/cli/php.ini") # find the section opener
                     sectend=$(last_occurrence "opcache." "/etc/php/$pv/cli/php.ini") # find the section end
                     if (( last )); then
-                        echo "${BINARIES[sed]} -i '${last}a\\opcache.enable_cli=1' '/etc/php/$pv/cli/php.ini'" >> $xtmp
+                        echo "${X[sed]} -i '${last}a\\opcache.enable_cli=1' '/etc/php/$pv/cli/php.ini'" >> $xtmp
                     elif (( sect )); then
-                        echo "${BINARIES[sed]} -i '${sect}a\\opcache.enable_cli=1' '/etc/php/$pv/cli/php.ini'" >> $xtmp
+                        echo "${X[sed]} -i '${sect}a\\opcache.enable_cli=1' '/etc/php/$pv/cli/php.ini'" >> $xtmp
                     elif (( sectend )); then
-                        echo "${BINARIES[sed]} -i '${sectend}a\\opcache.enable_cli=1' '/etc/php/$pv/cli/php.ini'" >> $xtmp
+                        echo "${X[sed]} -i '${sectend}a\\opcache.enable_cli=1' '/etc/php/$pv/cli/php.ini'" >> $xtmp
                     else
                         echo "echo 'opcache.enable_cli=1' >> /etc/php/$pv/cli/php.ini" >> $xtmp
                     fi
                 fi
             fi
             uniq_lines "$xtmp"
-            if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
                 kill_spinner
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to apply this fixes" "$YES";then
+                if ask "$(qpf)Do you want to apply this fixes" "$YES"; then
                     haul cat "$xtmp"
                     . $xtmp
-                    if ${BINARIES[grep]} -Eqsiw "$pattern" /etc/php/$pv/cli/php.ini; then
-                        bundle echo "R: $(lG)Directive successfully written in /etc/php/$pv/cli/php.ini.$(N)"
-                        mapfile -t inifiles2_< <(${BINARIES[grep]} -Eslix "$pattern" ${php_inis[@]})
+                    if ${X[grep]} -Eqsiw "$pattern" /etc/php/$pv/cli/php.ini; then
+                        bundle echo "R: $(lG)Directive successfully written in /etc/php/$pv/cli/php.ini."; N
+                        mapfile -t inifiles2_< <(${X[grep]} -Eslix "$pattern" ${php_inis[@]})
                         if (( ${#inifiles2_[@]} )); then
-                            bundle echo "R: $(R)removal from ${inifiles2_[@]} failed.$(N)"
+                            something_went_wrong "removal from ${inifiles2_[@]} failed."
                         else
-                            bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull.$(N)"
+                            bundle echo "R: $(lG)removal from ${inifiles1_[@]} was successfull."; N
                         fi
                     else
-                        bundle echo "R: $(R)this step failed.$(N)"
+                        something_went_wrong
                     fi
                 else
-                    bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                    bundle echo "R: $(R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
             fi
             ;;
         igbinary)
             > $xtmp; > $itmp
-            echo -e "\n -$(P;format_string "$(message_ $pv must_be_fixed)" 3;N)" >> $itmp
+            echo -e "\n -$(P; format_string "$(message_ $pv must_be_fixed)" 3; N)" >> $itmp
             php_inis=()
-            for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+            for sapi in $(${X[phpquery]} -v $pv -S); do
                 php_ini="/etc/php/$pv/$sapi/php.ini"
                 if [ -f "$php_ini" ]; then
                     php_inis+=("/etc/php/$pv/$sapi/php.ini")
                 else
                     continue
                 fi
-                mapfile -t lines< <(${BINARIES[grep]} "$ext" "$php_ini") # treat ALL lines containing "$ext"
+                mapfile -t lines< <(${X[grep]} "$ext" "$php_ini") # treat ALL lines containing "$ext"
                 if (( ${#lines[@]} )); then
                     echo -e "\n   - $(O)Malicious configuration lines in $(C)$php_ini$(O):" >> $itmp
                     for i in ${!lines[@]}; do
                         line="${lines[i]}"
-                        key="$(key_ name "$line")"
-                        val="$(key_ val "$line")"
+                        key="$(varname "$line")"
+                        val="$(varval "$line")"
                         if bool="$(boolean "$val")"; then
                             $bool && val='(on|1)' || val='(off|0)'
                         fi
                         if [ "$line" = "# igbinary for PHP" ]; then
                             infstr="This line was added by an installation script. Of course, this particular line has no meaning as it is commented out, but it will be removed though since the subsequent igbinary related directives will be removed there too and placed on their correct place."
                             echo -e "\n$(R)$line$(N)" >> $itmp
-                            C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
-                            echo "${BINARIES[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
-                        elif ${BINARIES[grep]} -qswiE "^\s*$key\s*=\s*$val\s*$" "$ext_ini"; then
+                            C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
+                            echo "${X[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
+                        elif ${X[grep]} -qswiE "^\s*$key\s*=\s*$val\s*$" "$ext_ini"; then
                             infstr="This directive does not belong in $(C)$php_ini$(W) and is already defined in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W)."
                             echo -e "\n$(R)$line$(N)" >> $itmp
-                            C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
-                            echo "${BINARIES[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
-                        elif oldstring="$(${BINARIES[grep]} -xiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
+                            C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
+                            echo "${X[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
+                        elif oldstring="$(${X[grep]} -xiE "^\s*[;|#]\s*$key\s*=\s*$val\s*$" "$ext_ini")"; then
                             infstr="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W), where it already exists but there it is commented out. It will be removed from $(C)$php_ini$(W) and uncommented in $(C)$ext_ini$(W)."
                             echo -e "\n$(R)$line$(N)" >> $itmp
-                            C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
-                            echo "${BINARIES[sed]} -i 's|$oldstring|$line|' '$ext_ini'" >> $xtmp
-                            echo "${BINARIES[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
-                        elif ! ${BINARIES[grep]} -qswiE "$key\s*=\s*$val" "$ext_ini"; then
+                            C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
+                            echo "${X[sed]} -i 's|$oldstring|$line|' '$ext_ini'" >> $xtmp
+                            echo "${X[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
+                        elif ! ${X[grep]} -qswiE "$key\s*=\s*$val" "$ext_ini"; then
                             infstr="This directive does not belong in $(C)$php_ini$(W). It belongs in $(C)$ext_ini$(W). It will be removed from $(C)$php_ini$(W) and appendet at the end of $(C)$ext_ini$(W)."
                             echo -e "\n$(R)$line$(N)" >> $itmp
-                            C;echo "info$(N):$(W;format_string "$infstr" 6;N)" >> $itmp
+                            C; echo "info$(N):$(W; format_string "$infstr" 6; N)" >> $itmp
                             echo "echo '$line' >> '$ext_ini'" >> $xtmp
-                            echo "${BINARIES[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
+                            echo "${X[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
 # TODO 1 -->
                         else
-                            echo "${BINARIES[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
+                            echo "${X[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
 # TODO <-- 1
                         fi
                     done
                 fi
             done
             uniq_lines "$xtmp"
-            if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
                 kill_spinner
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to apply this fixes" "$YES";then
+                if ask "$(qpf)Do you want to apply this fixes" "$YES"; then
                     haul cat "$xtmp"
                     . $xtmp \
                     && for inifile in $ext_ini ${php_inis[@]}; do uniq_empty_lines $inifile; done; unset inifile
-                    ${BINARIES[grep]} -qs "igbinary" ${php_inis[@]}&&bundle echo "R: $(R)this step failed.$(N)"||bundle echo "R: $(lG)this step was successfull.$(N)"
+                    if ${X[grep]} -qs "igbinary" ${php_inis[@]}; then
+                        something_went_wrong
+                    else
+                        bundle echo "R: $(lG)this step was successfull."; N
+                    fi
                 else
-                    if [ "$OLD" = "$pv" ] && [[ "$OLD" ]]; then
-                        bundle echo "R: $(R)you answered $(box no),...$(N)"
+                    if [[ "$OLD" == "$pv" && "$OLD" ]]; then
+                        bundle echo "R: $(R)you answered $(box no),..."; N
                         exit1
                     else
-                        bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                        bundle echo "R: $(R)you answered $(box no), nothing changed."; N
                     fi
                 fi
                 anykey
@@ -751,26 +803,30 @@ ext_config_fix(){
             ;;
         pdo_pgsql)
             > $xtmp; > $itmp
-            echo -e "\n -$(P;format_string "$(message_ $pv should_be_fixed)" 3;N)" >> $itmp
+            echo -e "\n -$(P; format_string "$(message_ $pv should_be_fixed)" 3; N)" >> $itmp
 
             optionblock="pgsql.allow_persistent = On\npgsql.auto_reset_persistent = Off\npgsql.max_persistent = -1\npgsql.max_links = -1\npgsql.ignore_notice = 0\npgsql.log_notice = 0"
 
-            if ${BINARIES[grep]} -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"; then
+            if ${X[grep]} -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"; then
                 infstr="$(W)This block was added by an installation script. These are all exclusively default values and besides that, all these lines are already present in the shipped default php.ini for all SAPIs in exact the same order. Php does not get better by adding directives multiple times, it only lowers the overview ability and makes it difficult for this script. That is why this lines will (should) be removed."
                 echo -e "\n$(R)[PostgresSQL]\n$optionblock$(N)" >> $itmp
-                C;echo "info$(N):$(format_string "$infstr" 6;N)" >> $itmp
+                C; echo "info$(N):$(format_string "$infstr" 6; N)" >> $itmp
                 echo "delafter 'extension=pdo_pgsql.so' '$ext_ini'" >> $xtmp
             fi
-            if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
                 kill_spinner
                 separator
                 bundle cat "$itmp"
                 f
-                if ask "$(qpf)Do you want to remove these lines" "$YES";then
+                if ask "$(qpf)Do you want to remove these lines" "$YES"; then
                     . $xtmp
-                    ${BINARIES[grep]} -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"&&bundle echo "R: $(R)removal of this lines failed.$(N)"||bundle echo "R: $(lG)lines successfully removed.$(N)"
+                    if ${X[grep]} -qsPz "\n\n\[PostgresSQL\]\n$optionblock\n" "$ext_ini"; then
+                        something_went_wrong "removal of this lines failed."
+                    else
+                        bundle echo "R: $(lG)lines successfully removed."; N
+                    fi
                 else
-                    bundle echo "R: $(R)you answered $(box no), nothing changed.$(N)"
+                    bundle echo "R: $(R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
             fi
@@ -782,7 +838,7 @@ ext_config_fix(){
 check_config(){
     local xtmp itmp pv amdir pattern am
     local -a ext_inis am_ini_files
-    xtmp=$(tf) itmp=$(tf)
+    xtmp="$(tf)" itmp="$(tf)"
     (( $# )) && pv="$1" || pv="$OLD"
     amdir="/etc/php/$pv/mods-available"
     [ -d "$amdir" ] || return 1
@@ -798,10 +854,10 @@ check_config(){
 
     # get rid of uncommented priority definitions
     pattern='^\s*priority\s*=\s*[1-9][0-9]?\s*$'
-    mapfile -t ext_inis< <(${BINARIES[grep]} -El $pattern $amdir/*.ini)
+    mapfile -t ext_inis< <(${X[grep]} -El $pattern $amdir/*.ini)
     if (( ${#ext_inis[@]} )); then
-        echo -e "\n -$(P;format_string "$(message_ $pv will_be_fixed)" 3;N)" >> $itmp
-        line=$(${BINARIES[grep]} -Eix "$pattern" ${ext_inis[0]})
+        echo -e "\n -$(P; format_string "$(message_ $pv will_be_fixed)" 3; N)" >> $itmp
+        line=$(${X[grep]} -Eix "$pattern" ${ext_inis[0]})
         if (( ${#ext_inis[@]} == 1 )); then
             plu='' be=is ini_string_="$(C)${ext_inis[0]}$(O)" ini_string="$(C)${ext_inis[0]}$(W)"
         else
@@ -812,15 +868,15 @@ check_config(){
         infstr1="'priority=\$nr' is not a directive and must not be uncommented. It is used exclusively by the \`/usr/sbin/phpenmod\` tool to determine the name of the symbolic link, which in turn defines the loading order of the module."
         infstr2="This script will fix this issue by commenting out all occurrences of 'priority=\$nr' without further prompt, as it constitutes a critical configuration error."
         echo -e "\n$(R)${line##\s}$(N)" >> $itmp
-        C;echo "info$(N):$(W;format_string "$infstr1" 6;N)" >> $itmp
-        echo "$(o5;W;format_string "$infstr2" 6;N)" >> $itmp
+        C; echo "info$(N):$(W; format_string "$infstr1" 6; N)" >> $itmp
+        echo "$(o5; W; format_string "$infstr2" 6; N)" >> $itmp
         for i in ${!ext_inis[@]}; do
-            line=$(${BINARIES[grep]} -Eix "$pattern" ${ext_inis[i]})
-            echo "${BINARIES[sed]} -i 's|^$line$|; ${line// /}|g' '${ext_inis[i]}'" >> $xtmp
+            line=$(${X[grep]} -Eix "$pattern" ${ext_inis[i]})
+            echo "${X[sed]} -i 's|^$line$|; ${line// /}|g' '${ext_inis[i]}'" >> $xtmp
         done
     fi
     uniq_lines "$xtmp"
-    if (( $(${BINARIES[wc]} -c "$xtmp"|${BINARIES[gawk]} '{print$1}') )); then
+    if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
         kill_spinner
         separator
         bundle cat "$itmp"
@@ -828,17 +884,17 @@ check_config(){
         haul cat "$xtmp"
         anykey
         . $xtmp
-        if ${BINARIES[grep]} -Eqsiw "$pattern" ${ext_inis[@]}; then
-            bundle echo "R: $(R)this step failed.$(N)"
+        if ${X[grep]} -Eqsiw "$pattern" ${ext_inis[@]}; then
+            something_went_wrong
         else
-            if [[ "$(echo $(${BINARIES[grep]} -Eil "^;\s*priority" ${ext_inis[@]}))" == "${ext_inis[@]}" ]]; then
-                bundle echo "R: $(W)priority=\$nr $(lG)successfully commented out in $(listify_ C lG ${ext_inis[@]}).$(N)"
+            if [[ "$(echo $(${X[grep]} -Eil "^;\s*priority" ${ext_inis[@]}))" == "${ext_inis[@]}" ]]; then
+                bundle echo "R: $(W)priority=\$nr $(lG)successfully commented out in $(listify_ C lG ${ext_inis[@]})."; N
             else
                 for php_ini in ${ext_inis[@]}; do
-                    if [ "$(${BINARIES[grep]} -Eil "^;\s*priority" $php_ini)" == "$php_ini" ]; then
-                        bundle echo "R: $(W)priority=\$nr $(lG)successfully commented out in $(C)$php_ini$(lG).$(N)"
+                    if [ "$(${X[grep]} -Eil "^;\s*priority" $php_ini)" == "$php_ini" ]; then
+                        bundle echo "R: $(W)priority=\$nr $(lG)successfully commented out in $(C)$php_ini$(lG)."; N
                     else
-                        bundle echo "R: $(R)Commenting out $(W)priority=\$nr$(R) in $(C)$php_ini$(R) failed.$(N)"
+                        something_went_wrong "Commenting out $(W)priority=\$nr$(R) in $(C)$php_ini$(R) failed."
                     fi
                 done
             fi
@@ -846,7 +902,7 @@ check_config(){
         anykey
     fi
 
-    mapfile -t am_ini_files< <(${BINARIES[ls]} "$amdir"|${BINARIES[gawk]} -F. '/\.ini$/{print$1}')
+    mapfile -t am_ini_files< <(${X[ls]} "$amdir"|${X[gawk]} -F. '/\.ini$/{print$1}')
     for am in core ${am_ini_files[@]}; do
         kill_spinner
         spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &

@@ -7,12 +7,12 @@ __copyright__
 __license__
 #
 
-${XML_BASHLIB:-false} && return
+${XML_BASHLIB:-_} && return
 XML_BASHLIB=:
 
 . <(lrequire binaries)
 
 # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
 xmls(){
-    ${BINARIES[xmlstarlet]} sel -B -t "$@"
+    ${X[xmlstarlet]} sel -B -t "$@"
 }

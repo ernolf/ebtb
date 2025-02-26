@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${SUDO_BASHLIB:-false} && return
+${SUDO_BASHLIB:-_} && return
 SUDO_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,44 +16,45 @@ SUDO_BASHLIB=:
 
 su_do(){
     nosudo(){
-        o2;R;echo "you have no sudo rights.";N
+        o2; R; echo "you have no sudo rights."; N
     }
     local prompt var
-    for var in "$@"; do local "$var"; done
-    case $u in
+    local -a bools
+    local -A arg
+    for var in "$@"; do arg[${var%=*}]="${var#*=}"; done #; unset -v var
+    case ${arg[u]} in
         root)
             local -a args
-            if [ "$run" = "$me" ]; then
+            if [ "${arg[run]}" = "$me" ]; then
                 args=(
                     "json=$my_json"
                     "$arg"
                     "$my_args"
                 )
             else
-                args=("$arg")
+                args=("${arg[arg]}")
             fi
-            if (( $(id -u) )); then
-                prompt="$(Pbg)[sudo]$(N) - $(P)You have to be '$(C)root$(P)' $p. Password of user$(C) %p$(P):$(N) "
-                if q0 ${BINARIES[sudo]} -lp "$prompt" "$run"; then
-                    ${BINARIES[sudo]} "$run" ${args[@]}
-                    $r && return 0 || exit 0
+            if ${B[rt]}; then
+                return 0
+            else
+                prompt="$(Pbg)[sudo]$(N) - $(P)You have to be '$(C)root$(P)' ${arg[p]}. Password of user$(C) %p$(P):$(N) "
+                if q0 ${X[sudo]} -lp "$prompt" "${arg[run]}"; then
+                    ${X[sudo]} "${arg[run]}" "${args[@]}"
+                    ${arg[r]} && return 0 || exit 0
                 else
                     nosudo
-                    $r && return 1 || exit1
+                    ${arg[r]} && return 1 || exit1
                 fi
-            else
-                return 0
             fi
             ;;
-
         # su_do "u=NC_USER"
         NC_USER)
             f 2
-            o2;B;echo "This script has to be run as user$(N) '$(C)$NC_USER$(N)' $(B)or as$(N) '$(C)root$(N)'$(B)!$(N)"
-            o4;GRAY;echo "sudo -u $NC_USER $me $my_args$(N)"
-            prompt="$(Pbg)[sudo]$(N;pf;P)Enter password of user$(C) %p $(P)to substitute user to$(C) $NC_USER$(P):$(N) "
-            o2;if q0 ${BINARIES[sudo]} -lu $NC_USER -p "$prompt" $me; then
-                ${BINARIES[sudo]} -u $NC_USER $me "json=$my_json" $my_args
+            o2; B; echo "This script has to be run as user$(N) '$(C)$NC_USER$(N)' $(B)or as$(N) '$(C)root$(N)'$(B)!$(N)"
+            o4; GRAY; echo "sudo -u $NC_USER $me $my_args$(N)"
+            prompt="$(Pbg)[sudo]$(N; pf; P)Enter password of user$(C) %p $(P)to substitute user to$(C) $NC_USER$(P):$(N) "
+            o2; if q0 ${X[sudo]} -lu $NC_USER -p "$prompt" $me; then
+                ${X[sudo]} -u $NC_USER $me "json=$my_json" $my_args
                 exit 0
             else
                 nosudo
@@ -62,8 +63,9 @@ su_do(){
     esac
 }
 
-# for backwards compatibility
+# wrapper for backwards compatibility
 su_root(){
+    require_arg $@
     local p="$1"
     shift
     su_do "u=root" "r=false" "p=$p" "run=$me" "arg=$@"
@@ -71,6 +73,7 @@ su_root(){
 }
 
 su_root_(){
+    required_args 2 "$@"
     local p="$1" run="$2"
     shift 2
     su_do "u=root" "r=true" "p=$p" "run=$run" "arg=$@"

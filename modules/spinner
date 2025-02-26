@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${SPINNER_BASHLIB:-false} && return
+${SPINNER_BASHLIB:-_} && return
 SPINNER_BASHLIB=:
 
 . <(lrequire binaries)
@@ -19,32 +19,32 @@ spinner_pid_file="$TMPDIR/${bm}-spinner.pid"
 
 # Function to display the spinning animation
 spinner(){
-    ${debug:-false} && { shift; (($#)) && echo "$@"; return 0; }
+    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
     [ -f "$spinner_pid_file" ] && return 0
     local cursor_status color spinr spinl
     local -i L R prog dir pos marg
     echo $BASHPID > $spinner_pid_file
     cursor_status=''
     if [ -f "$CURSOR" ]; then
-        if ${BINARIES[grep]} -qsw 'hide' "$CURSOR"; then
+        if ${X[grep]} -qsw 'hide' "$CURSOR"; then
             cursor_status='hide'
         fi
     fi
     color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
     L=0 prog=0 dir=1
 
-    if (( $(${BINARIES[tput]} cols) > 87 )); then
+    if (( $(${X[tput]} cols) > 87 )); then
         marg=10
-    elif (( 87 > $(${BINARIES[tput]} cols) && $(${BINARIES[tput]} cols) > 77  )); then
-        marg=$(( $(${BINARIES[tput]} cols) - 77 ))
+    elif (( 87 > $(${X[tput]} cols) && $(${X[tput]} cols) > 77  )); then
+        marg=$(( $(${X[tput]} cols) - 77 ))
     else
         marg=0
     fi
 
-    if (( $(${BINARIES[tput]} cols) < 77 )); then
+    if (( $(${X[tput]} cols) < 77 )); then
         R=77
     else
-        R=$(( $(${BINARIES[tput]} cols) - marg ))
+        R=$(( $(${X[tput]} cols) - marg ))
     fi
 
     shift
@@ -69,32 +69,32 @@ spinner(){
         else
             printf "\r%-${pos}s %s %s" "" "${spinr:$prog:1}" ""
         fi
-        ${BINARIES[sleep]} 0.03
+        ${X[sleep]} 0.03
     done
     N
 }
 
 # kill and clean up  spinner:
 kill_spinner(){
-    ${debug:-false} && return 0
+    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 0
     local -i ct=0
     until [ -f "$spinner_pid_file" ]; do
         (( ct > 500 )) && return 0
         (( ct++ ))
-        ${BINARIES[sleep]} 0.0001
+        ${X[sleep]} 0.0001
     done
     local cursor
     local -i pid
-    pid="$(${BINARIES[cat]} "$spinner_pid_file")"
+    pid="$(${X[cat]} "$spinner_pid_file")"
     cursor='show'
     if [ -f "$CURSOR" ]; then
-        if ${BINARIES[grep]} -qsw 'hide' "$CURSOR"; then
+        if ${X[grep]} -qsw 'hide' "$CURSOR"; then
             cursor='hide'
         fi
     fi
-    q0 ${BINARIES[kill]} $pid
+    kill $pid &>/dev/null
     te0
     N
     cursor_ "$cursor"
-    ${BINARIES[rm]} -f "$spinner_pid_file"
+    ${X[rm]} -f "$spinner_pid_file"
 }

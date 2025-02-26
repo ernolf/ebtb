@@ -1,3 +1,10 @@
-/config/secrets
 /build
+/config/secrets
+/modules/di
 /TODO.txt
+*.new
+*.~
+*.todo
+*.test
+*.ini
+

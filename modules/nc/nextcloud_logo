@@ -7,14 +7,14 @@ __copyright__
 __license__
 #
 
-${NEXTCLOUD_LOGO_BASHLIB:-false} && return
+${NEXTCLOUD_LOGO_BASHLIB:-_} && return
 NEXTCLOUD_LOGO_BASHLIB=:
 
 . <(lrequire binaries)
 . <(lrequire line)
 
 nextcloud_logo(){
-    ${BINARIES[cat]} << NEXTCLOUDLOGO
+    ${X[cat]} << NEXTCLOUDLOGO
 
 $(line ' ' NCbluebg 84 a0)
 $(line ' ' NCbluebg 84 a0)

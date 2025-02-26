@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${DEBIAN_BASHLIB:-false} && return
+${DEBIAN_BASHLIB:-_} && return
 DEBIAN_BASHLIB=:
 
 . <(lrequire button)
@@ -54,35 +54,33 @@ DEBIAN_VERSIONS=(
 )
 
 list_supported_debian(){
-
-    local -i c2=10 c3=20 c4=34 c5=73
     local eos eol sus ver ss
+    local -i c2 c3 c4 c5
     local -l vercode chan
-    sus="$(supported_suites_ debian)"
-
+    sus="$(supported_suites_ debian)" c2=10 c3=20 c4=34 c5=73
     line '=' P 2/78 b1
-
-    o2;B;echo "This is a list of recent debian versions for your information.";N
-    Y;o2;echo "Version$(o $c2)Codename$(o $c3)Channel$(o $c4)End of LTS support$(o $((c5 - 5)))sury-php-repo";N
+    o2; B; echo "This is a list of recent debian versions for your information."; N
+    Y; o2; echo "Version$(o $c2)Codename$(o $c3)Channel$(o $c4)End of LTS support$(o $((c5 - 5)))sury-php-repo"; N
     line '-' dP 2/78
-
-    for ver in $(p_rsort ${!DEBIAN_VERSIONS_DATA[@]});do
+    for ver in $(p_rsort ${!DEBIAN_VERSIONS_DATA[@]}); do
         read -r vercode chan releasedate eos eol <<<${DEBIAN_VERSIONS_DATA[$ver]//;/ }
-
-        [[ "$sus" =~ $vercode ]]&&ss="$(check OK)"||ss="$(check NOK)"
-        if [ $releasedate = "RR" ];then o3;GRAY
-            echo "$(o $c2)$vercode$(o $c3)$chan$(o $c4)Rolling release$(o $c5)$ss";N
-        elif [ $eol = "TBA" ];then o3;G
-            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)To be anounced$(o $c5)$ss";N
-        elif [ $today -le $eos ]&&[ $today -le $eol ];then o3;lG
-            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
-        elif [ $today -le $eol ];then o3;G
-            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
-        else o3;GRAY
-            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss";N
+        [[ "$sus" =~ $vercode ]] && ss="$(check OK)" || ss="$(check NOK)"
+        if [ $releasedate = "RR" ]; then
+            o3; GRAY
+            echo "$(o $c2)$vercode$(o $c3)$chan$(o $c4)Rolling release$(o $c5)$ss"; N
+        elif [ $eol = "TBA" ]; then
+            o3; G
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)To be anounced$(o $c5)$ss"; N
+        elif [[ $today -le $eos && $today -le $eol ]]; then
+            o3; lG
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss"; N
+        elif [ $today -le $eol ]; then
+            o3; G
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss"; N
+        else
+            o3; GRAY
+            echo "$(printf '%d' "$((10#$ver))"; o $c2)$vercode$(o $c3)$chan$(o $c4)$(ut2udF $eol) ($(interval $eol))$(o $c5)$ss"; N
         fi
-
     done
-
     line '-' dP 2/78
 }

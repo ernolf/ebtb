@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${INTEGRITY_BASHLIB:-false} && return
+${INTEGRITY_BASHLIB:-_} && return
 INTEGRITY_BASHLIB=:
 
 . <(lrequire binaries)
@@ -19,7 +19,7 @@ INTEGRITY_BASHLIB=:
 
 
 public_key(){
-    ${BINARIES[cat]} << PUBLIC_KEY_ASC
+    ${X[cat]} << PUBLIC_KEY_ASC
 -----BEGIN PGP PUBLIC KEY BLOCK-----
 
 mQINBGSXjUIBEADbt4/706Fw6YNHMPwHT+qtq4ZxJCdUclzovEnCvECtylYCK1M5
@@ -54,68 +54,69 @@ PUBLIC_KEY_ASC
 }
 
 integrity_check(){
-    local -i r=1
-    local signed key mail aut itf="$(tf)" vtf="$(tf)" vdir ddir shash ehash
-    signed=:
-    key="$(${BINARIES[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
-    mail="$(${BINARIES[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
-    aut="$(${BINARIES[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
+    local key mail aut itf vtf vdir ddir shash ehash
+    local -i r
+    local -A bool
+    bool[signed]=: itf="$(tf)" vtf="$(tf)" r=1
+    key="$(${X[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
+    mail="$(${X[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
+    aut="$(${X[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
     su_root "to run the integrity check" integrity_check
     delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$ca_me" "$itf"
     if [ -n "$vdirname" ]; then
         vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
         [ "$vdir" != "$ddir" ] && setvdir v d "$itf"
     fi
-    shash="$(${BINARIES[sha256sum]} "$itf" | ${BINARIES[gawk]} '{print $1}')"
-    ehash="$(${BINARIES[tail]} -n1 "$ca_me" | ${BINARIES[gawk]} '{print $NF}')"
+    shash="$(${X[sha256sum]} "$itf" | ${X[gawk]} '{print $1}')"
+    ehash="$(${X[tail]} -n1 "$ca_me" | ${X[gawk]} '{print $NF}')"
     line '=' P 5/75
     if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
         . <(lrequire ask)
-        signed=false
-        o5;R;echo "- No sha256sum hash, looks like script has not been signed!"
+        bool[signed]=_
+        o5; R; echo "- No sha256sum hash, looks like script has not been signed!"
         line '-' P 5/75
     elif [ "$shash" != "$ehash" ]; then
-        o5;R;echo "- Wrong hash, looks like script has been tampered with!"
+        o5; R; echo "- Wrong hash, looks like script has been tampered with!"
         line '-' P 5/75
     fi
-    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || q2 ${BINARIES[gpg]} --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key"
-    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || q2 ${BINARIES[gpg]} --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
-    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || q2 public_key|${BINARIES[gpg]} --import
-    ${BINARIES[gpg]} --list-keys | ${BINARIES[grep]} -qs "$key" || {
+    ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 ${X[gpg]} --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key"
+    ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 ${X[gpg]} --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
+    ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 public_key|${X[gpg]} --import
+    ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || {
         . <(lrequire ask)
-        o5;R;echo "- import of public key failed."
-        qpf;ask "Continue at own risk without check?" "$NO"&&{
-            ${BINARIES[sed]} -i 's/^v=false$/v=true/' "$ca_me"
+        o5; R; echo "- import of public key failed."
+        qpf; ask "Continue at own risk without check?" "$NO" && {
+            ${X[sed]} -i 's/^v=false$/v=true/' "$ca_me"
             return 0
         }
     }
-    ${BINARIES[gpg]} --verify "$ca_me" "$itf">"$vtf" 2>&1
+    ${X[gpg]} --verify "$ca_me" "$itf">"$vtf" 2>&1
     r=$?
-    ${BINARIES[grep]} "$key" "$vtf"
-    ${BINARIES[grep]} "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
+    ${X[grep]} "$key" "$vtf"
+    ${X[grep]} "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
     line '-' P 5/75
     if (( r )); then
-        o5;R;echo -n "- Integrity check $(blinkR)failed$(R). "
-        if $signed; then
+        o5; R; echo -n "- Integrity check $(blinkR)failed$(R). "
+        if ${bool[signed]}; then
             echo "The script may have been modified or tampered with!"
         else
             echo "This script does not appear to be signed!"
         fi
         line '-' P 5/75
-        o5;B;echo "You should run:"
-        o5;GRAY;echo "sudo wget -O $ca_me $my_url"
-        if $signed; then
-            o5;B;echo "to fix this.";N
+        o5; B; echo "You should run:"
+        o5; GRAY; echo "sudo wget -O $ca_me $my_url"
+        if ${bool[signed]}; then
+            o5; B; echo "to fix this."; N
         else
-            o5;B;echo "to get a signed version of this script or disable the integrity check.";N
-            qpf;ask "Do you want to disable the integrity check at own risk" "$NO" && {
+            o5; B; echo "to get a signed version of this script or disable the integrity check."; N
+            qpf; ask "Do you want to disable the integrity check at own risk" "$NO" && {
                 echo -e "v=true\nnohash" >> "$ca_me"
                 return 0
             }
         fi
     else
-        o5;lG;echo "Integrity check passed. The script is authentic.";N
-        ${BINARIES[sed]} -i 's/^v=false$/v=true/' "$ca_me"
+        o5; lG; echo "Integrity check passed. The script is authentic."; N
+        ${X[sed]} -i 's/^v=false$/v=true/' "$ca_me"
     fi
     line '=' P 5/75
     return $r
@@ -123,19 +124,20 @@ integrity_check(){
 
 run_integrity_check(){
     if integrity_check; then
-        f;pf;G;echo "Integrity check passed. Please start script again"
+        f; pf; G; echo "Integrity check passed. Please start script again"
         exit 0
     else
         exit1
     fi
 }
 
-if $do_integrity_check; then
+if "${B[do_integrity_check]:-_}"; then
     run_integrity_check
 fi
-declare "$(${BINARIES[tail]} -n2 "$ca_me" | ${BINARIES[head]} -n1)"
-if ! "${v:-false}"; then
+
+declare $(tnh1)
+if ! "${v:-_}"; then
     f
-    o5;B;echo "First run, checking integrity:"
+    o5; B; echo "First run, checking integrity:"
     run_integrity_check
 fi

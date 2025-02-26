@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${L10N_BASHLIB:-false} && return
+${L10N_BASHLIB:-_} && return
 L10N_BASHLIB=:
 
 . <(lrequire binaries)
@@ -24,4 +24,4 @@ validate_language() {
     echo "$lang"
 }
 
-declare lang="$(validate_language $(echo "$LANG"|${BINARIES[cut]} -d'_' -f1))"
+declare lang="$(validate_language $(echo "$LANG"|${X[cut]} -d'_' -f1))"

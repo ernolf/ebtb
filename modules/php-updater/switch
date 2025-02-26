@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${SWITCH_BASHLIB:-false} && return
+${SWITCH_BASHLIB:-_} && return
 SWITCH_BASHLIB=:
 
 . <(lrequire binaries)
@@ -26,7 +26,7 @@ SWITCH_BASHLIB=:
 . <(lrequire php/apache2)
 . <(lrequire $sin/linstalled)
 
-${BINARIES[mkdir]} -p $lincld/$sin/switch.d
+${X[mkdir]} -p $lincld/$sin/switch.d
 
 . <(lrequire $sin/switch.d/php_apache2_module)
 . <(lrequire $sin/switch.d/php_fpm)
@@ -37,110 +37,119 @@ switch_default_version(){
     local key
     local -a selections php_versions
     local -i i ret
-    mapfile -t php_versions< <(${BINARIES[phpquery]} -V | ${BINARIES[sort]})
+    mapfile -t php_versions< <(${X[phpquery]} -V | ${X[sort]})
     # update-alternatives
     cleanup_and_fix_alternatives before  # repair broken alternatives, remove not existing alternatives
     mapfile -t selections< <(list_alternatives)
     P; echo " -$(format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the Debian alternatives system. All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision. Therefore you can select the actually active version as well here. In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$me${FLAG[forceflag]} \$old \$new$(P), where $(C)\$old$(P) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(P) should be the version that you want to switch to here and now." 3)"
-    echo "  $(format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3;N)"
+    echo "  $(format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3; N)"
     f
-    o3;dY;echo "this is how the alternatives system is configured at present:";N
+    o3; dY; echo "this is how the alternatives system is configured at present:"; N
     f
     for i in ${!selections[@]}; do
-        o3;pf;echo "$(lG)${selections[i]}";N
+        o3; pf; echo "$(lG)${selections[i]}";N
     done
-    N;f
+    N; f
 
-    o3;dY;echo "and this is how php is connected to the httpd:";N
+    o3; dY; echo "and this is how php is connected to the httpd:"; N
     f
     list_installed_sapi
     N
     line '=' P 2/78 b1
     f
-    pf;Y;echo "Switch default php version to:"
+    pf; Y; echo "Switch default php version to:"
     for i in ${!php_versions[@]}; do
-        f;o 10;echo "$(button $((i + 1))) - php${php_versions[i]} $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${php_versions[i]} 5);Y)"
+        f; o 10; echo "$(button $((i + 1))) - php${php_versions[i]} $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${php_versions[i]} 5); Y)"
     done
-    f;o 10;echo "$(button q) - do nothing, quit"
-    N;f
-    while :;do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
-        case $key in
-                q)  f 2;break
-                    ;;
-            [1-9])  if [[ ${php_versions[$key-1]} ]]; then
-                        P;pf;echo "Your choice:$(Yi) php${php_versions[$key-1]}";N
-                        anykey
+    f; o 10; echo "$(button q) - do nothing, quit"
+    N; f
+    while :;do read -rsn 1 -p "$(pf; Y)Please make your choice: $(N)" key
+        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+            f; P; pf; echo -n "Confirmed choice $(button $key)"; N
+            case $key in
+                    q)  P; echo ":$(Yi) quit, nothing changed"; N
                         separator
-                        q0 apt-mark manual $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php*/{print $2}')
-                        set_selections 'ph(ar|p)' 'manual' "${PHPVREGEX#php}" "${php_versions[$key-1]}"
-                        cleanup_and_fix_alternatives afterwards  # repair broken alternatives, remove not existing alternatives
-                        mapfile -t selections< <(update-alternatives --get-selections | ${BINARIES[grep]} -E "ph(ar|p)")
-                        o3;dY;echo "alternatives system is now switch to:";N
-                        f
-                        for i in ${!selections[@]}; do
-                            o3;pf;echo "$(lG)${selections[i]}";N
-                        done
-                        f
-                        Y;echo "  $(format_string "Please consider: $(dY)if some alternatives listed here are not switched to the selected version, then either the package that provides the binaries for that version is not installed or – in case of $(G)php-fpm.sock$(dY) – the default fpm-pool $(G)[www]$(dY) has been deactivated in the selected version but not in the version that it shows here." 3)"
-                        f
-                        anykey
-                        separator
-                        load_server_status
-                        populate_httpd_ enabled
-                        populate_httpd_ active
-                        populate_httpd_ wk_enabled
-                        populate_httpd_ wk_active
-                        (( ${#HTTPD_ENABLED[@]} )) || { o3;Pbg;bundle echo " - This script could not detect any enabled httpd (webserver). $(N)"; exit0; }
-                        switch_fpm_version ${php_versions[$key-1]}
-                        ret=$?
-                        if (( ret )); then
-                            o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)Fast Process Manager SAPI $(GRAY)(php-fpm)$(R) version." 6;N)"
-                            case $ret in
-                                2)  o3; bundle echo "$(xpf; R; format_string "From the point of view of this script, it looks like the $(dY)PHP Fast Process Manager$(GRAY) php-fpm$(R) is not installed in any version." 6;N)"
-                                    ;;
-                                3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(php${php_versions[$key-1]}-fpm)$(R) is not installed." 6;N)"
-                            esac
+                        break
+                        ;;
+                [1-9])  if [[ ${php_versions[$key-1]} ]]; then
+                            P; echo ":$(Yi) php${php_versions[$key-1]}"; N
+#                            anykey_noquit
+                            separator
+                            q0 apt-mark manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
+                            set_selections 'ph(ar|p)' 'manual' "${PHPVREGEX#php}" "${php_versions[$key-1]}"
+                            cleanup_and_fix_alternatives afterwards  # repair broken alternatives, remove not existing alternatives
+                            mapfile -t selections< <(update-alternatives --get-selections | ${X[grep]} -E "ph(ar|p)")
+                            o3; dY; echo "alternatives system is now switch to:"; N
+                            f
+                            for i in ${!selections[@]}; do
+                                o3; pf; echo "$(lG)${selections[i]}"; N
+                            done
+                            f
+                            Y;echo "  $(format_string "Please consider: $(dY)if some alternatives listed here are not switched to the selected version, then either the package that provides the binaries for that version is not installed or – in case of $(G)php-fpm.sock$(dY) – the default fpm-pool $(G)[www]$(dY) has been deactivated in the selected version but not in the version that it shows here." 3)"
                             f
                             anykey
-                            break
-                        fi
-                        if (( ${HTTPD[apache2]} )); then
-                            switch_a2module_version ${php_versions[$key-1]}
+                            separator
+                            load_server_status
+                            populate_httpd_ enabled
+                            populate_httpd_ active
+                            populate_httpd_ wk_enabled
+                            populate_httpd_ wk_active
+                            (( ${#HTTPD_ENABLED[@]} )) || { o3; Pbg; bundle echo " - This script could not detect any enabled httpd (webserver). $(N)"; exit0; }
+                            switch_fpm_version ${php_versions[$key-1]}
                             ret=$?
                             if (( ret )); then
-                                o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(R) to version ${php_versions[$key-1]}." 6;N)"
+                                o3;bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)Fast Process Manager SAPI $(GRAY)(php-fpm)$(R) version." 6; N)"
                                 case $ret in
-                                    2)  o3; bundle echo "$(xpf; R; format_string "From the point of view of this script, it looks like the $(dY)apache2handler SAPI$(GRAY) libapache2-mod-php$(R) is not installed in any version." 6;N)"
+                                    2)  o3; bundle echo "$(xpf; R; format_string "From the point of view of this script, it looks like the $(dY)PHP Fast Process Manager$(GRAY) php-fpm$(R) is not installed in any version." 6; N)"
                                         ;;
-                                    3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(libapache2-mod-php${php_versions[$key-1]})$(R) is not installed." 6;N)"
-                                        ;;
-                                    4)  o3;O;bundle echo "Skipped the apache2 server due to its inactive state.";N
-                                        o3;O;bundle echo "You should first start the apache2 server and run";N
-                                        f;G;bundle echo "$(prompt;P) $me${FLAG[forceflag]} --switch-version";N
-                                        f;o3;O;bundle echo ".. again if you want to switch the $(dY)apache2handler SAPI$(O) to $(C)${php_versions[$key-1]}";N
+                                    3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)PHP Fast Process Manager$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(php${php_versions[$key-1]}-fpm)$(R) is not installed." 6; N)"
                                 esac
                                 f
                                 anykey
                                 break
                             fi
+                            if (( ${HTTPD[apache2]} )); then
+                                switch_a2module_version ${php_versions[$key-1]}
+                                ret=$?
+                                if (( ret )); then
+                                    o3; bundle echo "$(xpf; R; format_string "Something went wrong while switching the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(R) to version ${php_versions[$key-1]}." 6; N)"
+                                    case $ret in
+                                        2)  o3; bundle echo "$(xpf; R; format_string "From the point of view of this script, it looks like the $(dY)apache2handler SAPI$(GRAY) libapache2-mod-php$(R) is not installed in any version." 6; N)"
+                                            ;;
+                                        3)  o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(libapache2-mod-php${php_versions[$key-1]})$(R) is not installed." 6; N)"
+                                            ;;
+                                        4)  o3; O; bundle echo "Skipped the apache2 server due to its inactive state."; N
+                                            o3; O; bundle echo "You should first start the apache2 server and run"; N
+                                            f; G; bundle echo "$(prompt;P) $me${FLAG[forceflag]} --switch-version"; N
+                                            f; o3; O; bundle echo ".. again if you want to switch the $(dY)apache2handler SAPI$(O) to $(C)${php_versions[$key-1]}"; N
+                                    esac
+                                    f
+                                    anykey
+                                    break
+                                fi
+                            fi
+                            separator
+                            f
+                            o3; dY; echo "This is how php is connected to the httpd now:"; N
+                            f
+                            list_installed_sapi
+                            N
+                            line '=' P 2/78 b1
+                            f
+                            anykey_noquit
+                            o3; N; echo "If everything has gone as expected up to this point, you should once more run"
+                            f; G; echo "$(prompt;lB) $me${FLAG[forceflag]}$(C) --list-installed"; N
+                            f; o2; echo "$(format_string ".. until the end (do not quit in between), not only to look if the switch worked but to scan once more for possible configuration errors from the point of view of the new version. If everything looks good and is working well, considder to completely remove the old php version, to free up system resources." 3)"
+                            f
+                            anykey_noquit
+                            break
                         fi
-                        separator
-                        f
-                        o3;dY;echo "This is how php is connected to the httpd now:";N
-                        f
-                        list_installed_sapi
-                        N
-                        line '=' P 2/78 b1
-                        f
-                        anykey_noquit
-                        o3;N;echo "If everything has gone as expected up to this point, you should once more run"
-                        f;G;echo "$(prompt;lB) $me${FLAG[forceflag]}$(C) --list-installed";N
-                        f;o2;echo "$(format_string ".. until the end (do not quit in between), not only to look if the switch worked but to scan once more for possible configuration errors from the point of view of the new version. If everything looks good and is working well, considder to completely remove the old php version, to free up system resources." 3)"
-                        f
-                        anykey_noquit
-                        break
-                    fi
-        esac
+            esac
+        else
+            echo -e "\n\tChoice $(button $key) cancelled\n"
+            sleep 2
+            te0 8
+        fi
     done
     q0 di ff &
     contribute_

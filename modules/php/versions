@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${VERSIONS_BASHLIB:-false} && return
+${VERSIONS_BASHLIB:-_} && return
 VERSIONS_BASHLIB=:
 
 . <(lrequire binaries)
@@ -29,24 +29,24 @@ unset -v array globalarrays
 PHPVREGEX='php(5\.6|[78]\.[01234])'
 
 no_php(){
-    f;R
-    pf;echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
+    f; R
+    pf; echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
     if [[ " php-module-builder php-module-builder-test " =~ " $bm " ]]; then
-        os;echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
-        os;echo "You should at least install the package php\$version-cli first"
+        os; echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
+        os; echo "You should at least install the package php\$version-cli first"
         exit0
     elif [[ " php-updater php-updater-test " =~ " $bm " ]]; then
-        os;echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
+        os; echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
         N
         anykey
         explain
     fi
 }
 
-[ -n "${BINARIES[php]}" ] && PHP_VERSION="$(${BINARIES[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
+[ -n "${X[php]}" ] && PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
 
 existing_php_versions(){
-    ${BINARIES[cat]} <<PHP_VERSIONS
+    ${X[cat]} <<PHP_VERSIONS
     8.4;20240924;1861833600;1830211200;31
     8.3;20230831;1830211200;1767139200;28 29 30 31
     8.2;20220829;1798675200;1735603200;26 27 28 29 30 31
@@ -71,19 +71,24 @@ existing_php_versions(){
     4.0;19990421;993247200
     3.0;0;971992800
 PHP_VERSIONS
-}; mapfile -t EXISTING< <(existing_php_versions | ${BINARIES[sed]} 's/^\s*//')
+}
+mapfile -t EXISTING< <(existing_php_versions | ${X[sed]} 's/^\s*//')
+
+readonly PHPVREGEX PHP_VERSION
+readonly -a EXISTING
 
 versions_iterate(){
     local job php_version
     job="$1"
-    for php_version in $(${BINARIES[phpquery]} -V | ${BINARIES[sort]}); do
+    for php_version in $(${X[phpquery]} -V | ${X[sort]}); do
         $job $php_version
     done
 }
 
 populate_can_array(){
-    mapfile -t CAN< <(${BINARIES[apt-cache]} search "^$PHPVREGEX$"|${BINARIES[gawk]} '{print substr($1,4,3)}'|${BINARIES[sort]} -ru)
-}; populate_can_array
+    mapfile -t CAN< <(${X[apt-cache]} search "^$PHPVREGEX$"|${X[gawk]} '{print substr($1,4,3)}'|${X[sort]} -ru)
+}
+populate_can_array
 
 # increment & decrement version, echoes next higher or lower candidate if exist
 i_ver(){
@@ -122,33 +127,36 @@ end_of_(){
 }
 
 list_existing(){
-    local -i i eol eos c2=10 c3=49
-    local ver
+    local -i i eol eos c2 c3
+    local ver supported_nextcloud_versions
+    c2=10 c3=49
     line '=' P 2/78 b1
-    o2;B;echo "This is a list of existing php versions for your information.";N
-    Y;o2;echo "Version$(o $c2)End of life$(o $c3)End of active support";N
+    o2; B; echo "This is a list of existing php versions for your information."; N
+    o2; Y; echo "Version$(o $c2)End of life$(o $c3)End of active support"; N
     line '-' dP 2/78
-    for i in ${!EXISTING[@]};do
-        read -r ver ext eol eos <<<${EXISTING[i]//;/ }
+    for i in ${!EXISTING[@]}; do
+        read -r ver ext eol eos supported_nextcloud_versions<<<${EXISTING[i]//;/ }
         if [ $today -le $eos ];then
-            o2;pf;lG
-            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3)$(ut2udF $eos) ($(interval $eos))";N
+            o2; pf; lG
+            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3)$(ut2udF $eos) ($(interval $eos))"; N
         elif [ $today -le $eol ];then
-            o2;pf;G
-            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3;dR)$(ut2udF $eos) ($(interval $eos))";N
+            o2; pf; G
+            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3;dR)$(ut2udF $eos) ($(interval $eos))"; N
         else
-            o2;pf;GRAY
-            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))";N
+            o2; pf; GRAY
+            echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))"; N
         fi
-    done;line '-' dP 2/78;o2;GRAY;echo "More info: $(W)https://www.php.net/supported-versions.php";N
+    done
+    line '-' dP 2/78
+    o2; GRAY; echo "More info: $(W)https://www.php.net/supported-versions.php"; N
 }
 
 list_candidates() {
     local eol
     local -i i c2=11 c3=50
     line '=' P 2/78 b1
-    o2;B;echo "This is a list of php versions offered by the actual apt sources";N
-    Y;o2;echo "Version$(o $c2)End of life$(o $c3)Description";N
+    o2; B; echo "This is a list of php versions offered by the actual apt sources"; N
+    o2; Y; echo "Version$(o $c2)End of life$(o $c3)Description"; N
     line '-' dP 2/78
     for i in "${!CAN[@]}";do
         if does_exist_ "${CAN[i]}" 0; then
@@ -156,23 +164,24 @@ list_candidates() {
             eol="$(end_of_ life ${CAN[i]})"
             if [ "$PHP_VERSION" = "${CAN[i]}" ];then
                 line ' ' bGbg 1/80 a0
-                o2;bGbg;echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
-            elif [[ "$(${BINARIES[phpquery]} -V)" =~ ${CAN[i]} ]];then
-                o2;lG;echo "$(pf)${CAN[i]}$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
+                o2; bGbg; echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
+            elif [[ "$(${X[phpquery]} -V)" =~ ${CAN[i]} ]];then
+                o2; lG; echo "$(pf)${CAN[i]}$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
             else
-                o2;pf;GRAY;echo "${CAN[i]}$(o $c2)$eol$(N)"
+                o2; pf; GRAY; echo "${CAN[i]}$(o $c2)$eol$(N)"
             fi
-            o 7;GRAY;echo "\\$(o c2;dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${CAN[i]} 5))";N
+            o 7; GRAY; echo "\\$(o c2;dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${CAN[i]} 5))"; N
         else version_mismatch; fi
     done
     line '-' dP 2/78
 }
 
 does_exist_(){
-    local -i r=0 a=$2
+    local -i r a
+    r=0 a=${2:-0}
     if ((a)); then
         if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
-            if ! [[ "$(${BINARIES[phpquery]} -V)" =~ $1 ]]; then
+            if ! [[ "$(${X[phpquery]} -V)" =~ $1 ]]; then
                 wrong_first_argument "$1" 1
             fi
         else

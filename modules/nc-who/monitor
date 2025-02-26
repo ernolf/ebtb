@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${MONITOR_BASHLIB:-false} && return
+${MONITOR_BASHLIB:-_} && return
 MONITOR_BASHLIB=:
 
 . <(lrequire binaries)
@@ -19,11 +19,11 @@ MONITOR_BASHLIB=:
 
 # $1=pid $2=cls (clear screen)
 cleanup(){
-    q0 ${BINARIES[kill]} -TERM $1
-    q0 wait -f $1
+    kill -TERM $1 &>/dev/null
+    wait -f $1 &>/dev/null
     if [ "$2" = "cls" ]; then
         reset
-        ${BINARIES[clear]}
+        ${X[clear]}
     fi
 }
 
@@ -71,14 +71,14 @@ nc_monitor(){
       # watch breaks the formating of the tables made by  mysql client.
       # therefore we must build it again from html output.
         db_query="db_exec_ \"$query\" |
-            ${BINARIES[tr]} -d '\n' |
-            ${BINARIES[sed]} 's/>\s*</></g; s|<p>.*</p>||'"
+            ${X[tr]} -d '\n' |
+            ${X[sed]} 's/>\s*</></g; s|<p>.*</p>||'"
       # Empty row with one single dash, since completely empty is supressed
         local -i rr new_rr
         local sed_empty_row sed_pre_html2text html2text_command first_line sed_post_html2text watch_command key
         rr=5
         sed_empty_row="s|</TH></TR>|</TH></TR><TR><TD>-</TD>$(line '<td></td>' N 3 a0)</TR>|Ig"
-        sed_pre_html2text="${BINARIES[sed]} '$sed_empty_row
+        sed_pre_html2text="${X[sed]} '$sed_empty_row
                                 s/<th align=\"center\">/<th>/g; s/<td align=\"left\">/<td>/g; s/<tr valign=\"top\">/<tr>/g
                                 s/_/~/g; s/ /=/g; s/<TABLE=BORDER=/<TABLE BORDER=/Ig'"
 # TODO 0 -->
@@ -87,7 +87,7 @@ nc_monitor(){
         while :; do
             html2text_command="html2text -utf8 -width $(($(tput cols)-8))"
             first_line="| $list, refresh rate = $rr s. - [s] change refresh rate - [r] reload - [b] back - [q] quit"
-            sed_post_html2text="${BINARIES[sed]} -E '1 { /^\$/ { s/.*/$first_line/; b }; i$first_line
+            sed_post_html2text="${X[sed]} -E '1 { /^\$/ { s/.*/$first_line/; b }; i$first_line
                                 }; /^\s/! { :a s/([^-|_]|\s)_(_|\|)/\1 \2/g; ta }
                                 /_{20,}/ s/_/-/g      # replace _ with - on line 1 and 3 or 2 and 4
                                 1,2 s/^ -/+-/1        # replace space at begin of line 1 or 2 with +
@@ -107,9 +107,11 @@ nc_monitor(){
 # TODO 1 -->
 #            watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
 # TODO <-- 1
-            ${BINARIES[cat]} <<-WATCH_COMMAND_TEMPFILE > $watch_command_tempfile
+            ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > $watch_command_tempfile
 . $lincld/binaries
-AIO="$AIO" DOCKER="$DOCKER" DB_STRG="$(${BINARIES[sed]} 's/\$/\\$/' <<< "$DB_STRG")" DB_EXEC="$DB_EXEC"
+declare -A B
+B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB_STRG="$(${X[sed]} 's/\$/\\$/' <<< "$DB_STRG")" DB_EXEC="$DB_EXEC"
+$(declare -f _)
 $(declare -f q0)
 $(declare -f aio_wrapper)
 $(declare -f db_exec_)
@@ -118,7 +120,8 @@ $sed_pre_html2text |
 $html2text_command |
 $sed_post_html2text
 WATCH_COMMAND_TEMPFILE
-            export BINARIES; ${BINARIES[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
+#            export X; ${X[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
+            ${X[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
             trap 'cleanup $watch_pid cls; interrupted INT' INT
             trap 'cleanup $watch_pid cls; interrupted TERM' TERM
             while :; do read -rsn 1 key

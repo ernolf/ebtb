@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${EXTENSIONS_BASHLIB:-false} && return
+${EXTENSIONS_BASHLIB:-_} && return
 EXTENSIONS_BASHLIB=:
 
 . <(lrequire binaries)
@@ -46,28 +46,27 @@ SAPIS=(
     [phpdbg]="php@VER@-phpdbg"
 )
 
+readonly -A APIS SAPIS
+
 detect_installed_by_dpkg(){
     local e
     local -a p pe
     local -i i
-    mapfile -t p< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}' | ${BINARIES[sort]})
-    mapfile -t pe< <(${BINARIES[apt-mark]} showmanual '*php*' | ${BINARIES[sed]} 's/$/:m/';${BINARIES[apt-mark]} showauto '*php*' | ${BINARIES[sed]} 's/$/:a/')
+    mapfile -t p< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}' | ${X[sort]})
+    mapfile -t pe< <(${X[apt-mark]} showmanual '*php*' | ${X[sed]} 's/$/:m/';${X[apt-mark]} showauto '*php*' | ${X[sed]} 's/$/:a/')
     mapfile -t pe< <(p_sort ${pe[@]})
     for i in ${!p[@]}; do
         e=${pe[i]#*:}
-        echo "${p[i]}" | ${BINARIES[gawk]} -F'/' '{print$1"/"$2"/"$3"/"substr($4,1,1)"'$e'/"$5}'
+        echo "${p[i]}" | ${X[gawk]} -F'/' '{print$1"/"$2"/"$3"/"substr($4,1,1)"'$e'/"$5}'
     done
 }
-
-# for backwards compatibility:
-populate_pkgs_by_dpkg_array(){ :;}
 
 detect_extensions_in_(){
     local -a files valid_files
     local -i i
-    mapfile -t files< <(${BINARIES[find]} $1 \( -type f -o -type l \) -name "*\.so"); ((${#files[@]})) || return 1
+    mapfile -t files< <(${X[find]} $1 \( -type f -o -type l \) -name "*\.so"); ((${#files[@]})) || return 1
     for i in ${!files[@]}; do
-        file "$(${BINARIES[readlink]} -f ${files[i]})" | ${BINARIES[grep]} -q "shared object" && valid_files+=("${files[i]}")
+        file "$(${X[realpath]} ${files[i]})" | ${X[grep]} -q "shared object" && valid_files+=("${files[i]}")
     done
     ((${#valid_files[@]})) || return 1
     p_sort "${valid_files[@]}"
@@ -76,14 +75,13 @@ detect_extensions_in_(){
 extension_dir_of_(){
     local pv extension_dir
     pv="$1"
-    if extension_dir="$(q2 ${BINARIES[php$pv]} -i | ${BINARIES[gawk]} '/^extension_dir/ {print $NF}')"; then
+    if extension_dir="$(q2 ${X[php$pv]} -i | ${X[gawk]} '/^extension_dir/ {print $NF}')"; then
         if [ -d "$extension_dir" ]; then
             echo "$extension_dir"
             return
         fi
     fi
     echo "/usr/lib/php/${APIS[$pv]}"
-#    echo "/usr/lib/php/$(a_fld EXISTING ';' "$pv" 2)"
 }
 
 extension_ini_case(){
@@ -110,7 +108,6 @@ extension_include_dir_of_(){
     local pv
     pv="$1"
     echo "/usr/include/php/${APIS[$pv]}/ext"
-#    echo "/usr/include/php/$(a_fld EXISTING ';' "$pv" 2)/ext"
 }
 
 detect_and_assign_extensions(){
@@ -123,20 +120,19 @@ detect_and_assign_extensions(){
         phpregex="php"
     fi
     spinner C " . detect extensions ." &
-    for pv in $(${BINARIES[phpquery]} -V); do
-#        mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "$(extension_dir_of_ $pv)")
+    for pv in $(${X[phpquery]} -V); do
         mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${APIS[$pv]}")
     done
     kill_spinner
     spinner C " . assign extensions ." &
-    for dpkg_package in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
+    for dpkg_package in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
         declare -ga ${dpkg_package//[.-]/_}
-        mapfile -t "${dpkg_package//[.-]/_}"< <(${BINARIES[dpkg]} -L $dpkg_package|${BINARIES[grep]} "\.so$")
-        mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};${BINARIES[dpkg]} -L $dpkg_package|${BINARIES[grep]} "\.so$"|${BINARIES[sort]})
+        mapfile -t "${dpkg_package//[.-]/_}"< <(${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$")
+        mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$"|${X[sort]})
     done
     # EXTENSIONS_INSTALLED_BY_ADMIN
     $verbose && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
-    mapfile -t EXTS_ADMIN< <(${BINARIES[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
+    mapfile -t EXTS_ADMIN< <(${X[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
     mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
     kill_spinner
 }
@@ -145,22 +141,24 @@ detect_and_assign_extensions(){
 # C4EIBY4_=CANDIDATES_FOR_EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
 # versions_iterate search_candidates_4_extensions_installed_by_admin
 search_candidates_4_extensions_installed_by_admin(){
-    local pv sort fullpath module package
-    pv="$1" sort=false
+    local pv fullpath module package
+    local -A bool
+    pv="$1" bool[sort]=_
     spinner C " . searching packaged versions for php$pv extensions not installed by dpkg ." &
     declare -ga EIBY4_${pv//./}
+    local -n EIBY4_pv=EIBY4_${pv//./}
     declare -ga C4EIBY4_${pv//./}
+    local -n C4EIBY4_pv=C4EIBY4_${pv//./}
     for fullpath in ${EXTS_ADMIN[@]}; do
         module="${fullpath##*/}"
-#        if [ "${fullpath%/*}" = "$(extension_dir_of_ $pv)" ];then
-        if [ "${fullpath%/*}" = "/usr/lib/php/${APIS[$pv]}" ];then
-            sort=true
-            eval EIBY4_${pv//./}\+\=\(\"${module%%.*}\"\)
+       if [ "${fullpath%/*}" = "/usr/lib/php/${APIS[$pv]}" ];then
+            bool[sort]=:
+            EIBY4_pv+=("${module%%.*}")
             package="php$pv-${module%%.*}"
-            apt_exist "$package" && eval C4EIBY4_${pv//./}\+\=\(\"$package:${module%%.*}\"\)
+            apt_exist "$package" && C4EIBY4_pv+=("$package:${module%%.*}")
         fi
     done
-    $sort && mapfile -t "EIBY4_${pv//./}"< <(eval p_sort \${EIBY4_${pv//./}[@]})
+    ${bool[sort]} && mapfile -t EIBY4_pv< <(p_sort ${EIBY4_pv[@]})
     kill_spinner
 }
 
@@ -170,31 +168,31 @@ extension_is_(){
     pkg="$2"
     case "$1" in
         known)
-            echo "$pkg"|${BINARIES[grep]} -Eqsw "php-(amqplib|auth-sasl|bacon-qr-code|cas|codecoverage|codesniffer|common|constant-time|crypt-gpg|dapphp-radius|dasprid-enum|date|db|deepcopy|directory-scanner|dompdf|dragonmantank-cron-expression|easyrdf|email-validator|fdomdocument|fig-link-util|file-iterator|font-lib|fpdf|fxsl|geos|geshi|getallheaders|getid3|guestfs|hamcrest|htmlawed|htmlpurifier|httpful|icinga|image-text|invoker|json-schema|klogger|log|lorenzo-pinky|luasandbox|mail|mail-mime|malkusch-lock|mapi|mariadb-mysql-kbs|masterminds-html5|mdb2|mf2|mikey179-vfsstream|mime-type|monolog|mythtv|netscape-bookmark-parser|nikic-fast-route|nrk-predis|nyholm-psr7|opis-closure|patchwork-utf8|pclzip|pda-pheanstalk|pear|php-gettext|phpoption|predis|proxy-manager|pubsubhubbub-publisher|ramsey-uuid|random-compat|react-promise|remctl|roundcube-rtf-html-php|sass|seclib|shellcommand|sql-formatter|swiftmailer|tcpdf|thrift|timer|token-stream|tokenizer|validate|vlucas-phpdotenv|webmozart-assert|wikidiff2|xajax|zeroc-ice)" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqsw "php-http-(httplug|interop-http-factory-tests|message-factory|promise|psr7-integration-tests|request|request2|webdav-server)" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqsw "php(ab|cpd|dox|ldapadmin|liteadmin|lideadmin-themes|loc|md|myadmin|pgadmin|qrcode|sysinfo|webcounter|webcounter-extra)" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqs "php-(async-aws-|cache-|composer-|console-|doctrine-|finder-|gettext-|google-|guzzlehttp-|leage-|letodms-|mdb2-|mock|net-|parse|phar-io-|phpdocumentor-|phpmyadmin-|phpsec|phpstan-|psr-[cehls]|sabre-|services-|text-|tijsverkoyen-|xml-|zend-|zeta-)" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqsw "libphp-(adodb|jabber|jpgraph|jpgraph-examples|phpmailer|serialization-perl|simplepie|snoopy)" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqs "(dh|elpa|golang-github|gosa-plugin|icinga|kdevelop|libawl|libjs|libmarkdown|libnusoap|libow|libownet|libsparkline|mlmmj|newrelic|python3|slbackup|weechat|zabbix-frontend)-php" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqs "(cake|simplesaml)php" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqsw "(pkg-php-tools|uphpmvault)" && return 0
-            echo "$pkg"|${BINARIES[grep]} -Eqs "(arthurhoaro|pdlib|cephposix|libphpy|symfony|twig|phpunit)" && return 0
+            echo "$pkg"|${X[grep]} -Eqsw "php-(amqplib|auth-sasl|bacon-qr-code|cas|codecoverage|codesniffer|common|constant-time|crypt-gpg|dapphp-radius|dasprid-enum|date|db|deepcopy|directory-scanner|dompdf|dragonmantank-cron-expression|easyrdf|email-validator|fdomdocument|fig-link-util|file-iterator|font-lib|fpdf|fxsl|geos|geshi|getallheaders|getid3|guestfs|hamcrest|htmlawed|htmlpurifier|httpful|icinga|image-text|invoker|json-schema|klogger|log|lorenzo-pinky|luasandbox|mail|mail-mime|malkusch-lock|mapi|mariadb-mysql-kbs|masterminds-html5|mdb2|mf2|mikey179-vfsstream|mime-type|monolog|mythtv|netscape-bookmark-parser|nikic-fast-route|nrk-predis|nyholm-psr7|opis-closure|patchwork-utf8|pclzip|pda-pheanstalk|pear|php-gettext|phpoption|predis|proxy-manager|pubsubhubbub-publisher|ramsey-uuid|random-compat|react-promise|remctl|roundcube-rtf-html-php|sass|seclib|shellcommand|sql-formatter|swiftmailer|tcpdf|thrift|timer|token-stream|tokenizer|validate|vlucas-phpdotenv|webmozart-assert|wikidiff2|xajax|zeroc-ice)" && return 0
+            echo "$pkg"|${X[grep]} -Eqsw "php-http-(httplug|interop-http-factory-tests|message-factory|promise|psr7-integration-tests|request|request2|webdav-server)" && return 0
+            echo "$pkg"|${X[grep]} -Eqsw "php(ab|cpd|dox|ldapadmin|liteadmin|lideadmin-themes|loc|md|myadmin|pgadmin|qrcode|sysinfo|webcounter|webcounter-extra)" && return 0
+            echo "$pkg"|${X[grep]} -Eqs "php-(async-aws-|cache-|composer-|console-|doctrine-|finder-|gettext-|google-|guzzlehttp-|leage-|letodms-|mdb2-|mock|net-|parse|phar-io-|phpdocumentor-|phpmyadmin-|phpsec|phpstan-|psr-[cehls]|sabre-|services-|text-|tijsverkoyen-|xml-|zend-|zeta-)" && return 0
+            echo "$pkg"|${X[grep]} -Eqsw "libphp-(adodb|jabber|jpgraph|jpgraph-examples|phpmailer|serialization-perl|simplepie|snoopy)" && return 0
+            echo "$pkg"|${X[grep]} -Eqs "(dh|elpa|golang-github|gosa-plugin|icinga|kdevelop|libawl|libjs|libmarkdown|libnusoap|libow|libownet|libsparkline|mlmmj|newrelic|python3|slbackup|weechat|zabbix-frontend)-php" && return 0
+            echo "$pkg"|${X[grep]} -Eqs "(cake|simplesaml)php" && return 0
+            echo "$pkg"|${X[grep]} -Eqsw "(pkg-php-tools|uphpmvault)" && return 0
+            echo "$pkg"|${X[grep]} -Eqs "(arthurhoaro|pdlib|cephposix|libphpy|symfony|twig|phpunit)" && return 0
             return 1
             ;;
         dependency)
-            q2 ${BINARIES[dpkg-query]} -f'${Description}' -W $pkg | ${BINARIES[grep]} -iqsw "this package is a dependency package" && return $?
+            q2 ${X[dpkg-query]} -f'${Description}' -W $pkg | ${X[grep]} -iqsw "this package is a dependency package" && return $?
             if [[ "$pkg" =~ php- ]]; then
-                q2 ${BINARIES[dpkg-query]} -f'${Depends}' -W $pkg | ${BINARIES[grep]} -Eiqsw "$PHPVREGEX-${pkg#php-}$" && return $?
+                q2 ${X[dpkg-query]} -f'${Depends}' -W $pkg | ${X[grep]} -Eiqsw "$PHPVREGEX-${pkg#php-}$" && return $?
             fi
             return 1
             ;;
         meta)
-            q2 ${BINARIES[dpkg-query]} -f'${binary:Synopsis}' -W $pkg | ${BINARIES[grep]} -iqs "metapackage"
+            q2 ${X[dpkg-query]} -f'${binary:Synopsis}' -W $pkg | ${X[grep]} -iqs "metapackage"
             return $?
             ;;
         sapi)
-            for pv in $(${BINARIES[phpquery]} -V); do
-                for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+            for pv in $(${X[phpquery]} -V); do
+                for sapi in $(${X[phpquery]} -v $pv -S); do
                     if [ "$pkg" = "${SAPIS[$sapi]/@VER@/$pv}" ]; then
                         r=0
                         echo "$sapi:$pv"
@@ -207,7 +205,7 @@ extension_is_(){
 
 is_sapi_true_(){
     local pkg sapi
-    for pkg in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
+    for pkg in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
         sapi=''
         if sapi=$(extension_is_ sapi "$pkg"); then
             if [ "${sapi%:*}" = "$1" ];then
@@ -227,21 +225,21 @@ ext_state(){
         cleanup)
             for dir in $vlpm/*; do
                 if [ -d "$dir" ]; then
-                    [[ "$(${BINARIES[phpquery]} -V)" =~ ${dir##*/} ]] || ${BINARIES[rm]} -fr "$dir"
+                    [[ "$(${X[phpquery]} -V)" =~ ${dir##*/} ]] || ${X[rm]} -fr "$dir"
                 fi
             done
             return
             ;;
         fix)
-            for mod in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i\s+[^\s]*'$PHPVREGEX'/{print $2}'); do
-                for pv in $(${BINARIES[phpquery]} -V); do
+            for mod in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*'$PHPVREGEX'/{print $2}'); do
+                for pv in $(${X[phpquery]} -V); do
                     [ "${mod%-*}" = "php$pv" ] && mod="${mod#*-}" || continue
                     registry_dir="$vlpm/$pv/registry"
                     [ -d "$registry_dir" ] || mkdir -p "$registry_dir"
-                    for sapi in $(${BINARIES[phpquery]} -v $pv -S); do
+                    for sapi in $(${X[phpquery]} -v $pv -S); do
                         state_dir="$vlpm/$pv/$sapi"
                         if [ -f "$state_dir/enabled_by_admin/$mod" ]; then
-                            ${BINARIES[rm]} "$state_dir/enabled_by_admin/$mod"
+                            ${X[rm]} "$state_dir/enabled_by_admin/$mod"
                             [ -d "$state_dir/enabled_by_maint" ] || mkdir -p "$state_dir/enabled_by_maint"
                             touch "$state_dir/enabled_by_maint/$mod"
                             [ -f "$registry_dir/$mod" ] || touch "$registry_dir/$mod"
@@ -254,7 +252,7 @@ ext_state(){
             mod="$2" pv="$3"
             [[ "$pv" ]] && vlpm=$vlpm/$pv
             [ -d "$vlpm" ] || return
-            ${BINARIES[find]} $vlpm -type f -name "$mod" -empty -delete
+            ${X[find]} $vlpm -type f -name "$mod" -empty -delete
     esac
 }
 
@@ -266,11 +264,11 @@ detect_wrong_extensions(){
     valid_regex='^\s*([a-z._]|SMTP)+\s*=\s*[^#;]*'
     invalid_regex='^\s*priority\s*=\s*[1-9][0-9]?\s*$'
     for ini_file in $php_ini $ini_scan_dir/*\.ini; do
-        if [[ -f "$ini_file" || -L "$ini_file" ]] && ( stripconf "$ini_file" | ${BINARIES[grep]} -Eqsv $valid_regex || ${BINARIES[grep]} -Eqx $invalid_regex "$ini_file" ); then
+        if [[ -f "$ini_file" || -L "$ini_file" ]] && ( stripconf "$ini_file" | ${X[grep]} -Eqsv $valid_regex || ${X[grep]} -Eqx $invalid_regex "$ini_file" ); then
             echo "$ini_file:"
-            ${BINARIES[grep]} -Enx '^\s*priority\s*=\s*[1-9][0-9]?\s*$' "$ini_file"
-            for wrong_extension in "$(stripconf "$ini_file" | ${BINARIES[grep]} -Ev '^\s*([a-z._]|SMTP)+\s*=\s*[^#;]*')"; do
-                ${BINARIES[grep]} -xn "\s*$wrong_extension\s*" "$ini_file"
+            ${X[grep]} -Enx '^\s*priority\s*=\s*[1-9][0-9]?\s*$' "$ini_file"
+            for wrong_extension in "$(stripconf "$ini_file" | ${X[grep]} -Ev '^\s*([a-z._]|SMTP)+\s*=\s*[^#;]*')"; do
+                ${X[grep]} -xn "\s*$wrong_extension\s*" "$ini_file"
             done
         fi
     done
@@ -284,10 +282,10 @@ php_ext_file_create(){
     pv="$1" sapi="$2" ext_file="$(tf)"
 #    mapfile -t exts_all< <(detect_extensions_in_ "$(extension_dir_of_ $pv)")
     mapfile -t exts_all< <(detect_extensions_in_ "/usr/lib/php/${APIS[$pv]}")
-    ${BINARIES[grep]} -E '^\s*(zend_)?extension\s*=\s*' /etc/php/$pv/$sapi/php.ini > "$ext_file"
+    ${X[grep]} -E '^\s*(zend_)?extension\s*=\s*' /etc/php/$pv/$sapi/php.ini > "$ext_file"
     if nonullglob "/etc/php/$pv/$sapi/conf.d/*.ini"; then
         for ini_file in /etc/php/$pv/$sapi/conf.d/*.ini; do
-            ${BINARIES[grep]} -E '^\s*(zend_)?extension\s*=\s*' "$(${BINARIES[readlink]} -f "$ini_file")" >> "$ext_file"
+            ${X[grep]} -E '^\s*(zend_)?extension\s*=\s*' "$(${X[realpath]} "$ini_file")" >> "$ext_file"
         done
     fi
     for ext in ${exts_all[@]##*/}; do
@@ -297,14 +295,14 @@ php_ext_file_create(){
             echo "extension=$ext" >> "$ext_file"
         fi
     done
-    ${BINARIES[sed]} -i 's/[ "]//g' "$ext_file"
+    ${X[sed]} -i 's/[ "]//g' "$ext_file"
     uniq_lines "$ext_file"
     mapfile -t exts_in_ext_file < "$ext_file"
     for ext_in_ext_file in ${exts_in_ext_file[@]#*extension=}; do
-        if ! [[ " $(echo ${exts_all[@]##*/}|${BINARIES[sed]} 's/\.so//g') " =~ " ${ext_in_ext_file%.so} " ]]; then
-            line_number=$(${BINARIES[grep]} -Enx "^\s*(zend_)?extension\s*=\s*$ext_in_ext_file" "$ext_file" | ${BINARIES[cut]} -d: -f1)
+        if ! [[ " $(echo ${exts_all[@]##*/}|${X[sed]} 's/\.so//g') " =~ " ${ext_in_ext_file%.so} " ]]; then
+            line_number=$(${X[grep]} -Enx "^\s*(zend_)?extension\s*=\s*$ext_in_ext_file" "$ext_file" | ${X[cut]} -d: -f1)
             if (( $line_number )); then
-                ${BINARIES[sed]} -i "${grep_output}d" "$ext_file"
+                ${X[sed]} -i "${grep_output}d" "$ext_file"
             fi
         fi
     done
@@ -312,23 +310,23 @@ php_ext_file_create(){
 }
 
 php_apache2_vals() {
-#    local debug=true
     local pv mode apache_dir ext_file phpmodule
     local -i port
-    pv="$1" mode="$2" apache_dir=$(${BINARIES[mktemp]} -d) port=8080
-    while q2 ${BINARIES[netstat]} -tulpn | ${BINARIES[grep]} -q ":$port "; do ((port++)); done
+    local -A bool
+    pv="$1" mode="$2" apache_dir=$(${X[mktemp]} -d) port=8080 # bool[debug]=:
+    while q2 ${X[netstat]} -tulpn | ${X[grep]} -q ":$port "; do ((port++)); done
     (( ${pv%.*} > 7 )) || phpmodule="php${pv%.*}_module"
     if [[ "${mode:-}" =~ default ]]; then
         ext_file="$(php_ext_file_create $pv apache2)"
         minimalini="PHPIniDir $apache_dir"
         mv $ext_file $apache_dir/php.ini
     fi
-    ${BINARIES[cat]} > $apache_dir/httpd.conf <<EOF
+    ${X[cat]} > $apache_dir/httpd.conf <<EOF
 ServerRoot $apache_dir
 PidFile $apache_dir/httpd.pid
 User www-data
 Group www-data
-$(${debug:-false} && echo -e "ErrorLog $apache_dir/error.log\nLogLevel debug" || echo "ErrorLog /dev/null")
+$(${bool[debug]:-_} && echo -e "ErrorLog $apache_dir/error.log\nLogLevel debug" || echo "ErrorLog /dev/null")
 LoadModule mpm_prefork_module /usr/lib/apache2/modules/mod_mpm_prefork.so
 LoadModule ${phpmodule:-php_module} /usr/lib/apache2/modules/libphp$pv.so
 LoadModule authz_core_module /usr/lib/apache2/modules/mod_authz_core.so
@@ -344,7 +342,7 @@ Listen $port
     DocumentRoot $apache_dir
 </VirtualHost>
 EOF
-    ${BINARIES[cat]} > $apache_dir/index.php <<"EOF"
+    ${X[cat]} > $apache_dir/index.php <<"EOF"
 <?php
 foreach(ini_get_all() as $k => $v) {
     if (strlen($v["local_value"])) {
@@ -353,12 +351,12 @@ foreach(ini_get_all() as $k => $v) {
 }
 ?>
 EOF
-    ${BINARIES[chown]} -R www-data:www-data $apache_dir
+    ${X[chown]} -R www-data:www-data $apache_dir
     start-stop-daemon --start --background --quiet --user www-data --pidfile "$apache_dir/httpd.pid" --exec /usr/sbin/apache2 -- -f "$apache_dir/httpd.conf"
-    for i in {1..3}; do q0 ${BINARIES[curl]} -s "http://localhost:$port/index.php" && break; sleep 0.3; done
-    ${BINARIES[curl]} -s "http://localhost:$port/index.php" | ${BINARIES[sort]}
-    ${BINARIES[kill]} "$(< $apache_dir/httpd.pid)"
-    ${debug:-false} || cleanup "$apache_dir"
+    for i in {1..3}; do q0 ${X[curl]} -s "http://localhost:$port/index.php" && break; sleep 0.3; done
+    ${X[curl]} -s "http://localhost:$port/index.php" | ${X[sort]}
+    kill "$(< $apache_dir/httpd.pid)"
+    ${bool[debug]:-_} || cleanup "$apache_dir"
 }
 
 # outputs directives values, default or local
@@ -389,8 +387,8 @@ php_directive_vals_(){
     esac
     if [ "$sapi" = 'apache2' ]; then
         q2 php_apache2_vals $pv $1
-        if [ -n "${BINARIES[php$pv]}" ]; then
-            q1 ${BINARIES[env]} PHP_INI_SCAN_DIR=$ini_scan_dir LC_MESSAGES=C ${BINARIES[php$pv]##* } \
+        if [ -n "${X[php$pv]}" ]; then
+            q1 ${X[env]} PHP_INI_SCAN_DIR=$ini_scan_dir LC_MESSAGES=C ${X[php$pv]##* } \
             -c "$ext_file" \
             -d "error_reporting='~E_ALL'" \
             -v 2>$err
@@ -398,11 +396,11 @@ php_directive_vals_(){
             echo "no php$pv binary installed" >$err
         fi
     elif [ "$sapi" = 'fpm' ]; then
-        ${BINARIES[env]} PHP_INI_SCAN_DIR=$ini_scan_dir LC_MESSAGES=C ${BINARIES[php-fpm$pv]##* } \
+        ${X[env]} PHP_INI_SCAN_DIR=$ini_scan_dir LC_MESSAGES=C ${X[php-fpm$pv]##* } \
         -c "$ext_file" \
         -d "error_reporting='~E_ALL'" \
-        -i 2>$err | ${BINARIES[grep]} -E '^[^A-Z].*=>.*=>' | ${BINARIES[sort]} | \
-        ${BINARIES[php$pv]} -r '
+        -i 2>$err | ${X[grep]} -E '^[^A-Z].*=>.*=>' | ${X[sort]} | \
+        ${X[php$pv]} -r '
             $lines = file("php://stdin", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 list($directive, $local, $master) = array_map("trim", explode("=>", $line));
@@ -411,7 +409,7 @@ php_directive_vals_(){
             }
         '
     else
-        ${BINARIES[env]} PHP_INI_SCAN_DIR=$ini_scan_dir LC_MESSAGES=C ${BINARIES[php$pv]##* } \
+        ${X[env]} PHP_INI_SCAN_DIR=$ini_scan_dir LC_MESSAGES=C ${X[php$pv]##* } \
         -c "$ext_file" \
         -d "error_reporting='~E_ALL'" \
         -r 'foreach(ini_get_all('$section') as $k => $v) if (strlen($v["local_value"])) echo "$k=".$v["local_value"]."\n";' 2>$err
@@ -437,9 +435,9 @@ php_default_vals(){
     if [ "$sapi" = 'apache2' ]; then
         q2 php_apache2_vals $pv default
     elif [ "$sapi" = 'fpm' ]; then
-        q2 ${BINARIES[env]} PHP_INI_SCAN_DIR=/dev/null LC_MESSAGES=C ${BINARIES[php-fpm$pv]##* } -c "$ext_file" -d "error_reporting='~E_ALL'" -i | \
-        ${BINARIES[grep]} -E '^[^A-Z].*=>.*=>' | ${BINARIES[sort]} | \
-        ${BINARIES[php$pv]} -r '
+        q2 ${X[env]} PHP_INI_SCAN_DIR=/dev/null LC_MESSAGES=C ${X[php-fpm$pv]##* } -c "$ext_file" -d "error_reporting='~E_ALL'" -i | \
+        ${X[grep]} -E '^[^A-Z].*=>.*=>' | ${X[sort]} | \
+        ${X[php$pv]} -r '
             $lines = file("php://stdin", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 list($directive, $local, $master) = array_map("trim", explode("=>", $line));
@@ -448,7 +446,7 @@ php_default_vals(){
             }
         '
     else
-        q2 ${BINARIES[env]} PHP_INI_SCAN_DIR=/dev/null LC_MESSAGES=C ${BINARIES[php$pv]##* } \
+        q2 ${X[env]} PHP_INI_SCAN_DIR=/dev/null LC_MESSAGES=C ${X[php$pv]##* } \
         -c "$ext_file" \
         -d "error_reporting='~E_ALL'" \
         -r 'foreach(ini_get_all('$section') as $k => $v) if (strlen($v["local_value"])) echo "$k=".$v["local_value"]."\n";'
@@ -474,11 +472,11 @@ php_local_vals(){
     if [ "$sapi" = 'apache2' ]; then
         php_apache2_vals $pv local 2>>$err
     elif [ "$sapi" = 'fpm' ]; then
-        ${BINARIES[env]} PHP_INI_SCAN_DIR=/etc/php/$pv/$sapi/conf.d/ LC_MESSAGES=C ${BINARIES[php-fpm$pv]##* } \
+        ${X[env]} PHP_INI_SCAN_DIR=/etc/php/$pv/$sapi/conf.d/ LC_MESSAGES=C ${X[php-fpm$pv]##* } \
         -c "/etc/php/$pv/$sapi/php.ini" \
         -d "error_reporting='~E_ALL'" \
-        -i  2>>$err | ${BINARIES[grep]} -E '^[^A-Z].*=>.*=>' | ${BINARIES[sort]} | \
-        ${BINARIES[php$pv]} -r '
+        -i  2>>$err | ${X[grep]} -E '^[^A-Z].*=>.*=>' | ${X[sort]} | \
+        ${X[php$pv]} -r '
             $lines = file("php://stdin", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
             foreach ($lines as $line) {
                 list($directive, $local, $master) = array_map("trim", explode("=>", $line));
@@ -487,7 +485,7 @@ php_local_vals(){
             }
         '
     else
-        ${BINARIES[env]} PHP_INI_SCAN_DIR=/etc/php/$pv/$sapi/conf.d/ LC_MESSAGES=C ${BINARIES[php$pv]##* } \
+        ${X[env]} PHP_INI_SCAN_DIR=/etc/php/$pv/$sapi/conf.d/ LC_MESSAGES=C ${X[php$pv]##* } \
         -c "/etc/php/$pv/$sapi/php.ini" \
         -d "error_reporting='~E_ALL'" \
         -r 'foreach(ini_get_all('$section') as $k => $v) if (strlen($v["local_value"])) echo "$k=".$v["local_value"]."\n";' 2>>$err

@@ -1,12 +1,12 @@
 # general
 q0(){
-  "$@" &>/dev/null
+    "$@" &>/dev/null
 }
 q1(){
-  "$@" >/dev/null
+    "$@" >/dev/null
 }
 q2(){
-  "$@" 2>/dev/null
+    "$@" 2>/dev/null
 }
 log(){
     ( flock -x 200
@@ -41,14 +41,15 @@ nohome() {
     kill -TERM $mpid
 }
 sourced() {
-    local am
     local -u m="${1/\.d\//_}_BASHLIB"
-    eval am="\$${m#*/}"
-    ${am:-false}
+    m="${m#*/}"
+    q0 declare -p "$m" || declare -g "$m"=_
+    ${!m}
 }
 json_etag() {
-    [ -n "${BINARIES[jq]}" ] || return 1
-    q2 ${BINARIES[jq]} -r '.etag' "$1"
+    [ -n "${X[jq]}" ] || return 1
+    [ -f "$1" ] || return 1
+    q2 ${X[jq]} -r '.etag' "$1"
 }
 c4u() {
     local -u m="${1#*/}_BASHLIB"
@@ -56,7 +57,7 @@ c4u() {
     local -i le=$(module_etag "$1" "$lmj") re=$(module_etag "$1" "$lmjn")
     ((le < re)) && {
         rm "$lincld/$1"
-        declare -g $m=false
+        declare -g $m=_
     }
 }
 req() {
@@ -75,35 +76,30 @@ lreq() {
     fi
 }
 lrequire() { lreq $@; }
-module_etag() { jq -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
+module_etag() { ${X[jq]} -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
 declare -i mpid=$$ epoch my_epoch my_size lce mje mjne w4uc
 for bin in id uname mkdir awk cat curl; do checkbin $bin; done
-declare lf="$TMPDIR/ebtb/logfiles/$bm.log" version my_url curlc cargs opt opts astr="$(id -un): " A="$(uname -a)"
-declare -a args tntd
+declare lf="$TMPDIR/ebtb/logfiles/$bm.log" version my_url curlc cargs bool astr="$(id -un): " A="$(uname -a)"
+declare -a bools args tntd
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"
 my_url="${my_home%/apps/raw}/script/$scriptname" curlc="/usr/bin/env LC_MESSAGES=C $(type -P curl) --compressed" cargs="-se $bm-$epoch $my_home"
-opts="rt run2 irun2 do_update do_restore_backup do_integrity_check"
-for opt in $opts; do declare $opt=false; done
-(($(id -u))) || rt=:
+bools=(rt run2 irun2 do_update do_restore_backup do_integrity_check)
+for bool in ${bools[@]}; do B[$bool]=_; done
+(($(id -u))) || B[rt]=:
 for arg in "$@"; do
-    if [ "${arg%=*}" = 'json' ]; then
-        declare run2=: my_$arg astr="run2 $astr"
-    elif [ "$arg" = 'irun2' ]; then
-        declare irun2=: astr="irun2 $astr"
-    elif [ "$arg" = 'my_update' ]; then
-        declare do_update=: astr="update $astr"
-    elif [ "$arg" = 'restore_backup' ]; then
-        declare do_restore_backup=: astr="backup $astr"
-    elif [ "$arg" = 'integrity_check' ]; then
-        declare do_integrity_check=: astr="integrity $astr"
-    else
-        args+=("$arg")
-    fi
+    case "$arg" in
+        json=*)         B[run2]=:; declare my_$arg astr="run2 $astr"           ;;
+        irun2)          B[irun2]=:; declare astr="irun2 $astr"                 ;;
+        my_update)      B[do_update]=:; declare astr="update $astr"            ;;
+        restore_backup) B[do_restore_backup]=:; declare astr="backup $astr"    ;;
+        integrity_check)B[do_integrity_check]=:; declare astr="integrity $astr";;
+        *)              [ -z "${arg// /}" ] || args+=("$arg")
+    esac
 done
-set -- "${args[@]}" && unset -v args
-declare my_args="$*" r my_json my_scriptname my_hash
-$run2 && r=$(hc Io "$astr$my_args" $cargs/scripts/${scriptname}.json) || {
+set -- "${args[@]}" && unset -v bool bools args
+declare my_args="$@" r my_json my_scriptname my_hash
+${B[run2]} && r=$(hc Io "$astr$my_args" $cargs/scripts/${scriptname}.json) || {
     r=$(hc D "$astr$my_args" $cargs/scripts/${scriptname}.json)
     ((${r##*$'\n'} == 200)) && my_json="${r%$'\n'*}"
 }

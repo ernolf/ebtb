@@ -1,6 +1,6 @@
 ## include bashmodules ->
-declare channel='prod' lincld rincld REQ mod check=false lmj lmjn rmj lcf fp
-w4uc=900
+declare channel='prod' lincld rincld REQ mod lmj lmjn rmj lcf fp
+w4uc=300
 [[ "$scriptname" =~ test ]] && { channel='test' w4uc=30; }
 [ -z "$HOME" ] && eval HOME=~
 [[ -d "$HOME" && "$HOME" != / && -w "$HOME" ]] && lincld="$HOME/.ebtb/modules/$channel" || lincld="$TMPDIR/ebtb/modules/$channel"
@@ -8,25 +8,25 @@ rincld="modules/$channel"
 mkdir -p "$lincld/$sin"
 REQ=". $lincld" lmj="$lincld/modules.json" rmj="$rincld/modules.json" lcf="$lincld/$sin/.checked"
 lmjn="$lmj~new" lce=$(q2 cat "$lcf")
-$rt && ((rte - lce > w4uc)) && {
+((rte - lce > w4uc)) && {
     $curlc -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
-    if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && check=:; fi
+    if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && B[check]=:; fi
 }
+: ${B[check]:=_} ${B[pager]:=_}
 for mod in ${modules[@]}; do
-    $check && {
-        ${pager:=false} || printf "\r\e[K.. checking modules - $mod"
+    ${B[check]} && {
+        ${B[pager]} || printf "\r\e[K.. checking modules - $mod"
         c4u "$mod"
-    } || { ${pager:=false} || printf "\r\e[K.. loading modules - $mod"; }
+    } || { ${B[pager]} || printf "\r\e[K.. loading modules - $mod"; }
     . <(lreq $mod)
-    [ "$mod" = 'dependency' ] && dependency_check
 done
-$check && echo $rte >"$lcf"
+${B[check]} && echo $rte >"$lcf"
 [ -f "$lmjn" ] && mv "$lmjn" "$lmj"
-$rt && ! ((lce)) && echo $rte >"$lcf"
-$pager || te1
-eval "$(echo "$(unquote $my_json)" | jq -r 'keys[] as $key|"my_\($key)=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
+${B[rt]} && ! ((lce)) && echo $rte >"$lcf"
+${B[pager]} || te1
+eval "$(echo "$(unquote $my_json)" | ${X[jq]} -r 'keys[] as $key|"my_\($key)=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
 declare upinf='(no update info available)'
 . <(req update)
-"$do_update" && my_update
+"${B[do_update]}" && my_update
 [ "$1" = "my_update_check" ] && my_update_check
-"$do_restore_backup" && restore_backup
+"${B[do_restore_backup]}" && restore_backup

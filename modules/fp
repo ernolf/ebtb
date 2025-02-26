@@ -1,0 +1,64 @@
+__minified_bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${FP_BASHLIB:-_} && return
+FP_BASHLIB=:
+
+declare MACHINE_ID
+
+machine_id(){
+    local -A bool
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
+    if [[ -f /etc/machine-id || -f /var/lib/dbus/machine-id ]]; then
+        [ -f /etc/machine-id ] && ${X[cat]} "/etc/machine-id" || ${X[cat]} "/var/lib/dbus/machine-id"
+    else # computing pseudo machine-id - md5sum from mac address:
+        q2 ${X[ip]} link show | ${X[gawk]} '/ether/ {print $2}' | ${X[md5sum]} | ${X[tr]} -d ' -'
+    fi
+    ${bool[debugx]:-_} && set -x
+}
+
+MACHINE_ID="$(machine_id 2>&1)"
+
+fp(){
+    local -A bool
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
+    local fingerprint
+    if [ -f "${lf%/*}/fp" ]; then
+        local -i fpe
+        fpe=$(${X[stat]} -c %Z "${lf%/*}/fp")
+        (( rte-fpe > 3600 )) && echo > "${lf%/*}/fp"
+        fingerprint=$(< "${lf%/*}/fp")
+    fi
+    if (( ${#fingerprint} == 7 )); then
+        echo $fingerprint
+        ${bool[debugx]:-_} && set -x
+        return 0
+    else
+        local decimal_number
+        local -i digit checksum
+        if [ -n "${X[python3]}" ]; then
+            decimal_number=$(${X[python3]} -c "print(int('$MACHINE_ID', 16))")
+        else
+            decimal_number=$(${X[php]} -r "printf('%.0f', hexdec('$MACHINE_ID'));")
+        fi
+        while (( ${#decimal_number} > 1 )); do
+            checksum=0
+            for (( i=0; i<${#decimal_number}; i++ )); do
+                digit="${decimal_number:i:1}"
+                checksum=$((checksum + digit))
+            done
+            decimal_number=$checksum
+        done
+        fingerprint=":${MACHINE_ID:14:4}${checksum}:"
+        echo "$fingerprint" | ${X[tee]} "${lf%/*}/fp"
+    fi
+    ${bool[debugx]:-_} && set -x
+}
+
+${MH_BASHLIB:-_} || . <(q2 require mh)

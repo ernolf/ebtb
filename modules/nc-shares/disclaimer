@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${DISCLAIMER_BASHLIB:-false} && return
+${DISCLAIMER_BASHLIB:-_} && return
 DISCLAIMER_BASHLIB=:
 
 . <(lrequire button)

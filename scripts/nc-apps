@@ -9,30 +9,17 @@ __license__
 
 __scriptname__
 
-dependencies=(
-    "gawk#gawk#GNU awk"
-    "grep#grep#GNU grep, egrep and fgrep"
-    "less#less#A terminal pager similar to more"
-    "curl#curl#Command line file transfer tool with URL syntax"
-    "gpg#gnupg#GNU Privacy Guard"
-    "xmlstarlet#xmlstarlet#Command line XML toolkit"
-    "jq#jq#Command line JSON processor"
-    "sqlite3#sqlite3#Command line interface for SQLite 3"
-    "php#php-cli#PHP Commandline Interface"
-)
 modules=(
-    binaries basics awksed tempfile ansi prefix button exit spinner anykey line
-    array ask sudo dependency vdir integrity php/version nc/nextcloud xml
-    $sin/github_api $sin/app_update $sin/filters $sin/db $sin/appstore
-    $sin/data_refine $sin/assumed_version $sin/list $sin/install_overwrite
-    $sin/l10n $sin/help
+    binaries basics awksed tempfile ansi filter prefix button exit spinner
+    anykey line array ask sudo dependency xml vdir integrity php/version
+    nc/nextcloud $sin/github_api $sin/app_update $sin/filters $sin/db
+    $sin/appstore $sin/data_refine $sin/assumed_version $sin/list
+    $sin/install_overwrite $sin/l10n $sin/help
 )
 __debug__
 # use parallel running background jobs in order to dramatically increase speed
-#declare bgjobs=false debug=true pager
-#declare bgjobs=false debug=false pager
-declare bgjobs=true debug=false pager
-$bgjobs&&{ [[ -t 1&&! -p /dev/stdout ]]&&pager=false||pager=true;} # is piped to pager?
+B[bgjobs]=: B[trace]=_
+${B[bgjobs]} && { [[ -t 1 && ! -p /dev/stdout ]] && B[pager]=_ || B[pager]=:; } # is piped to pager?
 
 __when__
 
@@ -53,69 +40,87 @@ contribute_(){
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
 all_apps(){
-    stock_up_arrays filtered_appstore=true
-    local s=false ns=false up=false
+    stock_up_arrays filtered_appstore=:
+    local all_endis app
     local -a args
-$debug&&echo "$LINENO $*"
-$debug&&set -x
-    while (($#));do
-        case $1 in
-            shipped)
-                s=true
-                shift;;
-            not_shipped)
-                ns=true
-                shift;;
-            updatable)
-                up=true
-                shift;;
-            enabled|disabled|local|store|all)
-                all_endis=$1
-                shift;;
-            *)  args+=("$1")
-                shift
+    local -A bool
+# TODO 0 -->
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_stack_trace >/dev/tty
+        echo -n "global bool values  -" >/dev/tty
+        local iter
+        for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >/dev/tty; done; echo >/dev/tty
+        unset iter
+        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+            local iter
+            echo -n "local bool values   -" >/dev/tty
+            for iter in ${!bool[@]}; do echo -n " $iter=${bool[$iter]}" >/dev/tty; done; echo >/dev/tty
+            unset iter
+        fi
+        echo "app_id              - $id" >/dev/tty
+        echo "section             - $section" >/dev/tty
+        echo "v2i nc_version      - $(v2i ${nc_version%.*})" >/dev/tty
+        echo "v2i nc_key          - $(v2i $nc_key)" >/dev/tty
+        echo "==TRACE=end===" >/dev/tty
+    fi
+# TODO <-- 0
+    while (( $# )); do
+        shopt -s extglob
+        case "$1" in
+                        shipped) bool[s]=:;      shift ;;
+                    not_shipped) bool[ns]=:;     shift ;;
+                      updatable) bool[up]=:;     shift ;;
+ ?(en|dis)abled|local|store|all) all_endis="$1"; shift ;;
+                              *) args+=("$1");   shift
         esac
+        shopt -u extglob
     done
-    $s||$up&&[ "$all_endis" = all -o "$all_endis" = store ]&&all_endis=local
-    for app in $(apps_ $all_endis);do
-        if $s;then # shellcheck disable=SC2068 # only list the shipped apps
-            is_shipped_ "$app" -q&&list $app ${args[@]}
-        elif $ns;then # shellcheck disable=SC2068 # only list the not shipped apps
-            is_shipped_ "$app" -q||list $app ${args[@]}
-        elif $up;then # shellcheck disable=SC2068 # only list the updatable apps
-            echo ${availupd[@]%%#*}|${BINARIES[grep]} -qsw "$app"&&list $app ${args[@]}
-        else # shellcheck disable=SC2068 # list all apps
-            list $app ${args[@]}
+    ( ${bool[s]:-_} || ${bool[up:-_]} ) && [[ "$all_endis" =~ all|store ]] && all_endis=local
+    for app in $(apps_ "$all_endis"); do
+        if ${bool[s]:-_}; then     # only list the shipped apps
+            is_shipped_ "$app" -q && list "$app" "${args[@]}"
+        elif ${bool[ns]:-_}; then  # only list the not shipped apps
+            is_shipped_ "$app" -q || list "$app" "${args[@]}"
+        elif ${bool[up]:-_}; then  # only list the updatable apps
+            [[ " ${availupd[@]%%#*} " =~ " $app " ]] && list "$app" "${args[@]}"
+        else # list all apps
+            list "$app" "${args[@]}"
         fi
     done
 }
 
-# shellcheck disable=SC2068
-shipped(){ all_apps shipped $@;}
-# shellcheck disable=SC2068
-not_shipped(){ all_apps not_shipped $@;}
-# shellcheck disable=SC2068
-updatable(){ all_apps updatable $@;}
+shipped(){ all_apps shipped "$@" use_json_all=${B[use_json_all]}; }
 
-id(){ stock_up_arrays filtered_appstore=true all=true;local app
-     # shellcheck disable=SC2068
-#    for app in $(apps_ all);do echo $app|${BINARIES[grep]} -iqs "$app_id"&&list $app $@ use_json_all=true;done
-    for app in $(apps_ all);do [[ "$app" =~ $app_id ]]&&list $app $@ use_json_all=true;done
+not_shipped(){ all_apps not_shipped "$@" use_json_all=${B[use_json_all]}; }
+
+updatable(){ all_apps updatable "$@" use_json_all=${B[use_json_all]}; }
+
+id(){
+    stock_up_arrays filtered_appstore=: all=:
+    local app
+    for app in $(apps_ all); do [[ "${app,,}" =~ ${app_id,,} ]] && list "$app" "$@" use_json_all=:; done
 }
 
-ids(){ stock_up_arrays filtered_appstore=true all=true;local -i i
-    for i in ${!app_ids[@]};do list ${app_ids[i]} $@ use_json_all=true;done
+ids(){
+    stock_up_arrays filtered_appstore=: all=:
+    local app_id
+    for app_id in ${app_ids[@]}; do list "$app_id" "$@" use_json_all=:; done
 }
 
-name(){ stock_up_arrays filtered_appstore=true all=true
-    build_id_name_array(){ local app xml_f name tmp=$1;shift
-        appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id"|${BINARIES[jq]} -r >> $tmp
-        for app in $(apps_ all);do
-            if ! ${BINARIES[grep]} -qsw "$app" $tmp;then
+name(){
+    stock_up_arrays filtered_appstore=: all=:
+    build_id_name_array(){
+        local app xml_f name tmp
+        tmp="$1"
+        shift
+        appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id" | ${X[jq]} -r >> "$tmp"
+        for app in $(apps_ all); do
+            if ! ${X[grep]} -qsw "$app" "$tmp"; then
                 xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
-                if [ -f "$xml_f" ];then
-                    name=$(xmls -v "(//info/name)" "$xml_f"|${BINARIES[sed]} '2,$d')
-                    echo "$name"|${BINARIES[grep]} -iqs "$*"&&echo "$app" >> $tmp
+                if [ -f "$xml_f" ]; then
+                    name=$(xmls -v "(//info/name)" "$xml_f" | ${X[sed]} '2,$d')
+                    echo "$name" | ${X[grep]} -iqs "$*" && echo "$app" >> "$tmp"
                 fi
             fi
         done
@@ -125,22 +130,25 @@ name(){ stock_up_arrays filtered_appstore=true all=true
     spinner &
     build_id_name_array $n_tmp "$app_name" & job_id=$!
     wait $job_id
-    mapfile id_name_array < $n_tmp
+    mapfile id_name_array < "$n_tmp"
     kill_spinner
-     # shellcheck disable=SC2068
-    for app in "${id_name_array[@]}";do list $app $@ use_json_all=true;done
+    for app in "${id_name_array[@]}";do list "$app" "$@" use_json_all=:; done
 }
 
-update(){ local -a args
-    stock_up_arrays filtered_appstore=true
-    while (($#));do
-        case $1 in
-            enabled|disabled|local|all) all_endis=$1;shift;;
-            *) args+=("$1");shift
+update(){
+    stock_up_arrays filtered_appstore=:
+    local -a args
+    while (($#)); do
+        case "$1" in
+            enabled|disabled|local|all)
+                all_endis=$1
+                shift ;;
+            *)  args+=("$1")
+                shift
         esac
     done
-    for app in $(apps_ $all_endis);do
-        echo ${availupd[@]%%#*}|${BINARIES[grep]} -qsw "$app"&&do_update_ $app "${args[@]}"
+    for app in $(apps_ $all_endis); do
+        echo ${availupd[@]%%#*} | ${X[grep]} -qsw "$app" && do_update_ $app "${args[@]}"
     done
 }
 
@@ -152,96 +160,103 @@ nc_version_string="$(nc_version_ string "$NC_DIR/version.php")"
 nc_version_tag="$(tolower "${nc_version_string// /}")"
 nc_min_version="${LATEST_EOL[0]}" # this is only prefilled here -> changed by assumed_version module
 
-if echo $(r_db .tables;) | ${BINARIES[grep]} -qs "database_created"; then
-    database_created=true
-fi
+# declared in $sin/db:
+echo $(r_db .tables;) | ${X[grep]} -qs "database_created" && B[database_created]=:
 
-# first search for options --nopager --markdown secondrun lang=xx, --(un)supported and remove from @() array
-# and then add the remaining arguments into the new array
-declare secondrun=false nopager=false markdown=false supported=false unsupported=false use_json_all=false update_first=false allow_unstable=false
-args=()
+declare bool arg
+declare -a bools args
+bools=(secondrun nopager markdown supported unsupported use_json_all update_first allow_unstable)
+for bool in ${bools[@]}; do B[$bool]=_; done
+unset -v bool bools
+
+shopt -s extglob
 for arg in "$@";do
-    if [ "$arg" = "secondrun" ];then secondrun=true
-    elif [ "${arg%=*}" = "lang" ];then lang="$(validate_language ${arg#*=})"
-    elif [ "$arg" = "--nopager" ];then nopager=true
-    elif [ "$arg" = "--no_pager" ];then nopager=true
-    elif [ "$arg" = "--no-pager" ];then nopager=true
-    elif [ "$arg" = "--markdown" ];then markdown=true
-    elif [ "$arg" = "--md" ];then markdown=true
-    elif [ "$arg" = "--supported" ];then supported=true
-    elif [ "$arg" = "--unsupported" ];then unsupported=true use_json_all=true
-    elif [ "$arg" = "--alt" ];then use_json_all=true
-    elif [ "$arg" = "-u" ];then update_first=true
-    elif [ "$arg" = "--update_first" ];then update_first=true
-    elif [ "$arg" = "--update-first" ];then update_first=true
-    elif [ "$arg" = "--allow_unstable" ];then allow_unstable=true
-    elif [ "$arg" = "--allow-unstable" ];then allow_unstable=true
-    elif [ "${arg%=*}" = "version" ];then declare nc_${arg}
-    elif [ "${arg%=*}" = "min_version" ];then declare nc_${arg}
-    elif [ "$arg" = "rebuild_db" ];then $database_created&&rebuild_db
-    elif [ "$arg" = "rebuild-db" ];then $database_created&&rebuild_db
-    elif [ "$arg" = "--rebuild_db" ];then $database_created&&rebuild_db
-    elif [ "$arg" = "--rebuild-db" ];then $database_created&&rebuild_db
-    else args+=("$arg")
-    fi
+    case "$arg" in
+               secondrun) B[secondrun]=:                          ;;
+                  lang=*) lang="$(validate_language "${arg#*=}")" ;;
+        --no?([_-])pager) B[nopager]=:                            ;;
+        --@(markdown|md)) B[markdown]=:                           ;;
+             --supported) B[supported]=:                          ;;
+           --unsupported) B[unsupported]=: B[use_json_all]=:      ;;
+                   --alt) B[use_json_all]=:                       ;;
+ -u|--update?([_-])first) B[update_first]=:                       ;;
+  --allow?([_-])unstable) B[allow_unstable]=:                     ;;
+        ?(min_)version=*) declare nc_$arg                         ;;
+      ?(--)rebuild[-_]db) ${B[database_created]} && rebuild_db    ;;
+              ?(--)trace) B[trace]=:                              ;;
+                       *) args+=("$arg")
+    esac
 done
-set -- "${args[@]}"&&unset -v args
+set -- "${args[@]}" && unset -v args
 
-if $supported && $unsupported; then
-    f;o2;R;echo "--supported and --unsupported are passed both but are mutually exclusive"
-    o2;echo "--supported and --unsupported will be ignored";N;f
-    supported=false unsupported=false
+if ${B[supported]} && ${B[unsupported]}; then
+    f; o2; R; echo "--supported and --unsupported are passed both but are mutually exclusive"
+    o2; echo "--supported and --unsupported will be ignored"; N; f
+    B[supported]=_ B[unsupported]=_
     anykey
 fi
 
-shopt -s extglob
-while (($#));do
-    case $1 in
+while (($#)); do
+    case "$1" in
         appstore)
             shift
             appstore platform=all "$@"
             break 2
             ;;
         install_overwrite)
-            database_created=true nopager=true command=$1
-            $update_first&&command="$1 -u"
-            $update_first&&$allow_unstable&&command="$1 -u --allow-unstable"
+            B[database_created]=: B[nopager]=: command="$1"
+            ${B[update_first]} && command="$1 -u"
+            ${B[update_first]} && ${B[allow_unstable]} && command="$1 -u --allow-unstable"
             break 2
             ;;
         ?(not_)shipped|all_apps|updat@(e|able))
-            case $1 in
+            case "$1" in
                 shipped|updat@(e|able))
-                    $supported&&{ f;o2;R;echo "--supported will be ignored since it is implied within \"$1\"";N;f;supported=false;anykey;}
-                    $unsupported&&{ f;o2;R;echo "--unsupported will be ignored since it is mutually exclusive with \"$1\"";N;f;unsupported=false;anykey;}
+                    if ${B[supported]}; then
+                        f; o2; R; echo "--supported will be ignored since it is implied within \"$1\""; N; f
+                        B[supported]=_
+                        anykey
+                    elif ${B[unsupported]}; then
+                        f; o2; R; echo "--unsupported will be ignored since it is mutually exclusive with \"$1\""; N; f
+                        B[unsupported]=_
+                        anykey
+                    fi
+                    ;;
+                *)  :
             esac
-            case $2 in
-                ?(en|dis)abled|local|store|all) command="$1 $2"
-                                    shift 2
-                                    ;;
-                *)                  command="$1 enabled"
-                                    shift
+            case "$2" in
+                ?(en|dis)abled|local|store|all)
+                    command="$1 $2"
+                    shift 2
+                    ;;
+                *)  command="$1 enabled"
+                    shift
             esac
-            $allow_unstable&&[[ "$command" =~ update ]]&&command="$command --allow-unstable"
+            ${B[allow_unstable]} && [[ "$command" =~ update ]] && command="$command --allow-unstable"
             ;;
         @(name|id)=+([a-zA-Z0-9-_ ]))
-            command=${1%=*}
+            command="${1%=*}"
             declare app_${1%=*}="${1#*=}"
-            nopager=true
-#            use_json_all=true
+            B[nopager]=:
+# TODO 1 -->
+            B[use_json_all]=:
+# TODO <-- 1
             shift
             ;;
         ids)
-            command=$1
+            command="$1"
             shift
             declare -a app_ids
             app_ids=("${@}")
-            nopager=true
+            B[nopager]=:
             break 2
             ;;
-#        version=[1-9]?([0-9]))
+# TODO 2 -->
+        version=[1-9]?([0-9]))
+# TODO <-- 2
         --min@(_|-)version=*)
             assumed_version_set ${1#*=} min_
-            use_json_all=true
+            B[use_json_all]=:
             shift
             ;;
         --version=*)
@@ -254,60 +269,70 @@ while (($#));do
             ;;
         -h|--help)
             command=print_help
-            $nopager&&command='print_help --cat'
+            ${B[nopager]} && command='print_help --cat'
             break 2
             ;;
         --php=*)
-            [[ " ${available_php_versions[*]} " =~ ${1#*=} ]]&&php_version="${1#*=}"||echo "$(Pbg) ERROR: php${1#*=} not found. $(N)"
+            [[ " ${available_php_versions[*]} " =~ ${1#*=} ]] && php_version="${1#*=}" || echo "$(Pbg) ERROR: php${1#*=} not found. $(N)"
             shift
             ;;
-#        *)  $@
-#            exit 0
+# TODO 3 -->
+        *)  $@
+            exit 0
+# TODO <-- 3
         *)  echo "unknown option $1"
             print_help
     esac
 done
 shopt -u extglob
 
-if $supported; then unsupported=false
-    declare suppunsupp="supp=true"
-elif $unsupported; then supported=false
-    declare suppunsupp="unsupp=true"
+${B[trace]} && B[bgjobs]=_
+if ${B[supported]}; then
+    B[unsupported]=_
+    declare suppunsupp="supp=:"
+elif ${B[unsupported]}; then
+    B[supported]=_
+    declare suppunsupp="unsupp=:"
 fi
 
-[ "${command:=print_help}" = "print_help" ]&&nopager=true
-[ "${command:=filters}" = "filters" ]&&nopager=true
+[ "${command:=print_help}" = "print_help" ] && B[nopager]=:
+[ "${command:=filters}" = "filters" ] && B[nopager]=:
 # yes, this must be "updat", since it must match with "update" AND "updatable"
-echo $command|${BINARIES[grep]} -qs updat&&nopager=true
+echo $command | ${X[grep]} -qs updat && B[nopager]=:
 
 # create the database if it does not exist
-$database_created||create_database
+${B[database_created]} || create_database
 
-if $secondrun||${nopager:=false};then
+if ${B[secondrun]} || ${B[nopager]:=_}; then
     line '-' GRAY 80 b1
     printf "command = \"$command\""
-    [ "$command" = "name" ]&&printf ", app_name = \"$app_name\""
-    [ "$command" = "id" ]&&printf ", app_id = \"$app_id\""
-    $supported&&printf ", only supported"
-    $unsupported&&printf ", only unsupported"
-    printf ", markdown = $markdown"
+    [ "$command" = "name" ] && printf ", app_name = \"$app_name\""
+    [ "$command" = "id" ] && printf ", app_id = \"$app_id\""
+    ${B[supported]} && printf ", only supported"
+    ${B[unsupported]} && printf ", only unsupported"
+    printf ", markdown = $(${B[markdown]} && printf 'true' || printf 'false')"
     printf ", nopager = "
-    $secondrun&&printf "false"||printf "$nopager"
+    ${B[secondrun]} && printf 'false' || { ${B[nopager]} && printf 'true' || printf 'false'; }
     echo ", lang = $lang"
     echo "Versions: assumed = $nc_version, is = $nc_version_long, min = $nc_min_version, php = $(php_ver)"
     line '-' GRAY 80
     line '=' N 80
-    $markdown&&command="$command md=true"
+    ${B[markdown]} && command="$command md=:"
+# TODO 4 -->
+    $command $suppunsupp use_json_all=${B[use_json_all]}
+# TODO <-- 4
     $command $suppunsupp
 else
-    if $supported; then
-        $me secondrun lang=$lang --supported --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
-    elif $unsupported; then
-        $me secondrun lang=$lang --unsupported --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
-#    elif $use_json_all; then
-#        $me secondrun lang=$lang --alt --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
+    if ${B[supported]}; then
+        $me secondrun lang=$lang --supported --nopager min_version=$nc_min_version version=$nc_version $command | ${X[less]} -R
+    elif ${B[unsupported]}; then
+        $me secondrun lang=$lang --unsupported --nopager min_version=$nc_min_version version=$nc_version $command | ${X[less]} -R
+# TODO 5 -->
+    elif ${B[use_json_all]}; then
+        $me secondrun lang=$lang --alt --nopager min_version=$nc_min_version version=$nc_version $command | ${X[less]} -R
+# TODO <-- 5
     else
-        $me secondrun lang=$lang --nopager min_version=$nc_min_version version=$nc_version $command|${BINARIES[less]} -R
+        $me secondrun lang=$lang --nopager min_version=$nc_min_version version=$nc_version $command | ${X[less]} -R
     fi
     exit 0
 fi

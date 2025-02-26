@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} && return
+${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
 . <(lrequire binaries)
@@ -22,7 +22,7 @@ brief_help(){
     local sugg_old sugg_new
     local -i index_of_php_version_with_most_packages index_of_php_version_with_second_most_packages
     local -a versions pkgct isort
-    mapfile -t versions< <(${BINARIES[phpquery]} -V | ${BINARIES[sort]})
+    mapfile -t versions< <(${X[phpquery]} -V | ${X[sort]})
     f
     if (( $# )); then
         pf; echo "$*"
@@ -35,7 +35,7 @@ brief_help(){
     f; os; pf; B; echo "$me${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new"
     if (( ${#versions[@]} > 1 )); then
         for i in ${!versions[@]}; do
-            pkgct[i]=$(${BINARIES[dpkg]} -l|${BINARIES[gawk]} '/^[hiu]i.*php'${versions[i]}'/{print $2}'|${BINARIES[wc]} -l)
+            pkgct[i]=$(${X[dpkg]} -l|${X[gawk]} '/^[hiu]i.*php'${versions[i]}'/{print $2}'|${X[wc]} -l)
         done
         isort=($(bubble_sort ${pkgct[@]})) # version with most packages:
         index_of_php_version_with_most_packages="${isort[0]}"
@@ -51,7 +51,7 @@ brief_help(){
     fi
     te; o 43; echo "$(dY;format_string "Migrate all settings from $(B)php$(GRAY)\$$(C)old$(dY) to $(B)php$(GRAY)\$$(C)new$(dY). $(B)php$(GRAY)\$$(C)new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44; N)"
     o 43; echo "$(dY;format_string "Important: $(B)php$(GRAY)\$$(C)old$(dY) should be the best-configured PHP version on your system. $(B)php$(GRAY)\$$(C)new$(dY) will be configured based on $(B)php$(GRAY)\$$(C)old$(dY)’s setup, so $(B)php$(GRAY)\$$(C)old$(dY) doesn’t have to be the active version!" 44; N)"
-    o 43; echo "$(W;format_string "Tip: If your active (latest) PHP version has not been installed/updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 44; N)"
+    o 43; echo "$(O;format_string "Tip: $(W)If your active ($(GRAY)latest$(N)) PHP version has not been installed$(GRAY)/$(W)updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 49; N)"
     f; os; pf; B; echo "$me $(C)--switch-version$(o 44;dY)switch default php version interactively"; N
 }
 
@@ -61,7 +61,7 @@ first_brief_help(){
 }
 
 sudo_message(){
-    ${BINARIES[cat]} <<SUDO_MESSAGE
+    ${X[cat]} <<SUDO_MESSAGE
   $(W)You accessed this page as user $(B)root.
  $(format_string "$(W)All examples provided here are presented as if you were always running as root. However, if you're running as an unprivileged user, you'll need to specify sudo here and there. That's why sudo is still displayed here in gray color: ($(GRAY)sudo$(W)) where needed if you're not root." 2 W)
 
@@ -73,7 +73,7 @@ SUDO_MESSAGE
 explain(){
     local cat_or_pager sudo
     q1 prompt && sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
-    ${FLAG[pager]} && { cat_or_pager="${BINARIES[less]} -R";q2 phplogo;} || cat_or_pager="${BINARIES[cat]}"
+    ${B[pager]} && { cat_or_pager="${X[less]} -R";q2 phplogo;} || cat_or_pager="${X[cat]}"
     $cat_or_pager<<EOF
 $(q2 phplogo)
 
@@ -271,5 +271,5 @@ $(G;prompt -su;B) $me $(C)--switch-version
 
 EOF
     anykey
-    ${FLAG[pager]} || q2 phplogo
+    ${B[pager]} || q2 phplogo
 }

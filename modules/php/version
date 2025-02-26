@@ -10,16 +10,16 @@ __license__
 . <(lrequire binaries)
 . <(lrequire basics)
 
-${VERSION_BASHLIB:-false} && return
+${VERSION_BASHLIB:-_} && return
 VERSION_BASHLIB=:
 
 php_ver(){
-    local php_version="$(${BINARIES[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    local -a available_php_versions=($(q2 ${BINARIES[ls]} $(command -v php)[78].[0-4] | ${BINARIES[sed]} "s|$(command -v php)||g"))
-    local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|${BINARIES[tr]} ' ' '\n'|${BINARIES[grep]} -v "^$php_version$"|${BINARIES[tr]} '\n' ' '))
+    local php_version="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+    local -a available_php_versions=($(q2 ${X[ls]} $(command -v php)[78].[0-4] | ${X[sed]} "s|$(command -v php)||g"))
+    local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|${X[tr]} ' ' '\n'|${X[grep]} -v "^$php_version$"|${X[tr]} '\n' ' '))
 
     if (($#)); then
-        case $1 in alternatives) echo "${alternative_php_versions[@]}"; esac
+        case "$1" in alternatives) echo "${alternative_php_versions[@]}"; esac
     elif (( ${#available_php_versions[@]} )); then
         printf '%s' "$php_version"
         return 0

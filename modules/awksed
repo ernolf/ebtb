@@ -7,96 +7,106 @@ __copyright__
 __license__
 #
 
-${AWKSED_BASHLIB:-false} && return
+${AWKSED_BASHLIB:-_} && return
 AWKSED_BASHLIB=:
 
 . <(lrequire binaries)
 
 # awk (iof=intermediate output file)
 awk_remove_trailing_empty_lines(){
-    local infile="$1"
-    local iof="$infile~iof~"
-    ${BINARIES[gawk]} '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" > "$iof" && mv "$iof" "$infile"
+    local infile iof
+    infile="$1" iof="$1~iof~"
+    ${X[gawk]} '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile"
 }
 # radicaly delete duplicate lines
 uniq_lines(){
-    local infile="$1"
-    local iof="$infile~iof~"
-    ${BINARIES[gawk]} '!seen[$0]++' "$infile" > "$iof" && mv "$iof" "$infile"
+    local infile iof
+    infile="$1" iof="$1~iof~"
+    ${X[gawk]} '!seen[$0]++' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile"
 }
 
 # delete duplicate empty lines, keep single empty lines
 uniq_empty_lines(){
-    local infile="$1"
-    local iof="$infile~iof~"
-    ${BINARIES[gawk]} 'NF || prev { print; prev = NF }' "$infile" > "$iof" && mv "$iof" "$infile" \
+    local infile iof
+    infile="$1" iof="$1~iof~"
+    ${X[gawk]} 'NF || prev { print; prev = NF }' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile" \
     && remove_trailing_empty_lines "$infile"
 }
 
 # delete duplicate lines, keep single empty lines INSIDE the file, remove empty lines at the end of the file
 dedup_lines(){
-    local infile="$1"
-    local iof="$infile~iof~"
-    ${BINARIES[gawk]} '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" > "$iof" && mv "$iof" "$infile" \
+    local infile iof
+    infile="$1" iof="$1~iof~"
+    ${X[gawk]} '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile" \
     && remove_trailing_empty_lines "$infile"
 }
 
 # sed
 remove_trailing_empty_lines(){
-    local infile="$1"
-    ${BINARIES[sed]} -i ':a;N;$!ba;s/\n*$//' $infile
+    local infile outfile
+    infile="$1" outfile="${2:--i}"
+    case "$outfile" in
+        -i) ${X[sed]} -i ':a;N;$!ba;s/\n*$//' $infile
+            ;;
+         *) ${X[sed]} ':a;N;$!ba;s/\n*$//' $infile > "$outfile"
+    esac
 }
 
 # delete from $pattern to end without deleting the line containing $pattern
 delafter(){
-    local pattern="$1" infile="$2" outfile="$3"
-    case ${outfile:--i} in
-        -i) ${BINARIES[sed]} -i -n "0,/$pattern/p" "$infile"
+    local pattern infile outfile
+    pattern="$1" infile="$2" outfile="${3:--i}"
+    case "$outfile" in
+        -i) ${X[sed]} -i -n "0,/$pattern/p" "$infile"
             ;;
-         *) ${BINARIES[sed]} -n "0,/$pattern/p" "$infile" > "$outfile"
+         *) ${X[sed]} -n "0,/$pattern/p" "$infile" > "$outfile"
     esac
 }
 
 # delete from $pattern to end including the line containing $pattern
 delp2ei(){
-    local pattern="$1" infile="$2" outfile="$3"
-    case ${outfile:--i} in
-        -i) ${BINARIES[sed]} -i -n "/$pattern/q;p" "$infile"
+    local pattern infile outfile
+    pattern="$1" infile="$2" outfile="${3:--i}"
+    case "$outfile" in
+        -i) ${X[sed]} -i -n "/$pattern/q;p" "$infile"
             ;;
-         *) ${BINARIES[sed]} -n "/$pattern/q;p" "$infile" > "$outfile"
+         *) ${X[sed]} -n "/$pattern/q;p" "$infile" > "$outfile"
     esac
 }
 del_from_x_to_end_including(){ delp2ei "$@";}
 
 # search for lines containing pattern1 and pattern2 and delete those lines and everything in between.
 delx2yi(){
-    local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
-    case ${outfile:--i} in
-        -i) ${BINARIES[sed]} -i "/$pattern1/,/$pattern2/d" "$infile"
+    local pattern1 pattern2 infile outfile
+    pattern1="$1" pattern2="$2" infile="$3" outfile="${4:--i}"
+    case "$outfile" in
+        -i) ${X[sed]} -i "/$pattern1/,/$pattern2/d" "$infile"
             ;;
-         *) ${BINARIES[sed]} "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
+         *) ${X[sed]} "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
     esac
 }
 del_from_x_to_y_including(){ delx2yi "$@";}
 
 # only delete the lines in between pattern1 and pattern2, remain those lines containg the patterns untouched.
 delx2y(){
-    local pattern1="$1" pattern2="$2" infile="$3" outfile="$4"
-    case ${outfile:--i} in
-        -i) ${BINARIES[sed]} -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
+    local pattern1 pattern2 infile outfile
+    pattern1="$1" pattern2="$2" infile="$3" outfile="${4:--i}"
+    case "$outfile" in
+        -i) ${X[sed]} -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
             ;;
-         *) ${BINARIES[sed]} "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
+         *) ${X[sed]} "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
     esac
 }
 del_from_x_to_y(){ delx2y "$@";}
 
 # delete all lines from the beginning until & including the line containing pattern "p".
 delb2pi(){
-    local pattern="$1" infile="$2" outfile="$3"
-    case ${outfile:--i} in
-        -i) ${BINARIES[sed]} -i "1,/$pattern/d" "$infile"
+    local pattern infile outfile
+    pattern="$1" infile="$2" outfile="${3:--i}"
+    case "$outfile" in
+        -i) ${X[sed]} -i "1,/$pattern/d" "$infile"
             ;;
-         *) ${BINARIES[sed]} "1,/$pattern/d" "$infile" > "$outfile"
+         *) ${X[sed]} "1,/$pattern/d" "$infile" > "$outfile"
     esac
 }
 del_from_begin_to_y_including(){ delb2pi "$@";}
@@ -105,120 +115,33 @@ del_from_begin_to_y_including(){ delb2pi "$@";}
 delb2p(){
     local pattern="$1" infile="$2" outfile="$3"
     case ${outfile:--i} in
-        -i) ${BINARIES[sed]} -i "1,/$pattern/{/$pattern/!d;}" "$infile"
+        -i) ${X[sed]} -i "1,/$pattern/{/$pattern/!d;}" "$infile"
             ;;
-         *) ${BINARIES[sed]} "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
+         *) ${X[sed]} "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
     esac
 }
 del_from_begin_to_y(){ delb2p "$@";}
 
+# Gets text enclosed in square brackets
+insquare(){
+    ${X[sed]} -E 's/.*\[(.*)].*/\1/' <<< "$@"
+}
+
 # trim "$1" from leading and trailing spaces
 trim(){
-    ${BINARIES[sed]} 's/^\s*//; s/\s*$//' <<< "$1"
+    ${X[sed]} 's/^\s*//; s/\s*$//' <<< "$1"
 }
 
 # stripconf php.ini, exclude pattern: comment marker ';', #, empty lines and '['
 stripconf(){
-    ${BINARIES[sed]} -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
+    ${X[sed]} -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
 }
 
 # remove single and double  quotes from begin and end of line $1
 unquote() {
-    ${BINARIES[sed]} -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
+    ${X[sed]} -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
 }
-
-noansi_sed(){
-    ${BINARIES[sed]} -E '
-        # ANSI sequences
-        s/\x1B\[[0-9;?]*[a-zA-Z]//g # Remove ANSI sequences
-
-        # Invisible Unicode characters
-        s/\xC2\xA0//g       # Non-breaking Space (NBSP)
-        s/\xE2\x80\x80//g   # En Quad (EN QUAD)
-        s/\xE2\x80\x81//g   # Em Quad (EM QUAD)
-        s/\xE2\x80\x82//g   # En Space (EN SPACE)
-        s/\xE2\x80\x83//g   # Em Space (EM SPACE)
-        s/\xE2\x80\x84//g   # Three-Per-Em Space (3/4 EM SPACE)
-        s/\xE2\x80\x85//g   # Four-Per-Em Space (4/4 EM SPACE)
-        s/\xE2\x80\x86//g   # Six-Per-Em Space (6/4 EM SPACE)
-        s/\xE2\x80\x87//g   # Figure Space (F SP)
-        s/\xE2\x80\x88//g   # Punctuation Space (PU SP)
-        s/\xE2\x80\x89//g   # Thin Space (TH SP)
-        s/\xE2\x80\x8A//g   # Hair Space (H SP)
-        s/\xE2\x80\x8B//g   # Zero Width Space (ZWSP)
-        s/\xE2\x80\x8C//g   # Zero Width Non-Joiner (ZWNJ)
-        s/\xE2\x80\x8D//g   # Zero Width Joiner (ZWJ)
-        s/\xE2\x80\x8E//g   # Left-To-Right Mark (LRM)
-        s/\xE2\x80\x8F//g   # Right-To-Left Mark (RLM)
-        s/\xE2\x80\xA8//g   # Line Separator (L SEP)
-        s/\xE2\x80\xA9//g   # Paragraph Separator (P SEP)
-        s/\xE2\x80\xAA//g   # Left-To-Right Enbedding (LRE)
-        s/\xE2\x80\xAB//g   # Right-To-Left Enbedding (RLE)
-        s/\xE2\x80\xAC//g   # Pop Directional Formatting (PDF)
-        s/\xE2\x80\xAD//g   # Left-To-Right Override (LRO
-        s/\xE2\x80\xAE//g   # Right-To-Left Override (RLO)
-        s/\xE2\x80\xAF//g   # Narrow No-Break Space (NNB SP)
-        s/\xE2\x81\x9F//g   # Medium Mathematical Space (M SP)
-        s/\xE2\x81\xA0//g   # Word Joiner (WJ)
-
-        # Special Unicode characters
-        s/\xE2\x9A\xA0/!/g  # Unicode ⚠️ to !
-        s/\xEF\xB8\x8E//g   # Variation Selector-15 (text)
-        s/\xEF\xB8\x8F//g   # Variation Selector-16 (emoji)
-
-        # Replacement and object characters
-        s/\xEF\xBF\xBC//g   # Object Replacement Character
-        s/\xEF\xBF\xBD//g   # Replacement Character
-    ' <<< "$*"
-}
-#    perl -CSD -pe 's/\x1B\[[0-9;?]*[a-zA-Z]//g; s/\x{26A0}/!/g; s/\x{FE0F}//g; s/\x{200B}//g; s/\x{2028}//g' <<< "$*"
-noansi_perl(){
-    ${BINARIES[perl]} -CSD -pe '
-        # ANSI sequences
-        s/\x1B\[[0-9;?]*[a-zA-Z]//g;
-
-        # Handle \uXXXX notation
-        s/\\u([0-9A-Fa-f]{4})/chr(hex($1))/ge;
-
-        # Invisible Unicode characters
-        s/\x{00A0}//g;  # Non-breaking Space (NBSP)
-        s/\x{2000}//g;  # En Quad (EN QUAD)
-        s/\x{2001}//g;  # Em Quad (EM QUAD)
-        s/\x{2002}//g;  # En Space (EN SPACE)
-        s/\x{2003}//g;  # Em Space (EM SPACE)
-        s/\x{2004}//g;  # Three-Per-Em Space (3/4 EM SPACE)
-        s/\x{2005}//g;  # Four-Per-Em Space (4/4 EM SPACE)
-        s/\x{2006}//g;  # Six-Per-Em Space (6/4 EM SPACE)
-        s/\x{2007}//g;  # Figure Space (F SP)
-        s/\x{2008}//g;  # Punctuation Space (PU SP)
-        s/\x{2009}//g;  # Thin Space (TH SP)
-        s/\x{200A}//g;  # Hair Space (H SP)
-        s/\x{200B}//g;  # Zero Width Space (ZWSP)
-        s/\x{200C}//g;  # Zero Width Non-Joiner (ZWNJ)
-        s/\x{200D}//g;  # Zero Width Joiner (ZWJ)
-        s/\x{200E}//g;  # Left-To-Right Mark (LRM)
-        s/\x{200F}//g;  # Right-To-Left Mark (RLM)
-        s/\x{2028}//g;  # Line Separator (L SEP)
-        s/\x{2029}//g;  # Paragraph Separator (P SEP)
-        s/\x{202A}//g;  # Left-To-Right Enbedding (LRE)
-        s/\x{202B}//g;  # Right-To-Left Enbedding (RLE)
-        s/\x{202C}//g;  # Pop Directional Formatting (PDF)
-        s/\x{202D}//g;  # Left-To-Right Override (LRO)
-        s/\x{202E}//g;  # Right-To-Left Override (RLO)
-        s/\x{202F}//g;  # Narrow No-Break Space (NNB SP)
-        s/\x{205F}//g;  # Medium Mathematical Space (M  SP)
-        s/\x{2060}//g;  # Word Joiner (WJ)
-
-        s/\x{26A0}/!/g; # Unicode ⚠️ to !
-        s/\x{FE0E}//g;  # Variation Selector-15 (text)
-        s/\x{FE0F}//g;  # Variation Selector-16 (emoji)
-        s/\x{FFFC}//g;  # Object Replacement Character
-        s/\x{FFFD}//g;  # Replacement Character
-    ' <<< "$*"
-}
-
-noansi(){ printf '%s\n' "$(noansi_perl "$@")"; }
 
 urldecode(){
-    echo -n "${*//+/ }" | ${BINARIES[sed]} 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | ${BINARIES[xargs]} -0 printf
+    echo -n "${*//+/ }" | ${X[sed]} 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | ${X[xargs]} -0 printf
 }

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${DISTRIB_BASHLIB:-false} && return
+${DISTRIB_BASHLIB:-_} && return
 DISTRIB_BASHLIB=:
 
 . <(lrequire binaries)
@@ -24,111 +24,107 @@ no_debianoid(){
 
 check_debian(){
     . <(require dist/debian)
-
     list_supported_debian
-
-    os;lB;printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME";lB
-
-    local ver releasedate eos eol ss
+    os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
+    local ver releasedate eos eol
     local -l vercode chan
-    case $OS_ID in
+    local -A bool
+    case "$OS_ID" in
         debian|raspbian) ver="${DEBIAN_VERSIONS[$OS_VERSION_CODENAME]}"
         ;;
-        *)  [ -n "$OS_DEBIAN_CODENAME" ]&&ver="${DEBIAN_VERSIONS[$OS_DEBIAN_CODENAME]}"||ver="$OS_VERSION_ID"
+        *)  [ -n "$OS_DEBIAN_CODENAME" ] && ver="${DEBIAN_VERSIONS[$OS_DEBIAN_CODENAME]}" || ver="$OS_VERSION_ID"
             echo ", which is"
             case $OS_ID in
-            linuxmint)  os;printf '%s' "a version of Linux Mint based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)" ;;
-                    *)  os;printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)"
+            linuxmint)  os; printf '%s' "a version of Linux Mint based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)" ;;
+                    *)  os; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)"
             esac
     esac
-    [ "${OS_VERSION_CODENAME,,}" = 'sid' ]&&ver='sid'||ver="$(printf '%02d' "$ver")"
+    [ "${OS_VERSION_CODENAME,,}" = 'sid' ] && ver='sid' || ver="$(printf '%02d' "$ver")"
     read -r vercode chan releasedate eos eol <<<${DEBIAN_VERSIONS_DATA["$ver"]//;/ }
-    [[ "$(supported_suites_ debian)" =~ $vercode ]]&&ss="true"||ss="false"
-    if [ "$releasedate" = "RR" ]||[ "$releasedate" = "TBA" ];then
+    [[ "$(supported_suites_ debian)" =~ $vercode ]] && bool[ss]=: || bool[ss]=_
+    if [[ "$releasedate" == "RR" || "$releasedate" == "TBA" ]]; then
         echo "."
-        os;echo "This script was never tested with unstable or testing channels."
-        os;echo "You can however continue here if you know what you are doing.";N;f
-        ask "$(qpf)continue at own risk" "$YES" && mark_checked unstable || exit1
-    elif [ $today -le $eol ]&&$ss;then
-        echo ".$(lG) Good!";N
+        os; echo "This script was never tested with unstable or testing channels."
+        os; echo "You can however continue here if you know what you are doing."; N
+        f; ask "$(qpf)continue at own risk" "$YES" && mark_checked unstable || exit1
+    elif [ $today -le $eol ] && ${bool[ss]}; then
+        echo ".$(lG) Good!"; N
         mark_checked supported
-    elif [ $today -le $eol ];then
+    elif [ $today -le $eol ]; then
         echo ", which is"
-        os;echo "brand new and supported by this script but there are not (yet) apt repositories"
-        os;echo "provided by Ondřej Surý. That will change in future.$(lG) Good!";N
+        os; echo "brand new and supported by this script but there are not (yet) apt repositories"
+        os; echo "provided by Ondřej Surý. That will change in future.$(lG) Good!"; N
         mark_checked supported
-    elif [ $today -gt $eol ];then
+    elif [ $today -gt $eol ]; then
         echo ", which is"
-        os;echo "very old and not supported any more. Consider updating your system first."
-        os;echo "You can however continue here if you know what you are doing.";N;f
-        ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old || exit1
+        os; echo "very old and not supported any more. Consider updating your system first."
+        os; echo "You can however continue here if you know what you are doing."; N
+        f; ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old || exit1
     else
         echo "."
-        os;lB;echo "This version was not recognized by the script."
-        os;echo "You can however continue here if you know what you are doing.";N;f
-        ask "$(qpf)continue at own risk" "$NO" && mark_checked unknown || exit1
+        os; lB; echo "This version was not recognized by the script."
+        os; echo "You can however continue here if you know what you are doing."; N
+        f; ask "$(qpf)continue at own risk" "$NO" && mark_checked unknown || exit1
     fi
 }
 
 check_ubuntu(){
     . <(require dist/ubuntu)
-
     list_supported_ubuntu
-
     if [ "$OS_ID" = "neon" ]; then
         os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
     else
         os; lB; printf '%s' "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
     fi
-
-    local ver vercode2 releasedate lts ss
+    local ver vercode2 releasedate
     local -i eos
     local -l vercode1
-    case $OS_ID in
+    local -A bool
+    case "$OS_ID" in
         ubuntu) ver="$OS_VERSION_ID"
         ;;
-        *)  [ -n "$OS_UBUNTU_CODENAME" ]&&ver="${UBUNTU_VERSIONS[$OS_UBUNTU_CODENAME]}"
+        *)  [ -n "$OS_UBUNTU_CODENAME" ] && ver="${UBUNTU_VERSIONS[$OS_UBUNTU_CODENAME]}"
             echo ", which is"
             case $OS_ID in
-            linuxmint)  os;printf '%s' "a version of Linux Mint based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)" ;;
-                    *)  os;printf '%s' "a distribution based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)"
+            linuxmint)  os; printf '%s' "a version of Linux Mint based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)" ;;
+                    *)  os; printf '%s' "a distribution based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)"
             esac
     esac
     read -r vercode1  vercode2 releasedate eos <<<${UBUNTU_VERSIONS_DATA["$ver"]//;/ }
-    is_ubuntu_lts $ver&&lts="true"||lts="false"
-    [[ "$(supported_suites_ ubuntu)" =~ $vercode1 ]]&&ss="true"||ss="false"
+    is_ubuntu_lts $ver && bool[lts]=: || bool[lts]=_
+    [[ "$(supported_suites_ ubuntu)" =~ $vercode1 ]] && bool[ss]=: || bool[ss]=_
 
-    if [ $today -le $eos ]&&$lts&&$ss;then
-        lB;echo ".$(lG) Good!";N
+    if [ $today -le $eos ] && ${bool[lts]} && ${bool[ss]}; then
+        lB; echo ".$(lG) Good!"; N
         mark_checked supported
-    elif [ $today -le $eos ]&&$lts;then
+    elif [ $today -le $eos ] && ${bool[lts]}; then
         echo ",$(lB) wich is"
-        os;echo "brand new and supported by this script but there are not (yet) apt repositories"
-        os;echo "provided by.Ondřej Surý. That will change in future.$(lG) Good!";N
+        os; echo "brand new and supported by this script but there are not (yet) apt repositories"
+        os; echo "provided by.Ondřej Surý. That will change in future.$(lG) Good!"; N
         mark_checked supported
-    elif [ $today -gt $eos ]&&$lts;then
+    elif [ $today -gt $eos ] && ${bool[lts]}}; then
         echo ",$(lB) wich is"
-        os;echo "very old and not supported any more. Consider updating your system first."
-        os;echo "You can however continue here if you know what you are doing.";N;f
-        ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old || exit1
-    elif [ $today -le $eos ];then
+        os; echo "very old and not supported any more. Consider updating your system first."
+        os; echo "You can however continue here if you know what you are doing."; N
+        f; ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old || exit1
+    elif [ $today -le $eos ]; then
         echo ",$(lB) wich is"
-        os;echo "an interim release without long term support and not suited for server use."
-        os;echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
-        os;echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
-        os;echo "provided by Ondřej Surý for interim releases."
-        os;echo "You can however continue here if you know what you are doing.";N;f
-        ask "$(qpf)continue" "$YES" && mark_checked nolts || exit1
+        os; echo "an interim release without long term support and not suited for server use."
+        os; echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
+        os; echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
+        os; echo "provided by Ondřej Surý for interim releases."
+        os; echo "You can however continue here if you know what you are doing."; N
+        f; ask "$(qpf)continue" "$YES" && mark_checked nolts || exit1
     else
         echo ",$(lB) wich is"
-        os;echo "an interim release without long term support and not suited for server use."
-        os;echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
-        os;echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
-        os;echo "provided by Ondřej Surý for interim releases. Additionally, support for this"
-        os;echo "version has expired. Consider updating your system first."
-        os;echo "You can however continue here if you know what you are doing.";N;f
-        ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old nolts || exit1
+        os; echo "an interim release without long term support and not suited for server use."
+        os; echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
+        os; echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
+        os; echo "provided by Ondřej Surý for interim releases. Additionally, support for this"
+        os; echo "version has expired. Consider updating your system first."
+        os; echo "You can however continue here if you know what you are doing."; N
+        f; ask "$(qpf)continue at own risk" "$YES" && mark_checked to_old nolts || exit1
     fi
 }
 
-[[ "$(${BINARIES[tail]} -n3 "$ca_me"|${BINARIES[head]} -n1)" =~ "distrib_checked" ]]||check_os_release
+tnh1_strg distrib_checked || check_os_release

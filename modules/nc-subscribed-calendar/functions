@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${FUNCTIONS_BASHLIB:-false} && return
+${FUNCTIONS_BASHLIB:-_} && return
 FUNCTIONS_BASHLIB=:
 
 . <(lrequire binaries)
@@ -37,12 +37,12 @@ count_calendarsubscriptions(){
 # returns user_id
 capture_user_id(){
     local prompt
-    prompt="$(B)Enter a valid $(Y)user ID$(B), $(GRAY)(without any $(N;W)'$(GRAY) or $(N;W)\"$(GRAY))$(N;B), keep $(C)empty $(B)for $(Y)all$(N)"
-    while :;do
+    prompt="$(B)Enter a valid $(Y)user ID$(B), $(GRAY)(without any $(N; W)'$(GRAY) or $(N; W)\"$(GRAY))$(N; B), keep $(C)empty $(B)for $(Y)all$(N)"
+    while :; do
       # Prompt for user input
         user_id=''
         read -p "$prompt ($(q2q))$(B):$(N) " user_id
-        [ "$(tlwr $user_id)" = "q" ]&&nothing_changed
+        [ "$(tlwr $user_id)" = "q" ] && nothing_changed
       # Validate user input
         if [ -n "$user_id" ]; then
             [ "$(check_username_case "$user_id")" = 'NULL' ] || user_id=$"$(check_username_case "$user_id")"
@@ -59,7 +59,7 @@ capture_user_id(){
 list_calendars(){
     database_call
     local user="$1" userselect query
-    [ -n "$user" ]&&userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
+    [ -n "$user" ] && userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
     query="SELECT id, $TYPE_SQL_QUERY as user_id, displayname, refreshrate FROM ${DB_PREF}calendarsubscriptions$userselect"
     db_exec_ "$query"
 }
@@ -68,7 +68,7 @@ list_calendars(){
 list_calendar_ids(){
     database_call
     local userselect user="$1" userselect query
-    [ -n "$user" ]&&userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
+    [ -n "$user" ] && userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
     query="SELECT id FROM ${DB_PREF}calendarsubscriptions$userselect"
     db_raw_exec_ "$query"
 }
@@ -82,13 +82,13 @@ capture_calendar_id(){
 #    read -p "Do you want to change any refreshrates? [y N] " choice
 #    [ "$(tolower ${choice:-n})" != "y" ]&&{ echo "exiting";exit 0;}
 # TODO <-- 0
-    while :;do
+    while :; do
       # Prompt for user input
         cal_id=''
         read -p "$(B)Enter the $(Y)calendar-id $(B)you want to change$(N) ($(q2q))$(B):$(N) " cal_id
-        [ "$(tlwr $cal_id)" = "q" ]&&nothing_changed
+        [ "$(tlwr $cal_id)" = "q" ] && nothing_changed
       # Validate user input
-        if [[ " ${valid_ids[@]} " =~ " $cal_id " ]];then
+        if [[ " ${valid_ids[@]} " =~ " $cal_id " ]]; then
             break
         else
             echo "$(Pbg)You must enter a calendar id from the listed calendars$(N)"
@@ -97,12 +97,12 @@ capture_calendar_id(){
 }
 
 list_examples(){
-    local r1="$(o4;Y)" r2="$(N;o 14;GRAY)-  $(N;C)"
+    local r1="$(o4; Y)" r2="$(N; o 14; GRAY)-  $(N; C)"
     line = C 80
-    B;echo "The refreshrate must be a valid $(C)ISO 8601 $(B)duration interval"
+    B; echo "The refreshrate must be a valid $(C)ISO 8601 $(B)duration interval"
     echo "as described here: $(C)https://www.php.net/manual/dateinterval.construct.php"
-    B;echo "with the limitation that $(Y)Y $(N;GRAY)(year) $(N;B)and $(Y)M $(N;GRAY)(month) $(N;B)are $(R)not $(B)supported.";f
-    echo "  Examples:";N;f
+    B; echo "with the limitation that $(Y)Y $(N; GRAY)(year) $(N; B)and $(Y)M $(N; GRAY)(month) $(N; B)are $(R)not $(B)supported."; f
+    echo "  Examples:"; N; f
     echo "${r1}PT5M${r2}every 5 minutes"
     echo "${r1}PT29M${r2}every 29 minutes"
     echo "${r1}PT1H${r2}every hour"
@@ -120,13 +120,13 @@ capture_refreshrate(){
     # Nextcloud only accepts a subpart of ISO 8601, it cannot handle M(onth) and Y(ear)
     # see: 3rdparty/sabre/vobject/lib/DateTimeParser.php, Line 99
     pattern="^P(?:\d+W)?(?:\d+D)?(?:T(?:\d+H)?(?:\d+M)?(?:\d+(?:\.\d+)?S)?)?$"
-    while :;do
+    while :; do
         # Prompt for user input
         refreshrate=''
         read -rp "$prompt ($(q2q))$(B):$(N) " refreshrate
         [ "$refreshrate" = "Q" ] && nothing_changed
         # Validate user input
-        if echo $refreshrate | ${BINARIES[grep]} -qsP $pattern || [ "$refreshrate" = "NULL" ]; then
+        if echo $refreshrate | ${X[grep]} -qsP $pattern || [ "$refreshrate" = "NULL" ]; then
             break
         else
             echo "$(Pbg)You must enter a valid ISO 8601 duration (without P\$nM or P\$nY) or 'NULL'$(N)"
@@ -155,8 +155,8 @@ nothing_changed(){
 
 final_message(){
     f
-    lG;echo "done!"
+    lG; echo "done!"
     f
-    P;echo "Run this script again to see the result and monitor the nextcloud log for errors";N
+    P; echo "Run this script again to see the result and monitor the nextcloud log for errors"; N
     f
 }

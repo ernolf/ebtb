@@ -7,15 +7,16 @@ __copyright__
 __license__
 #
 
-${LIST_SHARES_BASHLIB:-false} && return
+${LIST_SHARES_BASHLIB:-_} && return
 LIST_SHARES_BASHLIB=:
 
 . <(lrequire binaries)
 . <(lrequire nc/nextcloud_db)
 
 function list_shares(){
-    html=false
-    $html && H="--html" || H=""
+    local -A bool
+    bool[html]=_
+    ${bool[html]} && H='--html' || H=''
     database_call $H
 
     d_echo "DB_STRG: \"$DB_STRG\""
@@ -88,8 +89,8 @@ function list_shares(){
 #        tmp_file=$(tf) targetdir="/nc/dat/data/ich/files" targetfile="$targetdir/${basename_me}_$runtime$@.pdf"
 #        d_echo "tmp_file: $tmp_file"
 #        d_echo "targetfile: $targetfile"
-#        eval $DB_STRG $DB_EXEC\"$query\" | ${BINARIES[sed]} "s\ files/\ /\g$sed_string" | ${BINARIES[tidy]} -indent -quiet -wrap 0 -f /dev/null -o $tmp_file
-#        eval $DB_STRG $H $DB_EXEC\"$query\" | ${BINARIES[tidy]} -indent -quiet -wrap 0 -f /dev/null | ${BINARIES[sed]} "s\<td>files/\<td>/\g$sed_string" > $tmp_file
+#        eval $DB_STRG $DB_EXEC\"$query\" | ${X[sed]} "s\ files/\ /\g$sed_string" | ${X[tidy]} -indent -quiet -wrap 0 -f /dev/null -o $tmp_file
+#        eval $DB_STRG $H $DB_EXEC\"$query\" | ${X[tidy]} -indent -quiet -wrap 0 -f /dev/null | ${X[sed]} "s\<td>files/\<td>/\g$sed_string" > $tmp_file
 
 #    anykey
 
@@ -105,7 +106,7 @@ function list_shares(){
 #        $occ files:scan -vvv --path="$targetfile"
 #    exit
 # TODO <-- 0
-    db_exec_ "$query" | ${BINARIES[column]} -t -s $'\t' | ${BINARIES[sed]} "s\ files/\ /\g$sed_string"
+    db_exec_ "$query" | ${X[column]} -t -s $'\t' | ${X[sed]} "s\ files/\ /\g$sed_string"
 # TODO 1 -->
 #    pipe_h2t "$DB_STRG $DB_EXEC" "$query"
 # TODO <-- 1

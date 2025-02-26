@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-false} && return
+${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
 . <(lrequire binaries)
@@ -20,23 +20,16 @@ try_help(){
 }
 
 print_help(){
-    # for backwards compatibilty
-    if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
-        declare upinf="$updateinfo"
-    fi
-    if [ -n "$canonical_me" ]&&[ -z "$ca_me" ]; then
-        declare ca_me="$canonical_me"
-    fi
-
     local opts
+    local -A bool
     opts="[ -r ] [ --detector=detector ] [ -d | --dryrun ] [ -v | --verbose ]"
-    if (( $(backups | ${BINARIES[wc]} -l) )); then
-        bak=true
+    if (( $(backups | ${X[wc]} -l) )); then
+        bool[bak]=:
         r_b(){
             f
             echo "    $me restore_backup"
         }
-        if (( $(backups | ${BINARIES[wc]} -l) > 1 )); then
+        if (( $(backups | ${X[wc]} -l) > 1 )); then
             s=s
         else
             s=""
@@ -47,7 +40,7 @@ print_help(){
         }
     fi
 
-    ${BINARIES[cat]} <<HELP
+    ${X[cat]} <<HELP
 
   $me - version $version $upinf
 
@@ -129,10 +122,10 @@ Examples:
             [$ca_me -q %n]
 
 HELP
-    if $bak;then
-        ${BINARIES[cat]} <<BACKUP
+    if ${bool[bak]:-_}; then
+        ${X[cat]} <<BACKUP
   restore_backup            restore an older version of this script from backup
-                            ($(backups|${BINARIES[wc]} -l) backup$s available, you must be root)
+                            ($(backups|${X[wc]} -l) backup$s available, you must be root)
 
 BACKUP
     fi

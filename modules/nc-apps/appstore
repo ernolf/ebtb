@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${APPSTORE_BASHLIB:-false} && return
+${APPSTORE_BASHLIB:-_} && return
 APPSTORE_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,39 +16,49 @@ APPSTORE_BASHLIB=:
 
 # appstore-functions:
 dl_appstore_json_db(){
-    local unit=$1 appstore_api='https://apps.nextcloud.com/api/v1' p etag # p stands for platform
+    local unit appstore_api platform etag platformdir appstore_url unix_etag response new_etag new_unix_etag
+    local -i http_code
+    unit="$1" appstore_api='https://apps.nextcloud.com/api/v1'
 
     # etag to unix, with check if the string is in hexadecimal format (lowercase only)
     e2u(){
         [ -z "$1" ] || {
-            [[ "$1" =~ ^[0-9a-f-]+$ ]] && printf "$1" || printf "$(${BINARIES[date]} --utc --date="${1%%.*}" +"%s").$(printf "${1#*.}" | ${BINARIES[sed]} 's/+.*//')"
+            [[ "$1" =~ ^[0-9a-f-]+$ ]] && printf "$1" || printf "$(${X[date]} --utc --date="${1%%.*}" +"%s").$(printf "${1#*.}" | ${X[sed]} 's/+.*//')"
         }
     }
     # unix to etag, with check if the string is in hexadecimal format (lowercase only)
     u2e(){
         [ -z "$1" ] || {
-            [[ "$1" =~ ^[0-9a-f-]+$ ]] && echo "$1" || ${BINARIES[date]} --utc --date="@$1" +"%Y-%m-%d %H:%M:%S".${1#*.}+00:00
+            [[ "$1" =~ ^[0-9a-f-]+$ ]] && echo "$1" || ${X[date]} --utc --date="@$1" +"%Y-%m-%d %H:%M:%S".${1#*.}+00:00
         }
     }
 
-    local platformdir new_etag unix_etag new_unix_etag response
-    local -i http_code
     if [ "$unit" = "apps" ]; then
-        p=$2
+        platform="$2"
         shift
-        case $p in
+        case "$platform" in
             all) :
                  ;;
-              *) platformdir="/platform/$p"
+              *) platformdir="/platform/$platform"
         esac
     fi
-    local appstore_url="$appstore_api$platformdir"
-    if [ "$unit" = "apps" ]; then
-        unix_etag="$(r_db "SELECT etag FROM apps WHERE platform = '$p';")" # try to fetch ETag from database
-        if [ "$p" != "all" ]; then
-            if [ 0$(v2i "$p") -le 0$(v2i "${LATEST_EOL[${#LATEST_EOL[@]}-1]}") ]; then
-                if (( $(r_db "SELECT COUNT(*) FROM apps WHERE platform == '$p';") )); then
+    appstore_url="$appstore_api$platformdir"
+    if [ "$unit" = 'apps' ]; then
+        unix_etag="$(r_db "SELECT etag FROM apps WHERE platform = '$platform';")" # try to fetch ETag from database
+        if [ "$platform" != "all" ]; then
+            if [ 0$(v2i "$platform") -le 0$(v2i "${LATEST_EOL[${#LATEST_EOL[@]}-1]}") ]; then
+                if (( $(r_db "SELECT COUNT(*) FROM apps WHERE platform == '$platform';") )); then
                     echo reuse:$unix_etag
+
+                    if ${B[trace]:-_}; then
+                        echo "==TRACE=start=" >/dev/tty
+                        print_stack_trace >/dev/tty
+                        echo "platform            - $platform" >/dev/tty
+                        echo "unix_etag           - $unix_etag" >/dev/tty
+                        echo "response            - reuse:$unix_etag" >/dev/tty
+                        echo -e "==TRACE=end===\n" >/dev/tty
+                    fi
+
                     return 0
                 fi
             fi
@@ -59,51 +69,96 @@ dl_appstore_json_db(){
         unix_etag="$(r_db "SELECT etag FROM $unit;")"
     fi
     etag="\"$(u2e $unix_etag)\""
-    response="$(${BINARIES[curl]} --compressed -D - -H "If-None-Match: ${etag}" -s $appstore_url/$unit.json)"
-    http_code="$(echo "$response" | ${BINARIES[head]} -n 1 | ${BINARIES[gawk]} 'tolower($0)~/http\//{print $2}')"
-    new_etag="$(echo "$response" | ${BINARIES[grep]} -ioPs 'etag: "\K[^"]+')"
+    response="$(${X[curl]} --compressed -D - -H "If-None-Match: $etag" -s $appstore_url/$unit.json)"
+    http_code="$(echo "$response" | ${X[head]} -n1 | ${X[gawk]} 'tolower($0)~/http\//{print $2}')"
+    new_etag="$(echo "$response" | ${X[grep]} -ioPs 'etag: "\K[^"]+')"
     new_unix_etag="$(e2u "$new_etag")"
+
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_stack_trace >/dev/tty
+        echo "unix_etag / etag    - $unix_etag / $etag" >/dev/tty
+        echo "url                 - $appstore_url/$unit.json" >/dev/tty
+        echo "curl command        - curl --compressed -D - -H \"If-None-Match: \$etag\" -s \$url" >/dev/tty
+        echo "response header:" >/dev/tty
+        echo "----------------" >/dev/tty
+        echo "$response" | ${X[sed]} '$d;/^[[:space:]]*$/d' >/dev/tty
+        echo "----------------" >/dev/tty
+        echo "http_code           - $http_code" >/dev/tty
+        echo "new_etag / unix_etag- $new_etag / $new_unix_etag" >/dev/tty
+    fi
+
     if (( http_code == 200 )); then
         if [ "$unit" = "apps" ]; then
             local json_data_file="$(jsontf)"
-            echo "$response" | ${BINARIES[tail]} -n 1 > "$json_data_file"
-            ${BINARIES[rm]} -f "$(r_db "SELECT json_data_file FROM apps WHERE platform == '$p' AND etag == '$unix_etag'")"
-            w_db apps "$p" "$new_unix_etag" "$json_data_file"
+
+            if ${B[trace]:-_}; then
+                print_funcname >/dev/tty
+                echo "json_data_file      - $json_data_file" >/dev/tty
+            fi
+
+            echo "$response" | ${X[tail]} -n 1 > "$json_data_file"
+            ${X[rm]} -f "$(r_db "SELECT json_data_file FROM apps WHERE platform == '$platform' AND etag == '$unix_etag'")"
+            w_db apps "$platform" "$new_unix_etag" "$json_data_file"
         else
-            w_db "$unit" "$new_unix_etag" "$(echo "$response" | ${BINARIES[tail]} -n 1)"
+            w_db "$unit" "$new_unix_etag" "$(echo "$response" | ${X[tail]} -n 1)"
         fi
+    fi
+    if ${B[trace]:-_}; then
+        echo -e "==TRACE=end===\n" >/dev/tty
     fi
     echo $http_code:$new_unix_etag
 }
 
 appstore(){
-    local JQ_FILTER platform="$nc_version" ids=false new=false
-    case "${1%%=*}" in
-        platform)   local $1
-                    shift
-                    ;;
-               *)   :
+    local JQ_FILTER platform extra_jq response http_code unix_etag json_data_file ids
+    local -A bool
+    platform="$nc_version" bool[ids]=_ bool[new]=_
+    case "$(varname "$1")" in
+        platform) platform="$(varval "$1")"
+                  shift ;;
+               *) :
     esac
     case "$1" in
-         ids|new)   local $1=true
-                    shift
-                    ;;
-               *)   :
+         ids|new) bool["$1"]=:
+                  shift ;;
+               *) :
     esac
-    local extra_jq="$*"
-# TODO 0 -->
-$debug && echo "${FUNCNAME[0]}: platform=$platform, ids=$ids, new=$new, extra_jq=$extra_jq, lang=$lang"
-$debug && anykey
-$debug && set -x
-# TODO <-- 0
-    local response=$(dl_appstore_json_db apps $platform)
-    local http_code=${response%:*} unix_etag=${response#*:}
-# TODO 1 -->
-$debug && echo "${FUNCNAME[0]}: http:code=$http_code, unix_etag=$unix_etag"
-$debug && anykey
-$debug && set +x
-# TODO <-- 1
-    local json_data_file="$(r_db "SELECT json_data_file FROM apps WHERE platform == '$platform' AND etag == '$unix_etag'")"
+    extra_jq="$*"
+
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_stack_trace >/dev/tty
+        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+            local iter
+            echo -n "local bool values   -" >/dev/tty
+            for iter in ${!bool[@]}; do echo -n " $iter=${bool[$iter]}" >/dev/tty; done; echo >/dev/tty
+            unset iter
+        fi
+        echo "platform            - $platform" >/dev/tty
+        echo "extra_jq            - $extra_jq" >/dev/tty
+        echo "lang                - $lang" >/dev/tty
+        echo -e "==TRACE=end===\n" >/dev/tty
+    fi
+
+    response=$(dl_appstore_json_db apps $platform 2>/dev/tty)
+    http_code=${response%:*} unix_etag=${response#*:}
+    json_data_file="$(r_db "SELECT json_data_file FROM apps WHERE platform == '$platform' AND etag == '$unix_etag'")"
+
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_funcname >/dev/tty
+        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+            local iter
+            echo -n "local bool values   -" >/dev/tty
+            for iter in ${!bool[@]}; do echo -n " $iter=${bool[$iter]}" >/dev/tty; done; echo >/dev/tty
+            unset iter
+        fi
+        echo "http:code           - $http_code" >/dev/tty
+        echo "unix_etag           - $unix_etag" >/dev/tty
+        echo "json_data_file      - $json_data_file" >/dev/tty
+        echo -e "==TRACE=end===\n" >/dev/tty
+    fi
 
   # jq-filter as here-document:
     read -rd '' JQ_FILTER << 'JQ'
@@ -151,29 +206,26 @@ $debug && set +x
     })|map(. + (extract_php_versions)|del(.phpVersionSpec))|map(. + (extract_version)|del(.latestPlatformVersion))
 JQ
     [ -z "$extra_jq" ] || JQ_FILTER="$JQ_FILTER|$extra_jq"
-    $new && (( $(r_db "SELECT COUNT(*) FROM filtered_apps WHERE platform == '$platform' AND etag == '$unix_etag' AND lang == '$lang';") )) && return 0
-    if $new; then
+    ${bool[new]} && (( $(r_db "SELECT COUNT(*) FROM filtered_apps WHERE platform == '$platform' AND etag == '$unix_etag' AND lang == '$lang';") )) && return 0
+    if ${bool[new]}; then
         local json_filtered_data_file="$(jsontf)"
-$debug && set +x
-        ${BINARIES[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" > $json_filtered_data_file
-$debug && set -x
-        ${BINARIES[rm]} -f "$(r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang'")"
+        ${X[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" > $json_filtered_data_file
+        ${X[rm]} -f "$(r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang'")"
         w_db filtered_apps "$platform" "$lang" "$unix_etag" "$json_filtered_data_file"
-$debug && set +x
         return 0
-    elif $ids; then
-        local ids="$(${BINARIES[jq]} -cr --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"|${BINARIES[base64]} -w 0)"
+    elif ${bool[ids]}; then
+        ids="$(${X[jq]} -cr --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" | ${X[base64]} -w 0)"
         w_db app_ids appstore_$platform "$unix_etag" "$ids"
         return 0
     fi
-    ${BINARIES[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"
+    ${X[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"
     exit 0
 }
 
 # TODO: Fix this or throw it out?
 categories(){
     local JQ_FILTER extra_jq="$*" query json_data
-    dl_appstore_json_db categories
+    dl_appstore_json_db categories 2>/dev/tty
     read -rd '' JQ_FILTER << 'JQ'
       # Define a function to get the translation for a given language
         def get_translation($lang):
@@ -187,6 +239,6 @@ JQ
     [ -z "$extra_jq" ] || JQ_FILTER="$JQ_FILTER|$extra_jq"
     query="SELECT json_data FROM categories;"
     json_data="$(q2 r_db "$query")"
-    ${BINARIES[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
+    ${X[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
     exit 0
 }

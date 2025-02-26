@@ -1,0 +1,55 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${DOS2UNIX_BASHLIB:-_} && return
+DOS2UNIX_BASHLIB=:
+
+. <(lrequire binaries)
+
+is_unix(){
+    local file
+    file="$1"
+    [ -f "$file" ] || return 1
+    q2 ${X[file]} "$file" | ${X[grep]} -q "CRLF" && return 1 || return 0
+#    q2 ${X[od]} -c "$file" | ${X[grep]} -qs '\\r  \\n' && return 1 || return 0
+}
+
+dos_2_unix(){
+    local file
+    file="$1"
+    [[ -f "$file" && -w "$file" ]] || return 1
+    echo "dos_2_unix: converting file $file to Unix format..."
+    ${X[sed]} -i 's/\r$//' "$file"
+}
+
+dos2unix_bulk(){
+    local file
+    for file in "$@"; do
+        [[ -f "$file" && -w "$file" ]] || continue
+        is_unix "$file" || ${X[dos2unix]:-dos_2_unix} "$file"
+    done
+}
+
+dos2unix_recursive(){
+    local dir
+    local -a files
+    dir="${1%/}"
+    [ -d "$dir" ] || return 1
+    if [ -n "${X[dos2unix]}" ]; then
+#        mapfile -t files< <(${X[find]} "$dir/" -type f -exec ${X[dos2unix]} -id {} \; | ${X[awk]} '$1 != 0 { print $2 }')
+        mapfile -d $'\0' -t files< <(
+            ${X[find]} "$dir/" -type f -print0 | \
+            ${X[xargs]} -0 ${X[dos2unix]} -id | \
+            ${X[awk]} '$1 != 0 { printf "%s\0", $2 }'
+        )
+    else
+        mapfile -d $'\0' -t files< <(${X[find]} "$dir/" -type f -print0)
+    fi
+    dos2unix_bulk "${files[@]}"
+}

@@ -29,7 +29,7 @@ source config/configure
 # Source the placeholders file
 source config/placeholders
 # source sed functions
-source <(tail -n +14 modules/awksed)
+source <(${X[tail]} -n +14 modules/awksed)
 
 # Declare variables
 declare input_module output_module modulename tempfile placeholder placeholder_pattern
@@ -41,33 +41,37 @@ modulename=${input_module#$MODULES_DIR/}
 if [ -n "$EXCLUDE_SUFIXES" ]; then
     exclude_regex="${EXCLUDE_SUFIXES// /|}"
 #    if [[ "$modulename" =~ (${exclude_regex//./\\.}) ]]; then
-    if echo "$modulename" | grep -Eiqsw "^.*(${exclude_regex//./\\.})$"; then
+    if echo "$modulename" | ${X[grep]} -Eiqsw "^.*(${exclude_regex//./\\.})$"; then
         echo "* == skiping '$modulename' because of excluded sufix"
         exit 0
     fi
 fi
 
-# copy the input module to the output module
-cp "$input_module" $output_module
-
-for i in $(seq 0 9); do
-    delx2yi "# TODO $i -->" "# TODO <-- $i" $output_module
-done
-
-delp2ei "# COMMENT -->" $output_module
-
-sed -i '/^# TODO/d' $output_module
-
 tempfile=$(mktemp)
 
-# Replace placeholders with their actual contents
-for placeholder in "${placeholders[@]}"; do
-    placeholder_pattern="__${placeholder}__"
-    awk '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$modulename'"); next } 1' $output_module > $tempfile
-    cat $tempfile > $output_module
+# copy the input module to the tempfile
+cp "$input_module" "$tempfile"
+
+for i in $(${X[seq]} 0 9); do
+    delx2yi "# TODO $i -->" "# TODO <-- $i" "$tempfile"
 done
 
-rm -f $tempfile
+delp2ei "# COMMENT -->" "$tempfile"
+
+sed -i '/^# TODO/d' "$tempfile"
+
+if [[ ${MINIFY:-false} && "$(${X[head]} -n1 "$input_module")" == '__minified_bashlib__' ]]; then
+    tools/minify "$tempfile" "$modulename" > "$output_module"
+else
+    # Replace placeholders with their actual contents
+    for placeholder in "${placeholders[@]}"; do
+        placeholder_pattern="__${placeholder}__"
+        [ -f "$output_module" ] && ${X[cat]} "$output_module" > "$tempfile"
+        ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$modulename'"); next } 1' "$tempfile" > "$output_module"
+    done
+fi
+
+rm -f "$tempfile"
 
 exit 0
 

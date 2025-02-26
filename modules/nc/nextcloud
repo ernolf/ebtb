@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${NEXTCLOUD_BASHLIB:-false} && return
+${NEXTCLOUD_BASHLIB:-_} && return
 NEXTCLOUD_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,34 +16,35 @@ NEXTCLOUD_BASHLIB=:
 . <(lrequire php/version)
 . <(require nc/nextcloud_aio)
 
-if $AIO; then
+declare NC_CDIR
+if ${B[aio]}; then
     NC_DIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
-    cdir="$NC_DIR/config"
+    NC_CDIR="$NC_DIR/config"
 else
     declare NC_USER NC_DIR_USER NC_DIR_GROUP
     # detect location of config.php
     if [ -d "$NC_DIR" ]; then
-        NC_DIR_USER=$(${BINARIES[stat]} -c %U $NC_DIR) NC_DIR_GROUP=$(${BINARIES[stat]} -c %G $NC_DIR)
+        NC_DIR_USER=$(${X[stat]} -c %U $NC_DIR) NC_DIR_GROUP=$(${X[stat]} -c %G $NC_DIR)
         if q2 cd $NC_DIR; then
-            cdir=$(q2 ${BINARIES[php]} -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");')
+            NC_CDIR=$(q2 ${X[php]} -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");')
             cd
             # pick out NC_USER
-            if (( $(q2 ${BINARIES[stat]} -c %u $cdir/config.php) )); then
-                NC_USER="$(${BINARIES[stat]} -c %U $cdir/config.php)"
+            if (( $(q2 ${X[stat]} -c %u $NC_CDIR/config.php) )); then
+                NC_USER="$(${X[stat]} -c %U $NC_CDIR/config.php)"
             fi
         elif [ "$NC_DIR_USER" = 'root' ]&&[ "$NC_DIR_GROUP" != 'root' ]; then
             NC_USER=$NC_DIR_GROUP
         fi
     fi
     # if NC_USER still unknown, try these fallbacks:
-    [ -n "$NC_USER" ] || NC_USER="$(${BINARIES[ps]} -o user $(${BINARIES[pgrep]} -f "php|apache2|httpd|nginx") | ${BINARIES[gawk]} 'NR>1' | ${BINARIES[sort]} -u | ${BINARIES[grep]} -v root)"
-    [ -n "$NC_USER" ] || NC_USER="$(q2 ${BINARIES[apache2ctl]} -S | ${BINARIES[gawk]} -F '[" ]' '/User:/ { print $3 }')"
+    [ -n "$NC_USER" ] || NC_USER="$(${X[ps]} -o user $(${X[pgrep]} -f "php|apache2|httpd|nginx") | ${X[gawk]} 'NR>1' | ${X[sort]} -u | ${X[grep]} -v root)"
+    [ -n "$NC_USER" ] || NC_USER="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/User:/ { print $3 }')"
 
     # only load firstrun module if needed
     if [ ! -d "$NC_DIR" ]; then
         . <(req nc/first_run)
         first_run
-    elif [[ "$(${BINARIES[id]} -un)" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
+    elif [[ "$(${X[id]} -un)" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
         su_do "u=NC_USER"
     elif [ ! -r "$NC_DIR/lib/base.php" ]; then
         . <(req nc/first_run)
@@ -56,9 +57,9 @@ config2json(){
     jq_filter(){
 # TODO 0 -->
 # as oneliner:
-# echo "$@"|${BINARIES[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
+# echo "$@"|${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
 # TODO <-- 0
-        echo "$@" | ${BINARIES[jq]} -c '[.[] | .[]]
+        echo "$@" | ${X[jq]} -c '[.[] | .[]]
             | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
             | reduce .[]as $item({};. * $item)'
     }
@@ -80,10 +81,10 @@ config2json(){
     echo json_encode($c);
     ?>'
 
-    if q0 ${BINARIES[ls]} $cdir/*.config.php; then
-        jq_filter $(echo "$C2J" | ${BINARIES[php]} -- $cdir/config.php $cdir/*.config.php)
+    if q0 ${X[ls]} $NC_CDIR/*.config.php; then
+        jq_filter $(echo "$C2J" | ${X[php]} -- $NC_CDIR/config.php $NC_CDIR/*.config.php)
     else
-        jq_filter $(echo "$C2J" | ${BINARIES[php]} -- $cdir/config.php)
+        jq_filter $(echo "$C2J" | ${X[php]} -- $NC_CDIR/config.php)
     fi
 }
 
@@ -91,38 +92,38 @@ declare config_json
 nc_configkey(){
     if [ -z "$config_json" ]; then
         config_json="$(config2json)"
-        ${BINARIES[jq]} -r ".[\"$1\"].value" <<< "$config_json"
+        ${X[jq]} -r ".[\"$1\"].value" <<< "$config_json"
     fi
 }
 
 nc_configkey_exist_(){
-    ${BINARIES[grep]} -qsw "$1" $cdir/*config.php
-    return $?
+    ${X[grep]} -qsw "$1" $NC_CDIR/*config.php
+#    return $?
 }
 
-if $AIO; then
+if ${B[aio]}; then
     occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@; }
 else
     # detect, if apc is required for cli
     declare phpcli
-    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${BINARIES[grep]} -qs "apc.enable_cli"< <(${BINARIES[php$(php_ver)]} -i); then
-        phpcli="${BINARIES[php$(php_ver)]} --define apc.enable_cli=1"
+    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${X[grep]} -qs "apc.enable_cli"< <(${X[php$(php_ver)]} -i); then
+        phpcli="${X[php$(php_ver)]} --define apc.enable_cli=1"
     else
-        phpcli="${BINARIES[php$(php_ver)]}"
+        phpcli="${X[php$(php_ver)]}"
     fi
     # the occ command call is saved under occ, adapted to the user and environment
     occ(){ $phpcli -f $NC_DIR/console.php "$@"; }
     
-    if (( $(${BINARIES[id]} -u) )); then
-        [ "$(${BINARIES[id]} -un)" != "$NC_USER" ] && su_do "u=NC_USER"
+    if (( $(${X[id]} -u) )); then
+        [ "$(${X[id]} -un)" != "$NC_USER" ] && su_do "u=NC_USER"
     else
         # you are root
-        occ(){ ${BINARIES[sudo]} -u $NC_USER $phpcli -f $NC_DIR/console.php "$@"; }
+        occ(){ ${X[sudo]} -u $NC_USER $phpcli -f $NC_DIR/console.php "$@"; }
     fi
 fi
 
 q2 declare -g NC_DATADIR || declare NC_DATADIR
-if $AIO; then
+if ${B[aio]}; then
     NC_DATADIR="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
 elif nc_configkey_exist_ datadirectory; then
     NC_DATADIR="$(nc_configkey datadirectory)"
@@ -137,18 +138,15 @@ GITHUB_RAW='https://raw.githubusercontent.com/nextcloud'
 
 # array with latest versions from end of life platforms
 q2 declare -ga LATEST_EOL || declare -a LATEST_EOL
-LATEST_EOL=(
-    11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 28.0.14
-)
+LATEST_EOL=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 28.0.14)
 
-nc_version_(){ local version_php="$2"
-    case $1 in
-        long)   ${BINARIES[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php"
-                ;;
-        short)  ${BINARIES[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php"
-                ;;
-        key)    ${BINARIES[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php"
-                ;;
-        string) ${BINARIES[gawk]} -F"'" '/\$OC_VersionString =/{print $2}' "$version_php"
+nc_version_(){
+    local version_php
+    version_php="$2"
+    case "$1" in
+         long) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php" ;;
+        short) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php"           ;;
+          key) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php"                     ;;
+       string) ${X[gawk]} -F"'" '/\$OC_VersionString =/{print $2}' "$version_php"
     esac
 }

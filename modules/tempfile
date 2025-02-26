@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${TEMPFILE_BASHLIB:-false} && return
+${TEMPFILE_BASHLIB:-_} && return
 TEMPFILE_BASHLIB=:
 
 . <(lrequire binaries)
@@ -18,21 +18,21 @@ TEMPFILE_BASHLIB=:
 [ -d "$TMPDIR" ] || TMPDIR='/temp'
 
 # unprivileged users need their own writable tmp dir:
-if (( $(${BINARIES[id]} -u) )); then
+if (( $(${X[id]} -u) )); then
     TMPDIR="${TMPDIR%/}"
-    if (( $(${BINARIES[gawk]} -F/ '{print NF-1}' <<< "$TMPDIR") == 1 )) && [ -w "$TMPDIR" ]; then
-        TMPDIR="$TMPDIR/user-$(${BINARIES[id]} -u)"
+    if (( $(${X[gawk]} -F/ '{print NF-1}' <<< "$TMPDIR") == 1 )) && [ -w "$TMPDIR" ]; then
+        TMPDIR="$TMPDIR/user-$(${X[id]} -u)"
     elif [ ! -w "$TMPDIR" ]; then
-        TMPDIR="$(${BINARIES[gawk]} -F/ '{print "/"$2}' <<< "$TMPDIR")/user-$(${BINARIES[id]} -u)"
+        TMPDIR="$(${X[gawk]} -F/ '{print "/"$2}' <<< "$TMPDIR")/user-$(${X[id]} -u)"
     fi
-    [ -d "$TMPDIR" ] || q0 ${BINARIES[mkdir]} -m 755 "$TMPDIR"
+    [ -d "$TMPDIR" ] || q0 ${X[mkdir]} -m 755 "$TMPDIR"
 fi
 declare ttf
-ttf="$(${BINARIES[mktemp]} -p "$TMPDIR")"
+ttf="$(${X[mktemp]} -p "$TMPDIR")"
 if [[ -n "$ttf" && -f "$ttf" ]]; then
-    ${BINARIES[rm]} -f -- "$ttf"
+    ${X[rm]} -f -- "$ttf"
 else
-    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '$(${BINARIES[id]} -un)'\e[0m" >&2
+    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '$(${X[id]} -un)'\e[0m" >&2
     [ -t 0 ] || exit 1
 fi
 unset ttf
@@ -46,13 +46,13 @@ tf(){
       666|777)  mode=$arg
         esac
     done
-    t="$(${BINARIES[mktemp]} -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
+    t="$(${X[mktemp]} -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
 # TODO 0 -->
-#    t="$(${BINARIES[mktemp]} -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
+#    t="$(${X[mktemp]} -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
 # TODO <-- 0
     if [ -z "$u" ]; then
         if [ -n "$mode" ]; then
-            ${BINARIES[chmod]} $mode "$t"
+            ${X[chmod]} $mode "$t"
         fi
     fi
     echo "$t"

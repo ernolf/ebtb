@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${PECL_BASHLIB:-false} && return
+${PECL_BASHLIB:-_} && return
 PECL_BASHLIB=:
 
 . <(lrequire binaries)
@@ -21,10 +21,10 @@ pecl_download(){
         chan="$module"
     fi
 
-    ${BINARIES[pecl]} channel-update pecl.php.net
+    ${X[pecl]} channel-update pecl.php.net
 
-    download_output=$(${BINARIES[pecl]} download $chan 2>&1)
-    file_name=$(echo "$download_output" | ${BINARIES[grep]} -oP '(?<=File ).*(?= downloaded)' | ${BINARIES[xargs]} ${BINARIES[basename]})
+    download_output=$(${X[pecl]} download $chan 2>&1)
+    file_name=$(echo "$download_output" | ${X[grep]} -oP '(?<=File ).*(?= downloaded)' | ${X[xargs]} ${X[basename]})
 
     if [ -f "$file_name" ]; then
         lG; echo "- download of $file_name successfull"
@@ -33,7 +33,7 @@ pecl_download(){
         exit1
     fi
 
-    if ${BINARIES[tar]} -xzf $file_name; then
+    if ${X[tar]} -xzf $file_name; then
         B; echo "- entering directory \"${file_name%.*}\""
         cd ${file_name%.*}
     else

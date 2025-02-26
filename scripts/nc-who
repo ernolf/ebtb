@@ -9,18 +9,10 @@ __license__
 
 __scriptname__
 
-dependencies=(
-    "gawk#gawk#GNU awk"
-    "grep#grep#GNU grep, egrep and fgrep"
-    "watch#procps#Run a task periodically, showing output on stdout"
-    "gpg#gnupg#GNU Privacy Guard"
-    "jq#jq#command-line JSON processor"
-    "html2text#html2text#Advanced HTML-to-text converter"
-)
 modules=(
-    binaries basics awksed tempfile ansi button exit anykey line array sudo
-    dependency vdir integrity nc/nextcloud nc/nextcloud_db
-    $sin/help $sin/last $sin/monitor
+    binaries basics awksed tempfile ansi filter button exit anykey line array
+    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db $sin/help
+    $sin/last $sin/monitor
 )
 __debug__
 __when__
@@ -43,9 +35,10 @@ contribute_(){
 }; donate_(){ contribute_;}
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
+declare command
 command=print_help
 while (($#));do
-    case $1 in
+    case "$1" in
         monitor|last)
             command=nc_$1
             break 2

@@ -1,5 +1,5 @@
 ls_(){
-    case $1 in
+    case "$1" in
         pidstatus)
             [ -f "$ls_pid_file" ] && ps -p $(cat "$ls_pid_file") > /dev/null && return 0 || return 1
             ;;

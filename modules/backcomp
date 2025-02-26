@@ -1,0 +1,115 @@
+__minified_bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+declare -f _ &>/dev/null || _(){ false; }
+
+${BACKCOMP_BASHLIB:-_} && return
+BACKCOMP_BASHLIB=:
+
+# for backwards compatibility:
+if (( ${#deps[@]} )) && ! (( ${#dependencies[@]} )); then
+    declare -a dependencies=("${deps[@]}")
+fi
+
+# Migrate legacy variables into new variable names
+[[ -n "$basename_me"   && -z "$bm"     ]] && declare bm="$basename_me"
+[[ -n "$canonical_dir" && -z "$ca_dir" ]] && declare ca_dir="$canonical_dir"
+[[ -n "$canonical_me"  && -z "$ca_me"  ]] && declare ca_me="$canonical_me"
+[[ -n "$updateinfo"    && -z "$upinf"  ]] && declare upinf="$updateinfo"
+
+# removed function for backwards compatibility:
+populate_pkgs_by_dpkg_array(){ :; }
+
+if (( epoch < 1731244919 )); then
+    sourced() {
+        local am
+        local -u m="${1/\.d\//_}_BASHLIB"
+        eval am="\$${m#*/}"
+        ${am:-_}
+    }
+fi
+
+# moved to #general
+if (( epoch < 1737773190 )); then
+    q0(){ "$@" &>/dev/null; }
+    q1(){ "$@" >/dev/null; }
+    q2(){ "$@" 2>/dev/null; }
+fi
+
+if (( epoch < 1738066400 )); then
+    echo -e "\n\n\e[31m - The current script version is very old.\n   It could be that the integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
+fi
+
+if (( epoch < 1739905000 )); then
+    # Create a nameref for BINARIES named X
+    declare -n X=BINARIES
+
+    # link legacy boolean variables to the coresponding new associative array "BOOL"
+    if ! q2 declare -p BOOL | grep -qs 'declare -A'; then
+        unset BOOL
+        q2 declare -gA BOOL || declare -A BOOL
+    fi
+    declare bool
+    declare -a bools
+    bools=(
+        # most comon
+        quiet verbose debug pager nopager bgjobs
+        # from general block
+        rt run2 irun2 do_update do_restore_backup do_integrity_check
+        # nc-apps
+        secondrun markdown supported unsupported use_json_all update_first allow_unstable
+        # nc-mimecheck
+        listmimes recursive dryrun enabled_user
+        # nc-sql
+        raw execute
+        # php-module-builder
+        firstrun remove force step module_is_built module_is_installed
+        # php-updater
+        help needforce nolts distrib_to_old distrib_to_new distrib_unknown
+        # nc-aio
+        AIO DOCKER
+    )
+    for bool in "${bools[@]}"; do
+        declare -n $bool=BOOL[${bool,,}]
+    done
+    unset -v bool bools
+fi
+
+#if (( epoch < 1739977000 )); then
+if (( epoch < 1739977500 )); then
+    . <(lreq filter)
+
+    # do an extra check for old modules if not root. This was broken before this epoch
+    $curlc -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
+    if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then
+        for mod in ${modules[@]}; do
+            ${BOOL[pager]} || printf "\r\e[K.. checking modules - $mod"
+            c4u "$mod"
+            . <(lreq $mod)
+        done
+    fi
+fi
+
+if (( epoch < 1740340000 )); then
+    declare -n B=BOOL
+fi
+
+# get rid of unused libraries in old directories
+if ${B[rt]}; then
+    if ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ebtb' /usr/local/bin; then
+        [ -d "${ca_dir%/*}/include/ebtb" ] && ${X[rm]} -r "${ca_dir%/*}/include/ebtb"
+    fi
+    if [[ "$lincld" =~ ebtb ]] && ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ernolf' /usr/local/bin/; then
+        [ -d "${ca_dir%/*}/include/ernolf" ] && ${X[rm]} -r "${ca_dir%/*}/include/ernolf"
+    fi
+fi
+
+q0 declare -f lrequire || lrequire(){ require $@;}
+
+${FP_BASHLIB:-_} || . <(q2 require fp)

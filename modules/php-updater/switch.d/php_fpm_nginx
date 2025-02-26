@@ -7,13 +7,13 @@ __copyright__
 __license__
 #
 
-${SWITCH_PHP_FPM_NGINX_BASHLIB:-false} && return
+${SWITCH_PHP_FPM_NGINX_BASHLIB:-_} && return
 SWITCH_PHP_FPM_NGINX_BASHLIB=:
 
 php_fpm_sites_available_conf_nginx(){
     local ver_n pool plu
     local -a pools sock_o canonicalized_sock_o conffiles
-    local -A sock_n
+    local -A sock_n bool
     local -i i
     ver_n="$1"
     mapfile -t pools< <(fpm_pools)
@@ -45,9 +45,9 @@ php_fpm_sites_available_conf_nginx(){
         sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
         canonicalized_sock_n[$pool]="$(canonicalize "${sock_n[$pool]}")"
 
-        mapfile -t sock_o< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ sockets "${sock_n[$pool]}" | ${BINARIES[sort]} -u)
+        mapfile -t sock_o< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ sockets "${sock_n[$pool]}" | ${X[sort]} -u)
         mapfile -t canonicalized_sock_o< <(canonicalize_array "${sock_o[@]}")
-        mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles_regex "${sock_n[$pool]}" | ${BINARIES[sort]} -u)
+        mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles_regex "${sock_n[$pool]}" | ${X[sort]} -u)
         if (( ${#conffiles[@]} )); then
             f
             o3; bundle echo "$(ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6;N)"
@@ -98,12 +98,13 @@ php_fpm_sites_available_conf_nginx(){
             done
 
 #debug=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
-            local line conf sock question do_change changed xtemp=$(tf)
-            changed=false
+            local line conf sock question xtemp=$(tf)
+            bool[changed]=_
             for i in ${!conffiles[@]}; do
-                do_change=false
-                conf="$(${BINARIES[readlink]} -f "${conffiles[i]}")"
-                echo "${BINARIES[sed]} -E --in-place=.backup '" > "$xtemp"
+                bool[do_change]=_
+#                conf="$(${X[realpath]} "${conffiles[i]}")"
+                conf="$(${X[realpath]} "$(detect_nginx_php_fpm fileonly quiet "${conffiles[i]}")")"
+                echo "${X[sed]} -E --in-place=.backup '" > "$xtemp"
                 for sock in ${sock_o[@]}; do
                     line="$(detect_nginx_php_fpm lineonly quiet "${conffiles[i]}" "$sock")"
                     [ -n "$line" ] || continue
@@ -112,17 +113,17 @@ php_fpm_sites_available_conf_nginx(){
                     separator
                     if ask "$question" "$YES"; then
                         echo "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" >> "$xtemp"
-                        do_change=:
+                        bool[do_change]=:
                     fi
                 done
                 echo "' $conf" >> "$xtemp"
-                if "$do_change"; then
+                if ${bool[do_change]}; then
                     f
                     bundle echo " -$(format_string "If you continue here, the changes will be written to file." 3)"
                     f
                     anykey
                     . $xtemp
-                    changed=:
+                    bool[changed]=:
                     o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
                 else
                     f
@@ -130,15 +131,15 @@ php_fpm_sites_available_conf_nginx(){
                     f
                 fi
             done
-            "$changed" && ${BINARIES[systemctl]} restart nginx php$ver_n-fpm
+            ${bool[changed]} && ${X[systemctl]} restart nginx php$ver_n-fpm
             rm -f "$xtemp"
-            unset line conf sock question do_change changed xtemp
+            unset line conf sock question xtemp
             f
 #            anykey_noquit
         else
             f
-            o3; bundle echo "$(ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected." 6; N)"
-            o3; bundle echo "- $(format_string "If this does not meet your expectations, you may not have created the fpm pool for the selected version you want to switch to. This script normaly creates the necessary pools in the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
+            o3; bundle echo "$(ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected. If, in the further course, below of of this message, it is shown that the server is connected to the new socket, then everything worked and this message does not indicate an error." 6; N)"
+            o3; bundle echo "- $(Y; format_string "If the server does not connect to the new socket and this message does not match your expectations, the fpm pool for the selected version you want to switch to may not have been created. This script normaly creates the necessary pools for the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
             f
             anykey_noquit
         fi

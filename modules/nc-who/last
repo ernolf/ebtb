@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${LAST_BASHLIB:-false} && return
+${LAST_BASHLIB:-_} && return
 LAST_BASHLIB=:
 
 . <(lrequire basics)

@@ -7,10 +7,11 @@ __copyright__
 __license__
 #
 
-${BASICS_BASHLIB:-false} && return
+${BASICS_BASHLIB:-_} && return
 BASICS_BASHLIB=:
 
 . <(lrequire binaries)
+. <(lrequire awksed)
 
 declare invi="Invalid input."
 
@@ -18,6 +19,11 @@ declare invi="Invalid input."
 es(){
     printf "%*s" $1 ' '
 }; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}
+
+# remove square brackets:
+desquare(){
+    ${X[tr]} -d '[]' <<< "$@"
+}
 
 # tolower
 tlwr(){
@@ -48,7 +54,7 @@ p_sort(){
     else
         arg='-'
     fi
-    printf '%s\n' "$@" | ${BINARIES[sort]} ${arg}u
+    printf '%s\n' "$@" | ${X[sort]} ${arg}u
 }
 
 # printf sorted and remove duplicates
@@ -60,7 +66,7 @@ p_sort_trim(){
 
 # printf sorted and remove duplicates reverse order
 p_rsort(){
-    printf '%s\n' "$@" | ${BINARIES[sort]} -ru
+    printf '%s\n' "$@" | ${X[sort]} -ru
 }
 
 # printf sorted and remove duplicates reverse order
@@ -73,19 +79,19 @@ p_rsort_trim(){
 # printf sorted, remove duplicates, and numerate lines dynamically based on line count
 p_sort_numerate(){
     local -i line_count digits
-    line_count=$(p_sort "$@" | ${BINARIES[wc]} -l)
+    line_count=$(p_sort "$@" | ${X[wc]} -l)
     digits=$(( line_count < 10 ? 1 : (line_count < 100 ? 2 : 3) ))
-    p_sort "$@" | ${BINARIES[nl]} -v 1 -n rz -w "$digits" -s ': '
+    p_sort "$@" | ${X[nl]} -v 1 -n rz -w "$digits" -s ': '
 }
 
 # version to integer
 v2i(){
-    ${BINARIES[gawk]} '{print $1*1000000000+$2*1000000+$3*1000+$4}' <<< "${1//./ }"
+    ${X[gawk]} '{print $1*1000000000000+$2*100000000+$3*10000+$4}' <<< "${1//./ }"
 }
 
 # htmldecode
 htmldecode(){
-    ${BINARIES[php]} -r "echo html_entity_decode('$*');"
+    ${X[php]} -r "echo html_entity_decode('$*');"
 }
 
 # no nullglob
@@ -96,10 +102,10 @@ nonullglob(){
 
 # check if bool
 boolean(){
-    if ${BINARIES[grep]} -qswiE "(on|1)" <<< "$1"; then
+    if ${X[grep]} -qswiE "(on|1)" <<< "$1"; then
         echo -n 'true'
         return 0
-    elif ${BINARIES[grep]} -qswiE "(off|0)" <<< "$1"; then
+    elif ${X[grep]} -qswiE "(off|0)" <<< "$1"; then
         echo -n 'false'
         return 0
     fi
@@ -115,27 +121,15 @@ escaped(){
 # Pads a Base64 encoded string to ensure its length is divisible by 4 by adding '=' at the end if necessary.
 pad(){
     local i="$1"
-    (($((${#i}%4)))) && i="${i}$(printf '=%.0s' $(${BINARIES[seq]} 1 $((4 - $((${#i} % 4))))))"
+    (($((${#i}%4)))) && i="${i}$(printf '=%.0s' $(${X[seq]} 1 $((4 - $((${#i} % 4))))))"
     echo "$i"
-}
-
-q0(){
-  "$@" &>/dev/null
-}
-
-q1(){
-  "$@" >/dev/null
-}
-
-q2(){
-  "$@" 2>/dev/null
 }
 
 canonicalize_array(){
     local path
     local -a ca
     mapfile -t ca< <(for path in "$@"; do
-            printf '%s\n' "$(${BINARIES[readlink]} -f "$path")"
+            printf '%s\n' "$(${X[realpath]} "$path")"
         done)
     p_sort "${ca[@]}"
 }
@@ -146,7 +140,7 @@ canonicalize(){
         printf '%s' "$1"
         return 1
     fi
-    target="$(${BINARIES[readlink]} -f "$1")"
+    target="$(${X[realpath]} "$1")"
     if [ "$1" = "$target" ]; then
         printf '%s' "$1"
         return 1
@@ -156,6 +150,69 @@ canonicalize(){
     fi
 }
 
-is_unix(){
-    ${BINARIES[file]} "$1" | ${BINARIES[grep]} -q "CRLF" && return 1 || return 0
+# var_ name/prefix and var_ val/sufix
+var_(){
+    local fix strg fs
+    fix="$1" strg="$2" fs="$3"
+    case "$fix" in
+        prefix)
+            trim "${strg%%$fs*}" ;;
+        sufix)
+            if [[ "$strg" =~ $fs ]]; then
+                trim "${strg##*$fs}"
+            else
+                printf ''
+            fi
+    esac
+}
+
+varname(){
+    local string fs
+    string="$1" fs="${2:-=}"
+    [ -n "$string" ] || return
+    var_ prefix "$string" "$fs"
+}
+
+varval(){
+    local string fs
+    string="$1" fs="${2:-=}"
+    [ -n "$string" ] || return
+    var_ sufix "$string" "$fs"
+}
+
+prefix(){
+    local string fs
+    string="$1" fs="${2:-.}"
+    [ -n "$string" ] || return
+    var_ prefix "$string" "$fs"
+}
+
+sufix(){
+    local string fs
+    string="$1" fs="${2:-.}"
+    [ -n "$string" ] || return
+    var_ sufix "$string" "$fs"
+}
+
+# print the n th line
+hnt1(){
+    local file
+    local -i hn
+    hn="${1:-2}" file="${2:-$ca_me}"
+    ${X[head]} -n $hn "$file" | ${X[tail]} -n 1
+}
+
+# print the n th line counted from the bottom
+tnh1(){
+    local file
+    local -i tn
+    tn="${1:-2}" file="${2:-$ca_me}"
+    ${X[tail]} -n $tn "$file" | ${X[head]} -n 1
+}
+
+tnh1_strg(){
+    local string file
+    local -i tn
+    string="$1" tn="${2:-3}" file="${3:-$ca_me}"
+    [[ " $(tnh1 $tn "$file") " =~ " $string " ]]
 }

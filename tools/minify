@@ -1,0 +1,75 @@
+#!/bin/bash
+
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir script name channel
+declare -i line_no
+bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
+ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+cd "$ca_dir/.."
+# Source the configure file
+source config/configure
+# Source the secrets configure file if exists
+[ -f config/secrets ] && source config/secrets
+# Source the placeholders file
+source config/placeholders
+# Source the time
+source config/runtime
+
+script="$1" name="$2"
+if [ "$(${X[head]} -n1 "$script")" = '__minified_bashlib__' ]; then
+    echo "# BASHLIB (minified)"
+    echo "# @channel@/$name"
+    echo "# version $runtime $epoch"
+    line_no=10
+fi
+
+minify() {
+    if $MINIFY; then
+        ${X[tail]} -n +${line_no:-0} $script |\
+        ${X[shfmt]} -mn - |\
+        # remove the newline immediately following the opening parenthesis in array declarations,
+        # then replace any remaining newlines within the array declaration with a space
+        ${X[sed]} -E ':a;N;$!ba; s/(=\()\n/\1/g; :b; s/(=\([^)]*)\n/\1 /g; tb' |\
+        # remove escaped newlines (backslash followed by a newline)
+        ${X[sed]} ':a;N;$!ba;s/\\\n//g' |\
+        # replace newline following an opening curly brace with a space
+        ${X[sed]} ':a;N;$!ba;s/{\n/{ /g' |\
+        # replace all remaining newlines with semicolons
+        ${X[sed]} ':a;N;$!ba;s/\n/;/g' |\
+        # replace the sequence ')";[' with ')" [' to correctly separate array elements.
+        ${X[sed]} -E 's/\)";\[/)" \[/g' |\
+        # replace the sequence ")';[" with "), [" to correctly separate array elements.
+        ${X[sed]} -E "s/\)';\[/)' \[/g" |\
+        # remove spaces preceding the ">" character
+        ${X[sed]} 's/ >/>/g' |\
+        # replace "&;" with "&" to correct accidental character sequences
+        ${X[sed]} 's/&;/\&/g' |\
+        # correct spacing for the keyword "in"
+        ${X[sed]} 's/ in;/ in /g' |\
+        # correct spacing for "do"
+        ${X[sed]} 's/do;/do /g' |\
+        # add missing semicolon before "do" if missing
+        ${X[sed]} 's/\([^;]\) do /\1;do /g' |\
+        # correct spacing for "then"
+        ${X[sed]} 's/then;/then /g' |\
+        # add missing semicolon before "then" if missing
+        ${X[sed]} 's/\([^;]\) then /\1;then /g' |\
+        # correct spacing for "else"
+        ${X[sed]} 's/else;/else /g' |\
+        # correct spacing for "if"
+        ${X[sed]} 's/if;/if /g' |\
+        # replace quadruple semicolons with a double semicolon
+        ${X[sed]} 's/;;;;/;;/g' |\
+        # replace triple semicolons with a double semicolon
+        ${X[sed]} 's/;;;/;;/g' |\
+        # replace the @HEREDOC@ placeholder with an actual HEREDOC block
+        ${X[sed]} 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/'
+    else
+#        ${X[cat]} "$1"
+        ${X[sed]} 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/' "$script"
+    fi
+}
+
+minify

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${HTTPD_BASHLIB:-false} && return
+${HTTPD_BASHLIB:-_} && return
 HTTPD_BASHLIB=:
 
 . <(lrequire binaries)
@@ -41,24 +41,24 @@ HTTPD=(
 )
 
 populate_a2conffiles(){
-    mapfile -t A2CONFFILES< <(q2 ${BINARIES[apache2ctl]} -t -D DUMP_INCLUDES | ${BINARIES[tail]} +2 | ${BINARIES[gawk]} '{print $NF}')
+    mapfile -t A2CONFFILES< <(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[tail]} +2 | ${X[gawk]} '{print $NF}')
 }
 
 populate_ngxconffiles(){
-    mapfile -t NGXCONFFILES< <(q2 ${BINARIES[nginx]} -T | ${BINARIES[gawk]} -F' |:' '/^#[^#]*:$/{print $(NF-1)}')
+    mapfile -t NGXCONFFILES< <(q2 ${X[nginx]} -T | ${X[gawk]} -F' |:' '/^#[^#]*:$/{print $(NF-1)}')
 }
 
 # $1 either 'static' (built in) or 'shared' (dynamic)
 populate_a2modules(){
-    q0 ${BINARIES[apache2ctl]} configtest || return
-    mapfile -t A2MODULES< <(q2 ${BINARIES[apache2ctl]} -M | ${BINARIES[tail]} +2 | ${BINARIES[gawk]} '/'$1'/{print $(NF-1)}')
+    q0 ${X[apache2ctl]} configtest || return
+    mapfile -t A2MODULES< <(q2 ${X[apache2ctl]} -M | ${X[tail]} +2 | ${X[gawk]} '/'$1'/{print $(NF-1)}')
 }
 
 populate_ngxmodules(){
-    q0 ${BINARIES[nginx]} -t || return
+    q0 ${X[nginx]} -t || return
     mapfile -t NGXMODULES< <(
-        [[ -z "$1" || "$1" == 'static' ]] && ${BINARIES[nginx]} -V 2>&1 | ${BINARIES[tr]} -- - '\n' | ${BINARIES[grep]} _module
-        [[ -z "$1" || "$1" == 'shared' ]] && ${BINARIES[nginx]} -T 2>&1 | ${BINARIES[gawk]} -F / '/load_module/{print $2}' | ${BINARIES[sed]} -E 's/(^ngx_|\.so.*$)//g'
+        [[ -z "$1" || "$1" == 'static' ]] && ${X[nginx]} -V 2>&1 | ${X[tr]} -- - '\n' | ${X[grep]} _module
+        [[ -z "$1" || "$1" == 'shared' ]] && ${X[nginx]} -T 2>&1 | ${X[gawk]} -F / '/load_module/{print $2}' | ${X[sed]} -E 's/(^ngx_|\.so.*$)//g'
     )
 }
 
@@ -72,17 +72,17 @@ detect_httpd(){
             conffiles=("${NGXCONFFILES[@]}") # Copy the array values
         fi
         (( ${#conffiles[@]} )) || return 1
-        for p in $(q2 ${BINARIES[grep]} -ER "^\s*(<Directory|root)" "${conffiles[@]}" | \
-            q2 ${BINARIES[gawk]} -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
+        for p in $(q2 ${X[grep]} -ER "^\s*(<Directory|root)" "${conffiles[@]}" | \
+            q2 ${X[gawk]} -F'[>| |;|:]' '{gsub(/\/$/, "", $(NF-1)); gsub(/"/, "", $(NF-1)); if ($(NF-1) != "") print $1 ";" $(NF-1)}'); do
             case $1 in
-   nextcloud_server) if q0 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;; then
+   nextcloud_server) if q0 ${X[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;; then
                          nextcloud_server["$2"]=true
                      fi
                      ;;
-nextcloud_directory) q2 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;
+nextcloud_directory) q2 ${X[find]} "${p##*;}/" -maxdepth 1 -type f -name "occ" -exec dirname {} \;
                      ;;
                 all) if [ -L "${p%%;*}" ]; then
-                         echo "${p%%;*} -> $(${BINARIES[readlink]} -f ${p%%;*}) - ${p##*;}"
+                         echo "${p%%;*} -> $(${X[realpath]} ${p%%;*}) - ${p##*;}"
                      else
                          echo "${p%%;*} - ${p##*;}"
                      fi
@@ -94,7 +94,7 @@ nextcloud_directory) q2 ${BINARIES[find]} "${p##*;}/" -maxdepth 1 -type f -name 
     local httpd
     local -a wellknown_httpdaemons httpdaemons
     local -A nextcloud_server
-    nextcloud_server=([apache2]=false [nginx]=false)
+    nextcloud_server=([apache2]=_ [nginx]=_)
     wellknown_httpdaemons=(${!nextcloud_server[@]})
     httpdaemons=(${!HTTPD[@]})
     for httpd in ${wellknown_httpdaemons[@]}; do check_ nextcloud_server "$httpd"; done
@@ -113,7 +113,7 @@ wk_enabled) for httpd in ${wellknown_httpdaemons[@]}; do (( ${HTTPD["$httpd"]} >
             ;;
  nextcloud) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && echo "$httpd"; done
             ;;
-    nc-dir) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && check_ nextcloud_directory "$httpd" | ${BINARIES[sort]} -u; done
+    nc-dir) for httpd in "${wellknown_httpdaemons[@]}"; do "${nextcloud_server["$httpd"]}" && check_ nextcloud_directory "$httpd" | ${X[sort]} -u; done
             ;;
        all) for httpd in "${wellknown_httpdaemons[@]}"; do
                 if "${nextcloud_server["$httpd"]}"; then
@@ -153,11 +153,11 @@ populate_httpd_(){
 load_server_status(){
     local httpd
     for httpd in ${!HTTPD[@]}; do
-        if [ -n "${BINARIES[$httpd]}" ]; then
+        if [ -n "${X[$httpd]}" ]; then
             HTTPD["$httpd"]=1 # "known"
-            if q0 ${BINARIES[systemctl]} --no-pager --quiet is-enabled "$httpd"; then
+            if q0 ${X[systemctl]} --no-pager --quiet is-enabled "$httpd"; then
                 HTTPD["$httpd"]=2 # "enabled & inactive"
-                if q0 ${BINARIES[systemctl]} --no-pager --quiet is-active "$httpd"; then
+                if q0 ${X[systemctl]} --no-pager --quiet is-active "$httpd"; then
                     HTTPD["$httpd"]=3 # "enabled & active"
                 fi
             fi
@@ -186,13 +186,13 @@ iterate_conf_files_() {
 
 readlink_if_(){
     local conf_file quiet
-    conf_file="$1" quiet=false
+    conf_file="$1" quiet=_
     [ "${2:-}" = 'quiet' ] && quiet=:
     if [ -L "$conf_file" ]; then
         if $quiet; then
-            echo "Configfile: $(GRAY)$conf_file -> $(C)$(${BINARIES[readlink]} -f "$conf_file")";N
+            echo "Configfile: $(GRAY)$conf_file -> $(C)$(${X[realpath]} "$conf_file")";N
         else
-            o3; pf; GRAY; bundle echo "$conf_file -> $(C)$(${BINARIES[readlink]} -f "$conf_file")";N
+            o3; pf; GRAY; bundle echo "$conf_file -> $(C)$(${X[realpath]} "$conf_file")";N
         fi
     else
         if $quiet; then
@@ -204,8 +204,8 @@ readlink_if_(){
 }
 
 a2serverroot(){
-    [ -n "${BINARIES[apache2ctl]}" ] || return
-    unquote $(q2 ${BINARIES[apache2ctl]} -t -D DUMP_RUN_CFG | ${BINARIES[awk]} '/ServerRoot/{print $NF}')
+    [ -n "${X[apache2ctl]}" ] || return
+    unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[awk]} '/ServerRoot/{print $NF}')
 }
 
 load_server_status

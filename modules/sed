@@ -1,0 +1,19 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SED_BASHLIB:-false} && return
+SED_BASHLIB=:
+
+# for backwards compatibility
+declare -f lrequire &>/dev/null||lrequire(){ require $@;}
+# module sed has moved to awksed:
+. <(lrequire awksed)
+
+echo -e "\n\n\e[31m - The current script version is very old.\n   It could be that the integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
+

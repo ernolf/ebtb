@@ -9,20 +9,12 @@ __license__
 
 __scriptname__
 
-dependencies=(
-    "gawk#gawk#GNU awk"
-    "grep#grep#GNU grep, egrep and fgrep"
-    "gpg#gnupg#GNU Privacy Guard"
-    "jq#jq#command-line JSON processor"
-)
 modules=(
-    binaries basics awksed tempfile ansi prefix exit anykey verbose line array
-    ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
+    binaries basics awksed tempfile ansi filter prefix exit anykey verbose line
+    array ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
     $sin/help $sin/list_shares
 )
 
-declare debug=false
-declare verbose=false
 __debug__
 __when__
 
@@ -44,22 +36,17 @@ contribute_(){
 }; donate_(){ contribute_;}
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
-v_echo "help=$help, verbose=$verbose, debug=$debug"
-
-## parsing options
-#options="help verbose debug"
-#for option in $options; do declare $option=false; done
-options="$(${BINARIES[getopt]} -o hs: --long help,sharetype: -n 'me' -- "$@")"
+declare options command
+options="$(${X[getopt]} -o hs: --long help,sharetype: -n 'me' -- "$@")"
 eval set -- "$options"
-
 command=list_shares
 while true; do
-    case $1 in
+    case "$1" in
         -h|--help)
             print_help
             ;;
         -s|--sharetype)
-            sharetype=$2
+            sharetype="$2"
             shift 2
             ;;
         --)

@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${OS_RELEASE_BASHLIB:-false} && return
+${OS_RELEASE_BASHLIB:-_} && return
 OS_RELEASE_BASHLIB=:
 
 declare -g OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
@@ -17,31 +17,31 @@ source_os_release(){
     if [[ -f /etc/os-release || -f /usr/lib/os-release ]]; then
         local os_release
         [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
-        . <(${BINARIES[sed]} 's/^/OS_/g' $os_release)
-    elif [ -n "${BINARIES[lsb_release]}" ]; then
-        OS_NAME="$(${BINARIES[lsb_release]} -si)"
+        . <(${X[sed]} 's/^/OS_/g' $os_release)
+    elif [ -n "${X[lsb_release]}" ]; then
+        OS_NAME="$(${X[lsb_release]} -si)"
         OS_ID="${OS_NAME%% *}"
-        OS_PRETTY_NAME="$(${BINARIES[lsb_release]} -sd)"
-        OS_VERSION_ID="$(${BINARIES[lsb_release]} -sr)"
-        OS_VERSION_CODENAME="$(${BINARIES[lsb_release]} -sc)"
+        OS_PRETTY_NAME="$(${X[lsb_release]} -sd)"
+        OS_VERSION_ID="$(${X[lsb_release]} -sr)"
+        OS_VERSION_CODENAME="$(${X[lsb_release]} -sc)"
         OS_VERSION="${OS_PRETTY_NAME/$NAME //} ($OS_VERSION_CODENAME)"
     fi
 }
 source_os_release
 
 os_not_supported(){
-    os;lB;echo "$OS_PRETTY_NAME $OS_VERSION_CODENAME detected.."
-    os;xpf;R;echo "$OS_PRETTY_NAME is not supported by this script .."
+    os; lB; echo "$OS_PRETTY_NAME $OS_VERSION_CODENAME detected.."
+    os; xpf; R; echo "$OS_PRETTY_NAME is not supported by this script .."
     exit1
 }
 
 check_raspbian(){
-    os;lB;echo "Raspbian OS detected, treat as debian.."
+    os; lB; echo "Raspbian OS detected, treat as debian.."
     check_debian
 }
 
 check_linuxmint(){
-    os;lB;echo "Linux Mint OS detected.."
+    os; lB; echo "Linux Mint OS detected.."
     if [ "$OS_DEBIAN_CODENAME" != '' ]; then
         check_debian
     elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
@@ -75,7 +75,7 @@ check_os_release(){
 }
 
 mark_checked(){
-    ${BINARIES[sed]} -i "/^v=\(true\|false\)$/i distrib_checked $*" "$ca_me"
+    ${X[sed]} -i "/^v=\(true\|false\|:\|_\)$/i distrib_checked $*" "$ca_me"
     f
     anykey
 }

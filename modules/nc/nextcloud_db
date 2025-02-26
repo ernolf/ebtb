@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${NEXTCLOUD_DB_BASHLIB:-false} && return
+${NEXTCLOUD_DB_BASHLIB:-_} && return
 NEXTCLOUD_DB_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,38 +16,38 @@ NEXTCLOUD_DB_BASHLIB=:
 . <(lrequire nc/nextcloud)
 
 # Database globals:
-globals="DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY dc"
+globals="DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY"
 for global in $globals; do q2 declare -g $global || declare $global; done
 unset -v global globals
-dc=false
+B[dc]=_
 
 database_call(){
-    $dc && return 0
+    ${B[dc]} && return 0
     local html=$1 configkey db_utf8mb4 dcs
     for configkey in type:dbtype host:dbhost user:dbuser pass:dbpassword name:dbname pref:dbtableprefix; do
         local db_${configkey%:*}=$(nc_configkey ${configkey#*:})
     done
     DB_TYPE=${db_type%sql} DB_PREF=$db_pref
-    db_host="$(echo $db_host|${BINARIES[sed]} 's/localhost.*/localhost/')"
+    db_host="$(echo $db_host | ${X[sed]} 's/localhost.*/localhost/')"
     case $DB_TYPE in
         my) local my_cnf=$(tf)
             echo -e "[client]\nhost=$db_host\nuser=$db_user\npassword=$db_pass">$my_cnf
             db_utf8mb4=$(nc_configkey mysql.utf8mb4)
-            if ${db_utf8mb4:-false}; then
+            if ${db_utf8mb4:-_}; then
                 dcs="utf8mb4"
             else
                 dcs="utf8"
             fi
-            DB_STRG="${BINARIES[mysql]} --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
+            DB_STRG="${X[mysql]} --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
             DB_EXEC="--execute="
             DB_RAW="-srN"
             DB_U2T="FROM_UNIXTIME"
             DB_UT2TS="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
             TYPE_SQL_QUERY="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
             ;;
-        pg) $AIO && db_host="$(${BINARIES[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)"
+        pg) ${B[aio]} && db_host="$(${X[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)"
             export PGPASSWORD=$db_pass
-            DB_STRG="${BINARIES[psql]} --user=$db_user --host=$db_host $html -d $db_name"
+            DB_STRG="${X[psql]} --user=$db_user --host=$db_host $html -d $db_name"
             DB_EXEC="--command="
             DB_RAW="-At"
             DB_U2T="TO_TIMESTAMP"
@@ -60,15 +60,15 @@ database_call(){
          *) echo "$(Pbg) * Only mysql or pgsql as database, $db_type is not (yet) supported by this script $(N)"
             exit 0
     esac
-    if $DOCKER; then
+    if ${B[docker]}; then
         DB_STRG="export PSQL_HISTORY=\$PGDATA/.psql_history; psql -U $db_user $html -d $db_name"
     fi
-    dc=true
+    B[dc]=:
 }
 
 db_interactive(){
     q0 database_call
-    if $DOCKER; then
+    if ${B[docker]}; then
         aio_wrapper -it database "$DB_STRG"
     else
         $DB_STRG
@@ -77,7 +77,7 @@ db_interactive(){
 
 db_raw_interactive(){
     q0 database_call
-    if $DOCKER; then
+    if ${B[docker]}; then
         aio_wrapper -it database "$DB_STRG $DB_RAW"
     else
         $DB_STRG $DB_RAW
@@ -87,7 +87,7 @@ db_raw_interactive(){
 db_exec_(){
     q0 database_call
     local query="$*"
-    if $DOCKER; then
+    if ${B[docker]}; then
         aio_wrapper database "$DB_STRG $DB_EXEC\"$query\""
     else
         $DB_STRG $DB_EXEC"$query"
@@ -97,7 +97,7 @@ db_exec_(){
 db_raw_exec_(){
     q0 database_call
     local query="$*"
-    if $DOCKER; then
+    if ${B[docker]}; then
         aio_wrapper database "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
     else
         $DB_STRG $DB_RAW $DB_EXEC"$query"

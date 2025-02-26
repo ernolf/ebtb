@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${POOL_BASHLIB:-false} && return
+${POOL_BASHLIB:-_} && return
 POOL_BASHLIB=:
 
 . <(lrequire binaries)
@@ -32,15 +32,15 @@ check_fpm_pool_files(){
     local -a ofiles nfiles alt_indexes alt_files pools
     local -i i www_index alt_index
     old="$1" new="$2"
-    [[ "$(${BINARIES[phpquery]} -v "$old" -S)" =~ fpm ]] || return # return if no fpm installed for php$old
+    [[ "$(${X[phpquery]} -v "$old" -S)" =~ fpm ]] || return # return if no fpm installed for php$old
     old_config=$(fpm_configfile "$old") || fpm_configfile_corupt "$old" "$old_config"
     pkgold="php$old-fpm" pkgnew="php$new-fpm"
     # is installed $pkgold || return
     odir="$(fpm_include "$old" dir)" ndir="$(fpm_include "$new" dir)"
     [ -d "$odir" ] || return # for the sake of stability
     [ -d "$ndir" ] || mkdir -p "$ndir" # If everything is edited by admin, take over his changes ;)
-    nonullglob "$odir/*" && ofiles=($(${BINARIES[ls]} "$odir"))
-    nonullglob "$ndir/*" && nfiles=($(${BINARIES[ls]} "$ndir"))
+    nonullglob "$odir/*" && ofiles=($(${X[ls]} "$odir"))
+    nonullglob "$ndir/*" && nfiles=($(${X[ls]} "$ndir"))
     [ "$(fpm_include "$old" ext)" = "$(fpm_include "$new" ext)" ] && ext="$(fpm_include "$old" ext)" || return #
 
     if (( ${#ofiles[@]} > 1 ));then
@@ -54,7 +54,7 @@ check_fpm_pool_files(){
                 for i in ${!alt_indexes[@]};do
                     alt_index=${alt_indexes[i]}
                     alt_files+=("${ofiles[alt_index]}")
-                    pools+=("$(${BINARIES[grep]} '^\[' "$odir/${ofiles[alt_index]}")")
+                    pools+=("$(${X[grep]} '^\[' "$odir/${ofiles[alt_index]}")")
                 done
                 poolstring="$(listify B ${pools[@]})"
                 string="The default fpm pool $(B)[www]$(N) for $pkgold is deactivated ($(GRAY)the file $odir/www.$ext has been renamed to $odir/${ofiles[www_index]}$(N)) but${plu%:*} custom created pool${plu#*:} $poolstring $be found"
@@ -66,7 +66,7 @@ check_fpm_pool_files(){
                 for i in ${!alt_indexes[@]};do
                     alt_index=${alt_indexes[i]}
                     alt_files+=("${ofiles[alt_index]}")
-                    pools+=("$(${BINARIES[grep]} '^\[' "$odir/${ofiles[alt_index]}")")
+                    pools+=("$(${X[grep]} '^\[' "$odir/${ofiles[alt_index]}")")
                 done
                 poolstring="$(listify B ${pools[@]})"
                 string="Beside the default fpm pool $(B)[www]$(N)${plu%:*} custom created pool${plu#*:} $poolstring $be found"
@@ -83,7 +83,7 @@ check_fpm_pool_files(){
                     fi
                 fi
                 for i in ${!alt_files[@]}; do
-                    ${BINARIES[sed]} "s/$old/$new/g" "$odir/${alt_files[i]}" > "$ndir/${alt_files[i]}"
+                    ${X[sed]} "s/$old/$new/g" "$odir/${alt_files[i]}" > "$ndir/${alt_files[i]}"
                     if [ -f "$ndir/${alt_files[i]}" ];then
                         bundle echo "R:$(format_string "Successfully created poolfile $(C)"$ndir/${alt_files[i]}"$(N)" 3;N)"
                     fi
@@ -91,6 +91,6 @@ check_fpm_pool_files(){
                 separator
             fi
         fi
-        ${BINARIES[systemctl]} restart "$pkgnew"
+        ${X[systemctl]} restart "$pkgnew"
     fi
 }

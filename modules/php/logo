@@ -7,14 +7,14 @@ __copyright__
 __license__
 #
 
-${PHP_LOGO_BASHLIB:-false} && return
+${PHP_LOGO_BASHLIB:-_} && return
 PHP_LOGO_BASHLIB=:
 
 . <(lrequire binaries)
 . <(lrequire ansi)
 
 php_logo(){
-    ${BINARIES[cat]} << PHPLOGO
+    ${X[cat]} << PHPLOGO
   $(dPHP)hhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhH$(N)
   $(dPHP)HhhHhhhHhhHhhHhhHhhhHhhHhhHhhhhPPPppPppPpppPpPPPPhhhHhhhHhhHhhHhhhHhhHhhHhhHhh$(N)
   $(dPHP)hhhhhhhhhhhhhhhhhhhhPPp$(lPHP):::;;;;;;;;;;;;;;;;;;;;;;;;;;;:$(dPHP)pppPhhhhhhhhhhhhhhhhhhhh$(N)

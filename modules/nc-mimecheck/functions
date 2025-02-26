@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${FUNCTIONS_BASHLIB:-false} && return
+${FUNCTIONS_BASHLIB:-_} && return
 FUNCTIONS_BASHLIB=:
 
 . <(lrequire binaries)
@@ -25,8 +25,8 @@ wrong_option(){
         woi=$((woi+1))
     # -x echo all gathered errors together, show help and exit
     elif [ "$1" = "-x" -a $woi -gt 0 ]; then
-        $quiet && exit 1
-        for i in $(${BINARIES[seq]} 0 $((woi-1))); do
+        ${B[quiet]} && exit 1
+        for i in $(${X[seq]} 0 $((woi-1))); do
             IFS="#" read -ra a <<< ${woa[$i]}
             if [ ${#a[*]} -ne 0 ]; then
                 f
@@ -49,14 +49,15 @@ wrong_option(){
 
 # main file=1 regex=2 exension=3 mimetype=4
 main(){
+    required_args 4 "$@"
     local -i i=1
     v_echo "$4$(o 26)=>  ${1##*/}"
-    if ! echo "$1" | ${BINARIES[grep]} -iE $grepopts "$2"; then
-        $quiet || echo "detected mimetype of ${1##*/} is $4"
-        $dryrun || ${BINARIES[mv]} "$1" "$(echo "$1"|${BINARIES[sed]} 's/\..\{1,5\}$//')$3"
-        do_occ_filesscan set true
-        $quiet || echo "$(G)moved $(xGRAY)${1##*/}$(N)"
-        $quiet || echo "$(G)   to $(P)$(echo "${1##*/}"|${BINARIES[sed]} 's/\..\{1,5\}$//')$(Pbg)$3$(N)"
+    if ! echo "$1" | ${X[grep]} -iE $grepopts "$2"; then
+        ${B[quiet]} || echo "detected mimetype of ${1##*/} is $4"
+        ${B[dryrun]} || ${X[mv]} "$1" "$(echo "$1"|${X[sed]} 's/\..\{1,5\}$//')$3"
+        do_occ_filesscan set :
+        ${B[quiet]} || echo "$(G)moved $(xGRAY)${1##*/}$(N)"
+        ${B[quiet]} || echo "$(G)   to $(P)$(echo "${1##*/}"|${X[sed]} 's/\..\{1,5\}$//')$(Pbg)$3$(N)"
         i=0
     fi
     return $i
@@ -64,12 +65,14 @@ main(){
 
 # scan_dir dir=1
 scan_dir(){
-    local -i i=255 ret=1
+    require_arg "$@"
+    local -i i ret
     local filepath mimetype extension
+    i=255 ret=1
     for filepath in "$1"/*; do
         [ -f "$filepath" ] || continue
         mimetype="$($mimedetector "$filepath")"
-        echo "${mime_ext_regex_array[@]%%:*}" | ${BINARIES[grep]} -qsw "$mimetype" || continue
+        echo "${mime_ext_regex_array[@]%%:*}" | ${X[grep]} -qsw "$mimetype" || continue
         extension="$(a_fld mime_ext_regex_array ':' "$mimetype" 2)"
         regex="$(a_fld mime_ext_regex_array ':' "$mimetype" 3)"
         main "$filepath" "$regex" "$extension" "$mimetype"

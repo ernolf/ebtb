@@ -1,0 +1,143 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${DEBUG_BASHLIB:-_} && return
+DEBUG_BASHLIB=:
+
+. <(lrequire binaries)
+. <(lrequire tempfile)
+. <(lrequire exit)
+
+[[ "${dependencies[@]}" =~ lsof ]] || dependencies+=("lsof#lsof#Unix-specific diagnostic tool to LiSt Open Files")
+
+resolve_source_path() {
+    local fd_real src_realpath src_canonicalpath src_lsofpath
+    fd_real="$1"
+    if [[ "$fd_real" =~ ^[0-9]+$ ]]; then
+        src_realpath="$(q2 ${X[realpath]} "/proc/self/fd/$fd_real")"
+        src_lsofpath="$(q2 ${X[lsof]} -p $$ -Fn | ${X[gawk]} -v fd="$fd_real" '$1 == "n" && prev == "f" fd {print substr($0,2); exit} {prev=$1}')"
+        echo "${src_realpath:-${src_lsofpath:-/dev/fd/$fd_real}}"
+    else
+        src_realpath="$(q2 ${X[realpath]} "$fd_real")"
+        echo "${src_realpath:-$fd_real}"
+    fi
+}
+
+# Function: print_stack_trace
+# Description: Prints a detailed stack trace including function names,
+# source file names, line numbers, and argument counts for each call frame.
+print_stack_trace() {
+    local func src line
+    local -a trace_exclude
+    local -i i j frame_no stack_depth arg_count
+    trace_exclude=(print_funcname required_args require_arg something_went_wrong)
+    frame_no=0 j=1 stack_depth=${#FUNCNAME[@]}
+    while [[ " ${trace_exclude[@]} " =~ " ${FUNCNAME[j]} " ]]; do ((j++)); done
+    if [ "${1:-}" = 'funcname' ]; then
+        if (( j < stack_depth )); then
+            func="${FUNCNAME[j]}"
+            src="$(resolve_source_path "${BASH_SOURCE[j]#*/fd/}")"
+            line="${BASH_LINENO[$((j-1))]}"
+            arg_count="${BASH_ARGC[$((j-1))]}"
+            echo "Frame $frame_no: Function '${func}' in ${src}:${line} (Arguments: ${arg_count})"
+            (( frame_no++ ))
+        else
+            echo "No valid stack frame found."
+        fi
+    else
+        echo "===== STACK TRACE ====="
+        for (( i=j; i<stack_depth; i++ )); do
+            func="${FUNCNAME[i]}"
+            src="$(resolve_source_path "${BASH_SOURCE[i]#*/fd/}")"
+            line="${BASH_LINENO[$((i-1))]}"
+            arg_count="${BASH_ARGC[$((i-1))]}"
+            echo "Frame $frame_no: Function '${func}' in ${src}:${line} (Arguments: ${arg_count})"
+            (( frame_no++ ))
+        done
+        echo "===== END STACK TRACE ====="
+    fi
+}
+
+print_funcname() {
+    print_stack_trace funcname
+}
+
+# Function: required_args
+# Description: Checks if at least a specified number of non-empty arguments are provided.
+# Usage: required_args <min_required> "$@"
+required_args() {
+    local req eff arg outfile
+    local -i i
+    local -a args
+    req="$1"
+    shift
+    args=("$@")
+    # Check if the number of provided arguments is at least req
+    if (( $# < req )); then
+        outfile="$(tf)"
+        (( $# )) && eff="only $#" || eff="none"
+        echo "Error: Function '${FUNCNAME[1]}' requires at least $req non-empty arguments, but $eff provided:" > "$outfile"
+        (($#)) && for i in ${!args[@]}; do
+            echo "Error: Argument $(printf '%d' $((i+1))) is '${args[i]}'" >> "$outfile"
+        done
+    fi
+    # Loop through the first req arguments and check if they are non-empty
+    for (( i=1; i<=req; i++ )); do
+        arg="${!i}"
+        if [ -z "$arg" ]; then
+            [ -n "$outfile" ] || outfile="$(tf)"
+            echo "Error: Argument $i in function '${FUNCNAME[1]}' is empty but is required to be non-empty." >> "$outfile"
+        fi
+    done
+    if [ -n "$outfile" ]; then
+        print_stack_trace >> "$outfile"
+        haul cat "$outfile"
+        if "${B[debug]:-_}"; then
+            ${X[cat]} "$outfile" >&2
+            exit1
+        fi
+        ${X[rm]} "$outfile"
+    fi
+}
+
+# Function: require_arg
+# Description: Checks if a required argument is provided. If not, prints an error
+# message along with a full stack trace and exits.
+require_arg() {
+    local outfile
+    if [ -z "$1" ]; then
+        outfile="$(tf)"
+        echo "Error: Missing required argument in function '${FUNCNAME[1]}'" > $outfile
+        print_stack_trace >> "$outfile"
+        haul cat "$outfile"
+        if "${B[debug]:-_}"; then
+            ${X[cat]} "$outfile" >&2
+            exit1
+        fi
+        ${X[rm]} "$outfile"
+    fi
+}
+
+something_went_wrong(){
+    local outfile1 outfile2 message
+    outfile1="$(tf)" outfile2="$(tf)" message="$1"
+    echo "Error:$(R; format_string "Something went wrong. This error and its stack trace have been recorded and will be analyzed to develop a fix if possible." 7; N)" > "$outfile1"
+    if (( $# )); then
+        echo >> "$outfile1"
+        echo "$(o2; R; format_string "- $message" 5; N)" >> "$outfile1"
+    fi
+    bundle cat "$outfile1"
+    print_stack_trace >> "$outfile2"
+    haul cat "$outfile2"
+    if "${B[debug]:-_}"; then
+        ${X[cat]} "$outfile2" >&2
+        exit1
+    fi
+    q0 ${X[rm]} "$outfile1" "$outfile2"
+}

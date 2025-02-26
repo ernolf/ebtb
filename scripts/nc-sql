@@ -9,18 +9,10 @@ __license__
 
 __scriptname__
 
-dependencies=(
-    "gawk#gawk#GNU awk"
-    "grep#grep#GNU grep, egrep and fgrep"
-    "curl#curl#Command line file transfer tool with URL syntax"
-    "gpg#gnupg#GNU Privacy Guard"
-#    "xmlstarlet#xmlstarlet#Command line XML toolkit"
-    "jq#jq#Command line JSON processor"
-)
 modules=(
-    binaries basics awksed tempfile ansi prefix button fstring exit spinner
-    anykey line array ask sudo dependency vdir integrity httpd nc/nextcloud
-    nc/nextcloud_db
+    binaries basics awksed tempfile ansi filter prefix button fstring exit
+    spinner anykey line array ask sudo dependency vdir integrity httpd
+    nc/nextcloud nc/nextcloud_db
 )
 __debug__
 __when__
@@ -43,7 +35,7 @@ contribute_(){
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
 help(){
-    ${BINARIES[cat]} << HELP
+    ${X[cat]} << HELP
 
     $me [ --raw [ --execute "query;" ] ]
 
@@ -59,32 +51,40 @@ HELP
 
 # first search for options --raw, -r, --execute, -e and remove from @() array
 # and then add the remaining arguments into the new array
-declare raw=false execute=false
-args=()
+declare bool arg
+declare -a bools args
+bools=(raw execute)
+for bool in ${bools[@]}; do B[$bool]=false; done
+unset -v bool bools
+
 for arg in "$@";do
-    if [ "$arg" = "--help" ];then help
-    elif [ "$arg" = "-h" ];then help
-    elif [ "$arg" = "--raw" ];then raw=true
-    elif [ "$arg" = "-r" ];then raw=true
-    elif [ "$arg" = "--execute" ];then execute=true
-    elif [ "$arg" = "-e" ];then execute=true
-    else args+=("$arg")
-    fi
+    case "$arg" in
+        --help|-h)
+            help
+            ;;
+        --raw|-r)
+            B[raw]=true
+            ;;
+        --execute|-e)
+            B[execute]=true
+            ;;
+        *)  args+=("$arg")
+    esac
 done
 set -- "${args[@]}"&&unset -v args
 
-if $AIO && [ -n "${BINARIES[psql]}" ]; then
-        DOCKER=false
+if ${B[aio]} && [ -n "${X[psql]}" ]; then
+        B[docker]=false
 fi
 
-if $execute; then
-    if $raw; then
+if ${B[execute]}; then
+    if ${B[raw]}; then
         db_raw_exec_ "$*"
     else
         db_exec_ "$*"
     fi
 else
-    if $raw; then
+    if ${B[raw]}; then
         db_raw_interactive
     else
         db_interactive

@@ -1,14 +1,15 @@
 #!/bin/bash
 
-declare debug=false
-declare verbose=false
+declare -A bool
+bool[debug]=false
+bool[verbose]=false
 
 # whoami, whereami
 # b=basename m=me a=absolute p=path ca=canonical
 declare bm apm me ca_me ca_dir
-bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
-[ "$(command -v "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
-ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
@@ -16,44 +17,51 @@ cd "$ca_dir/.."
 source config/configure
 # Source the secrets configure file if exists
 [ -f config/secrets ] && source config/secrets
+# Source the placeholders file
+source config/placeholders
+source <(${X[tail]} -n +10 modules/anykey)
 
-$debug && set -x
+${bool[debug]} && set -x
 
-declare channel1 channel2 dir1 dir2 lib libname
+declare channel1 channel2 dir1 dir2 lib libname libname_in_1 libname_in_2
 declare -a difflibs=()
-
 channel1="$1"
 channel2="$2"
-dir1=$MBUILD_DIR
-dir2=$DATA_DIR/$target_modules_dir/${channel2:=prod}
+dir1="$MBUILD_DIR"
+dir2="$DATA_DIR/$target_modules_dir/${channel2:=prod}"
 
-$verbose && echo "  checking libs:"
+${bool[verbose]} && echo "  checking libs:"
 
-for lib in $(find $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs "# BASHLIB"' _ {} \; -print); do
+#trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
+for lib in $(${X[find]} $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs BASHLIB' _ {} \; -print); do
     libname="${lib#$dir1/}"
-    libname_in_1="$(head -n2 "$lib" | tail -n1 | sed "s|^# $INCLUDEDIR/${channel1:=test}/||")"
-    libname_in_2="$(head -n2 "$dir2/$libname" | tail -n1 | sed "s|^# $INCLUDEDIR/$channel2/||")"
-    $verbose && echo "  - \"$libname\""
-    $verbose && echo "    1: \"$libname_in_1\"  2: \"$libname_in_2\""
+    libname_in_1="$(${X[head]} -n2 "$lib" | ${X[tail]} -n1 | ${X[sed]} "s|^# $INCLUDEDIR/${channel1:=test}/||")"
+    libname_in_2="$(${X[head]} -n2 "$dir2/$libname" | ${X[tail]} -n1 | ${X[sed]} "s|^# $INCLUDEDIR/$channel2/||")"
+    ${bool[verbose]} && echo "  - \"$libname\""
+    ${bool[verbose]} && echo "    1: \"$libname_in_1\"  2: \"$libname_in_2\""
     # Only modules that difference in body or path/name
-    if ( ! diff <(sed "1,20d" "$lib") <(tail -n +21 "$dir2/$libname" 2>/dev/null) >/dev/null ) || [[ "$libname_in_1" != "$libname_in_2" ]]; then
-        $verbose && echo "                  - different"
+    if ( ( ${X[grep]} -qs MINIFIED <<< "$(${X[head]} -n1 "$lib")" && ! q0 ${X[diff]} "$lib" "$dir2/$libname") ||
+        ( ! ${X[grep]} -qs MINIFIED <<< "$(${X[head]} -n1 "$lib")" && ! q0 ${X[diff]} <(${X[sed]} '1,3d' "$lib") <(q2 ${X[tail]} -n +4 "$dir2/$libname") ) ||
+        ( ! ${X[grep]} -qs MINIFIED <<< "$(${X[head]} -n1 "$lib")" && [[ "$libname_in_1" != "$libname_in_2" ]] ) ); then
+        ${bool[verbose]} && echo "                  - different"
         difflibs+=("$libname")
-        $verbose && echo "${#difflibs[@]}"
+        ${bool[verbose]} && echo "${#difflibs[@]}"
     else
-        $verbose && echo "        - equal"
+        ${bool[verbose]} && echo "        - equal"
     fi
+#    ${bool[verbose]} && anykey
 done
-$verbose && echo
-$verbose && echo "  number of different libs = ${#difflibs[@]}"
+${bool[verbose]} && echo
+${bool[verbose]} && echo "  number of different libs = ${#difflibs[@]}"
+${bool[verbose]} && anykey
 if (( ${#difflibs[@]} )); then
-    $verbose && echo "  found ${#difflibs[@]} different libs:"
+    ${bool[verbose]} && echo "  found ${#difflibs[@]} different libs:"
     for i in ${!difflibs[@]}; do
-        $verbose && echo "  - ${difflibs[i]}"||echo "${difflibs[i]}"
+        ${bool[verbose]} && echo "  - ${difflibs[i]}" || echo "${difflibs[i]}"
     done
 else
-    $verbose && echo "  all libs are equal, nothing changed"
+    ${bool[verbose]} && echo "  all libs are equal, nothing changed"
 fi
-
-$debug && set +x
+${bool[verbose]} && anykey
+${bool[debug]} && set +x
 

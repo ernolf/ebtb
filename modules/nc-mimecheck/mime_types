@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${MIME_TYPES_BASHLIB:-false} && return
+${MIME_TYPES_BASHLIB:-_} && return
 MIME_TYPES_BASHLIB=:
 
 . <(lrequire binaries)
@@ -180,9 +180,9 @@ list_mimes(){
         local -i l_e=${#a[1]}; ((l_e>ml_e))&&ml_e=$l_e
         local -i l_r=${#a[2]}; ((l_r>ml_r))&&ml_r=$l_r
     done
-    local line_m=$(printf "%0.s-" $(${BINARIES[seq]} 1 $((ml_m+2))))
-    local line_e=$(printf "%0.s-" $(${BINARIES[seq]} 1 $((ml_e+2))))
-    local line_r=$(printf "%0.s-" $(${BINARIES[seq]} 1 $((ml_r+2))))
+    local line_m=$(printf "%0.s-" $(${X[seq]} 1 $((ml_m+2))))
+    local line_e=$(printf "%0.s-" $(${X[seq]} 1 $((ml_e+2))))
+    local line_r=$(printf "%0.s-" $(${X[seq]} 1 $((ml_r+2))))
     local line="$(o4)+$line_m+$line_e+$line_r+"
   # echo output
     if [ "$title" = "all" ]; then

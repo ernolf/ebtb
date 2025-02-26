@@ -7,13 +7,13 @@ __copyright__
 __license__
 #
 
-${ANSI_BASHLIB:-false} && return
+${ANSI_BASHLIB:-_} && return
 ANSI_BASHLIB=:
 
 . <(lrequire tempfile)
 
 ######################## - lib: ANSI Escape codes #############################
-declare CSI _8 _24 COLOR CURSOR
+declare CSI _8 _24 COLOR CURSOR CUU CUD CUF CUB CNL CPL CHA CUP ED EL SU SD
 declare -i FG BG BFG BBG
 declare -A SGR C CC
 # (Control Sequence Introducer)
@@ -135,7 +135,7 @@ unset -v FG BG BFG BBG _8 _24 SGR C CC p
 
 ### ANSI - Cursor handling
 # Cursor Up, Down, Forward, Back, NextLine, PreviousLine, HorizontalAbsolute, Position, Erase in Display, Erase in Line, Scroll Up and Down
-declare CUU=A CUD=B CUF=C CUB=D CNL=E CPL=F CHA=G CUP=H ED=J EL=K SU=S SD=T
+CUU=A CUD=B CUF=C CUB=D CNL=E CPL=F CHA=G CUP=H ED=J EL=K SU=S SD=T
 # Linefeed (newlines)
 # feed(){ printf '%b' "$CSI${1:-1}$CNL";} # must be done with "echo" because the lines must be created.
 f(){

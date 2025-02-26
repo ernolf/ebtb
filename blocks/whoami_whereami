@@ -1,6 +1,6 @@
 # whoami, whereami
 # b=basename m=me a=absolute p=path ca=canonical
 declare bm apm me ca_me ca_dir
-bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
-[ "$(command -v "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
-ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"

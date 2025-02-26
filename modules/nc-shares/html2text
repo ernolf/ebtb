@@ -7,24 +7,25 @@ __copyright__
 __license__
 #
 
-${HTML2TEXT_BASHLIB:-false} && return
+${HTML2TEXT_BASHLIB:-_} && return
 HTML2TEXT_BASHLIB=:
 
 . <(lrequire binaries)
 . <(lrequire ansi)
 
-function pipe_h2t(){ local query psql_fix1 col sed_empty_row psql_fix2 sed_pre_html2text html2text_command
+function pipe_h2t(){
+    local query psql_fix1 col sed_empty_row psql_fix2 sed_pre_html2text html2text_command
     query="$1\"$2\""
-    psql_fix1="${BINARIES[tr]} -d '\n' | ${BINARIES[sed]} -e 's/>\s*</></g; s|<p>.*</p>||'"
+    psql_fix1="${X[tr]} -d '\n' | ${X[sed]} -e 's/>\s*</></g; s|<p>.*</p>||'"
   # Empty row with one single dash, since completely empty is supressed
 #    local sed_empty_row sed_pre_html2text html2text_command first_line sed_post_html2text watch_command watch_pid key new_rr
 #$(line - NC $((13 + col * 2)) a0)
-echo "tput cols = $(${BINARIES[tput]} cols)"; anykey
+echo "tput cols = $(${X[tput]} cols)"; anykey
     [ ${sharetype} -eq 3 ] && { [ "$USER_ID" = all ] && col=6 || col=5; } || col=7
     sed_empty_row="s|</TH></TR>|</TH></TR><TR><TD>-</TD>$(line '<td></td>' NC $col a0)</TR>|Ig"
-    psql_fix2="${BINARIES[sed]} -e 's/<th align=\"center\">/<th>/g; s/<td align=\"left\">/<td>/g; s/<tr valign=\"top\">/<tr>/g'"
-    sed_pre_html2text="${BINARIES[sed]} -e 's/_/~/g; s/ /=/g; s/<TABLE=BORDER=/<TABLE BORDER=/Ig'"
-#    html2text_command="html2text -utf8 -width $(($(${BINARIES[tput]} cols)-50))"
+    psql_fix2="${X[sed]} -e 's/<th align=\"center\">/<th>/g; s/<td align=\"left\">/<td>/g; s/<tr valign=\"top\">/<tr>/g'"
+    sed_pre_html2text="${X[sed]} -e 's/_/~/g; s/ /=/g; s/<TABLE=BORDER=/<TABLE BORDER=/Ig'"
+#    html2text_command="html2text -utf8 -width $(($(${X[tput]} cols)-50))"
     sed_post_html2text='/^\s/! { :a s/([^-|_]|\s)_(_|\|)/\1 \2/g; ta }
                         /_{20,}/ s/_/-/g                           # replace _ with - on line 1 and 3 or 2 and 4
                         1,2 s/^ -/+-/1                             # replace space at begin of line 1 or 2 with +
@@ -39,6 +40,6 @@ echo "tput cols = $(${BINARIES[tput]} cols)"; anykey
                         s/~/_/g                                    # change ~ back to underscore
                         s/=/ /g'                                   # change = back to spaces
 
-#    eval $query | ${BINARIES[html2text]} -utf8 -width $(($(${BINARIES[tput]} cols)-80))
-#    eval $query | eval $psql_fix1 | ${BINARIES[sed]} -e $sed_empty_row | eval $psql_fix2 | eval $sed_pre_html2text | ${BINARIES[html2text]} -utf8 -width 220 | ${BINARIES[sed]} -E -e "$sed_post_html2text"
+#    eval $query | ${X[html2text]} -utf8 -width $(($(${X[tput]} cols)-80))
+#    eval $query | eval $psql_fix1 | ${X[sed]} -e $sed_empty_row | eval $psql_fix2 | eval $sed_pre_html2text | ${X[html2text]} -utf8 -width 220 | ${X[sed]} -E -e "$sed_post_html2text"
 }

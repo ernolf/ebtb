@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${DEPENDENCY_BASHLIB:-false} && return
+${DEPENDENCY_BASHLIB:-_} && return
 DEPENDENCY_BASHLIB=:
 
 . <(lrequire binaries)
@@ -17,21 +17,75 @@ DEPENDENCY_BASHLIB=:
 . <(lrequire anykey)
 
 dependency_check(){
-    # for backwards compatibility:
-    if (( ${#deps[@]} )) && ! (( ${#dependencies[@]} )); then
-        local -a dependencies=("${deps[@]}")
-    fi
-
     local dependency bin plu pkg
-    local -a mis
-    local -i c2=18 c3=34
+    local -i c2 c3
+    local -a dependencies mis
+    dependencies=(
+# TODO 0 -->
+        "curl#curl#Command line file transfer tool with URL syntax"
+# TODO <-- 0
+        "gawk#gawk#GNU awk"
+        "grep#grep#GNU grep, egrep and fgrep"
+        "gpg#gnupg#GNU Privacy Guard"
+        "jq#jq#command-line JSON processor"
+    )
+    case "$sin" in
+        nc-apps)
+            dependencies+=(
+                "less#less#A terminal pager similar to more"
+                "sqlite3#sqlite3#Command line interface for SQLite 3"
+                "php#php-cli#PHP Commandline Interface"
+                "xmlstarlet#xmlstarlet#Command line XML toolkit"
+            )
+            ;;
+        nc-integrity-fix)
+            dependencies+=(
+                "xmlstarlet#xmlstarlet#Command line XML toolkit"
+            )
+            ;;
+        nc-occ)
+            dependencies+=(
+                "php#php-cli#PHP Commandline Interface"
+            )
+            ;;
+        nc-who)
+            dependencies+=(
+                "watch#procps#Run a task periodically, showing output on stdout"
+                "html2text#html2text#Advanced HTML-to-text converter"
+            )
+            ;;
+        php-module-builder)
+            dependencies+=(
+                "lsb_release#lsb-release#Tool to detect the Linux standard base version"
+            )
+            ;;
+        php-updater)
+            dependencies+=(
+# TODO 1 -->
+                "apt-file#apt-file#Search for files within Debian packages"
+                "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
+                "sponge#moreutils#additional Unix utilities"
+                "dos2unix#dos2unix#Convert text file line endings between CRLF and LF"
+# TODO <-- 1
+                "less#less#A terminal pager similar to more"
+                "ss#iproute2#Networking and traffic control tools"
+                "phpquery#php-common#Common files for PHP packages"
+                "lsb_release#lsb-release#Tool to detect the Linux standard base version"
+                "update-ca-certificates#ca-certificates#Common CA certificates"
+                "ccdiff#ccdiff#Colored Character Diff"
+                "ss#iproute2#Networking and traffic control tools"
+                "file#file#Detecting the file type using magic numbers"
+            )
+    esac
+    c2=18 c3=34
+    mapfile -t dependencies< <(p_sort "${dependencies[@]}")
     for dependency in ${dependencies[@]%%#*}; do
-        if [ -z "${BINARIES[$dependency]}" ]; then
-            if ${BINARIES[dpkg]} -l | ${BINARIES[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
+        if [ -z "${X[$dependency]}" ]; then
+            if ${X[dpkg]} -l | ${X[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
                 if (( epoch > 1737549000 )); then
-                    o2;R;bundle echo "The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
-                    o2;R;bundle echo "You should fix that first!"
-                    N;anykey
+                    o2; R; bundle echo "The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
+                    o2; R; bundle echo "You should fix that first!"; N
+                    anykey
                 fi
             else
                 mis+=("$dependency")
@@ -41,21 +95,31 @@ dependency_check(){
     if (( ${#mis[@]} )); then
         (( ${#mis[@]}==1 )) && plu="y:" pkg="package" || plu="ies:" pkg="packages"
         f
-        o2;R;echo "Dependency not met!"
+        o2; R; echo "Dependency not met!"
         f
-        o2;B;echo "missing dependenc$plu"
+        o2; B; echo "missing dependenc$plu"
         line '=' P 2/78
-        o2;B;echo "Binary$(o $c2)Package$(o $c3)Description"
+        o2; B; echo "Binary$(o $c2)Package$(o $c3)Description"
         line '-' dP 2/78
-        Y;for bin in ${mis[@]}; do
-            o2;echo "$bin$(o $c2)$(a_fld dependencies '#' "$bin" 2)$(o $c3)$(a_fld dependencies '#' "$bin" 3)"
+        Y; for bin in ${mis[@]}; do
+            o2; echo "$bin$(o $c2)$(a_fld dependencies '#' "$bin" 2)$(o $c3)$(a_fld dependencies '#' "$bin" 3)"
         done
         line '-' dP 2/78 a2
-        if [ -n "${BINARIES[apt-get]}" ]; then
+        if [ -n "${X[apt-get]}" ]; then
             local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
             mh "$install" &
             if ask "$(qpf)Do you want to install this $pkg now" "$YES"; then
-                if (( $(id -u) )); then
+                if ${B[rt]}; then
+                    if ${X[apt-get]} -y $install; then
+                        reload_binaries
+                        if [[ "$install" =~ apt-file ]]; then
+                            apt-file update
+                        fi
+                    else
+                        o2; R; echo "looks like something went wrong."
+                        exit1
+                    fi
+                else
                     if su_do "u=root" "r=true" "p=to install this $pkg" "run=apt-get" "arg=-y $install"; then
                         if [[ "$install" =~ apt-file ]]; then
                             apt-file update
@@ -63,30 +127,24 @@ dependency_check(){
                         sudo $me "json=$my_json" $my_args
                         exit 0
                     else
-                        o2;R;echo "looks like something went wrong."
-                        exit1
-                    fi
-                else
-                    if ${BINARIES[apt-get]} -y $install; then
-                        if [[ "$install" =~ apt-file ]]; then
-                            apt-file update
-                        fi
-                    else
-                        o2;R;echo "looks like something went wrong."
+                        o2; R; echo "looks like something went wrong."
                         exit1
                     fi
                 fi
             else
                 line '-' dP 2/78 b1 a2
-                o2;B;echo "please install first";N
+                o2; B; echo "please install first"; N
                 f 2
                 exit1
             fi
         else
             line '-' dP 2/78 b1 a2
-            o2;B;echo "please install first";N
+            o2; B; echo "please install first"; N
             f 2
             exit1
         fi
     fi
+    # declare the binaries array as readonly.
+    readonly -A X
 }
+dependency_check

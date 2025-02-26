@@ -3,9 +3,9 @@
 # whoami, whereami
 # b=basename m=me a=absolute p=path ca=canonical
 declare bm apm me ca_me ca_dir
-bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
-[ "$(command -v "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
-ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
@@ -13,91 +13,69 @@ cd "$ca_dir/.."
 source config/configure
 # Source the secrets configure file if exists
 [ -f config/secrets ] && source config/secrets
-if $LOCAL_SERVER; then
-    MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
-fi
+# Source the placeholders file
+source config/placeholders
 # Source the time
 source config/runtime
 
-declare placeholder name
-placeholder="$1" name="$2" test_mode="$3"
+if $LOCAL_SERVER; then
+    MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
+fi
 
-minify() {
-    if $MINIFY; then
-        shfmt -mn "$1" |\
-            sed ':a;N;$!ba;s/\\\n//g' |\
-            sed ':a;N;$!ba;s/{\n/{ /g' |\
-            sed ':a;N;$!ba;s/\n/;/g' |\
-            sed 's/ >/>/g' |\
-            sed 's/&;/\&/g' |\
-            sed 's/ in;/ in /g' |\
-            sed 's/do;/do /g' |\
-            sed 's/then;/then /g' |\
-            sed 's/else;/else /g' |\
-            sed 's/if;/if /g' |\
-            sed 's/;;;;/;;/g' |\
-            sed 's/;;;/;;/g' |\
-            sed 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/'
-    else
-#        cat "$1"
-        sed 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/' "$1"
-    fi
-}
+declare placeholder name
+placeholder="$1" name="$2" channel="$3"
 
 placeholder_replace(){
     local placeholder minified
     placeholder="$1"
-    ${MINIFIED:-true}&&minified=" (minified)"||minified=''
-    case $placeholder in
+    ${MINIFY:-false} && minified=" (minified)" || minified=''
+    case "$placeholder" in
         shebang_bash)
             # https://stackoverflow.com/questions/10376206/what-is-the-preferred-bash-shebang#10383546
 #            echo "#!/bin/bash"
 #            echo "#!/usr/bin/env bash"
             echo '#!/usr/bin/env -S LC_CTYPE=C.UTF-8 LC_MESSAGES=C bash'
             ;;
-        bashlib)
+        minified_bashlib|bashlib)
             echo '# BASHLIB'
             ;;
         path_and_scriptname)
             echo "# $BINDIR/$name"
             ;;
         path_and_modulename)
-            echo "# $INCLUDEDIR/${channel:-test}/$name"
+            echo "# $INCLUDEDIR/@channel@/$name"
             ;;
         version_and_datestring)
             echo "# version $runtime $epoch"
             ;;
         copyright)
-            cat "blocks/copyright"
+            ${X[cat]} "blocks/copyright"
             ;;
         license)
-            cat "blocks/license"
+            ${X[cat]} "blocks/license"
             ;;
         scriptname)
-            echo "declare scriptname='$name'"
-            echo 'declare sin=${scriptname%-test}'
-            echo 'declare -a dependencies modules'
+            echo 'declare scriptname sin; declare -a modules; declare -A B; _(){ false;}'
+            echo "scriptname='$name' sin='${name%-test}'"
             ;;
         debug)
-            if [ "$test_mode" = "test" ]; then
-                cat "blocks/debug"
-            else
-                echo
+            if [ "${channel:-prod}" = "test" ]; then
+                ${X[cat]} "blocks/debug"
             fi
             ;;
         when)
-            echo -e '# when\ndeclare -i rte;printf -v rte "%(%s)T" -2'
+            echo -e '# when\ndeclare -i rte; printf -v rte "%(%s)T" -2'
             ;;
         whoami_whereami)
-            cat "blocks/whoami_whereami"
+            ${X[cat]} "blocks/whoami_whereami"
             ;;
         vdirname)
-            cat "blocks/vdirname"
+            ${X[cat]} "blocks/vdirname"
             ;;
         tempdir)
-            ${MINIFIED:-true} && echo '# read minified codeblocks here: https://github.com/ernolf/ebtb/tree/main/blocks'
+            ${MINIFY:-false} && echo '# read minified codeblocks here: https://github.com/ernolf/ebtb/tree/main/blocks'
             echo "### find a writable tempdir$minified"
-            minify "blocks/tempdir"
+            tools/minify "blocks/tempdir"
             ;;
         module_server)
             echo '### module handling'
@@ -108,26 +86,26 @@ placeholder_replace(){
                    python3) http_server_string='python3 -m http.server '
                 esac
                 echo "## local module server$minified"
-                minify "blocks/module_server" | sed "s/__http_server__/$http_server_string/"
+                tools/minify "blocks/module_server" | ${X[sed]} "s/__http_server__/$http_server_string/"
             fi
             ;;
         general)
             echo "## general$minified"
-            minify "blocks/general"
+            tools/minify "blocks/general"
             ;;
         module_loader)
             echo "## include bashmodules$minified ->"
-            minify "blocks/module_loader"
+            tools/minify "blocks/module_loader"
             ;;
         module_integrity)
             echo "# check module integrity and remove tainted modules$minified"
-            minify "blocks/module_integrity"
+            tools/minify "blocks/module_integrity"
             echo '## <- include bashmodules end #'
             ;;
         nextcloud_updater)
             echo "## nextcloud updater$minified ->"
             echo '# Update can be done by all but $NC_USER, since NC_USER normaly has no sudo rights.'
-            minify "blocks/nextcloud_updater"
+            tools/minify "blocks/nextcloud_updater"
             echo '## <- nextcloud updater end #'
     esac
 }

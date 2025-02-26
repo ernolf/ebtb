@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${DPKG_BASHLIB:-false} && return
+${DPKG_BASHLIB:-_} && return
 DPKG_BASHLIB=:
 
 . <(lrequire binaries)
@@ -32,37 +32,39 @@ DPKG_LOCKFILES=(
 )
 
 check_lockfile(){
-    local lockfile verbose fuser_output
+    local lockfile fuser_output
+    local -A bool
     local -i pid
-    lockfile=$1
-    [ "$2" = '-v' ] && verbose=: || verbose=false
+    lockfile="$1"
+    [ "$2" = '-v' ] && bool[verbose]=: || bool[verbose]=_
     if [ -e "$lockfile" ]; then
         # Identify the process holding the lock
-        fuser_output=$(q2 ${BINARIES[fuser]} "$lockfile")
+        fuser_output=$(q2 ${X[fuser]} "$lockfile")
         if [ -n "$fuser_output" ]; then
-            processstring="$(listify_ Yi R "$(for pid in $fuser_output; do echo "$(${BINARIES[ps]} -p $pid -o comm=) (pid:$pid)"; done)")"
+            processstring="$(listify_ Yi R "$(for pid in $fuser_output; do echo "$(${X[ps]} -p $pid -o comm=) (pid:$pid)"; done)")"
             o3; R; echo "- Lockfile '$(C)$lockfile$(R)' is used by: $processstring";N
 #            for pid in $fuser_output; do echo "$(ps -p $pid -o comm=) (pid:$pid))"; done
         else
-            $verbose && { o3; echo "- Lockfile '$(C)$lockfile$(N)' exists but no process seems to be using it."; }
+            ${bool[verbose]} && { o3; echo "- Lockfile '$(C)$lockfile$(N)' exists but no process seems to be using it."; }
         fi
     else
-        $verbose && { o3; echo "- Lockfile '$(C)$lockfile$(N)' does not exist."; }
+        ${bool[verbose]} && { o3; echo "- Lockfile '$(C)$lockfile$(N)' does not exist."; }
     fi
 }
 
 check_lockfiles(){
-    local lockfile verbose
+    local lockfile
     local -a checked_lockfiles
+    local -A flag
     local -i i
-    verbose="$1"
-    mapfile -t checked_lockfiles< <(for lockfile in "${DPKG_LOCKFILES[@]}"; do check_lockfile "$lockfile" "$verbose"; done)
+    flag[verbose]="$1"
+    mapfile -t checked_lockfiles< <(for lockfile in "${DPKG_LOCKFILES[@]}"; do check_lockfile "$lockfile" "${flag[verbose]}"; done)
     if (( $# )); then
         for i in ${!checked_lockfiles[@]}; do
             echo "${checked_lockfiles[i]}"
         done
     elif (( ${#checked_lockfiles[@]} )); then
-        bundle echo "$(xpf;R) WARNING: dpkg and/or apt is locked:";N
+        bundle echo "$(xpf; R) WARNING: dpkg and/or apt is locked:"; N
         for i in ${!checked_lockfiles[@]}; do
             bundle echo "${checked_lockfiles[i]}"
         done
@@ -74,20 +76,21 @@ check_lockfiles(){
 
 apt_update(){
     spinner C " .  resynchronizing the APT package index files  ." &
-    ${BINARIES[apt-get]} -q2 update
+    ${X[apt-get]} -q2 update
     kill_spinner
 }
 
 # returns true if last apt-* update is done more than $1=int (defaults to 4) hours ago
 apt_need_update(){
     check_lockfiles || exit1
-    if [ $(($(($(now)-$(${BINARIES[stat]} -c %Y /var/lib/apt/lists/partial)))/3600)) -gt ${1:-4} ]; then
+    if [ $(($(($(now)-$(${X[stat]} -c %Y /var/lib/apt/lists/partial)))/3600)) -gt ${1:-4} ]; then
         f
         echo " -$(format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
         if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
-        apt_update
+            apt_update
         else
-            te0;te0;te0
+#            te0; te0; te0
+            te0 3
         fi
     fi
 }
@@ -95,8 +98,8 @@ apt_need_update(){
 install_time(){
     local pkg
     pkg="$1"
-    if ${BINARIES[grep]} -qs " install $pkg" /var/log/dpkg.log; then
-        ${BINARIES[date]} -d "$(${BINARIES[gawk]} '/ install '$pkg'/ {date=$1 " " $2} END{print date}' /var/log/dpkg.log)" "+%s"
+    if ${X[grep]} -qs " install $pkg" /var/log/dpkg.log; then
+        ${X[date]} -d "$(${X[gawk]} '/ install '$pkg'/ {date=$1 " " $2} END{print date}' /var/log/dpkg.log)" "+%s"
         return 0
     fi
     return 1
@@ -105,58 +108,56 @@ install_time(){
 apt_file_search(){
     local fullpath package
     local -i installed now last_apt_update
-    fullpath="$1"
-    now=$(now)
-    last_apt_update=$(${BINARIES[stat]} -c %Y /var/lib/apt/lists/partial)
+    fullpath="$1" now=$(now) last_apt_update=$(${X[stat]} -c %Y /var/lib/apt/lists/partial)
     if installed=$(install_time apt-file); then
         if (( $(( now - installed )) < $(( now - last_apt_update )) )); then
-            q0 ${BINARIES[apt-get]} update -q2
+            q0 ${X[apt-get]} update -q2
         fi
     elif (( $(( $(( now - last_apt_update )) / 3600 )) > 4 )); then
-        q0 ${BINARIES[apt-get]} update -q2
+        q0 ${X[apt-get]} update -q2
     fi
     package=$(q2 apt-file -l search "$fullpath") || return $?
     printf "$package"
-    mh "apt-file -l search $fullpath -> $package" &
+    mh "apt-file -l search $fullpath -> $package"
     return 0
 }
 
 apt_exist(){
     local -a pkgnames
-    mapfile -t pkgnames< <(${BINARIES[apt-cache]} pkgnames "$1")
+    mapfile -t pkgnames< <(${X[apt-cache]} pkgnames "$1")
     [[ " ${pkgnames[@]} " =~ " $1 " ]] || return 1
-    ${BINARIES[apt-get]} -qqs install "$1" 2>&1 | ${BINARIES[grep]} -qs "has no installation candidate" && return 1
-    ${BINARIES[apt-get]} -qqs install "$1" 2>&1 | ${BINARIES[grep]} -qs "Unable to locate package" && return 1
-    ${BINARIES[apt-cache]} policy "$1" 2>&1 | ${BINARIES[grep]} -qs "Candidate: (none)" && return 1
-    q0 ${BINARIES[apt-get]} -qqs install "$1"
+    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -qs "has no installation candidate" && return 1
+    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -qs "Unable to locate package" && return 1
+    ${X[apt-cache]} policy "$1" 2>&1 | ${X[grep]} -qs "Candidate: (none)" && return 1
+    q0 ${X[apt-get]} -qqs install "$1"
 }
 
 apt_install(){
     apt_need_update
     check_lockfiles || exit1
     local p ps yes=" -y"
-    ${step:-false} && yes=""
-    mh "${BINARIES[apt-get]}$yes install $@" &
+    ${B[step]:-_} && yes=""
+    mh "${X[apt-get]}$yes install $@"
     for p in $@; do
-        ${BINARIES[dpkg]} -l | ${BINARIES[grep]} -wqs "$p" || ps="$ps $p"
-        if (( $(echo "$ps" | ${BINARIES[wc]} -w) )); then
-            mh "${BINARIES[apt-get]}$yes install $ps" &
-            ${BINARIES[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $ps
+        ${X[dpkg]} -l | ${X[grep]} -wqs "$p" || ps="$ps $p"
+        if (( $(echo "$ps" | ${X[wc]} -w) )); then
+            mh "${X[apt-get]}$yes install $ps"
+            ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $ps
             (( $? )) && exit1
         fi
     done
-    ${step:-false} && anykey
+    ${B[step]:-_} && anykey
 }
 
 apt_install_prechecked(){
     check_lockfiles || exit1
-    prechecked "$@" &
+    prechecked "$@"
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
         shift
     fi
-    ${BINARIES[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@||{ echo "  $(Pbg) something went wrong $(N)";f;exit1;}
+    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@ || { echo "  $(Pbg) something went wrong $(N)"; f; exit1; }
 }
 
 apt_remove(){
@@ -168,7 +169,7 @@ apt_remove(){
         shift
     fi
     switch_php_to_ $PHP_VERSION
-    ${BINARIES[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@
+    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@
 }
 
 apt_purge(){
@@ -180,32 +181,32 @@ apt_purge(){
         shift
     fi
     switch_php_to_ $PHP_VERSION
-    ${BINARIES[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@
+    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@
 }
 
-
 rdepends(){
-    local quiet glob
+    local glob
+    local -A bool
     if [ "$1" = '-q' ]; then
-        quiet='true'
+        bool[quiet]='true'
         shift
     else
-        quiet='false'
+        bool[quiet]='_'
     fi
     glob="$1"
-    if "$quiet"; then
-        (( $(q2 ${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${BINARIES[wc]} -l) - 1 )) # && return 0 || return 1
+    if "${bool[quiet]}"; then
+        (( $(q2 ${X[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${X[wc]} -l) - 1 )) # && return 0 || return 1
     else
-        q2 ${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${BINARIES[gawk]} '{print $2}'
+        q2 ${X[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove "$glob" | ${X[gawk]} '{print $2}'
     fi
 }
 
 apt_rdepends(){
     local glob package
     glob="$1"
-    for package in $(${BINARIES[dpkg]} -l|${BINARIES[gawk]} '/^[hiu]i\s+[^\s]*'$glob'/{print $2}'); do
-        q2 ${BINARIES[apt-rdepends]} -r --follow=Depends --show=Depends --state-follow=Installed --state-show=Installed $package | ${BINARIES[gawk]} '/Reverse/ {print $3}'
-    done | ${BINARIES[sort]} -u
+    for package in $(${X[dpkg]} -l|${X[gawk]} '/^[hiu]i\s+[^\s]*'$glob'/{print $2}'); do
+        q2 ${X[apt-rdepends]} -r --follow=Depends --show=Depends --state-follow=Installed --state-show=Installed $package | ${X[gawk]} '/Reverse/ {print $3}'
+    done | ${X[sort]} -u
 }
 
 # this is very slow but acurate
@@ -213,12 +214,12 @@ rdependency_tree(){
     local package pkg_main pkg_sub pkg_sub_sub
     local -a depending_main depending_sub
     package="$1"
-    mapfile -t depending_main< <(${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove $package | ${BINARIES[gawk]} '{print $2}')
+    mapfile -t depending_main< <(${X[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove $package | ${X[gawk]} '{print $2}')
     if (( ${#depending_main[@]} > 1 )); then
         echo "$package is required by:"
         for pkg_main in ${depending_main[@]}; do
             echo -n " - $pkg_main "
-            mapfile -t depending_sub< <(${BINARIES[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove $pkg_main | ${BINARIES[gawk]} '{print $2}')
+            mapfile -t depending_sub< <(${X[apt-get]} --ignore-hold --allow-change-held-packages -s -q2 remove $pkg_main | ${X[gawk]} '{print $2}')
             if (( ${#depending_sub[@]} > 1 )); then
                 echo "- which is required by:"
                 for pkg_sub in ${depending_sub[@]}; do
@@ -238,16 +239,16 @@ rdep_tree(){
         local pkg
         local -a rdeps rdep
         pkg=$1
-        mapfile -t rdeps< <(${BINARIES[apt-cache]} rdepends $pkg)
+        mapfile -t rdeps< <(${X[apt-cache]} rdepends $pkg)
         mapfile -t rdep< <(comm -12 <(p_sort ${installed[@]}) <(p_sort ${rdeps[@]}))
         mapfile -t rdep< <(comm -23 <(p_sort ${rdep[@]}) <(p_sort $pkg))
-        (( ${#rdep[@]} ))&&p_sort ${rdep[@]}
+        (( ${#rdep[@]} )) && p_sort ${rdep[@]}
     }
     local package rdependency
     local -a installed rdepends rrdepends
     local -i i ii depth
-    package=$1
-    mapfile -t installed< <(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i\s+[^\s]/{print $2}')
+    package="$1"
+    mapfile -t installed< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]/{print $2}')
     mapfile -t rdepends< <(rdep $package)
     if (( ${#rdepends[@]} )); then
         echo "$package has ${#rdepend[@]} reverse dependencies:"
@@ -280,17 +281,19 @@ rdep_tree(){
 # $3=old: 8.1
 # $4=new: 8.2
 set_selections(){
+    required_args 4 "$@"
     local regex modus old new mf
     regex="$1" modus="$2" old="$3" new="$4"
-    q0 ${BINARIES[apt-mark]} unhold *php*
+    q0 ${X[apt-mark]} unhold *php*
     [ "$modus" = "manual" ] && mf=auto
     [ "$modus" = "auto" ] && mf=manual
-    ${BINARIES[update-alternatives]} --get-selections | ${BINARIES[grep]} -E "$regex" |  ${BINARIES[sed]} -E "s/$mf/$modus/;s/$old/$new/" | q0 ${BINARIES[update-alternatives]} --set-selections
+    ${X[update-alternatives]} --get-selections | ${X[grep]} -E "$regex" |  ${X[sed]} -E "s/$mf/$modus/;s/$old/$new/" | q0 ${X[update-alternatives]} --set-selections
 }
 
 min_version(){
+    required_args 2 "$@"
     local bin="$1" min="$2"
-    ${BINARIES[dpkg]} --compare-versions "$(q2 $bin --version | ${BINARIES[grep]} -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
+    ${X[dpkg]} --compare-versions "$(q2 $bin --version | ${X[grep]} -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
 }
 
 # switch all findable php related packages to manual
@@ -298,15 +301,17 @@ min_version(){
 # $1=old: 8.1
 # $2=new: 8.2
 switch_php(){
+    required_args 2 "$@"
     set_selections "ph(ar|p)" "manual" "$1" "$2"
 }
 
 # switch all findable php related packages to manual Version $1 if $1 exists
 switch_php_to_(){
-    q0 ${BINARIES[apt-mark]} manual $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php*/{print $2}')
+    require_arg $@
+    q0 ${X[apt-mark]} manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
     set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
 # TODO 0 -->
-#    q0 ${BINARIES[apt-mark]} hold $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php*/{print $2}')
+#    q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
 # TODO <-- 0
 }
 
@@ -315,40 +320,40 @@ list_apt_sources(){
     local -i i
     local -a foreign_architectures aptsources apturls aptsourcesfiles
 
-    mapfile -t foreign_architectures< <(${BINARIES[dpkg]} --print-foreign-architectures 2>&1)
+    mapfile -t foreign_architectures< <(${X[dpkg]} --print-foreign-architectures 2>&1)
     if (( ${#foreign_architectures[@]} )); then
-        f;o2;B;echo "This is a list of the supported architectures on this machine for your information:";N
-        o2;pf;GRAY;echo "main architecture: $(${BINARIES[dpkg]} --print-architecture 2>&1)";N
+        f; o2; B; echo "This is a list of the supported architectures on this machine for your information:"; N
+        o2; pf; GRAY; echo "main architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
         (( ${#foreign_architectures[@]} > 1 ))&&plu='s'||plu=''
-        for i in ${!foreign_architectures[@]}; do o2;pf;GRAY;echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}";N; done
+        for i in ${!foreign_architectures[@]}; do o2; pf; GRAY; echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}"; N; done
     else
-        f;o2;B;echo "This is the supported architecture on this machine for your information:";N
-        o2;pf;GRAY;echo "architecture: $(${BINARIES[dpkg]} --print-architecture 2>&1)";N
+        f; o2; B; echo "This is the supported architecture on this machine for your information:"; N
+        o2; pf; GRAY; echo "architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
     fi
 
-    f;o2;B;echo "This is a list of the effective apt sources on this machine for your information:";N
+    f; o2; B;echo "This is a list of the effective apt sources on this machine for your information:"; N
     # apt sources
     if [ -d /var/lib/apt/lists ]; then
-        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;${BINARIES[ls]} *Packages|${BINARIES[sed]} 's/_Packages.*$//;s/-deb.*$//;s/_dists_/ /;s/_binary-/ /')")
-        for i in ${!aptsources[@]}; do o2;pf;GRAY;echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|${BINARIES[sed]} 's/\(.*\)\/\(.*\)/\1 \2/')";N; done
+        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_Packages.*$//;s/-deb.*$//;s/_dists_/ /;s/_binary-/ /')")
+        for i in ${!aptsources[@]}; do o2;pf;GRAY;echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|${X[sed]} 's/\(.*\)\/\(.*\)/\1 \2/')"; N; done
 
-    f;o2;B;echo "This is a list of the files containing the apt sources for your information:";N
+    f; o2; B; echo "This is a list of the files containing the apt sources for your information:"; N
     # apt sources files
-        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;${BINARIES[ls]} *Packages|${BINARIES[sed]} 's/_dists.*$//')")
+        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
 # TODO 1 -->
-#    mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${BINARIES[grep]} -v ':\s*#'|${BINARIES[grep]} -E "*.(list|sources)\:"|${BINARIES[gawk]} -F':' '{print $1}'; done))
+#    mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
 # TODO <-- 1
-        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do ${BINARIES[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${BINARIES[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
-        for i in ${!aptsourcesfiles[@]}; do o2;pf;GRAY;echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}";N; done
+        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
+        for i in ${!aptsourcesfiles[@]}; do o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N; done
     fi
 }
 
 list_alternatives(){
     local regex target target_version name mode path
     regex="${1:-ph(ar|p)}"
-    ${BINARIES[update-alternatives]} --get-selections 2>&1 | ${BINARIES[grep]} -E "$regex" | while read -r name mode path; do
-        if target="$(q2 ${BINARIES[readlink]} -e "$path")"; then
-            target_version="$(q2 ${BINARIES[echo]} "$target" | ${BINARIES[grep]} -o "[0-9.]*")"
+    ${X[update-alternatives]} --get-selections 2>&1 | ${X[grep]} -E "$regex" | while read -r name mode path; do
+        if target="$(q2 ${X[realpath]} "$path")"; then
+            target_version="$(q2 echo "$target" | ${X[grep]} -o "[0-9.]*")"
             if [[ "$path" =~ default ]]; then
                 printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(GRAY)-> ${path//.default/${target_version%.}}$(N)"
             else
@@ -361,12 +366,12 @@ list_alternatives(){
 }
 
 list_alternatives_extended(){
-    [ -n "${BINARIES[update-alternatives]}" ] || { echo -e "\e[31mERROR: no 'update-alternatives' binary\e[0m" >&2; return 1; }
+    [ -n "${X[update-alternatives]}" ] || { echo -e "\e[31mERROR: no 'update-alternatives' binary\e[0m" >&2; return 1; }
     local regex candidate key value
     regex="${1:-ph(ar|p)}"
-    for candidate in $(q2 ${BINARIES[update-alternatives]} --get-selections | ${BINARIES[gawk]} '/'$regex'/{print $1}'); do
+    for candidate in $(q2 ${X[update-alternatives]} --get-selections | ${X[gawk]} '/'$regex'/{print $1}'); do
         echo -e "Name: $candidate"
-        ${BINARIES[update-alternatives]} --query "$candidate" | ${BINARIES[grep]} -Ev '(^$|Name:)' | while IFS= read -r line; do
+        ${X[update-alternatives]} --query "$candidate" | ${X[grep]} -Ev '(^$|Name:)' | while IFS= read -r line; do
             if [[ "$line" =~ (Slaves|Priority) ]]; then
                 echo "  \`- $line"
             elif [[ "$line" =~ ^([^:]+):\ (.*) ]]; then

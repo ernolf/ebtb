@@ -2,6 +2,7 @@ declare -a placeholders
 placeholders=(
     shebang_bash
     bashlib
+    minified_bashlib
     path_and_scriptname
     path_and_modulename
     version_and_datestring
@@ -23,16 +24,22 @@ placeholders=(
 # binaries for build process
 declare binary
 declare -a build_binaries
-build_binaries=(gawk sed)
+build_binaries=(basename cat chown cp diff dirname find gawk grep gpg head jq mkdir php sed seq sha256sum shfmt tail)
 unset BINARIES
 declare -gA BINARIES 2>/dev/null || declare -A BINARIES
 BINARIES[env]="$(command -v env) LC_MESSAGES=C"
 
 for binary in "${build_binaries[@]}"; do
-    if [ -L "$(command -v $binary)" ]; then
-        BINARIES[$binary]="${BINARIES[env]} $(${BINARIES[readlink]} -f $(command -v $binary))"
-    else
+#    if [ -L "$(command -v $binary)" ]; then
+#        BINARIES[$binary]="${BINARIES[env]} $(${BINARIES[readlink]} -f $(command -v $binary))"
+#    else
         BINARIES[$binary]="${BINARIES[env]} $(command -v $binary)"
-    fi
+#    fi
 done
+# Create a nameref for BINARIES named X
+declare -n X=BINARIES
+_(){ false; }
+q0(){ "$@" &>/dev/null; }
+q1(){ "$@" >/dev/null; }
+q2(){ "$@" 2>/dev/null; }
 

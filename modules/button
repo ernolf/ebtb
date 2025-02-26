@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${BUTTON_BASHLIB:-false} && return
+${BUTTON_BASHLIB:-_} && return
 BUTTON_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,7 +16,7 @@ BUTTON_BASHLIB=:
 
 buttonize(){
     local oldcolor
-    oldcolor="$(q2 ${BINARIES[cat]} $COLOR)"
+    oldcolor="$(q2 ${X[cat]} $COLOR)"
     GRAYbg
     printf '%s' '['
     case $1 in
@@ -56,9 +56,9 @@ box(){
 #}
 
 check(){
-    [[ " OK NOK " =~ " $1 " ]]||return
+    [[ " OK NOK " =~ " $1 " ]] || return
     local ok nok
-    if ${BINARIES[grep]} -qs "webmin.service" /proc/self/cgroup; then
+    if ${X[grep]} -qs "webmin.service" /proc/self/cgroup; then
         ok='✔' nok='✘'
 #        ok='✓' nok='✗'
 #        ok="+" nok="-"

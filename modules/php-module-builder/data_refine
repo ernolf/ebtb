@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${DATA_REFINE_BASHLIB:-false} && return
+${DATA_REFINE_BASHLIB:-_} && return
 DATA_REFINE_BASHLIB=:
 
 . <(lrequire binaries)
@@ -17,11 +17,11 @@ DATA_REFINE_BASHLIB=:
 # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
 find_built_modules(){
     local pv pvd m
-    local -a pvs=($(q2 ${BINARIES[ls]} "$project_dir/$project"))
+    local -a pvs=($(q2 ${X[ls]} "$project_dir/$project"))
     for pv in "${pvs[@]}"; do
         pvd="$project_dir/$project/$pv"
         if [ -d "$pvd" ]; then
-            local -a ms=($(${BINARIES[ls]} "$pvd"))
+            local -a ms=($(${X[ls]} "$pvd"))
             for m in "${ms[@]}"; do
                 echo "$pv $m"
             done
@@ -32,15 +32,15 @@ find_built_modules(){
 # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
 find_built_module_versions(){
     local pv pvd m mv mvd
-    local -a pvs=($(q2 ${BINARIES[ls]} "$project_dir/$project"))
+    local -a pvs=($(q2 ${X[ls]} "$project_dir/$project"))
     for pv in "${pvs[@]}"; do
         pvd="$project_dir/$project/$pv"
         if [ -d "$pvd" ];then
-            local -a ms=($(${BINARIES[ls]} "$pvd"))
+            local -a ms=($(${X[ls]} "$pvd"))
             for m in "${ms[@]}"; do
                 mvd="$pvd/$m"
                 if [ -d "$mvd" ]; then
-                    local -a mvs=($(${BINARIES[ls]} -d "$mvd"/*))
+                    local -a mvs=($(${X[ls]} -d "$mvd"/*))
                     for mv in "${mvs[@]}"; do
                         [ -d "$mv" ] && { mv="${mv%/}"; echo "$pv ${mv##*/}";}
                     done
@@ -56,9 +56,9 @@ check_conflicts(){
         [[ " $installed_modules " =~ " $m " ]] && conflicts="$conflicts $m"
     done
     if [ -n "$conflicts" ]; then
-        R;echo "- $module conflicts with$conflicts. Remove conflicting modules first.";N
+        R; echo "- $module conflicts with$conflicts. Remove conflicting modules first.";N
         cd
-        ${BINARIES[rmdir]} $project_dir/$project/$php_version/$module
+        ${X[rmdir]} $project_dir/$project/$php_version/$module
         exit 1
     fi
 }

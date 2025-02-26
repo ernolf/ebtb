@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${APACHE2_BASHLIB:-false} && return
+${APACHE2_BASHLIB:-_} && return
 APACHE2_BASHLIB=:
 
 . <(lrequire binaries)
@@ -15,13 +15,13 @@ APACHE2_BASHLIB=:
 . <(lrequire httpd)
 
 # globals
-if ! q2 declare -p SAPI_A2 | ${BINARIES[grep]} -qs 'declare -A'; then
+if ! q2 declare -p SAPI_A2 | ${X[grep]} -qs 'declare -A'; then
     unset SAPI_A2
     q2 declare -gA SAPI_A2 || declare -A SAPI_A2
 fi
 
 apache2_mpm(){
-    mpm_module="$(q2 ${BINARIES[apache2ctl]} -M | ${BINARIES[gawk]} '/mpm/{print $1}')"
+    mpm_module="$(q2 ${X[apache2ctl]} -M | ${X[gawk]} '/mpm/{print $1}')"
     case "$mpm_module" in
         mpm_event_module)   [ "$1" = "event" ] && return 0
                             ;;
@@ -33,52 +33,62 @@ apache2_mpm(){
 }
 
 apache2_module(){
+    require_arg "$@"
     populate_a2modules && [[ " ${A2MODULES[@]%_module} " =~ " $1 " ]]
 }
 
 php_a2module_(){
+    require_arg "$@"
     case $1 in
-        enable) ${BINARIES[a2enmod]} -mq mpm_prefork php$2
+        enable) required_args 2 "$@"
+                ${X[a2enmod]} -mq mpm_prefork php$2
                 ;;
-       disable) ${BINARIES[a2dismod]} -mqf mpm_prefork
+       disable) ${X[a2dismod]} -mqf mpm_prefork
     esac
 }
 
 php_fpm_module_(){
+    require_arg "$@"
     case $1 in
-        enable) ${BINARIES[a2enmod]} -mq mpm_event proxy_fcgi setenvif
+        enable) ${X[a2enmod]} -mq mpm_event proxy_fcgi setenvif
                 ;;
-       disable) ${BINARIES[a2dismod]} -mqf mpm_event
+       disable) ${X[a2dismod]} -mqf mpm_event
     esac
 }
 
 php_fpm_conf_(){
+    require_arg "$@"
     case $1 in
-        enable) ${BINARIES[a2enconf]} -mq php$2-fpm
+        enable) required_args 2 "$@"
+                ${X[a2enconf]} -mq php$2-fpm
                 ;;
-       disable) ${BINARIES[a2disconf]} -mqp php*-fpm
+       disable) ${X[a2disconf]} -mqp php*-fpm
                 ;;
-       switch2) q2 ${BINARIES[a2disconf]} -mqp php*-fpm
-                ${BINARIES[a2enconf]} -mq php$2-fpm
+       switch2) required_args 2 "$@"
+                q2 ${X[a2disconf]} -mqp php*-fpm
+                ${X[a2enconf]} -mq php$2-fpm
     esac
 }
 
 php_fpm_2_a2module(){
+    require_arg "$@"
     php_fpm_conf_ disable
     php_fpm_module_ disable
-    php_a2module_ enable $2
-    ${BINARIES[systemctl]} restart apache2 php$2-fpm
+    php_a2module_ enable "$1"
+    ${X[systemctl]} restart apache2 php$1-fpm
 }
 
 php_a2module_2_fpm(){
+    require_arg "$@"
     php_a2module_ disable # $ver
     php_fpm_module_ enable
-    php_fpm_conf_ enable $1
-    ${BINARIES[systemctl]} restart apache2 php$1-fpm
+    php_fpm_conf_ enable "$1"
+    ${X[systemctl]} restart apache2 php$1-fpm
 }
 
 php_a2module_switch_2_(){
-    ${BINARIES[a2dismod]} -mqf php*
-    ${BINARIES[a2enmod]} -mq php$1
-    ${BINARIES[systemctl]} restart apache2
+    require_arg "$@"
+    ${X[a2dismod]} -mqf php*
+    ${X[a2enmod]} -mq php$1
+    ${X[systemctl]} restart apache2
 }

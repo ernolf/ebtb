@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${FIRST_RUN_BASHLIB:-false} && return
+${FIRST_RUN_BASHLIB:-_} && return
 FIRST_RUN_BASHLIB=:
 
 . <(lrequire sudo)
@@ -32,12 +32,12 @@ first_run(){
 
     local p h
     local -l ans num
-    local -i c2=9 i n=1
-    h="$(box h) to enter path by hand or $(q2q)"
-    if (( $(id -u) )) && [ -d "$NC_DIR" ]; then
+    local -i c2 i n
+    h="$(box h) to enter path by hand or $(q2q)" c2=9 n=1
+    if (( $(${X[id]} -u) )) && [ -d "$NC_DIR" ]; then
         su_root "to run this script"
     fi
-    if ! $irun2; then
+    if ! ${B[irun2]}; then
         f
         o2; GRAY; echo "This step is required once after a new installation or sometimes after an update:"; N
     fi
@@ -52,12 +52,9 @@ first_run(){
         while :; do
             read -rsn 1 ans; te1
             case ${ans:-y} in
-                q)  exit 0
-                    ;;
-                y)  finish "$p"
-                    ;;
-                n)  break
-                    ;;
+                q)  exit 0      ;;
+                y)  finish "$p" ;;
+                n)  break       ;;
                 *)  printf "$invi Please enter $(box y), $(box n) or $(q2q) "
             esac
         done
@@ -94,14 +91,10 @@ first_run(){
                         read -rsn 1 ans
                         te1
                         case $ans in
-                            q)  exit 0
-                                ;;
-                            h)  break
-                                ;;
-                            n)  continue
-                                ;;
-                            y)  finish "$p"
-                                ;;
+                            q)  exit 0      ;;
+                            h)  break       ;;
+                            n)  continue    ;;
+                            y)  finish "$p" ;;
                             *)  printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
                         esac
                     done

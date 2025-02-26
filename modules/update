@@ -1,4 +1,4 @@
-__bashlib__
+__minified_bashlib__
 __path_and_modulename__
 __version_and_datestring__
 #
@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${UPDATE_BASHLIB:-false} && return
+${UPDATE_BASHLIB:-_} && return
 UPDATE_BASHLIB=:
 
 . <(lrequire binaries)
@@ -16,68 +16,56 @@ UPDATE_BASHLIB=:
 . <(lrequire sudo)
 . <(lrequire vdir)
 . <(lrequire integrity)
-. <(require mh)
 
-# for backwards compatibilty
-if [ -n "$basename_me" ]&&[ -z "$bm" ]; then
-    declare bm="$basename_me"
-fi
-if [ -n "$canonical_dir" ]&&[ -z "$ca_dir" ]; then
-    declare ca_dir="$canonical_dir"
-fi
-if [ -n "$canonical_me" ]&&[ -z "$ca_me" ]; then
-    declare ca_me="$canonical_me"
-fi
-if [ -n "$updateinfo" ]&&[ -z "$upinf" ]; then
-    declare upinf="$updateinfo"
-fi
-
-version_(){ ${BINARIES[gawk]} '/^# version 20/ {print $3, $4}' "$1";}
+version_(){ ${X[gawk]} '/^# version 20/ {print $3, $4}' "$1";}
 
 backup_and_replace_me_with_(){
-    local new="$1" bkp="$ca_me~$epoch"
-    ${BINARIES[mv]} -u "$ca_me" "$bkp" &&\
-    ${BINARIES[mv]} -u "$new" "$ca_me" &&\
-    ${BINARIES[chmod]} +x "$ca_me" &&\
-    ${BINARIES[chmod]} -x "$bkp"
+    local new bkp
+    new="$1" bkp="$ca_me~$epoch"
+    ${X[mv]} -u "$ca_me" "$bkp" &&\
+    ${X[mv]} -u "$new" "$ca_me" &&\
+    ${X[chmod]} +x "$ca_me" &&\
+    ${X[chmod]} -x "$bkp"
 }
 
 replace_me_with_(){
-    local new="$1"
-    ${BINARIES[mv]} -fu "$new" "$ca_me" &&\
-    ${BINARIES[chmod]} +x "$ca_me"
+    local new
+    new="$1"
+    ${X[mv]} -fu "$new" "$ca_me" &&\
+    ${X[chmod]} +x "$ca_me"
 }
 
 backups(){
-    ${BINARIES[find]} "$ca_dir" -type f -name "$bm~[0-9]*" -not -executable | ${BINARIES[sort]} $1
+    ${X[find]} "$ca_dir" -type f -name "$bm~[0-9]*" -not -executable | ${X[sort]} $1
 }
 
 my_update(){
-    local -i max_backups=0 num_bkps=0 num2del=0 i=0
-    local -a bkp_list
+    local my_tmp shash
     local -l key
-    local my_tmp="$(tf u)" shash
+    local -a bkp_list
+    local -i max_backups num_bkps num2del i
+    my_tmp="$(tf u)" max_backups=0 num_bkps=0 num2del=0 i=0
     su_root "to update" my_update
     while :; do
-        ${BINARIES[curl]} --compressed -o "$my_tmp" -A "$A" $cargs/scripts/$scriptname
-        shash="$(${BINARIES[sha256sum]} "$my_tmp" | ${BINARIES[gawk]} '{print $1}')"
+        ${X[curl]} --compressed -o "$my_tmp" -A "$A" $cargs/scripts/$scriptname
+        shash="$(${X[sha256sum]} "$my_tmp" | ${X[gawk]} '{print $1}')"
         if [ "$shash" = "$my_hash" ]; then
             echo
             line '=' P 5/75
-            o5;lG;echo "Hash OK, download verified!"
+            o5; lG; echo "Hash OK, download verified!"
             line '-' P 5/75
             break
         else
-            f;o5;R;echo "Wrong hash - file corrupted - download failed!";N
-            o5;echo "- script_hash$(o 22)= $shash"
-            o5;echo "- expected_hash$(o 22)= $my_hash"
-            o5;echo "Press - [r] retry update - [a] abort"
+            f; o5; R; echo "Wrong hash - file corrupted - download failed!";N
+            o5; echo "- script_hash$(o 22)= $shash"
+            o5; echo "- expected_hash$(o 22)= $my_hash"
+            o5; echo "Press - [r] retry update - [a] abort"
             read -rsn 1 key
             case "$key" in
-                a)  o5;echo "abort update atempt. You can retry later."
+                a)  o5; echo "abort update atempt. You can retry later."
                     exit1
                     ;;
-                r)  ${BINARIES[rm]} -f "$my_tmp"
+                r)  ${X[rm]} -f "$my_tmp"
             esac
         fi
     done
@@ -91,20 +79,20 @@ my_update(){
     num_bkps=${#bkp_list[@]}
     if (( num_bkps > max_backups )); then
         num2del="$((num_bkps-max_backups))"
-        o5;echo "cleaning up old backups"
+        o5; echo "cleaning up old backups"
         for (( i=0; i<num2del; i++ )); do
-            o5;echo "- deleting: ${bkp_list[i]}"
-            ${BINARIES[rm]} "${bkp_list[i]}"
+            o5; echo "- deleting: ${bkp_list[i]}"
+            ${X[rm]} "${bkp_list[i]}"
         done
     fi
     integrity_check && {
         # for backwards compatibilty
-        if [ -n "$includedir" ]&&[ -z "$lincld" ]; then
+        if [ -n "$includedir" ] && [ -z "$lincld" ]; then
             declare lincld="$includedir"
         fi
         # set "$lincld/$sin/.checked" to 0 if exists to build up with newest modules
         [ -f "$lincld/$sin/.checked" ] && echo "0" >"$lincld/$sin/.checked"
-        f;pf;G;echo "Update was successfull. Please start script again"
+        f; pf; G; echo "Update was successfull. Please start script again"
         exit 0
     }
 }
@@ -112,9 +100,9 @@ my_update(){
 my_update_check(){
     local -l key
     if (( my_epoch > epoch )); then
-        f;o5;echo "A new version of this script is available."
+        f; o5; echo "A new version of this script is available."
         while :; do
-            o5;echo "Press - [$(lG)u$(N)] for update - [$(Y)i$(N)] to ignore"
+            o5; echo "Press - [$(lG)u$(N)] for update - [$(Y)i$(N)] to ignore"
             read -rsn 1 key
             case "$key" in
                 u)  my_update
@@ -131,53 +119,52 @@ my_update_check(){
 }
 
 restore_backup(){
-    local -i n=1 i c2=9 c3=29
-    local -a bkp_list
-    local -l num key
     local bkp from ver
+    local -l num key
+    local -i n i c2 c3
+    local -a bkp_list
+    n=1 c2=9 c3=29
     su_root "to restore from backup" restore_backup
     mapfile -t bkp_list< <(backups -r)
     (( ${#bkp_list[@]} )) || {
-        o2;echo "no backups available."
+        o2; echo "no backups available."
         anykey
         return
     }
     line '=' P 2/78 b1
-    o3;B;echo "These backups of \"$(C)$bm$(B)\" are available:";N
-    o4;Y;echo "Num$(o $c2)Version$(o $c3)Backup from"
+    o3; B; echo "These backups of \"$(C)$bm$(B)\" are available:";N
+    o4; Y; echo "Num$(o $c2)Version$(o $c3)Backup from"
     line '-' dP 2/78
     for i in "${!bkp_list[@]}"; do
         bkp="${bkp_list[i]}"
-        from="$(${BINARIES[stat]} -c "%y" "$bkp")"
+        from="$(${X[stat]} -c "%y" "$bkp")"
         ver="$(version_ "$bkp")"
-        o3;echo "- $((n+i))$(o $c2)\"$ver\"$(o $c3)\"$from\""
+        o3; echo "- $((n+i))$(o $c2)\"$ver\"$(o $c3)\"$from\""
     done
     line '-' dP 2/78 a2
-    o3;echo "Enter the number of the backup you want to restore or $(q2q)"
+    o3; echo "Enter the number of the backup you want to restore or $(q2q)"
     while :; do
         read -rsn 1 num
         [ "$num" = "q" ] && exit1
         [[ "$num" =~ ^[1-9]$ ]] || {
-            o3;echo "$invi Please enter a valid number or $(q2q)"
+            o3; echo "$invi Please enter a valid number or $(q2q)"
             continue
         }
         (( num<n || num>=(n+${#bkp_list[@]}) )) && {
-            o3;echo "Invalid backup number. Please choose a number from the list or $(q2q)"
+            o3; echo "Invalid backup number. Please choose a number from the list or $(q2q)"
             continue
         }
         i="$((num-n))"
         bkp="${bkp_list[i]}"
         ver="$(version_ "$bkp")"
-        o3;echo "Your choice: version \"$ver\""
-        o3;echo "do you want to restore this backup?"
-        o3;echo "Press $(box y) to proceed - $(box c) to cancel - $(q2q): "
+        o3; echo "Your choice: version \"$ver\""
+        o3; echo "do you want to restore this backup?"
+        o3; echo "Press $(box y) to proceed - $(box c) to cancel - $(q2q): "
         while :; do
             read -rsn 1 key
             case "$key" in
-                y)  break 2
-                    ;;
-                c)  return
-                    ;;
+                y)  break 2 ;;
+                c)  return  ;;
                 q)  exit1
             esac
         done
@@ -185,12 +172,12 @@ restore_backup(){
     backup_and_replace_me_with_ "$bkp"
     integrity_check &&  {
         # for backwards compatibilty
-        if [ -n "$includedir" ]&&[ -z "$lincld" ]; then
+        if [ -n "$includedir" ] && [ -z "$lincld" ]; then
             declare lincld="$includedir"
         fi
         # set "$lincld/$sin/.checked" to 0 if exists to build up with newest modules
         [ -f "$lincld/$sin/.checked" ] && echo "0" >"$lincld/$sin/.checked"
-        f;pf;G;echo "Restoring backup was successfull. Please start script again"
+        f; pf; G; echo "Restoring backup was successfull. Please start script again"
         exit 0
     }
 }

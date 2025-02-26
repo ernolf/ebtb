@@ -7,16 +7,16 @@ __copyright__
 __license__
 #
 
-${TASKS_META_PKGS_BASHLIB:-false} && return
+${TASKS_META_PKGS_BASHLIB:-_} && return
 TASKS_META_PKGS_BASHLIB=:
 
 remove_meta_packages(){
     spinner C " . searching misconfigurations: meta-packages ." &
     local pkg plu be modstring question
     local -a meta_pkgs
-    for pkg in $(${BINARIES[dpkg]} -l | ${BINARIES[gawk]} '/^[hiu]i.*php/{print $2}'); do
+    for pkg in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php/{print $2}'); do
         if extension_is_ meta "$pkg"; then
-            rdepends -q "$pkg"||meta_pkgs+=("$pkg")
+            rdepends -q "$pkg" || meta_pkgs+=("$pkg")
         fi
     done
     if (( ${#meta_pkgs[@]} )); then
@@ -27,8 +27,8 @@ remove_meta_packages(){
         fi
         question="Q:$(format_string "Do you want to remove the meta package${plu#*:} $modstring now" 3)"
         kill_spinner
-        bundle echo "$(xpf;format_string "There $be unnecessary $(O)meta package${plu#*:}$(N) ($modstring) installed on this machine." 3;N)"
-        echo "$(ipf;Y;format_string "Meta packages do not contain any software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove th${plu%:*} package${plu#*:} before updating. The removal makes your system more resilient against unintended changes made without your decision." 3;N)"
+        bundle echo "$(xpf; format_string "There $be unnecessary $(O)meta package${plu#*:}$(N) ($modstring) installed on this machine." 3; N)"
+        echo "$(ipf; Y; format_string "Meta packages do not contain any software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove th${plu%:*} package${plu#*:} before updating. The removal makes your system more resilient against unintended changes made without your decision." 3; N)"
         echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_remove --yes ${meta_pkgs[@]}
@@ -36,8 +36,8 @@ remove_meta_packages(){
             anykey
             return 0
         else
-            echo "$(ipf;Y;format_string "You answered $(button no), nothing changed." 3;N)"
-            echo "$(xpf;R;format_string "WARNING: You should absolutely know what you are doing if you do not follow the script's advice, as it may result in an unstable system and affect the script's execution down the line! I may not be able to help with subsequent errors." 3;N)"
+            echo "$(ipf; Y; format_string "You answered $(button no), nothing changed." 3; N)"
+            echo "$(xpf; R; format_string "WARNING: You should absolutely know what you are doing if you do not follow the script's advice, as it may result in an unstable system and affect the script's execution down the line! I may not be able to help with subsequent errors." 3; N)"
             anykey
             return 1
         fi

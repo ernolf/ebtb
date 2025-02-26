@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${ASSUMED_VERSION_BASHLIB:-false} && return
+${ASSUMED_VERSION_BASHLIB:-_} && return
 ASSUMED_VERSION_BASHLIB=:
 
 . <(lrequire $sin/db)
@@ -16,15 +16,16 @@ ASSUMED_VERSION_BASHLIB=:
 # min_version(){ $(echo $(r_db "SELECT CASE WHEN major = (SELECT MIN(major) FROM versions) THEN platform ELSE NULL END AS result FROM versions;"));}
 # TODO <-- 0
 assumed_version_select(){
-    local major='' query
-    if (( $# )); then
-        major="WHERE major == ${1%%.*}"
-    fi
-    query="SELECT platform FROM versions $major ORDER BY major DESC, minor DESC;"
-    read -ra available_versions < <(r_db "$query")
+    local major query
     local -i n i version_num selected_index
+
+    (( $# )) && major="WHERE major == ${1%%.*}" || major=''
+    query="SELECT platform FROM versions $major ORDER BY major DESC, minor DESC;"
+
+    read -ra available_versions < <(r_db "$query")
+
     echo "Please select the $2version you want to assume:"
-    while true; do
+    while :; do
       # Display the numbered list of available versions
         for i in "${!available_versions[@]}"; do
             echo "$((n + i)). ${available_versions[$i]}"
@@ -60,11 +61,11 @@ assumed_version_select(){
 assumed_version_set(){
     local cquery query nc_lowest
     nc_lowest="${LATEST_EOL[0]}"
-    $database_created || create_database
+    ${B[database_created]} || create_database
     if [[ ! ${1%%.*} =~ ^[0-9]+$ ]]; then
         assumed_version_select
     elif [ 0${1%%.*} -lt 0${nc_lowest%%.*} ]; then
-        o2;echo "the min version supported by this script is $nc_lowest"
+        o2; echo "the min version supported by this script is $nc_lowest"
         if [ "$2" = "min_" ]; then
             nc_min_version="$nc_lowest"
         else

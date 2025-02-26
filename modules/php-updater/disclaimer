@@ -7,20 +7,20 @@ __copyright__
 __license__
 #
 
-${DISCLAIMER_BASHLIB:-false} && return
+${DISCLAIMER_BASHLIB:-_} && return
 DISCLAIMER_BASHLIB=:
 
 . <(lrequire binaries)
 
 disclaimer(){
-    ${BINARIES[cat]} <<DISCLAIMER
+    ${X[cat]} <<DISCLAIMER
                             Privacy Notice
                             ==============
 
     Using this script is not for free!
 
-    $(Cbg;format_string "  I expect everyone who uses this script to contribute in some way,  $(N)" 3)
-    $(Cbg;format_string "  especially if you use it for commercial or professional purposes.  $(N)" 3)
+    $(Cbg)     I expect everyone who uses this script to contribute in some way,     $(N)
+    $(Cbg)     especially if you use it for commercial or professional purposes.     $(N)
 
     How you can contribute is shown at the end of this script or by running
 
@@ -29,14 +29,13 @@ disclaimer(){
     Data from your system can be transferred, such as
 
         - distribution
-        - versions of various packages,
+        - versions of various php packages,
         - the configured apt-sources
         - installed and used web servers
-        - php packages and versions
 
     The script’s activity is logged for reference. You can view this log under:
 
-        "/tmp/ebtb/logfiles/php-updater.log"
+        "/tmp/ebtb/logfiles/$me.log"
 
     An anonymized fingerprint is created for each computer using the machine ID
     associating the information with “a computer” but not with any individual.

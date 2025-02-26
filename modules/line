@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${LINE_BASHLIB:-false} && return
+${LINE_BASHLIB:-_} && return
 LINE_BASHLIB=:
 
 . <(lrequire binaries)
@@ -17,14 +17,13 @@ LINE_BASHLIB=:
 # $4 and $5 either a$i or b$i where a is after and b is before
 # and $i the amount of empty lines
 line(){
-
-    pl(){
-        printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"
-    }
-
-    local p="$1" c="$2"
-    local -i e=0 r a=1 b=0
-    (( $(${BINARIES[expr]} $3 : '.*/.*') )) && e=${3%/*}
+    required_args 3 "$@"
+    [[ "$-" =~ x ]] && { set +x; local debugx=true; } || local debugx=_
+    pl(){ printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"; }
+    local p c
+    local -i e r a b
+    p="$1" c="$2" e=0 a=1 b=0
+    (( $(${X[expr]} $3 : '.*/.*') )) && e=${3%/*}
     r=${3#*/}
     shift 3
     while (( $# )); do
@@ -39,16 +38,17 @@ line(){
     ((e)) && o $e
     pl "$($c)$p$(N)" $r
     f $a
+    $debugx && set -x
 }
 
 separator(){
     local color
     color="$1"
-    line ' -' ${color:-GRAY} $((($(${BINARIES[tput]} cols)-8)/2))
+    line ' -' ${color:-GRAY} $((($(${X[tput]} cols)-8)/2))
 }
 
 separator2(){
     local color
     color="$1"
-    line ' =' ${color:-GRAY} $((($(${BINARIES[tput]} cols)-8)/2))
+    line ' =' ${color:-GRAY} $((($(${X[tput]} cols)-8)/2))
 }

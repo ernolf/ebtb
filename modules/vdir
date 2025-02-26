@@ -7,21 +7,21 @@ __copyright__
 __license__
 #
 
-${VDIR_BASHLIB:-false} && return
+${VDIR_BASHLIB:-_} && return
 VDIR_BASHLIB=:
 
+# uses indirect parameter expansion ("${!var}", BASH > 4) to eliminate the need for `eval`
 setvdir(){
-    local d v v1 v2 v3
-    d="$(eval echo \$dflt_$vdirname)"
-    v="$(eval echo \$$vdirname)"
-    v1="$(eval echo \$$1)"
+    local dv d v v1 v2 v3
+    dv="dflt_$vdirname"
+    d="${!dv}"
+    v="${!vdirname}"
+    v1="${!1}"
     [ -z "$3" ] && v3="$ca_me" || v3="$3"
     case "$2" in
-        v)  v2="$v"
-            ;;
-        d)  v2="$d"
-            ;;
-        *)  v2="$2"
+        v) v2="$v" ;;
+        d) v2="$d" ;;
+        *) v2="$2"
     esac
-    sed -i "s|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|" "$v3"
+    ${X[sed]} -i "s|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|" "$v3"
 }

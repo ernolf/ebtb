@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-${SWITCH_PHP_FPM_APACHE2_BASHLIB:-false} && return
+${SWITCH_PHP_FPM_APACHE2_BASHLIB:-_} && return
 SWITCH_PHP_FPM_APACHE2_BASHLIB=:
 
 php_fpm_sites_available_conf_apache2(){
@@ -45,19 +45,19 @@ php_fpm_sites_available_conf_apache2(){
         o3; bundle echo "Processing pool: [$pool]..."
 
         sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
-        sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${BINARIES[sed]} -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/g; s/\./\\\\./g")"
+        sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${X[sed]} -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/g; s/\./\\\\./g")"
         mapfile -t sock_o< <(
-            q2 ${BINARIES[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${BINARIES[grep]} -Ehos "^[^#]*${sock_regex[$pool]}" {} + | \
-            ${BINARIES[grep]} -Eos "${sock_regex[$pool]}" | \
-#            ${BINARIES[grep]} -Ev "${ver_n//\./\\.}" | \ # this breaks check if installed
-            ${BINARIES[sort]} -u
+            q2 ${X[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${X[grep]} -Ehos "^[^#]*${sock_regex[$pool]}" {} + | \
+            ${X[grep]} -Eos "${sock_regex[$pool]}" | \
+#            ${X[grep]} -Ev "${ver_n//\./\\.}" | \ # this breaks check if installed
+            ${X[sort]} -u
         )
         mapfile -t canonicalized_sock_o< <(canonicalize_array "${sock_o[@]}")
         mapfile -t conffiles< <(
-            ${BINARIES[grep]} -Els "^[^#]*${sock_regex[$pool]}" ${A2CONFFILES[@]} | \
-            ${BINARIES[grep]} -E '\.conf$' | \
-            ${BINARIES[grep]} -Ev "$(fpm_conf_regex)" | \
-            ${BINARIES[sort]} -u
+            ${X[grep]} -Els "^[^#]*${sock_regex[$pool]}" ${A2CONFFILES[@]} | \
+            ${X[grep]} -E '\.conf$' | \
+            ${X[grep]} -Ev "$(fpm_conf_regex)" | \
+            ${X[sort]} -u
         )
 
         if (( ${#conffiles[@]} )); then
@@ -122,8 +122,8 @@ php_fpm_sites_available_conf_apache2(){
             local line conf
             for i in ${!conffiles[@]}; do
                 line="$(fpm_connections_socket "${conffiles[i]}")"
-                conf="$(${BINARIES[readlink]} -f "${conffiles[i]}")"
-                ${BINARIES[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
+                conf="$(${X[realpath]} "${conffiles[i]}")"
+                ${X[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
                 o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
             done
             unset line conf
@@ -131,8 +131,10 @@ php_fpm_sites_available_conf_apache2(){
 #            anykey_noquit
         else
             f
-            o3; bundle echo "$(ipf; O; format_string "There is no aditional socket connection configured in this pool that could be switched to the version you selected." 6; N)"
-            o3; bundle echo "- $(format_string "If this does not meet your expectations, you may not have created the fpm pool for the selected version you want to switch to. This script normaly creates the necessary pools in the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
+#            o3; bundle echo "$(ipf; O; format_string "There is no aditional socket connection configured in this pool that could be switched to the version you selected." 6; N)"
+#            o3; bundle echo "- $(format_string "If this does not meet your expectations, you may not have created the fpm pool for the selected version you want to switch to. This script normaly creates the necessary pools in the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
+            o3; bundle echo "$(ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected. If, in the further course, below of of this message, it is shown that the server is connected to the new socket, then everything worked and this message does not indicate an error." 6; N)"
+            o3; bundle echo "- $(Y; format_string "If the server does not connect to the new socket and this message does not match your expectations, the fpm pool for the selected version you want to switch to may not have been created. This script normaly creates the necessary pools for the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
             f
             anykey_noquit
         fi
