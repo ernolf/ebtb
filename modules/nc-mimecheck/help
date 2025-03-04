@@ -10,9 +10,6 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire ansi)
-
 # help information
 try_help(){
     echo "try $(B)$me -h$(N) for help";f

@@ -10,13 +10,9 @@ __license__
 ${INP_BASHLIB:-_} && return
 INP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire line)
 . <(lrequire spinner)
 . <(lrequire fstring)
 . <(lrequire dpkg)
-. <(lrequire ask)
 . <(lrequire php/extensions)
 . <(lrequire $sin/pdiff)
 

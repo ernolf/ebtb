@@ -79,14 +79,13 @@ lrequire() { lreq $@; }
 module_etag() { ${X[jq]} -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
 declare -i mpid=$$ epoch my_epoch my_size lce mje mjne w4uc
 for bin in id uname mkdir awk cat curl; do checkbin $bin; done
-declare lf="$TMPDIR/ebtb/logfiles/$bm.log" version my_url curlc cargs bool astr="$(id -un): " A="$(uname -a)"
+declare lf="$TMPDIR/ebtb/logfiles/$bm.log" version my_url curlc cargs bool astr="${ID[l]}: "
 declare -a bools args tntd
 [ -d "${lf%/*}" ] || mkdir -p "${lf%/*}"
 version="$(ver_ "$apm")" epoch="$(epch_ "$apm")"
 my_url="${my_home%/apps/raw}/script/$scriptname" curlc="/usr/bin/env LC_MESSAGES=C $(type -P curl) --compressed" cargs="-se $bm-$epoch $my_home"
-bools=(rt run2 irun2 do_update do_restore_backup do_integrity_check)
+bools=(run2 irun2 do_update do_restore_backup do_integrity_check)
 for bool in ${bools[@]}; do B[$bool]=_; done
-(($(id -u))) || B[rt]=:
 for arg in "$@"; do
     case "$arg" in
         json=*)         B[run2]=:; declare my_$arg astr="run2 $astr"           ;;

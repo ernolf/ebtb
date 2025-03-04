@@ -1,6 +1,14 @@
-# whoami, whereami
+declare A bm apm me ca_me ca_dir x; declare -A B ID; _(){ false;}
+for x in u un g gn G Gn; do ID[$x]="$(id -$x)"; done; unset -v x
+(( ${ID[u]} )) && { B[rt]=_
+    if [ "${ID[un]}" = www-data ]; then ID[l]=www-data
+    elif [[ "${ID[Gn]} " =~ " sudo " ]]; then ID[l]=sudo_user
+    else ID[l]=unprivileged_user; fi
+} || B[rt]=: ID[l]=root
+readonly ID
+A="$(uname -srvmpio)"
 # b=basename m=me a=absolute p=path ca=canonical
-declare bm apm me ca_me ca_dir
 bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
 [ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
-ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
+ca_me="$(realpath "$apm")"; ca_dir="$(dirname "$ca_me")"
+

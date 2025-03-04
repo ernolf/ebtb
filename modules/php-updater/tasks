@@ -9,11 +9,6 @@ __license__
 
 ${TASKS_BASHLIB:-_} && return
 TASKS_BASHLIB=:
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
-. <(lrequire ask)
 . <(lrequire dpkg)
 . <(lrequire $sin/merge)
 . <(lrequire php/versions)

@@ -7,13 +7,8 @@ __copyright__
 __license__
 #
 
-${INSTALL_OVERWRITE_BASHLIB:-_} && return
-INSTALL_OVERWRITE_BASHLIB=:
-
-. <(lrequire binaries)
-. <(lrequire xml)
-. <(lrequire spinner)
-. <(lrequire nc/nextcloud)
+${COMMANDS_INSTALL_OVERWRITE_BASHLIB:-_} && return
+COMMANDS_INSTALL_OVERWRITE_BASHLIB=:
 
 install_overwrite(){
     list_apps_4_array(){

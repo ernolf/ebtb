@@ -8,7 +8,6 @@ __license__
 #
 
 declare -f _ &>/dev/null || _(){ false; }
-
 ${BACKCOMP_BASHLIB:-_} && return
 BACKCOMP_BASHLIB=:
 
@@ -42,13 +41,13 @@ if (( epoch < 1737773190 )); then
     q2(){ "$@" 2>/dev/null; }
 fi
 
-if (( epoch < 1738066400 )); then
+if (( epoch < 1738066400 )); then # 1738164268 ?
     echo -e "\n\n\e[31m - The current script version is very old.\n   It could be that the integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
 fi
 
 if (( epoch < 1739905000 )); then
-    # Create a nameref for BINARIES named X
-    declare -n X=BINARIES
+    # Create a nameref for BINARY named BINARIES
+    declare -n BINARIES=BINARY
 
     # link legacy boolean variables to the coresponding new associative array "BOOL"
     if ! q2 declare -p BOOL | grep -qs 'declare -A'; then
@@ -100,6 +99,12 @@ if (( epoch < 1740340000 )); then
     declare -n B=BOOL
 fi
 
+if (( epoch < 1740748000 )); then
+    declare x; declare -A ID
+    for x in u un g gn G Gn; do ID[$x]="$(${X[id]} -$x)"; done; unset -v x
+    readonly ID
+fi
+
 # get rid of unused libraries in old directories
 if ${B[rt]}; then
     if ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ebtb' /usr/local/bin; then
@@ -112,4 +117,4 @@ fi
 
 q0 declare -f lrequire || lrequire(){ require $@;}
 
-${FP_BASHLIB:-_} || . <(q2 require fp)
+di(){ :;}

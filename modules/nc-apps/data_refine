@@ -10,10 +10,10 @@ __license__
 ${DATA_REFINE_BASHLIB:-_} && return
 DATA_REFINE_BASHLIB=:
 
-. <(lrequire binaries)
+# TODO 0 -->
 . <(lrequire spinner)
 . <(lrequire $sin/db)
-
+# TODO <-- 0
 create_json_objects(){
     local query_version=$nc_version platform parts major minor item
     if (( $(v2i $nc_version) > $(v2i $nc_master) )); then
@@ -52,10 +52,10 @@ create_json_objects(){
 }
 
 query_apps(){
-# TODO 0 -->
+# TODO 1 -->
 B[debug]=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
 ${B[debug]} && echo "${FUNCNAME[0]}"
-# TODO <-- 0
+# TODO <-- 1
 
     local -A bool
     while (( $# )); do bool[$(varname $1)]=$(varval $1); shift; done
@@ -64,21 +64,21 @@ ${B[debug]} && echo "${FUNCNAME[0]}"
     local -a appstore_ids_not_installed
     local_applist="$(r_db "SELECT json_data FROM app_lists WHERE section == 'local';")"
 
-# TODO 1 -->
+# TODO 2 -->
 ${B[debug]} && set -x
-# TODO <-- 1
+# TODO <-- 2
     ${B[unsupported]} || ${bool[all]} && platform='all'
     appstore_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'appstore_$platform';" | ${X[base64]} -d)"
 
-# TODO 2 -->
+# TODO 3 -->
 ${B[debug]} && echo "platform=$nc_version, lang=$lang"
 ${B[debug]} && anykey
-# TODO <-- 2
+# TODO <-- 3
     local_ids="$(r_db "SELECT ids FROM app_ids WHERE section == 'local';" | ${X[base64]} -d)"
-# TODO 3 -->
+# TODO 4 -->
 ${B[debug]} && anykey
 set +x; B[debug]=false; trap - DEBUG; set +x; read -rsn 1 -p "Press any key to continue " dummy; echo
-# TODO <-- 3
+# TODO <-- 4
 
     # iterate through appstore_ids and filter out IDs that are not in local_ids array
     for app_id in $appstore_ids; do

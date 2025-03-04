@@ -10,17 +10,9 @@ __license__
 ${LINSTALLED_BASHLIB:-_} && return
 LINSTALLED_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire dos2unix)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
 . <(lrequire fstring)
 . <(lrequire spinner)
-. <(lrequire line)
-. <(lrequire array)
-. <(lrequire ask)
 . <(lrequire httpd)
 . <(lrequire php/versions)
 . <(lrequire php/extensions)
@@ -30,17 +22,17 @@ LINSTALLED_BASHLIB=:
 
 list_installed_sapi(){
     cursor_ hide
-    local sapi pkg fullpath pv httpd modstring q0 bundle
+    local sapi pkg fullpath pv httpd modstring q0 bundle f
     local -a sockets
     local -A bool # local booleans
     local -i c2 c3 i
     if [ "$1" = 'quiet' ]; then
-        q0='q0' bundle='' bool[quiet]=:
+        q0='q0' bundle='' bool[quiet]=: f=''
     else
-        q0='' bumdle='bundle' bool[quiet]=_
+        q0='' bumdle='bundle' bool[quiet]=_ f=f
     fi
     c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
-    $q0 detect_and_assign_extensions apache2
+    $q0 detect_and_assign_extensions assign apache2
     populate_httpd_ active
     ${bool[quiet]} || for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
     for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=${PHPVREGEX//\./\\.} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
@@ -56,7 +48,7 @@ list_installed_sapi(){
             if apache2_mpm event; then
                 $bundle echo "$(ipf; format_string "$(Yi)Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3; N)"
             fi
-            f
+            $f
         fi
         for pv in $(p_sort ${!SAPI_A2[@]}); do
             pkg="libapache2-mod-php$pv"
@@ -75,7 +67,7 @@ list_installed_sapi(){
                 o $c3; W; W; echo " <<INACTIVE"; N
             fi
         done
-        f
+        $f
     fi
     if (( ${#SAPI_FPM[@]} )); then
         if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && ! apache2_mpm event; then
@@ -98,7 +90,7 @@ list_installed_sapi(){
                 php_fpm_module_ enable
                 ${X[systemctl]} restart apache2
             fi
-            f
+            $f
         fi
         for pv in $(p_sort ${!SAPI_FPM[@]}); do
             sockets=()
@@ -129,7 +121,7 @@ list_installed_sapi(){
                                         fi
                             esac
                             case ${HTTPD["$httpd"]} in
-                                2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(lG)" ;;
+                                2)  connected_httpd="$connected_httpd $(N; GRAY)$httpd(inactive)$(lG)" ;;
                                 3)  connected_httpd=" $httpd $connected_httpd"
                             esac
                         done
@@ -214,7 +206,7 @@ list_installed(){
                     printf "$mod"
                     ctr=$((ctr+${#mod}))
                 done
-                N;f
+                N; f
             fi # <--
             # --> Active SAPI
             if [ "${sapi%:*}" = 'apache2' ]; then

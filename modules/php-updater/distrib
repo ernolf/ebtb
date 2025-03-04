@@ -10,11 +10,6 @@ __license__
 ${DISTRIB_BASHLIB:-_} && return
 DISTRIB_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
-. <(lrequire ask)
 . <(lrequire php/versions)
 . <(lrequire dist/os_release)
 . <(require $sin/disclaimer)
@@ -34,7 +29,7 @@ check_debian(){
     disclaimer
     list_supported_debian
     call_me debian 2
-    os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
+    os; lB; bundle echo -n "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
     check_systemd
     local ver releasedate eos eol
     local -l vercode chan
@@ -94,9 +89,9 @@ check_ubuntu(){
     call_me ubuntu 2
 
     if [ "$OS_ID" = "neon" ]; then
-        os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
+        os; lB; bundle echo -n "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
     else
-        os; lB; printf '%s' "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
+        os; lB; bundle echo -n "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
     fi
     check_systemd
     local ver vercode2 releasedate

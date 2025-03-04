@@ -7,10 +7,8 @@ __copyright__
 __license__
 #
 
-${FILTERS_BASHLIB:-_} && return
-FILTERS_BASHLIB=:
-
-. <(lrequire binaries)
+${COMMANDS_FILTERS_BASHLIB:-_} && return
+COMMANDS_FILTERS_BASHLIB=:
 
 filters(){
     ${X[cat]} <<FILTERS

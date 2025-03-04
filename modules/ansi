@@ -10,8 +10,9 @@ __license__
 ${ANSI_BASHLIB:-_} && return
 ANSI_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire tempfile)
-
+# TODO <-- 0
 ######################## - lib: ANSI Escape codes #############################
 declare CSI _8 _24 COLOR CURSOR CUU CUD CUF CUB CNL CPL CHA CUP ED EL SU SD
 declare -i FG BG BFG BBG
@@ -125,9 +126,9 @@ CC=(  # Composed Color codes
   [W]="$(cWi)"                      # white intense (used to supress automatic underlines in links)
   [N]=''                            # reset (No Color/Neutral)
 )
-# TODO 0 -->
+# TODO 1 -->
 # for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';}";done
-# TODO <-- 0
+# TODO <-- 1
 for p in "${!CC[@]}"; do
     eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}"
 done
@@ -142,20 +143,20 @@ f(){
     local -i n=${1:-1} i
     for (( i=1; i<=n; i++ )); do
         printf '%b' '\n'
-# TODO 1 -->
+# TODO 2 -->
 #        printf '%b' '\x0a'
 #        printf '%b' '\012'
 #        echo
-# TODO <-- 1
+# TODO <-- 2
     done
 }
 
-# TODO 2 -->
+# TODO 3 -->
 ## delete actual and previous line jump to previous line
 #te0(){
 #    printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
 #}
-# TODO <-- 2
+# TODO <-- 3
 # delete and stay in actual line
 te1(){
     printf '%b' "\r$CSI$EL"
@@ -180,9 +181,9 @@ te(){
 
 # Cursor offset absolute
 o(){
-# TODO 3 -->
+# TODO 4 -->
 #    printf '%b' "\r$CSI$1$CUF"
-# TODO <-- 3
+# TODO <-- 4
     printf '%b' "$CSI$(($1+1))$CHA"
 }
 o2(){ o 2;}; o3(){ o 3;}; o4(){ o 4;}; o5(){ o 5;}

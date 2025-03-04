@@ -10,9 +10,9 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire nc/nextcloud_logo)
-
+# TODO 0 -->
+. <(lrequire nc/logo)
+# TODO <-- 0
 print_help(){
     local s
     local -A bool

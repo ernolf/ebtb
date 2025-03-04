@@ -10,10 +10,6 @@ __license__
 ${DISCLAIMER_BASHLIB:-_} && return
 DISCLAIMER_BASHLIB=:
 
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
-
 disclaimer(){
     R; echo "This script is work in progress. Use at your own risk."
     echo "You can run this script at a later time, it will update itself";N

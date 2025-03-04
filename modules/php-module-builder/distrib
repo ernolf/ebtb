@@ -10,11 +10,6 @@ __license__
 ${DISTRIB_BASHLIB:-_} && return
 DISTRIB_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
-. <(lrequire ask)
 . <(lrequire dist/os_release)
 
 no_debianoid(){

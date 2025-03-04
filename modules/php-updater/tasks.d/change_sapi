@@ -40,14 +40,19 @@ change_sapi(){
                 bundle echo "$(ipf; format_string "The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems not to be connected. These two SAPIs are mutually exclusive in this usecase." 3)"
                 ${bool[alt]} || { bundle echo "$(ipf; format_string "$(B)php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/{print $2}')"), so here you will not get the option to switch the SAPI to the '$(dY)fast process manager SAPI$(N)'." 3)"; }
                 pf; Y; echo "Since php-fpm still consumes resources despite not being connected, you should either:"
-                f; o 10; bundle echo "$(button 1) - completely remove php*-fpm"
+                f
+                bundle echo "$(o 10; button 1) - completely remove php*-fpm"
                 ${bool[alt]} && {
-                    f; o 10; bundle echo "$(button 2) - switch apache2 from libapache2-mod-php to php*-fpm"
-                    f; o 10; bundle echo "$(button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
+                    f
+                    bundle echo "$(o 10; button 2) - switch apache2 from libapache2-mod-php to php*-fpm"
+                    f
+                    bundle echo "$(o 10; button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
                 }
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged (if you know what you are doing)"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt" key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &
@@ -99,13 +104,19 @@ change_sapi(){
                 bundle echo "$(ipf; format_string "It looks like the '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) seems not to be connected. These two SAPIs are mutually exclusive in this usecase." 3)"
                 bundle echo "$(xpf; R; format_string "The apache2 server has not loaded the correct multi processing module ('$(dY)prefork$(R)') for the $(dY)apache2handler SAPI$(R), but the '$(dY)event$(R)' module which is intended for operation with $(B)php-fpm$(R). This is a serious misconfiguration which must be fixed." 3; N)"
                 pf; Y; echo "You should either:"
-                f; o 10; bundle echo "$(button 1) - switch apache2 from libapache2-mod-php to php*-fpm, without changing the loaded modules"
-                f; o 10; bundle echo "$(button 2) - unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php to work"
-                f; o 10; bundle echo "$(button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
-                f; o 10; bundle echo "$(button 4) - unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php and completely remove php*-fpm"
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                f
+                bundle echo "$(o 10; button 1) - switch apache2 from libapache2-mod-php to php*-fpm, without changing the loaded modules"
+                f
+                bundle echo "$(o 10; button 2) - unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php to work"
+                f
+                bundle echo "$(o 10; button 3) - switch apache2 from libapache2-mod-php to php*-fpm and completely remove libapache2-mod-php*"
+                f
+                bundle echo "$(o 10; button 4) - unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php and completely remove php*-fpm"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged (if you know what you are doing)"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt" key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &
@@ -174,14 +185,19 @@ change_sapi(){
                 ${bool[alt]} || { bundle echo "$(ipf; format_string "$(B)libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/{print $2}'|sort)"), so here you will not get the option to switch the SAPI to the '$(dY)apache2handler SAPI$(N)'." 3)"
                 }
                 pf; Y; echo "You should either:"
-                f; o 10; bundle echo "$(button 1) - completely remove libapache2-mod-php* (recommended)"
+                f
+                bundle echo "$(o 10; button 1) - completely remove libapache2-mod-php* (recommended)"
                 ${bool[alt]} && {
-                    f; o 10; bundle echo "$(button 2) - switch apache2 from php*-fpm to libapache2-mod-php"
-                    f; o 10; bundle echo "$(button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
+                    f
+                    bundle echo "$(o 10; button 2) - switch apache2 from php*-fpm to libapache2-mod-php"
+                    f
+                    bundle echo "$(o 10; button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
                 }
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged (if you know what you are doing)"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt" key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &
@@ -233,13 +249,19 @@ change_sapi(){
                 bundle echo "$(ipf; format_string "It looks like the '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)apache2handler SAPI$(N)' $(B)libapache2-mod-php$(N) seems not to be connected. These two SAPIs are mutually exclusive in this usecase." 3)"
                 bundle echo "$(xpf; R; format_string "The apache2 server has not loaded the correct multi processing module ('$(dY)event$(R)') for the $(dY)fpm SAPI$(R), but the '$(dY)prefork$(R)' module which is intended for operation with $(B)libapache2-mod-php$(R). This is a serious misconfiguration which must be fixed." 3; N)"
                 pf; Y; echo "You should either:"
-                f; o 10; bundle echo "$(button 1) - switch apache2 from php*-fpm to libapache2-mod-php, without changing the loaded modules"
-                f; o 10; bundle echo "$(button 2) - unload mpm_prefork_module and load mpm_event_module for php-fpm to work"
-                f; o 10; bundle echo "$(button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
-                f; o 10; bundle echo "$(button 4) - unload mpm_prefork_module and load mpm_event_module for php-fpm and completely remove libapache2-mod-php*"
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged (if you know what you are doing)"
+                f
+                bundle echo "$(o 10; button 1) - switch apache2 from php*-fpm to libapache2-mod-php, without changing the loaded modules"
+                f
+                bundle echo "$(o 10; button 2) - unload mpm_prefork_module and load mpm_event_module for php-fpm to work"
+                f
+                bundle echo "$(o 10; button 3) - switch apache2 from php*-fpm to libapache2-mod-php and completely remove php*-fpm"
+                f
+                bundle echo "$(o 10; button 4) - unload mpm_prefork_module and load mpm_event_module for php-fpm and completely remove libapache2-mod-php*"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged (if you know what you are doing)"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt" key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &
@@ -303,13 +325,19 @@ change_sapi(){
                 bundle echo "$(xpf; format_string "It looks like both, the '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) are connected to it. These two SAPIs are mutually exclusive in this usecase. $(R)This is a serious misconfiguration that needs to be fixed$(N)." 3)"
                 bundle echo "$(ipf; Yi; format_string "The apache2 server has loaded the '$(dY)prefork$(Yi)' multi processing module for the $(dY)apache2handler SAPI$(Yi) and the '$(dY)event$(Yi)' module which is intended for operation with $(B)php-fpm$(Yi) is not loaded." 3; N)"
                 pf; Y; echo "You should either:"
-                f; o 10; bundle echo "$(button 1) - disconnect apache2 from php*-fpm, without changing the loaded modules"
-                f; o 10; bundle echo "$(button 2) - disconnect apache2 from libapache2-mod-php*, unload mpm_prefork_module and load mpm_event_module for php-fpm to work"
-                f; o 10; bundle echo "$(button 3) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
-                f; o 10; bundle echo "$(button 4) - disconnect apache2 from libapache2-mod-php* and completely remove libapache2-mod-php*"
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
+                f
+                bundle echo "$(o 10; button 1) - disconnect apache2 from php*-fpm, without changing the loaded modules"
+                f
+                bundle echo "$(o 10; button 2) - disconnect apache2 from libapache2-mod-php*, unload mpm_prefork_module and load mpm_event_module for php-fpm to work"
+                f
+                bundle echo "$(o 10; button 3) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
+                f
+                bundle echo "$(o 10; button 4) - disconnect apache2 from libapache2-mod-php* and completely remove libapache2-mod-php*"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt " key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt " key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &
@@ -373,13 +401,19 @@ change_sapi(){
                 bundle echo "$(xpf; format_string "It looks like both, the '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)fast process manager SAPI$(N)' $(B)$active_fpm_pkg$(N) are connected to it. These two SAPIs are mutually exclusive in this usecase. $(R)This is a serious misconfiguration that needs to be fixed$(N)." 3)"
                 bundle echo "$(ipf; Yi; format_string "The apache2 server has loaded the '$(dY)event$(Yi)' multi processing module for the $(dY)fast process manager SAPI$(Yi) and the '$(dY)prefork$(Yi)' module which is intended for operation with $(B)libapache2-mod-php$(Yi) is not loaded." 3; N)"
                 pf; Y; echo "You should either:"
-                f; o 10; bundle echo "$(button 1) - disconnect apache2 from libapache2-mod-php*, without changing the loaded modules"
-                f; o 10; bundle echo "$(button 2) - disconnect apache2 from php*-fpm, unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php to work"
-                f; o 10; bundle echo "$(button 3) - disconnect apache2 from libapache2-mod-php* and completely remove libapache2-mod-php*"
-                f; o 10; bundle echo "$(button 4) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
+                f
+                bundle echo "$(o 10; button 1) - disconnect apache2 from libapache2-mod-php*, without changing the loaded modules"
+                f
+                bundle echo "$(o 10; button 2) - disconnect apache2 from php*-fpm, unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php to work"
+                f
+                bundle echo "$(o 10; button 3) - disconnect apache2 from libapache2-mod-php* and completely remove libapache2-mod-php*"
+                f
+                bundle echo "$(o 10; button 4) - disconnect apache2 from php*-fpm and completely remove php*-fpm"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged (if you realy know what you are doing)"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt " key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt " key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &
@@ -439,11 +473,15 @@ change_sapi(){
                 explain_the_diference
                 bundle echo "$(ipf; format_string "The apache2 webserver is installed but inactive. The '$(dY)apache2handler SAPI$(N)' $(B)$active_a2_pkg$(N) is configured to be connected while the '$(dY)fast process manager SAPI$(N)' $(B)php-fpm$(N) is listening as well. These two SAPIs are mutually exclusive in any usecase with apache2." 3)"
                 pf; Y; echo "You should either:"
-                f; o 10; bundle echo "$(button 1) - completely remove libapache2-mod-php*"
-                f; o 10; bundle echo "$(button 2) - completely remove php*-fpm"
-                f; o 10; bundle echo "$(button q) - do nothing, leave this unchanged"
+                f
+                bundle echo "$(o 10; button 1) - completely remove libapache2-mod-php*"
+                f
+                bundle echo "$(o 10; button 2) - completely remove php*-fpm"
+                f
+                bundle echo "$(o 10; button q) - do nothing, leave this unchanged"
                 cursor_ hide
-                N; f; while :; do read -rsn 1 -p "$read_prompt" key
+                N; f
+                while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: $key" &

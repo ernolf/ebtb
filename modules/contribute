@@ -10,10 +10,11 @@ __license__
 ${CONTRIBUTE_BASHLIB:-_} && return
 CONTRIBUTE_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
+. <(lrequire ansi)
 . <(lrequire line)
-. <(lrequire fstring)
-
+# TODO <-- 0
 contribute(){
     ${X[cat]} <<CONTRIBUTE
 
@@ -30,9 +31,9 @@ $(W)  benefit from your feedback in the future.
 
 $(O)  You can buy me a coffee or become a sponsor:
 
-                           $(GRAY)* $(C)Paypal$(GRAY) to
-                               $(lG)ernolf$(C)<at>$(lG)global-social.net
-                           $(GRAY)* $(C)Github Sponsors$(GRAY) at
+                           $(GRAY)* $(C)Paypal$(GRAY) @ernolf
+                               $(lG)https://paypal.me/ernolf
+                           $(GRAY)* $(C)Github Sponsors$(GRAY) @ernolf
 $(GRAY)             )                 $(lG)https://github.com/sponsors/ernolf$(GRAY)
 $(GRAY)            ($(N) (            $(GRAY)or in cryptocurrency
 $(N)             ) )           $(GRAY)* $(C)Bitcoin$(GRAY) to

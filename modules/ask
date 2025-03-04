@@ -10,11 +10,12 @@ __license__
 ${ASK_BASHLIB:-_} && return
 ASK_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire prefix)
 . <(lrequire awksed)
-
+# TODO <-- 0
 # declare globals for ask handling
 declare YES NO Yes No
 YES="$(lG)yes$(N)"
@@ -94,20 +95,6 @@ ask(){
     done
     cursor_ $cursor
     return $r
-}
-
-bundle(){
-    local hauler
-    hauler="$1"
-    shift
-    haul $hauler "$@"
-    case "$hauler" in
-      echo) echo -e "$@"
-        ;;
-       cat) local -a payload; local -i i
-            mapfile -t payload< <(${X[cat]} "$@")
-            for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
-    esac
 }
 
 # Function for confirmation prompt

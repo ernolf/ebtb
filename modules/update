@@ -7,15 +7,19 @@ __copyright__
 __license__
 #
 
+. <(req backcomp)
 ${UPDATE_BASHLIB:-_} && return
 UPDATE_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire button)
 . <(lrequire line)
 . <(lrequire sudo)
 . <(lrequire vdir)
 . <(lrequire integrity)
+# TODO <-- 0
+. <(lrequire prefix)
 
 version_(){ ${X[gawk]} '/^# version 20/ {print $3, $4}' "$1";}
 
@@ -73,7 +77,7 @@ my_update(){
         local vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
         [ "$vdir" = "$ddir" ] || setvdir d v "$my_tmp"
     }
-    ((max_backups))&&backup_and_replace_me_with_ "$my_tmp"||replace_me_with_ "$my_tmp"
+    ((max_backups)) && backup_and_replace_me_with_ "$my_tmp" || replace_me_with_ "$my_tmp"
     # cleanup old backupfiles
     mapfile -t bkp_list< <(backups)
     num_bkps=${#bkp_list[@]}

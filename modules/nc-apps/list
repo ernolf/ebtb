@@ -10,9 +10,6 @@ __license__
 ${LIST_BASHLIB:-_} && return
 LIST_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
 . <(lrequire xml)
 . <(lrequire $sin/github_api)
 . <(lrequire $sin/db)
