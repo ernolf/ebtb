@@ -11,8 +11,6 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-
 function print_help(){
 #. <(require $sin/disclaimer)
 #disclaimer

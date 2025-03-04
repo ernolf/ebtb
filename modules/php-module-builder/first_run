@@ -10,11 +10,6 @@ __license__
 ${FIRST_RUN_BASHLIB:-false} && return
 FIRST_RUN_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
-. <(lrequire vdir)
-. <(lrequire ask)
 . <(lrequire $sin/disclaimer)
 
 # First run wizzard runs allways and only if occ could not be found in NC_DIR #

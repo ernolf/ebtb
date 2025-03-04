@@ -18,31 +18,31 @@ php_fpm_sites_available_conf_apache2(){
     ver_n="$1"
     mapfile -t pools< <(fpm_pools)
     if (( ${#pools[@]} == 1 )); then
-        o3; ipf; bundle echo " This is systemwide the only fpm pool configured:"
+        bundle echo "$(es3; ipf) This is systemwide the only fpm pool configured:"
         f
-        bundle echo "    - ${pools[0]}"
+        bundle echo "$(es3; pf)${pools[0]}"
     elif (( ${#pools[@]} > 1 )); then
         f
-        o3; ipf; bundle echo " These are systemwide the configured fpm pools:"
+        bundle echo "$(es3; ipf) These are systemwide the configured fpm pools:"
         f
-        bundle echo "$(for pool in "${pools[@]}"; do echo "    - $pool"; done)"
+        for pool in "${pools[@]}"; do bundle echo "$(es3; pf)$pool"; done
         f
     fi
     # we can only switch to existing pools with already created sockets for the new version
     pools=($(fpm_socket "$ver_n"))
     if (( ${#pools[@]} == 1 )); then
-        o3; ipf; bundle echo " This is the only fpm pool configured for the version you selected:"
+        bundle echo "$(es3; ipf) This is the only fpm pool configured for the version you selected:"
         f
-        bundle echo "    - $ver_n [${pools[0]}]"
+        bundle echo "$(es3; pf)$ver_n [${pools[0]}]"
     elif (( ${#pools[@]} > 1 )); then
-        o3; ipf; bundle echo " These are the configured fpm pools for the version you selected:"
+        bundle echo "$(es3; ipf) These are the configured fpm pools for the version you selected:"
         f
-        bundle echo "$(for pool in "${pools[@]}"; do echo "    - $ver_n [$pool]"; done)"
+        for pool in "${pools[@]}"; do bundle echo "$(es3; pf)$ver_n [$pool]"; done
     fi
 
     for pool in ${pools[@]}; do
         f
-        o3; bundle echo "Processing pool: [$pool]..."
+        bundle echo "$(es3)Processing pool: [$pool]..."
 
         sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
         sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${X[sed]} -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/g; s/\./\\\\./g")"
@@ -62,7 +62,7 @@ php_fpm_sites_available_conf_apache2(){
 
         if (( ${#conffiles[@]} )); then
             f
-            o3; bundle echo "$(ipf; format_string "The apache2 server is connected to a PHP-FPM unix-socket, bypassing the usual SetHandler configuration mechanism." 6; N)"
+            bundle echo "$(es3; ipf; format_string "The apache2 server is connected to a PHP-FPM unix-socket, bypassing the usual SetHandler configuration mechanism." 6; N)"
 
             if (( ${#conffiles[@]} == 1 )); then
                 this='This' be='is' plu=''
@@ -73,26 +73,26 @@ php_fpm_sites_available_conf_apache2(){
 
             if (( ${#canonicalized_sock_o[@]} == 1 )); then
                 if [ "${canonicalized_sock_o[0]}" = "$(canonicalize ${sock_n[$pool]})" ]; then
-                    o3; pf; bundle echo "this is the socket: $(lG)${sock_o[0]}$(N)"
-                    o3; pf; bundle echo "and this is the configuration in detail:"; N
+                    bundle echo "$(es3; pf)this is the socket: $(lG)${sock_o[0]}$(N)"
+                    bundle echo "$(es3; pf)and this is the configuration in detail:"; N
                     local conf_o
                     local -a sock_o_conf_files
                     mapfile -t sock_o_conf_files< <(iterate_conf_files_ a2 detect_matching_apache2_php_fpm_configfiles_ ${sock_o[0]})
                     for conf_o in "${sock_o_conf_files[@]}"; do
                         f
-                        detect_apache2_php_fpm_ tag "$conf_o"
+                        bundle printf detect_apache2_php_fpm_ tag "$conf_o"
                     done
                     unset conf_o sock_o_conf_files
                     f
-                    o3; bundle echo "$(ipf; lG; format_string "It looks like everything is already configured correctly, there is nothing that have to be changed on the configuration of this fpm-pool" 6; N)"
+                    bundle echo "$(es3; ipf; lG; format_string "It looks like everything is already configured correctly, there is nothing that have to be changed on the configuration of this fpm-pool" 6; N)"
                     f
                     anykey_noquit
                     continue
                 fi
-                o3; pf; bundle echo "this is the old socket: $(lG)${sock_o[0]}"; N
+                bundle echo "$(es3; pf)this is the old socket: $(lG)${sock_o[0]}"; N
             elif (( ${#canonicalized_sock_o[@]} > 1 )); then
-                o3; bundle echo "$(ipf; O; format_string "Multiple socket configurations, eg. trying to connect to more than one php-version detected. If that is intended, you may have to edit the socket configuration in the apache2 conf files by hand, because this script would simply change all of them to the new version. This behaviour may change in future versions of this script." 6; N)"
-                o3; pf; bundle echo "these are the configurations in detail:"; N
+                bundle echo "$(es3; ipf; O; format_string "Multiple socket configurations, eg. trying to connect to more than one php-version detected. If that is intended, you may have to edit the socket configuration in the apache2 conf files by hand, because this script would simply change all of them to the new version. This behaviour may change in future versions of this script." 6; N)"
+                bundle echo "$(es3; pf)these are the configurations in detail:"; N
 
                 local -a sock_o_conf_files
                 for i in ${!sock_o[@]}; do
@@ -101,19 +101,19 @@ php_fpm_sites_available_conf_apache2(){
                 mapfile -t sock_o_conf_files< <(p_sort ${sock_o_conf_files[@]})
                 for i in "${!sock_o_conf_files[@]}"; do
                     f
-                    detect_apache2_php_fpm_ tag "${sock_o_conf_files[i]}"
+                    bundle printf detect_apache2_php_fpm_ tag "${sock_o_conf_files[i]}"
                 done
                 unset sock_o_conf_files
                 f
                 anykey
             fi
 
-            o3; pf; bundle echo "this is the new socket: $(lG)${sock_n[$pool]}"; N
+            bundle echo "$(es3; pf)this is the new socket: $(lG)${sock_n[$pool]}"; N
             f
-            pf; bundle echo "$this $be the PHP-FPM socket configuration$plu:"
+            bundle echo "$(pf)$this $be the PHP-FPM socket configuration$plu:"
             for i in ${!conffiles[@]}; do
                 f
-                detect_apache2_php_fpm_ tag "${conffiles[i]}"
+                bundle printf detect_apache2_php_fpm_ tag "${conffiles[i]}"
             done
             f
             bundle echo " -$(format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
@@ -124,19 +124,13 @@ php_fpm_sites_available_conf_apache2(){
                 line="$(fpm_connections_socket "${conffiles[i]}")"
                 conf="$(${X[realpath]} "${conffiles[i]}")"
                 ${X[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
-                o3;Pbg;bundle echo " IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
+                bundle echo "$(es3; Pbg) IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
             done
             unset line conf
             f
 #            anykey_noquit
         else
-            f
-#            o3; bundle echo "$(ipf; O; format_string "There is no aditional socket connection configured in this pool that could be switched to the version you selected." 6; N)"
-#            o3; bundle echo "- $(format_string "If this does not meet your expectations, you may not have created the fpm pool for the selected version you want to switch to. This script normaly creates the necessary pools in the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
-            o3; bundle echo "$(ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected. If, in the further course, below of of this message, it is shown that the server is connected to the new socket, then everything worked and this message does not indicate an error." 6; N)"
-            o3; bundle echo "- $(Y; format_string "If the server does not connect to the new socket and this message does not match your expectations, the fpm pool for the selected version you want to switch to may not have been created. This script normaly creates the necessary pools for the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
-            f
-            anykey_noquit
+            no_conf_in_pool
         fi
     done
 }

@@ -10,8 +10,6 @@ __license__
 ${APPSTORE_BASHLIB:-_} && return
 APPSTORE_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire $sin/db)
 
 # appstore-functions:

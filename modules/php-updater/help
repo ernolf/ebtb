@@ -10,10 +10,6 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
-. <(lrequire line)
 . <(lrequire prompt)
 . <(lrequire fstring)
 . <(lrequire php/logo)
@@ -266,8 +262,6 @@ $(G;prompt -su;B) $me $(C)--switch-version
 
   $(W)Good luck!
   $(W)ernolf
-
-  $(C)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
 
 EOF
     anykey

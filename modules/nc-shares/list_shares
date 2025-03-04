@@ -10,7 +10,6 @@ __license__
 ${LIST_SHARES_BASHLIB:-_} && return
 LIST_SHARES_BASHLIB=:
 
-. <(lrequire binaries)
 . <(lrequire nc/nextcloud_db)
 
 function list_shares(){

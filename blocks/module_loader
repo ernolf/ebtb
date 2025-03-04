@@ -13,7 +13,7 @@ lmjn="$lmj~new" lce=$(q2 cat "$lcf")
     if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && B[check]=:; fi
 }
 : ${B[check]:=_} ${B[pager]:=_}
-for mod in ${modules[@]}; do
+for mod in binaries fp mh basics awksed tempfile ansi filter prefix button exit anykey line array ask sudo dependency vdir integrity ${modules[@]}; do
     ${B[check]} && {
         ${B[pager]} || printf "\r\e[K.. checking modules - $mod"
         c4u "$mod"

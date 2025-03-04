@@ -1,12 +1,12 @@
 : "${TMPDIR:=/tmp}"
 [[ "$TMPDIR" == '/' || ! -d "$TMPDIR" ]] && TMPDIR='/tmp'
 [ -d "$TMPDIR" ] || TMPDIR='/temp'
-if (( $(id -u) )); then
+if ! ${B[rt]}; then
     TMPDIR="${TMPDIR%/}"
     if (( $(awk -F/ '{print NF-1}' <<< "$TMPDIR") == 1 )) && [ -w "$TMPDIR" ]; then
-        TMPDIR="$TMPDIR/user-$(id -u)"
+        TMPDIR="$TMPDIR/user-${ID[u]}"
     elif [ ! -w "$TMPDIR" ]; then
-        TMPDIR="$(awk -F/ '{print "/"$2}' <<< "$TMPDIR")/user-$(id -u)"
+        TMPDIR="$(awk -F/ '{print "/"$2}' <<< "$TMPDIR")/user-${ID[u]}"
     fi
     [ -d "$TMPDIR" ] || mkdir -m 755 "$TMPDIR" &>/dev/null
 fi
@@ -14,7 +14,7 @@ declare ttf="$(mktemp -p "$TMPDIR")"
 if [[ -n "$ttf" && -f "$ttf" ]]; then
     rm -f -- "$ttf"
 else
-    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '$(id -un)'\e[0m" >&2
+    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '${ID[un]}'\e[0m" >&2
     exit 1
 fi
 unset ttf

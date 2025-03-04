@@ -10,8 +10,6 @@ __license__
 ${PATCH_BASHLIB:-_} && return
 PATCH_BASHLIB=:
 
-. <(lrequire binaries)
-
 patch_84() {
     local include_dirs files file headers header dir alt_header
     local -A bool

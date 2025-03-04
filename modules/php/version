@@ -7,9 +7,6 @@ __copyright__
 __license__
 #
 
-. <(lrequire binaries)
-. <(lrequire basics)
-
 ${VERSION_BASHLIB:-_} && return
 VERSION_BASHLIB=:
 

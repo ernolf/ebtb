@@ -10,8 +10,6 @@ __license__
 ${DIFF_BASHLIB:-_} && return
 DIFF_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire line)
 . <(lrequire fstring)
 
 diff_other_files(){

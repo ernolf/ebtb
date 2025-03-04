@@ -7,13 +7,8 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-_} && return
-HELP_BASHLIB=:
-
-. <(lrequire binaries)
-. <(lrequire php/version)
-. <(lrequire nc/nextcloud_logo)
-. <(lrequire $sin/l10n)
+${COMMANDS_HELP_BASHLIB:-_} && return
+COMMANDS_HELP_BASHLIB=:
 
 print_help(){
     local s htf cat_or_pager
@@ -69,7 +64,7 @@ $(nextcloud_logo)
   $(W)Good luck!
   $(W)ernolf
 
-  $(GRAY)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
+  $(GRAY)Contribute: $(lG)$me --contribute
 
  $(line = P 81)
 
@@ -134,6 +129,8 @@ $(nextcloud_logo)
    --nopager                don't use pager (only for long listing functions and -h|--help)
 
    --markdown               list as markdown table code
+
+   --trace                  debug the communication with the app store
 
 HELP
     if ((${#alternative_php_versions[@]})); then

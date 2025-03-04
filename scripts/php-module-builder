@@ -8,19 +8,23 @@ __license__
 #
 
 __scriptname__
-
+# TODO 0 -->
+#modules=(
+#    binaries today interval basics awksed tempfile prompt ansi filter prefix
+#    button fstring exit spinner anykey line array httpd sudo php/version
+#    php/versions dpkg ask dependency php/fpm vdir integrity dist/os_release
+#    php/sury php/extensions $sin/disclaimer $sin/ini $sin/pecl $sin/patch
+#    $sin/data_refine
+#)
+# TODO <-- 0
 modules=(
-    binaries today interval basics awksed tempfile prompt ansi filter prefix
-    button fstring exit spinner anykey line array httpd sudo php/version
-    php/versions dpkg ask dependency php/fpm vdir integrity dist/os_release
-    php/sury php/extensions $sin/disclaimer $sin/ini $sin/pecl $sin/patch
-    $sin/data_refine
+    today interval prompt fstring spinner httpd php/version dpkg
+    ask php/versions php/fpm dist/os_release php/sury php/extensions
+    $sin/disclaimer $sin/ini $sin/pecl $sin/patch $sin/data_refine
 )
+__whoami_whereami__
 __debug__
 __when__
-
-__whoami_whereami__
-
 # don't change this by hand, its done safe and interactively by the script:
 declare vdirname='project_dir' # <-- don't change this!
 declare dflt_$vdirname='UNDEFINED' # <-- don't change this!

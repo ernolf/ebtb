@@ -1,0 +1,40 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${LOGO_BASHLIB:-_} && return
+LOGO_BASHLIB=:
+
+nextcloud_logo(){
+    ${X[cat]} << NEXTCLOUDLOGO
+
+$(line ' ' NCbluebg 84 a0)
+$(line ' ' NCbluebg 84 a0)
+$(NCbluebg)                                    ,cWNXXXXNNNo,                                   $(N)
+$(NCbluebg)                                .NKOkxdddddddddxk0Xk                                $(N)
+$(NCbluebg)                              X0xddddddddddddddddddxkKc                             $(N)
+$(NCbluebg)         ,sHNNNNWln,        OOddddddddddddddddddddddddxK,         .WNNNNW;          $(N)
+$(NCbluebg)       XKOxddddddxk0Xl    .0xddddddo°           °dddddddxk    .N0kxddddddxk0X;      $(N)
+$(NCbluebg)     Kkddddddddddddddx0c 'kddddddc                .ddddddxk  XkddddddddddddddxK,    $(N)
+$(NCbluebg)   'OddddddddddddddddddxOOdddddd.                   odddddxKOddddddddddddddddddxd   $(N)
+$(NCbluebg)   Odddddd;'     'ddddddddddddd;                     ddddddddddddd'      'ddddddx:  $(N)
+$(NCbluebg)  ;dddddd;         dddddddddddd.                     cddddddddddd'        .ddddddd  $(N)
+$(NCbluebg)  ,dddddd:         xddddddddddd.                     cddddddddddd,        .ddddddo  $(N)
+$(NCbluebg)   ddddddkc      ¸Oddddddddddddc                     kdddddddddddO,      ¸0dddddd,  $(N)
+$(NCbluebg)   .ddddddx0nwwnXOddddddoddddddk'                   kdddddddddddddxKnwwnkkddddddc   $(N)
+$(NCbluebg)     dddddddddddddddddd; .ddddddkd                 Kxdddddl .dddddddddddddddddd'    $(N)
+$(NCbluebg)       dddddddddddddd;    .ddddddx0K¸           ,Xkddddddl    .dddddddddddddd'      $(N)
+$(NCbluebg)          'ddddddo'         odddddddk0XnweoxwnKOxddddddd'         'ddddddo'         $(N)
+$(NCbluebg)                              dddddddddddddddddddddddd'                             $(N)
+$(NCbluebg)                                'ddddddddddddddddddo                                $(N)
+$(NCbluebg)                                     oddddÇÇdddo                                    $(N)
+$(line ' ' NCbluebg 84 a0)
+$(line ' ' NCbluebg 84 a0)
+
+NEXTCLOUDLOGO
+}

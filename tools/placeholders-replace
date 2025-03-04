@@ -55,7 +55,7 @@ placeholder_replace(){
             ${X[cat]} "blocks/license"
             ;;
         scriptname)
-            echo 'declare scriptname sin; declare -a modules; declare -A B; _(){ false;}'
+            echo 'declare scriptname sin; declare -a modules'
             echo "scriptname='$name' sin='${name%-test}'"
             ;;
         debug)
@@ -67,7 +67,9 @@ placeholder_replace(){
             echo -e '# when\ndeclare -i rte; printf -v rte "%(%s)T" -2'
             ;;
         whoami_whereami)
-            ${X[cat]} "blocks/whoami_whereami"
+            ${MINIFY:-false} && echo '# read minified codeblocks here: https://github.com/ernolf/ebtb/tree/main/blocks'
+            echo "### whoami, whereami$minified"
+            tools/minify "blocks/whoami_whereami"
             ;;
         vdirname)
             ${X[cat]} "blocks/vdirname"

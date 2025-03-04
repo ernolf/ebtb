@@ -10,14 +10,14 @@ __license__
 ${INTEGRITY_BASHLIB:-_} && return
 INTEGRITY_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire awksed)
 . <(lrequire line)
 . <(lrequire sudo)
 . <(lrequire vdir)
-
-
+# TODO <-- 0
 public_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 -----BEGIN PGP PUBLIC KEY BLOCK-----
