@@ -10,12 +10,7 @@ __license__
 ${FIRST_RUN_BASHLIB:-_} && return
 FIRST_RUN_BASHLIB=:
 
-. <(lrequire sudo)
-. <(lrequire button)
-. <(lrequire anykey)
-. <(lrequire vdir)
 . <(lrequire httpd)
-. <(lrequire ask)
 
 first_run(){
     te1
@@ -34,7 +29,7 @@ first_run(){
     local -l ans num
     local -i c2 i n
     h="$(box h) to enter path by hand or $(q2q)" c2=9 n=1
-    if (( $(${X[id]} -u) )) && [ -d "$NC_DIR" ]; then
+    if ! ${B[rt]} && [[ -d "$NC_DIR" ]]; then
         su_root "to run this script"
     fi
     if ! ${B[irun2]}; then
@@ -44,7 +39,7 @@ first_run(){
     su_root "for the first run wizard" irun2
     populate_httpd_ nc-dir
     f
-    o2; B; echo "Hello, this is the first run wizard of \"$(Y)$me$(B)\""
+    o2; B; echo "Hello, this is the first run wizard of \"$(Y)$ME$(B)\""
     if (( ${#HTTPD_NC_DIR[@]} == 1 )); then
         p="${HTTPD_NC_DIR[0]}"
         o2; echo "nextcloud installation detected in $(C)$p"; N

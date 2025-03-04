@@ -61,6 +61,9 @@ for placeholder in "${placeholders[@]}"; do
     ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
 done
 rm -f "$tempfile"
+# minify modules array
+# ${X[sed]} -n '/^modules=(/ { :a; N; /)/!ba; s/\n[[:space:]]*/ /g; p }' datei
+$MINIFY && ${X[sed]} -i '/^modules=(/ { :a; N; /)/!ba; s/\n[[:space:]]*/ /g; s/( */(/; s/ *)/)/; }' "$output_script"
 
 # disable integrity check for local server
 $LOCAL_SERVER && echo -e "v=true\nnohash" >> "$output_script"

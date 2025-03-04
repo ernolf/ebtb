@@ -7,18 +7,18 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter prefix button fstring exit
-    spinner anykey line array ask sudo dependency vdir integrity httpd
-    nc/nextcloud nc/nextcloud_db
-)
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter prefix button fstring exit
+#    spinner anykey line array ask sudo dependency vdir integrity httpd
+#    nc/nextcloud nc/nextcloud_db
+#)
+# TODO <-- 0
+modules=(fstring spinner httpd nc/nextcloud nc/nextcloud_db)
 __debug__
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__
@@ -37,9 +37,9 @@ contribute_(){
 help(){
     ${X[cat]} << HELP
 
-    $me [ --raw [ --execute "query;" ] ]
+    $ME [ --raw [ --execute "query;" ] ]
 
-    $me
+    $ME
                 open sql cli-client in interactive mode
     --raw, -r   raw output
     --execute,-e "query;"

@@ -10,10 +10,7 @@ __license__
 ${MERGE_BASHLIB:-_} && return
 MERGE_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire spinner)
-. <(lrequire line)
 . <(lrequire fstring)
 . <(lrequire php.net/ini_directives)
 
@@ -137,10 +134,11 @@ merge_settings(){
                     nval="$(varval "${nsettings[ni]}")"
                     if [ "${val/$old/}" != "${nval/$new/}" ]; then
                         kill_spinner
-                        f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
+                        f
+                        echo "$(format_string "- The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
                         defaults_and_changelog "$key"
                         if [[ "${keep[@]}" =~ $key ]]; then
-                            bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set a specific value for this directive, you have to edit the file $(C)$npath$(N) yourself with an editor of your choice. Refer to https://www.php.net/manual/en/errorfunc.configuration.php#ini.$key for further information" 3; N)"
+                            bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set a specific value for this directive, you have to edit the file $(C)$npath$(N) yourself with an editor of your choice. Refer to https://www.php.net/manual/errorfunc.configuration.php#ini.$key for further information" 3; N)"
                             anykey
                         else
                             question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
@@ -164,10 +162,12 @@ merge_settings(){
         key="$1" val="$2" path="$3" last=$4
         # append the val at the end of the section
         if [ "${path##*/}" = "php.ini" ]; then
-            f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+            f
+            echo "$(format_string "- Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="at the end of the $(bY; section "${key%.*}"; N) section" nl='\n'
         elif [ "$(sufix "$path")" = "conf" ]; then
-            f; echo " -$(format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+            f
+            echo "$(format_string "- Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="under the other environment variables" nl=''
         fi
         defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
@@ -184,7 +184,7 @@ merge_settings(){
         local -A bool
         key="$1" val="$2" path="$3" bool[ael]="$4"
         kill_spinner
-        f; echo " -$(format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+        f; echo "$(format_string "- Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
         defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
         question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
         if ask "$question" "$defaultanswer"; then
@@ -213,7 +213,7 @@ merge_settings(){
         if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
             kill_spinner
             lnr=$(${X[grep]} -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | ${X[cut]} -d ":" -f 1)
-            f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
+            f; echo "$(format_string "- The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
             question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
@@ -224,7 +224,7 @@ merge_settings(){
         elif ((last)); then
             kill_spinner
             # append the val after the last occurrence
-            f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) and $(P)is not set$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
+            f; echo "$(format_string "- The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) and $(P)is not set$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
             question="Q:$(format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
             if ask "$question" "$YES"; then
@@ -261,7 +261,7 @@ merge_settings(){
         [ "$key" = "" ] && continue
         if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
             kill_spinner
-            f; echo " -$(format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
+            f; echo "$(format_string "- The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
             defaults_and_changelog "$key"
             question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then

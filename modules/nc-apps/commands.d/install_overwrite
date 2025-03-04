@@ -7,24 +7,19 @@ __copyright__
 __license__
 #
 
-${INSTALL_OVERWRITE_BASHLIB:-_} && return
-INSTALL_OVERWRITE_BASHLIB=:
-
-. <(lrequire binaries)
-. <(lrequire xml)
-. <(lrequire spinner)
-. <(lrequire nc/nextcloud)
+${COMMANDS_INSTALL_OVERWRITE_BASHLIB:-_} && return
+COMMANDS_INSTALL_OVERWRITE_BASHLIB=:
 
 install_overwrite(){
     list_apps_4_array(){
         local app xml_f max
         for app in $(occ app:list --shipped=false --output=json | ${X[jq]}  -r '.enabled | keys | sort []'); do
             xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
-            max=$(xmls -v "//nextcloud/@max-version" "$xml_f" | ${X[sed]} '2,$d')
-            if [ -z "$max" ] || (( ${max%%.*} >= ${nc_version%%.*} )); then
+            max=$(${X[xmls]} -v "//nextcloud/@max-version" "$xml_f" | ${X[sed]} '2,$d')
+            if [ -z "$max" ] || (( ${max%%.*} >= ${V[nc_version]%%.*} )); then
                 continue
             fi
-            echo $app >> $1
+            echo "$app" >> $1
         done
         unset -v app xml_f max
     }

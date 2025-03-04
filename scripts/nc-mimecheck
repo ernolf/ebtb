@@ -23,21 +23,20 @@ __license__
 #
 ########################################################################
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter prefix button exit anykey line
-    verbose array ask sudo dependency vdir integrity nc/nextcloud
-    nc/nextcloud_db $sin/mime_types $sin/help $sin/functions
-)
-
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter prefix button exit anykey line
+#    verbose array ask sudo dependency vdir integrity nc/nextcloud
+#    nc/nextcloud_db $MS/mime_types $MS/help $MS/functions
+#)
+# TODO <-- 0
+modules=(verbose nc/nextcloud nc/nextcloud_db $MS/mime_types $MS/help $MS/functions)
 __debug__
 # make module loading quiet if -q or --quiet is passed
 for a in "$@"; do [[ "$a" == '-q' || "$a" == '--quiet' ]] && B[pager]=:; done; unset -v a
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__
@@ -126,7 +125,7 @@ shopt -u extglob
 (( ${#shiftedoption[@]} )) && set -- "${shiftedoption[@]}" "$@"
 unset -v shiftedoption
 
-options=$(${X[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$me" -- "$@")
+options=$(${X[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$ME" -- "$@")
 if (($?==0)); then
     eval set -- "$options"
     while :; do

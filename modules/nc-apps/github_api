@@ -10,9 +10,6 @@ __license__
 ${GITHUB_API_BASHLIB:-_} && return
 GITHUB_API_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-
 github_api(){
     local URL="https://api.github.com/repos/$1/$2?per_page=$3"
     case $2 in
@@ -29,9 +26,9 @@ list_latest(){
     for version in "${versions[@]}"; do
         parts=(${version//./ })
         key="${parts[0]}.${parts[1]}"
-        if [ "$key" = "$nc_key" ]; then
+        if [ "$key" = "${V[nc_key]}" ]; then
             if [ -z "${latest_versions["$key"]}" ]; then
-                latest_versions["$key"]=$nc_version_tag
+                latest_versions["$key"]=${V[nc_version_tag]}
             fi
         elif [ -z "${latest_versions[$key]}" ]; then
             latest_versions["$key"]=$version

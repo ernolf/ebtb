@@ -10,12 +10,15 @@ __license__
 ${ANSI_BASHLIB:-_} && return
 ANSI_BASHLIB=:
 
-. <(lrequire tempfile)
+[[ "$-" =~ x ]] && { set +x; B[ansi_debugx]=:; }
 
+# TODO 0 -->
+. <(lrequire tempfile)
+# TODO <-- 0
 ######################## - lib: ANSI Escape codes #############################
 declare CSI _8 _24 COLOR CURSOR CUU CUD CUF CUB CNL CPL CHA CUP ED EL SU SD
 declare -i FG BG BFG BBG
-declare -A SGR C CC
+declare -A SGR CC CCC
 # (Control Sequence Introducer)
 CSI='\033[' # either '\e[', '\033[' or '\x1b['
 
@@ -40,7 +43,7 @@ SGR=( # SGR (Select Graphic Rendition) parameters
 for p in "${!SGR[@]}"; do
     eval "$p(){ printf '%b' '${SGR[$p]};';}"
 done
-C=(   # Color codes
+CC=(   # Color Codes
   [cBLACK]='0'      #000000 - black (3 bit/8 colors)
   [cR]='1'          #800000 - red (3 bit/8 colors)
   [cG]='2'          #008000 - green (3 bit/8 colors)
@@ -66,10 +69,10 @@ C=(   # Color codes
   [cPHPmedium]="$_24;136;146;191" #8892bf - PHP medium (24-bit/rgb)
   [cPHPdark]="$_24;79;91;147"     #4f5b93 - PHP dark (24-bit/rgb)
 )
-for p in "${!C[@]}"; do
-    eval "$p(){ printf '%b' \"\${1:-$FG}${C[$p]};\";}"
+for p in "${!CC[@]}"; do
+    eval "$p(){ printf '%b' \"\${1:-$FG}${CC[$p]};\";}"
 done
-CC=(  # Composed Color codes
+CCC=(  # Composed Color Codes
   [NCbluebg]="$(cWi;cNCblue $BG)"
   [lPHP]="$(cPHPlight;cBLACK $BG)"
   [dPHP]="$(cPHPdark;cPHPdarkgrey $BG)"
@@ -125,13 +128,13 @@ CC=(  # Composed Color codes
   [W]="$(cWi)"                      # white intense (used to supress automatic underlines in links)
   [N]=''                            # reset (No Color/Neutral)
 )
-# TODO 0 -->
-# for p in "${!CC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';}";done
-# TODO <-- 0
-for p in "${!CC[@]}"; do
-    eval "$p(){ printf '%b' '$CSI$(N_)${CC[$p]%;}m';echo '$p' > \$COLOR;}"
+# TODO 1 -->
+# for p in "${!CCC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CCC[$p]%;}m';}";done
+# TODO <-- 1
+for p in "${!CCC[@]}"; do
+    eval "$p(){ printf '%b' '$CSI$(N_)${CCC[$p]%;}m';echo '$p' > \$COLOR;}"
 done
-unset -v FG BG BFG BBG _8 _24 SGR C CC p
+unset -v FG BG BFG BBG _8 _24 SGR CC CCC p
 
 ### ANSI - Cursor handling
 # Cursor Up, Down, Forward, Back, NextLine, PreviousLine, HorizontalAbsolute, Position, Erase in Display, Erase in Line, Scroll Up and Down
@@ -142,20 +145,20 @@ f(){
     local -i n=${1:-1} i
     for (( i=1; i<=n; i++ )); do
         printf '%b' '\n'
-# TODO 1 -->
+# TODO 2 -->
 #        printf '%b' '\x0a'
 #        printf '%b' '\012'
 #        echo
-# TODO <-- 1
+# TODO <-- 2
     done
 }
 
-# TODO 2 -->
+# TODO 3 -->
 ## delete actual and previous line jump to previous line
 #te0(){
 #    printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
 #}
-# TODO <-- 2
+# TODO <-- 3
 # delete and stay in actual line
 te1(){
     printf '%b' "\r$CSI$EL"
@@ -180,9 +183,9 @@ te(){
 
 # Cursor offset absolute
 o(){
-# TODO 3 -->
+# TODO 4 -->
 #    printf '%b' "\r$CSI$1$CUF"
-# TODO <-- 3
+# TODO <-- 4
     printf '%b' "$CSI$(($1+1))$CHA"
 }
 o2(){ o 2;}; o3(){ o 3;}; o4(){ o 4;}; o5(){ o 5;}
@@ -203,3 +206,5 @@ cursor_(){
 ansi_reset(){
     printf '%b' "$CSI?25h${CSI}0;m"
 }
+
+${B[ansi_debugx]:-false} && set -x

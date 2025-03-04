@@ -10,14 +10,14 @@ __license__
 ${INTEGRITY_BASHLIB:-_} && return
 INTEGRITY_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire awksed)
 . <(lrequire line)
 . <(lrequire sudo)
 . <(lrequire vdir)
-
-
+# TODO <-- 0
 public_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -54,21 +54,21 @@ PUBLIC_KEY_ASC
 }
 
 integrity_check(){
-    local key mail aut itf vtf vdir ddir shash ehash
+    local key mail aut vdir ddir shash ehash
     local -i r
-    local -A bool
-    bool[signed]=: itf="$(tf)" vtf="$(tf)" r=1
-    key="$(${X[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$ca_me")"
-    mail="$(${X[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$ca_me")"
-    aut="$(${X[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$ca_me")"
+    local -A bool tf
+    bool[signed]=: tf[i]="$(tf)" tf[v]="$(tf)" r=1
+    key="$(${X[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$MP")"
+    mail="$(${X[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$MP")"
+    aut="$(${X[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$MP")"
     su_root "to run the integrity check" integrity_check
-    delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$ca_me" "$itf"
+    delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$MP" "${tf[i]}"
     if [ -n "$vdirname" ]; then
         vdir=$(eval echo \$$vdirname) ddir=$(eval echo \$dflt_$vdirname)
-        [ "$vdir" != "$ddir" ] && setvdir v d "$itf"
+        [ "$vdir" != "$ddir" ] && setvdir v d "${tf[i]}"
     fi
-    shash="$(${X[sha256sum]} "$itf" | ${X[gawk]} '{print $1}')"
-    ehash="$(${X[tail]} -n1 "$ca_me" | ${X[gawk]} '{print $NF}')"
+    shash="$(${X[sha256sum]} "${tf[i]}" | ${X[gawk]} '{print $1}')"
+    ehash="$(${X[tail]} -n1 "$MP" | ${X[gawk]} '{print $NF}')"
     line '=' P 5/75
     if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
         . <(lrequire ask)
@@ -86,14 +86,14 @@ integrity_check(){
         . <(lrequire ask)
         o5; R; echo "- import of public key failed."
         qpf; ask "Continue at own risk without check?" "$NO" && {
-            ${X[sed]} -i 's/^v=false$/v=true/' "$ca_me"
+            ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
             return 0
         }
     }
-    ${X[gpg]} --verify "$ca_me" "$itf">"$vtf" 2>&1
+    ${X[gpg]} --verify "$MP" "${tf[i]}" > "${tf[v]}" 2>&1
     r=$?
-    ${X[grep]} "$key" "$vtf"
-    ${X[grep]} "$aut (codesigning) <${mail//<at>/@}>" "$vtf"
+    ${X[grep]} "$key" "${tf[v]}"
+    ${X[grep]} "$aut (codesigning) <${mail//<at>/@}>" "${tf[v]}"
     line '-' P 5/75
     if (( r )); then
         o5; R; echo -n "- Integrity check $(blinkR)failed$(R). "
@@ -104,19 +104,19 @@ integrity_check(){
         fi
         line '-' P 5/75
         o5; B; echo "You should run:"
-        o5; GRAY; echo "sudo wget -O $ca_me $my_url"
+        o5; GRAY; echo "sudo wget -O $MP $my_url"
         if ${bool[signed]}; then
             o5; B; echo "to fix this."; N
         else
             o5; B; echo "to get a signed version of this script or disable the integrity check."; N
             qpf; ask "Do you want to disable the integrity check at own risk" "$NO" && {
-                echo -e "v=true\nnohash" >> "$ca_me"
+                echo -e "v=true\nnohash" >> "$MP"
                 return 0
             }
         fi
     else
         o5; lG; echo "Integrity check passed. The script is authentic."; N
-        ${X[sed]} -i 's/^v=false$/v=true/' "$ca_me"
+        ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
     fi
     line '=' P 5/75
     return $r
@@ -135,7 +135,7 @@ if "${B[do_integrity_check]:-_}"; then
     run_integrity_check
 fi
 
-declare $(tnh1)
+declare $(tnh1 2)
 if ! "${v:-_}"; then
     f
     o5; B; echo "First run, checking integrity:"

@@ -7,21 +7,27 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
+# TODO 0 -->
+#modules=(
+#    binaries today interval basics dos2unix awksed tempfile prompt ansi filter
+#    prefix button fstring exit sort spinner anykey line array httpd sudo
+#    context php/version php/nginx php/apache2 php/fpm php/versions dpkg
+#    php/extensions php/sury ask dependency vdir integrity dist/os_release
+#    php.net/ini_directives $MS/inp $MS/pdiff $MS/merge $MS/diff $MS/pool
+#    $MS/tasks $MS/linstalled $MS/help $MS/chfiles $MS/switch
+#)
+# TODO <-- 0
 modules=(
-    binaries today interval basics dos2unix awksed tempfile prompt ansi filter
-    prefix button fstring exit sort spinner anykey line array httpd sudo
-    context php/version php/nginx php/apache2 php/fpm php/versions dpkg
-    php/extensions php/sury ask dependency vdir integrity dist/os_release
-    php.net/ini_directives $sin/inp $sin/pdiff $sin/merge $sin/diff $sin/pool
-    $sin/tasks $sin/linstalled $sin/help $sin/chfiles $sin/switch
+    today interval dos2unix prompt fstring sort spinner httpd context
+    php/version php/nginx php/apache2 php/fpm php/versions dpkg php/extensions
+    php/sury ask dist/os_release php.net/ini_directives $MS/inp $MS/pdiff
+    $MS/merge $MS/diff $MS/pool $MS/tasks $MS/linstalled $MS/help $MS/chfiles
+    $MS/switch
 )
 __debug__
 __when__
-
-__whoami_whereami__
-
 # don't change this by hand, its done safe and interactively by the script:
 declare vdirname="" # <-- don't change this!
 __tempdir__
@@ -45,7 +51,7 @@ for flag in ${flags[@]}; do FLAG[$flag]=_; done; unset -v flag flags
 for bool in ${bools[@]}; do B[$bool]=_; done; unset -v bool bools
 FLAG[forceflag]='' B[pager]=:
 shopt -s extglob
-for arg in "$@";do
+for arg in "$@"; do
     case "$arg" in
         --help|-h)        B[help]=: ;;
         --force)          B[force]=: FLAG[forceflag]=' --force' ;;
@@ -66,7 +72,7 @@ su_root "to run this script."
 check_context
 my_update_check
 
-tnh1_strg distrib_checked || . <(require $sin/distrib)
+tnh1_strg distrib_checked || . <(require $MS/distrib)
 tnh1_strg supported && B[supported]=:
 tnh1_strg to_old && { B[distrib_to_old]=: B[needforce]=:; ${B[force]} && B[supported]=:;}
 tnh1_strg to_new && { B[distrib_to_new]=: B[needforce]=:; ${B[force]} && B[supported]=:;}
@@ -75,20 +81,22 @@ tnh1_strg unknown && { B[distrib_unknown]=: B[needforce]=:; ${B[force]} && B[sup
 tnh1_strg unsupported && B[unsupported]=:
 
 # messages
-call_help(){ o2; GRAY; echo "You can call the help with:$(o 35; B)$me --help"; line '-' dP 2/78; }
+call_help(){ o2; GRAY; echo "You can call the help with:$(o 35; B)$ME --help"; line '-' dP 2/78; }
 call_me(){ 
     require_arg $@
-    o2; GRAY; echo "You can call this list with:$(o 35; B)$me --list-$1"; line '-' dP 2/78 a${2:-1}
+    o2; GRAY; echo "You can call this list with:$(o 35; B)$ME --list-$1"; line '-' dP 2/78 a${2:-1}
 }
 version_mismatch(){
-    f; o; Pbg; pf; echo "A version mismatch has been detected which cannot be resolved by this script$(pf; N)"
+    f
+    bundle echo " $(Pbg; pf)A version mismatch has been detected which cannot be resolved by this script$(pf; N)"
     exit1
 }
 wrong_first_argument(){
     required_args 2 $@
     local -i a
     a=$2
-    f; o; Pbg; pf; printf "First argument must be the version of an installed php but "
+    f
+    bundle echo -n " $(Pbg; pf)First argument must be the version of an installed php but "
     if ((a)); then
         bundle echo "php$1 is not installed$(pf; N)"; f; list_candidates
         call_me candidates
@@ -105,25 +113,30 @@ wrong_first_argument(){
 }
 does_not_exist(){
     require_arg $@
-    f; o; Pbg; pf; echo "\"$1\" is not an existing php version$(pf; N)"
+    f
+    bundle echo " $(Pbg; pf)\"$1\" is not an existing php version$(pf; N)"
     list_existing
     call_me existing
     call_help
     f
-    exit1
+    anykey
 }
 no_candidate(){
     require_arg $@
-    f; os; Pbg; pf; echo "Version \"$1\" cannot be installed with your Apt sources$(pf; N; f)"
+    f
+    bundle echo " $(Pbg; pf)Version \"$1\" cannot be installed with your Apt sources$(pf; N)"
+    f
     list_candidates
     call_me candidates
     anykey_noquit
     need_sury_repo
     call_help
     f
+    anykey
 }
 no_higher_candidate(){
-    f; pf; echo "The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources."
+    f
+    bundle echo "$(pf)The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources."
     list_candidates
     call_me candidates
     anykey_noquit
@@ -132,7 +145,7 @@ no_higher_candidate(){
     anykey
 }
 need_ppa(){ need_sury_repo; }
-downgrade_possible(){ pf; echo "However, it is possible to downgrade to a lower version using this script, although I don't recommend it"; }
+downgrade_possible(){ bundle echo "$(pf)However, it is possible to downgrade to a lower version using this script"; }
 
 # TODO 1 -->
 list_tasks(){
@@ -168,7 +181,7 @@ tasks(){
     for i in "${!task_list[@]}"; do
         task="${task_list[i]}"
         description=""
-        o3; echo "- $((n+i))$(o $c2)\"$task\"$(o $c3)\"$description\""
+        o2; pf; echo "$((n+i))$(o $c2)\"$task\"$(o $c3)\"$description\""
     done
     line '-' dP 2/78 a2
     o3; echo "Enter the number of the task you want to execute $(q2q)"
@@ -260,7 +273,7 @@ case "$1" in
         list_supported_ubuntu
         exit 0
         ;;
-    -*) echo "unknown option $1"
+    -*) bundle echo "unknown option $1"
         anykey
         ;;
     *)  :
@@ -276,6 +289,7 @@ if ${B[supported]}; then
         OLD="$(${X[phpquery]} -V)"
         separator
         f
+        mh "I: Only one php version ($OLD) found." &
         echo "$(ipf; W; format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3; N)"
         f
         anykey
@@ -290,33 +304,31 @@ if ${B[supported]}; then
         separator
         if ask "$(qpf)Do you want to install a new php-version now" "$YES"; then
             SUGGESTION="$(i_ver "$OLD")" || { no_higher_candidate;SUGGESTION="$(d_ver "$OLD")"; }
-            rs1="$(os)please enter a new, not yet installed php-version…"
+            rs1="$(o3)please enter a new, not yet installed php-version…"
             list_candidates
             while :; do
                 cursor_ show
                 read -rp "E: Please enter the version string you want to install (e.g. '$SUGGESTION'): " NEW
-                cursor_ hide
-                sbnc=''
-                if does_exist_ "$NEW" 0; then
-                    if [[ " ${CAN[@]} " =~ " $NEW " ]]; then
-                        sbnc=" $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' $NEW 5))"
-                    fi
-                fi
-                os; echo "You entered: $NEW$sbnc"
                 if [ -z "$NEW" ]; then
                     echo "$rs1"
                     anykey
+                    continue
                 elif [ "$NEW" = "$OLD" ]; then
-                    pf; echo "From the point of view of this script, php$NEW is already installed"
-                    echo "$rs1";anykey
-                elif does_exist_ "$NEW" 0; then
+                    bundle echo "$(pf)From the point of view of this script, php$NEW is already installed"
+                    echo "$rs1"
+                    anykey
+                    continue
+                fi
+                cursor_ hide
+                sbnc=''
+                if does_exist_ "$NEW" 0; then
+                    [[ " ${CAN[@]} " =~ " $NEW " ]] && sbnc=" $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' $NEW 5))"
+                    bundle echo "$(es3)You entered: $NEW$sbnc"
                     if [[ " ${CAN[@]} " =~ " $NEW " ]]; then
                         ask "$(qpf)Are you ready to install php$NEW" "$YES" && break || exit1
                     else
                         no_candidate "$NEW"
                     fi
-                else
-                    does_not_exist "$NEW"
                 fi
             done
             install_new_php "$OLD" "$NEW"
@@ -338,20 +350,19 @@ if ${B[supported]}; then
                 mapfile -t missing_new_packages< <(packages_diff "$OLD" "$NEW")
                 kill_spinner
                 if ((${#missing_new_packages[@]})); then
-                    array_populated missing_new_packages &
                     if ((${#missing_new_packages[@]}==1)); then
                         plu='is:' plu2='one:is' mnp_string="$(B)${missing_new_packages[0]}$(N)"
                     else
                         plu='ese:s' plu2='some:are' mnp_string="$(listify B ${missing_new_packages[@]})"
                     fi
                     separator
-                    echo " -$(format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Although php$NEW is installed, ${plu2%:*} $(Y)php$NEW$(N) package${plu#*:} ${plu2#*:} still missing compared to $(Y)php$OLD$(N) and the minimum packages that are needed to run a server like Nextcloud. Th${plu%:*} ${plu2#*:} the missing one${plu#*:}:" 3)"
-                    o3; echo "$(format_string "$mnp_string" 3)"
-                    os; echo "If you answer $(box no) here, the script will continue without installing th${plu%:*} package${plu#*:}."
+                    bundle echo "$(format_string "- You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Although php$NEW is installed, ${plu2%:*} $(Y)php$NEW$(N) package${plu#*:} ${plu2#*:} still missing compared to $(Y)php$OLD$(N) and the minimum packages that are needed to run a server like Nextcloud. Th${plu%:*} ${plu2#*:} the missing one${plu#*:}:" 3)"
+                    bundle echo "$(format_string "  $mnp_string" 3)"
+                    o3; echo "If you answer $(box no) here, the script will continue without installing th${plu%:*} package${plu#*:}."
                     ask "$(qpf)Do you want to install th${plu%:*} package${plu#*:}" "$YES" && install_new_php "$OLD" "$NEW"
                 fi
             else
-                echo " -$(format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Since php$NEW is not yet installed at all, it will be installed from scratch." 3)"
+                bundle echo "$(format_string "- You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Since php$NEW is not yet installed at all, it will be installed from scratch." 3)"
                 ask "$(qpf)Are you ready to install php$NEW" "$YES" && install_new_php "$OLD" "$NEW" || exit1
             fi
         else
@@ -398,13 +409,13 @@ if ${B[supported]}; then
             done
         fi
         separator
-        echo " -$(format_string "The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
-        f; G; echo "$(prompt;lB) $me${FLAG[forceflag]}$(C) "$OLD" "$NEW""; N
-        f; O; echo " -$(format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3; N)"
-        f; G; echo "$(prompt;P) $me${FLAG[forceflag]} --switch-version"; N
-        f; O; echo "  $(format_string "or run it now:" 3; N)"
+        echo "$(format_string "- The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
+        f; G; echo "$(prompt;lB) $ME${FLAG[forceflag]}$(C) "$OLD" "$NEW""; N
+        f; O; echo "$(format_string "- You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3; N)"
+        f; G; echo "$(prompt;P) $ME${FLAG[forceflag]} --switch-version"; N
+        f; O; echo "$(format_string "  or run it now:" 3; N)"
         if ask "$(qpf)Do you want to switch the php version now" "$YES"; then
-            $me${FLAG[forceflag]} --switch-version
+            $ME${FLAG[forceflag]} --switch-version
         else
             contribute_
         fi
@@ -428,7 +439,8 @@ if ${B[supported]}; then
         N;f;exit0
     fi
 else
-    f; lB; echo " -$(format_string "Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$(${B[needforce]} && echo -n " unless you call it with $(GRAYbg)[ --force ]"; N)" 3)"
+    f
+    bundle echo "$(lB; format_string "- Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$(${B[needforce]} && bundle echo -n " unless you call it with $(GRAYbg)[ --force ]"; N)" 3)"
     f
     anykey
     separator
@@ -443,6 +455,7 @@ else
     anykey
     separator
     ask "$(qpf)Do you want to read the help" "$YES" && explain
-    N; f; exit0
+    N; f
+    exit0
 fi
 

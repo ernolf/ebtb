@@ -10,9 +10,6 @@ __license__
 ${NEXTCLOUD_BASHLIB:-_} && return
 NEXTCLOUD_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire sudo)
 . <(lrequire php/version)
 . <(require nc/nextcloud_aio)
 
@@ -44,7 +41,7 @@ else
     if [ ! -d "$NC_DIR" ]; then
         . <(req nc/first_run)
         first_run
-    elif [[ "$(${X[id]} -un)" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
+    elif [[ "${I[un]}" != "$NC_USER" && ! -r "$NC_DIR" ]]; then
         su_do "u=NC_USER"
     elif [ ! -r "$NC_DIR/lib/base.php" ]; then
         . <(req nc/first_run)
@@ -55,19 +52,19 @@ fi
 config2json(){
 
     jq_filter(){
-# TODO 0 -->
+# TODO 1 -->
 # as oneliner:
 # echo "$@"|${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
-# TODO <-- 0
+# TODO <-- 1
         echo "$@" | ${X[jq]} -c '[.[] | .[]]
             | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
             | reduce .[]as $item({};. * $item)'
     }
 
-# TODO 1 -->
+# TODO 2 -->
 # as oneliner:
 # C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
-# TODO <-- 1
+# TODO <-- 2
     C2J='<?php
     $c = [];
     foreach ($argv as $f) {
@@ -114,11 +111,10 @@ else
     # the occ command call is saved under occ, adapted to the user and environment
     occ(){ $phpcli -f $NC_DIR/console.php "$@"; }
     
-    if (( $(${X[id]} -u) )); then
-        [ "$(${X[id]} -un)" != "$NC_USER" ] && su_do "u=NC_USER"
-    else
-        # you are root
+    if ${B[rt]}; then
         occ(){ ${X[sudo]} -u $NC_USER $phpcli -f $NC_DIR/console.php "$@"; }
+    else
+        [[ "${I[un]}" == "$NC_USER" ]] || su_do "u=NC_USER"
     fi
 fi
 

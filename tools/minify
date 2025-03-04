@@ -32,20 +32,33 @@ minify() {
         # remove the newline immediately following the opening parenthesis in array declarations,
         # then replace any remaining newlines within the array declaration with a space
         ${X[sed]} -E ':a;N;$!ba; s/(=\()\n/\1/g; :b; s/(=\([^)]*)\n/\1 /g; tb' |\
+        # fix from the step before
+        # replace the space after a directory following a "cd" command with a newline.
+        ${X[sed]} -E 's/(cd\s+\/[^ ;]+) /\1\n/g' |\
         # remove escaped newlines (backslash followed by a newline)
         ${X[sed]} ':a;N;$!ba;s/\\\n//g' |\
         # replace newline following an opening curly brace with a space
         ${X[sed]} ':a;N;$!ba;s/{\n/{ /g' |\
         # replace all remaining newlines with semicolons
         ${X[sed]} ':a;N;$!ba;s/\n/;/g' |\
-        # replace the sequence ')";[' with ')" [' to correctly separate array elements.
-        ${X[sed]} -E 's/\)";\[/)" \[/g' |\
-        # replace the sequence ")';[" with "), [" to correctly separate array elements.
-        ${X[sed]} -E "s/\)';\[/)' \[/g" |\
+#        # replace the sequence ')";[' with ')" [' to correctly separate array elements.
+#        ${X[sed]} -E 's/\)";\[/)" \[/g' |\
+#        # replace the sequence ")';[" with "), [" to correctly separate array elements.
+#        ${X[sed]} -E "s/\)';\[/)' \[/g" |\
+        # Only replace the sequence ')";[' with ')" [' (and similarly for the single-quoted variant)
+        # if it is not part of a variable assignment (i.e., there is no '=' before the sequence on the same line).
+        ${X[sed]} -E '/^[^=]*\)";\[/ s/\)";\[/)" \[/g' |\
+        ${X[sed]} -E "/^[^=]*\)';\[/ s/\)';\[/)' \[/g" |\
         # remove spaces preceding the ">" character
         ${X[sed]} 's/ >/>/g' |\
+        # remove spaces preceding the "< <(" sequence
+        ${X[sed]} 's/ < <(/< <(/g' |\
         # replace "&;" with "&" to correct accidental character sequences
         ${X[sed]} 's/&;/\&/g' |\
+        # remove preceding and trailing ; from &&
+        ${X[sed]} 's/[;]*&&[;]*/\&\&/g' |\
+        # remove preceding and trailing ; from ||
+        ${X[sed]} 's/[;]*||[;]*/||/g' |\
         # correct spacing for the keyword "in"
         ${X[sed]} 's/ in;/ in /g' |\
         # correct spacing for "do"

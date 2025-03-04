@@ -10,8 +10,6 @@ __license__
 ${CHFILES_BASHLIB:-_} && return
 CHFILES_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire php/extensions)
 
 changed_files_(){

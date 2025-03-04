@@ -14,35 +14,13 @@ BINARIES_BASHLIB=:
 
 declare binary
 declare -a binaries
-# TODO 0 -->
-
-#    PHPVREGEX='php(5\.6|[78]\.[01234])'
-
-#    mapfile -t binaries< <((grep -Roh 'X\[[^]]\+\]' /root/Projekte/ebtb | sed 's/X\[//;s/\]//' | grep -v '\$';p_nosort "${!HTTPD[@]}") | sort -u)
-
-#     binaries=(a2disconf a2dismod a2enconf a2enmod ansifilter apache2ctl apt apt-cache apt-get apt-mark apt-rdepends autoupdate awk base64 basename cat ccdiff chmod chown clear column comm cp curl cut date diff dirname dmesg docker dos2unix dpkg dpkg-query env expr file find fuser gawk getopt gpg grep gzip head html2text id ip jq less ls lsb_release lsof make md5sum mkdir mktemp mv mysql needrestart netstat nl od paste pecl perl pgrep php php-config phpdismod phpenmod php-fpm phpize php-module-builder phpquery ps psql python3 realpath rm rmdir sed seq sha256sum sha512sum shfmt shuf sleep snap sort sqlite3 ss stat sudo systemctl tail tar tee tidy touch tput tr update-alternatives watch wc xargs xmlstarlet)
-
-#    HTTPD=(
-#        [apache2]=0
-#        [caddy]=0
-#        [lighttpd]=0
-#        [mini_httpd]=0
-#        [nginx]=0
-#        [tntnet]=0
-#        [yaws]=0
-#    )
-
-#    PHP_V_REGEX='(5\.6|[78]\.[01234])'
-#    php$PHP_V_REGEX php-config$PHP_V_REGEX php-fpm$PHP_V_REGEX phpize$PHP_V_REGEX
-
-# TODO <-- 0
 
 unset BINARIES BINARY X
 declare -gA BINARY 2>/dev/null || declare -A BINARY
 
 BINARY[env]="$(command -v env)"
 
-for binary in readlink gawk sed; do
+for binary in gawk sed; do
     if [ -x "$(command -v $binary)" ]; then
         BINARY[$binary]="${BINARY[env]} LC_MESSAGES=C $(command -v $binary)"
     else
@@ -80,10 +58,16 @@ for binary in "${binaries[@]}"; do
 done
 unset -v binary binaries
 
+# Create curlc for `curl --compress`
+BINARY[curlc]="${BINARY[curl]} --compressed"
+# xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
+[ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t"
+
+
 # Create a nameref for BINARY named X
 declare -n X=BINARY
 # readonly -A X # this is declared as readonly after the depency_check passed
 
-[[ "$(type -t require)" == function ]] && . <(q2 require backcomp)
+[[ "$(type -t req)" == function ]] && . <(req backcomp 2>/dev/null)
 
 ${B[binaries_debugx]:-false} && set -x

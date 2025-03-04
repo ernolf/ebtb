@@ -10,11 +10,12 @@ __license__
 ${ASK_BASHLIB:-_} && return
 ASK_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire prefix)
 . <(lrequire awksed)
-
+# TODO <-- 0
 # declare globals for ask handling
 declare YES NO Yes No
 YES="$(lG)yes$(N)"
@@ -96,20 +97,6 @@ ask(){
     return $r
 }
 
-bundle(){
-    local hauler
-    hauler="$1"
-    shift
-    haul $hauler "$@"
-    case "$hauler" in
-      echo) echo -e "$@"
-        ;;
-       cat) local -a payload; local -i i
-            mapfile -t payload< <(${X[cat]} "$@")
-            for i in ${!payload[@]}; do echo -e "${payload[i]}"; done
-    esac
-}
-
 # Function for confirmation prompt
 confirm_choice() {
 #    required_args 2 "$@" # 1st argument can be empty!
@@ -142,7 +129,7 @@ confirm_choice() {
 #                f
 #                php_a2module_2_fpm "$PHP_VERSION"
 #                apt_remove 'libapache2-mod-php*'
-#                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+#                "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
 #                anykey
 #                return 0
 #                ;;
@@ -150,7 +137,7 @@ confirm_choice() {
 #                f
 #                php_fpm_2_a2module $PHP_VERSION
 #                apt_remove 'php*-fpm'
-#                "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+#                "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
 #                anykey
 #                return 0
 #        esac

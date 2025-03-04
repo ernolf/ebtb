@@ -7,11 +7,17 @@ __copyright__
 __license__
 #
 
+declare -f _ &>/dev/null || _(){ false; }
+if (( epoch < 1737773190 )); then
+    q0(){ "$@" &>/dev/null; }
+    q1(){ "$@" >/dev/null; }
+    q2(){ "$@" 2>/dev/null; }
+fi
+
 ${BASICS_BASHLIB:-_} && return
 BASICS_BASHLIB=:
 
 . <(lrequire binaries)
-. <(lrequire awksed)
 
 declare invi="Invalid input."
 
@@ -31,6 +37,11 @@ tlwr(){
 }
 tolower(){
     printf %s "${*,,}"
+}
+
+# printf not sorted line by line
+p_notempty(){
+    printf '%s\n' "$@" | ${X[grep]} -v '^[[:space:]]*$'
 }
 
 # printf not sorted line by line
@@ -198,7 +209,7 @@ sufix(){
 hnt1(){
     local file
     local -i hn
-    hn="${1:-2}" file="${2:-$ca_me}"
+    hn="${1:-2}" file="${2:-$MP}"
     ${X[head]} -n $hn "$file" | ${X[tail]} -n 1
 }
 
@@ -206,13 +217,13 @@ hnt1(){
 tnh1(){
     local file
     local -i tn
-    tn="${1:-2}" file="${2:-$ca_me}"
+    tn="${1:-2}" file="${2:-$MP}"
     ${X[tail]} -n $tn "$file" | ${X[head]} -n 1
 }
 
 tnh1_strg(){
     local string file
     local -i tn
-    string="$1" tn="${2:-3}" file="${3:-$ca_me}"
+    string="$1" tn="${2:-3}" file="${3:-$MP}"
     [[ " $(tnh1 $tn "$file") " =~ " $string " ]]
 }

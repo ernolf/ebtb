@@ -1,0 +1,155 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${COMMANDS_BASHLIB:-_} && return
+COMMANDS_BASHLIB=:
+
+# TODO 0 -->
+. <(lrequire spinner)
+. <(lrequire xml)
+. <(lrequire php/version)
+. <(lrequire nc/nextcloud)
+. <(lrequire nc/logo)
+. <(lrequire nc-apps/data_refine)
+. <(lrequire nc-apps/list)
+. <(lrequire nc-apps/app_update)
+. <(lrequire nc-apps/l10n)
+# TODO <-- 0
+${X[mkdir]} -p ${D[li]}/nc-apps/commands.d
+
+. <(lrequire nc-apps/commands.d/install_overwrite)
+. <(lrequire nc-apps/commands.d/help)
+. <(lrequire nc-apps/commands.d/filters)
+
+all_apps(){
+    stock_up_arrays filtered_appstore=:
+    local all_endis app
+    local -a local_args
+    local -A bool
+# TODO 1 -->
+    if ${B[trace]:-_}; then
+        echo "==TRACE=start=" >/dev/tty
+        print_stack_trace >/dev/tty
+        echo -n "global bool values  -" >/dev/tty
+        for x in ${!B[@]}; do echo -n " $x=${B[$x]}" >/dev/tty; done; echo >/dev/tty
+        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+            echo -n "local bool values   -" >/dev/tty
+            for x in ${!bool[@]}; do echo -n " $x=${bool[$x]}" >/dev/tty; done; echo >/dev/tty
+        fi
+        echo "V[app_id]           - ${V[app_id]}" >/dev/tty
+        echo "section             - $section" >/dev/tty
+        echo "v2i V[nc_version]   - $(v2i ${V[nc_version]%.*})" >/dev/tty
+        echo "v2i V[nc_key]       - $(v2i ${V[nc_key]})" >/dev/tty
+        echo "==TRACE=end===" >/dev/tty
+    fi
+trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
+# TODO <-- 1
+    while (( $# )); do
+        case "$1" in
+            shipped)
+                bool[s]=:
+                shift
+                ;;
+            not_shipped)
+                bool[ns]=:
+                shift
+                ;;
+            updatable)
+                bool[up]=:
+                shift
+                ;;
+            enabled|disabled|local|store|all)
+                all_endis="$1"
+                shift
+                ;;
+            *)  local_args+=("$1")
+                shift
+        esac
+    done
+    ( ${bool[s]:-_} || ${bool[up:-_]} ) && [[ "$all_endis" =~ all|store ]] && all_endis=local
+    for app in $(apps_ "$all_endis"); do
+        if ${bool[s]:-_}; then     # only list the shipped apps
+            is_shipped_ "$app" -q && list "$app" "${local_args[@]}"
+        elif ${bool[ns]:-_}; then  # only list the not shipped apps
+            is_shipped_ "$app" -q || list "$app" "${local_args[@]}"
+        elif ${bool[up]:-_}; then  # only list the updatable apps
+            [[ " ${availupd[@]%%#*} " =~ " $app " ]] && list "$app" "${local_args[@]}"
+        else # list all apps
+            list "$app" "${local_args[@]}"
+        fi
+    done
+}
+
+shipped(){
+    all_apps shipped "$@" use_json_all=${B[use_json_all]}
+}
+
+not_shipped(){
+    all_apps not_shipped "$@" use_json_all=${B[use_json_all]}
+}
+
+updatable(){
+    all_apps updatable "$@" use_json_all=${B[use_json_all]}
+}
+
+id(){
+    stock_up_arrays filtered_appstore=: all=:
+    local app
+    for app in $(apps_ all); do [[ "${app,,}" =~ ${V[app_id],,} ]] && list "$app" "$@" use_json_all=:; done
+}
+
+ids(){
+    stock_up_arrays filtered_appstore=: all=:
+    local app
+    for app in "${app_ids[@]}"; do list "$app" "$@" use_json_all=:; done
+}
+
+name(){
+    stock_up_arrays filtered_appstore=: all=:
+    build_id_name_array(){
+        local app xml_f name tmp
+        tmp="$1"
+        shift
+        appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id" | ${X[jq]} -r >> "$tmp"
+        for app in $(apps_ all); do
+            if ! ${X[grep]} -qsw "$app" "$tmp"; then
+                xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
+                if [ -f "$xml_f" ]; then
+                    name=$(${X[xmls]} -v "(//info/name)" "$xml_f" | ${X[sed]} '2,$d')
+                    echo "$name" | ${X[grep]} -iqs "$*" && echo "$app" >> "$tmp"
+                fi
+            fi
+        done
+    }
+    local n_tmp=$(tf)
+    echo "$(GRAY) . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . .$(N)"
+    spinner &
+    build_id_name_array $n_tmp "${V[app_name]}" & job_id=$!
+    wait $job_id
+    mapfile id_name_array < "$n_tmp"
+    kill_spinner
+    for app in "${id_name_array[@]}";do list "$app" "$@" use_json_all=:; done
+}
+
+update(){
+    stock_up_arrays filtered_appstore=:
+    local -a local_args
+    while (( $# )); do
+        case "$1" in
+            enabled|disabled|local|all)
+                all_endis=$1
+                shift ;;
+            *)  local_args+=("$1")
+                shift
+        esac
+    done
+    for app in $(apps_ $all_endis); do
+        [[ " ${availupd[@]%%#*} " =~ " $app " ]] && do_update_ $app "${local_args[@]}"
+    done
+}

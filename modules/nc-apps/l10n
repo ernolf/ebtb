@@ -10,8 +10,6 @@ __license__
 ${L10N_BASHLIB:-_} && return
 L10N_BASHLIB=:
 
-. <(lrequire binaries)
-
 # Check if the given language code is valid. If not, return 'en'
 validate_language() {
     local lang="$1" valid_languages

@@ -10,7 +10,7 @@ __license__
 ${ASSUMED_VERSION_BASHLIB:-_} && return
 ASSUMED_VERSION_BASHLIB=:
 
-. <(lrequire $sin/db)
+. <(lrequire nc-apps/db)
 
 # TODO 0 -->
 # min_version(){ $(echo $(r_db "SELECT CASE WHEN major = (SELECT MIN(major) FROM versions) THEN platform ELSE NULL END AS result FROM versions;"));}
@@ -45,11 +45,12 @@ assumed_version_select(){
       # Get the selected backup directory
         selected_index=$((version_num - n))
         if [ "$2" = "min_" ]; then
-            nc_min_version="${available_versions[$selected_index]}"
+            V[nc_min_version]="${available_versions[$selected_index]}"
         else
-            nc_version="${available_versions[$selected_index]}"
+            V[nc_version]="${available_versions[$selected_index]}"
         fi
-        eval echo \"Your choice: \$nc_$2version\"
+#        eval echo \"Your choice: \$nc_$2version\"
+        echo "Your choice: ${V[nc_$2version]}"
         echo "Do you want to assume this as $2version?"
         anykey
       # Exit the loop if a valid input is provided
@@ -59,32 +60,29 @@ assumed_version_select(){
 }
 
 assumed_version_set(){
-    local cquery query nc_lowest
-    nc_lowest="${LATEST_EOL[0]}"
-    ${B[database_created]} || create_database
+    ${B[database_created]:-_} || create_database
+    local cquery query
     if [[ ! ${1%%.*} =~ ^[0-9]+$ ]]; then
         assumed_version_select
-    elif [ 0${1%%.*} -lt 0${nc_lowest%%.*} ]; then
-        o2; echo "the min version supported by this script is $nc_lowest"
-        if [ "$2" = "min_" ]; then
-            nc_min_version="$nc_lowest"
-        else
-            nc_version="$nc_lowest"
+    elif [ 0${1%%.*} -lt 0${V[nc_min_version]%%.*} ]; then
+        o2; echo "the min version supported by this script is ${V[nc_min_version]}"
+        if (( $# == 1 )); then
+            V[nc_version]="${V[nc_min_version]}"
         fi
     else
         cquery="SELECT COUNT(platform) FROM versions WHERE major == ${1%%.*};"
         query="SELECT platform FROM versions WHERE major == ${1%%.*};"
         case $(r_db "$cquery") in
             0)  if [ "$2" = "min_" ]; then
-                    nc_min_version=${1%%.*}.0.0
+                    V[nc_min_version]=${1%%.*}.0.0
                 else
-                    nc_version=${1%%.*}.0.0
+                    V[nc_version]=${1%%.*}.0.0
                 fi
                 ;;
             1)  if [ "$2" = "min_" ]; then
-                    nc_min_version=$(r_db "$query")
+                    V[nc_min_version]="$(r_db "$query")"
                 else
-                    nc_version=$(r_db "$query")
+                    V[nc_version]="$(r_db "$query")"
                 fi
                 ;;
             *)  assumed_version_select ${1%%.*} $2

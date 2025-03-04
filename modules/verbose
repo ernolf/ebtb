@@ -10,11 +10,12 @@ __license__
 ${VERBOSE_BASHLIB:-_} && return
 VERBOSE_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire button)
 . <(lrequire exit)
 . <(lrequire anykey)
-
+# TODO <-- 0
 # error handling
 error(){
     if ! ${B[quiet]:-_}; then

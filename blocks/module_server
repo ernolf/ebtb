@@ -1,10 +1,10 @@
 ls_(){
     case "$1" in
         pidstatus)
-            [ -f "$ls_pid_file" ] && ps -p $(cat "$ls_pid_file") > /dev/null && return 0 || return 1
+            [ -f "$ls_pid_file" ] && ${C[ps]} -p $(${C[c]} "$ls_pid_file") > /dev/null && return 0 || return 1
             ;;
         portstatus)
-            lsof -Pi :$lsp -sTCP:LISTEN -t >/dev/null && return 0 || return 1
+            ${C[l]} -Pi :$lsp -sTCP:LISTEN -t >/dev/null && return 0 || return 1
             ;;
         start)
             if ls_ pidstatus && ls_ portstatus; then
@@ -20,8 +20,8 @@ ls_(){
         stop)
             if ls_ pidstatus; then
                 echo "Stopping local module server..."
-                kill $(cat "$ls_pid_file")
-                rm -f "$ls_pid_file"
+                kill $(${C[c]} "$ls_pid_file")
+                ${C[r]} -f "$ls_pid_file"
             fi
             ;;
         restart)

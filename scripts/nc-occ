@@ -7,17 +7,17 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter prefix button fstring exit
-    spinner anykey line array ask sudo dependency vdir integrity nc/nextcloud
-)
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter prefix button fstring exit
+#    spinner anykey line array ask sudo dependency vdir integrity nc/nextcloud
+#)
+# TODO <-- 0
+modules=(fstring spinner nc/nextcloud)
 __debug__
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__
@@ -36,7 +36,7 @@ declare JSON_FILE arg
 declare -i JSON_TTL
 
 # File containing the JSON output from 'occ list --format=json'
-JSON_FILE="$TMPDIR/$bm-tmp/occ_commands.json"
+JSON_FILE="$TMPDIR/$MS-tmp/occ_commands.json"
 # time in seconds during which the JSON object file is not updated
 JSON_TTL=300 # <- do not move this
 # Bools to include all options and help option
@@ -50,7 +50,7 @@ for arg in "$@"; do
         -u|--update)      JSON_TTL=0               ;;
         -a|--all_options) B[include_all_options]=: ;;
         --show_help)      B[include_help]=:        ;;
-        -h|--help)        B[help]=: JSON_TTL=$(${X[grep]} -oP '^JSON_TTL=\K\d+' $ca_me)
+        -h|--help)        B[help]=: JSON_TTL=$(${X[grep]} -oP '^JSON_TTL=\K\d+' $MP)
                           break
     esac
 done
@@ -60,7 +60,7 @@ help_(){
 
     Simply run
 
-        $me
+        $ME
 
     to create your occ commands interactively.
 
@@ -116,15 +116,14 @@ show_menu() {
     f
     read -p "$prompt: " choice
     case "$choice" in
-        r)  if ((level > 1)); then
-                "$me" "json=$my_json" $my_args
-                exit 0
+        r)  if (( level > 1 )); then
+                $CMA
             fi
             ;;
         q)  exit0
             ;;
         *)  separator
-            return $((choice - 1))
+            return $(( choice - 1 ))
     esac
 }
 

@@ -10,10 +10,11 @@ __license__
 ${FSTRING_BASHLIB:-_} && return
 FSTRING_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire ansi)
 . <(lrequire filter)
-
+# TODO <-- 0
 # format a long string in lines with a maximum length
 format_string() {
     [[ "$-" =~ x ]] && { set +x; local debugx=true; } || local debugx=_

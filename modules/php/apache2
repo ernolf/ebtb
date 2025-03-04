@@ -10,8 +10,6 @@ __license__
 ${APACHE2_BASHLIB:-_} && return
 APACHE2_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire httpd)
 
 # globals

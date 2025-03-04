@@ -10,13 +10,9 @@ __license__
 ${EXTENSIONS_BASHLIB:-_} && return
 EXTENSIONS_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
-. <(lrequire array)
 . <(lrequire dpkg)
 . <(lrequire php/versions)
-[ "$sin" = 'php-updater' ] && . <(require php/sury)
+[ "$MS" = 'php-updater' ] && . <(require php/sury)
 
 # globals
 q2 declare -ag EXTS_ADMIN || declare -a EXTS_ADMIN
@@ -111,30 +107,44 @@ extension_include_dir_of_(){
 }
 
 detect_and_assign_extensions(){
-    local pv dpkg_package phpregex
-    local -i i
+    assign(){
+        local dpkg_package phpregex
+        if [ "${search:-}" = 'apache2' ]; then
+            phpregex="libapache2-mod-$PHPVREGEX"
+        else
+            phpregex="php"
+        fi
+        spinner C " . assign detected extensions to their corresponding package ." &
+        for dpkg_package in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
+            declare -ga ${dpkg_package//[.-]/_}
+            mapfile -t "${dpkg_package//[.-]/_}"< <(${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$")
+            mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$"|${X[sort]})
+        done
+        kill_spinner
+    }
+    local search pv
     local -a exts_all exts_dpkg
-    if [ "${1:-}" = 'apache2' ]; then
-        phpregex="libapache2-mod-$PHPVREGEX"
+    [[ "$@" =~ apache2 ]] && search=apache2
+    if [[ "$@" =~ assign ]]; then
+        assign
     else
-        phpregex="php"
+        spinner C " . detect actually installed extensions ." &
+        for pv in $(${X[phpquery]} -V); do
+            mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${APIS[$pv]}")
+        done
+        kill_spinner
+        assign
+        # EXTENSIONS_INSTALLED_BY_ADMIN
+        spinner C " . detect extensions installed by admin ." &
+        ${B[verbose]:-_} && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
+        mapfile -t EXTS_ADMIN< <(${X[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
+        mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
+        kill_spinner
     fi
-    spinner C " . detect extensions ." &
-    for pv in $(${X[phpquery]} -V); do
-        mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${APIS[$pv]}")
-    done
-    kill_spinner
-    spinner C " . assign extensions ." &
-    for dpkg_package in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
-        declare -ga ${dpkg_package//[.-]/_}
-        mapfile -t "${dpkg_package//[.-]/_}"< <(${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$")
-        mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$"|${X[sort]})
-    done
-    # EXTENSIONS_INSTALLED_BY_ADMIN
-    $verbose && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
-    mapfile -t EXTS_ADMIN< <(${X[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
-    mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
-    kill_spinner
+}
+
+assign_extensions(){
+    detect_and_assign_extensions assign "$@"
 }
 
 # EIBY4_=EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
@@ -302,7 +312,8 @@ php_ext_file_create(){
         if ! [[ " $(echo ${exts_all[@]##*/}|${X[sed]} 's/\.so//g') " =~ " ${ext_in_ext_file%.so} " ]]; then
             line_number=$(${X[grep]} -Enx "^\s*(zend_)?extension\s*=\s*$ext_in_ext_file" "$ext_file" | ${X[cut]} -d: -f1)
             if (( $line_number )); then
-                ${X[sed]} -i "${grep_output}d" "$ext_file"
+#                ${X[sed]} -i "${grep_output}d" "$ext_file"
+                ${X[sed]} -i "${line_number}d" "$ext_file"
             fi
         fi
     done
@@ -352,7 +363,18 @@ foreach(ini_get_all() as $k => $v) {
 ?>
 EOF
     ${X[chown]} -R www-data:www-data $apache_dir
-    start-stop-daemon --start --background --quiet --user www-data --pidfile "$apache_dir/httpd.pid" --exec /usr/sbin/apache2 -- -f "$apache_dir/httpd.conf"
+    if ${bool[debug]:-_}; then
+        exec 3>&1 4>&2  # Save the original stdout and stderr
+        exec > /dev/tty 2>&1  # Redirect both stdout and stderr to /dev/tty
+        trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
+        ${X[start-stop-daemon]} --start --user www-data --pidfile "$apache_dir/httpd.pid" --exec ${X[apache2]} -- -f "$apache_dir/httpd.conf"
+        echo "returnvalue: $? - pid $!"
+        set +x; bool[debug]=_; trap - DEBUG; set +x; read -rsn 1 -p "Press any key to continue " dummy; echo
+        exec 1>&3 2>&4  # Restore the original stdout and stderr
+        exec 3>&- 4>&-  # Close the temporary file descriptors
+    else
+        ${X[start-stop-daemon]} --start --background --quiet --user www-data --pidfile "$apache_dir/httpd.pid" --exec ${X[apache2]} -- -f "$apache_dir/httpd.conf"
+    fi
     for i in {1..3}; do q0 ${X[curl]} -s "http://localhost:$port/index.php" && break; sleep 0.3; done
     ${X[curl]} -s "http://localhost:$port/index.php" | ${X[sort]}
     kill "$(< $apache_dir/httpd.pid)"
@@ -496,14 +518,21 @@ php_local_vals(){
 php_ini_local(){
     local pv sapi err line key
     local -a locals defaults
-    unset default_map local_map; local -A default_map local_map
+    unset default_map local_map
+    local -A default_map local_map
     pv="$1" sapi="$2" err="$3"
+
+    # collect all default values
 #    mapfile -t defaults < <(php_default_vals $pv $sapi)
-    mapfile -t defaults < <(php_directive_vals_ default $pv $sapi)
+    mapfile -t defaults < <(php_directive_vals_ default "$pv" "$sapi")
     for line in "${defaults[@]}"; do default_map["${line%%=*}"]="${line#*=}"; done
+
+    # collect local values
 #    mapfile -t locals < <(php_local_vals $pv $sapi err=$err)
-    mapfile -t locals < <(php_directive_vals_ local $pv $sapi err=$err)
+    mapfile -t locals < <(php_directive_vals_ local "$pv" "$sapi" "err=$err")
     for line in "${locals[@]}"; do local_map["${line%%=*}"]="${line#*=}"; done
+
+    # output directives that differ from default value
     for key in "${!local_map[@]}"; do
         [[ "${local_map[$key]}" != "${default_map[$key]}" ]] && echo "$key=${local_map[$key]} (${default_map[$key]})"
     done

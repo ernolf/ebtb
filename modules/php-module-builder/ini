@@ -10,9 +10,6 @@ __license__
 ${INI_BASHLIB:-_} && return
 INI_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
 . <(lrequire php/extensions)
 
 ini_symlinks(){

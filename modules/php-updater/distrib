@@ -10,17 +10,12 @@ __license__
 ${DISTRIB_BASHLIB:-_} && return
 DISTRIB_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
-. <(lrequire ask)
 . <(lrequire php/versions)
 . <(lrequire dist/os_release)
-. <(require $sin/disclaimer)
+. <(require php-updater/disclaimer)
 
 call_me(){
-    o2; GRAY; echo "You can call this list with:$(o 35; B)$me --list-$1"
+    o2; GRAY; echo "You can call this list with:$(o 35; B)$ME --list-$1"
     line '-' dP 2/78 a${2:-1}
 }
 
@@ -34,7 +29,7 @@ check_debian(){
     disclaimer
     list_supported_debian
     call_me debian 2
-    os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
+    o3; lB; bundle echo -n "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
     check_systemd
     local ver releasedate eos eol
     local -l vercode chan
@@ -45,8 +40,8 @@ check_debian(){
         *)  [ -n "$OS_DEBIAN_CODENAME" ] && ver="${DEBIAN_VERSIONS[$OS_DEBIAN_CODENAME]}" || ver="$OS_VERSION_ID"
             echo ", which is"
             case $OS_ID in
-            linuxmint)  os; printf '%s' "a version of Linux Mint based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)" ;;
-                    *)  os; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)"
+            linuxmint)  o3; printf '%s' "a version of Linux Mint based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)" ;;
+                    *)  o3; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)"
             esac
     esac
     [ "${OS_VERSION_CODENAME,,}" = 'sid' ] && ver='sid' || ver="$(printf '%02d' "$ver")"
@@ -54,9 +49,9 @@ check_debian(){
     [[ "$(supported_suites_ debian)" =~ $vercode ]] && bool[ss]=: || bool[ss]=_
     if [[ "$releasedate" = RR || "$releasedate" == TBA ]]; then
         echo "."
-        os; echo "The unstable and testing channels are too new for this script."
-        os; echo "You can however continue risk free here to the detailed informations provided."
-        os; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
+        o3; echo "The unstable and testing channels are too new for this script."
+        o3; echo "You can however continue risk free here to the detailed informations provided."
+        o3; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
         B[force]=_
         ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked to_new || exit1
     elif [[ $today -le $eol && ${bool[ss]} ]]; then
@@ -64,21 +59,21 @@ check_debian(){
         mark_checked supported sury debian $vercode
     elif [ $today -le $eol ]; then
         echo ", which is"
-        os; echo "brand new and supported by this script but there are not (yet) apt repositories"
-        os; echo "provided by Ondřej Surý. That will change in future.$(lG) Good!"; N
+        o3; echo "brand new and supported by this script but there are not (yet) apt repositories"
+        o3; echo "provided by Ondřej Surý. That will change in future.$(lG) Good!"; N
         mark_checked supported
     elif [ $today -gt $eol ]; then
         echo ", which is"
-        os; echo "too old and not supported by this script  Please update your system first."
-        os; echo "You can however continue risk free here to the detailed informations provided."
-        os; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
+        o3; echo "too old and not supported by this script  Please update your system first."
+        o3; echo "You can however continue risk free here to the detailed informations provided."
+        o3; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
         B[force]=_
         ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked to_old || exit1
     else
         echo "."
-        os; lB; echo "This version was not recognized by the script."
-        os; lB; echo "You can however continue risk free here to the detailed informations provided."
-        os; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
+        o3; lB; echo "This version was not recognized by the script."
+        o3; lB; echo "You can however continue risk free here to the detailed informations provided."
+        o3; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
         B[force]=_
         ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked unknown || exit1
     fi
@@ -94,9 +89,9 @@ check_ubuntu(){
     call_me ubuntu 2
 
     if [ "$OS_ID" = "neon" ]; then
-        os; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
+        o3; lB; bundle echo -n "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
     else
-        os; lB; printf '%s' "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
+        o3; lB; bundle echo -n "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
     fi
     check_systemd
     local ver vercode2 releasedate
@@ -109,8 +104,8 @@ check_ubuntu(){
         *)  [ -n "$OS_UBUNTU_CODENAME" ]&&ver="${UBUNTU_VERSIONS[$OS_UBUNTU_CODENAME]}"
             echo ", which is"
             case $OS_ID in
-            linuxmint)  os; printf '%s' "a version of Linux Mint based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)" ;;
-                    *)  os; printf '%s' "a distribution based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)"
+            linuxmint)  o3; printf '%s' "a version of Linux Mint based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)" ;;
+                    *)  o3; printf '%s' "a distribution based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)"
             esac
     esac
     read -r vercode1 vercode2 releasedate eos <<<${UBUNTU_VERSIONS_DATA["$ver"]//;/ }
@@ -122,35 +117,37 @@ check_ubuntu(){
         mark_checked supported sury ubuntu $vercode1
     elif [[ $today -le $eos && ${bool[lts]} ]]; then
         echo ",$(lB) wich is"
-        os; echo "brand new and supported by this script but there are not (yet) apt repositories"
-        os; echo "provided by.Ondřej Surý. That will change in future.$(lG) Good!"; N
+        o3; echo "brand new and supported by this script but there are not (yet) apt repositories"
+        o3; echo "provided by.Ondřej Surý. That will change in future.$(lG) Good!"; N
         mark_checked supported
     elif [[ $today -gt $eos && ${bool[lts]} ]]; then
         echo ",$(lB) wich is"
-        os; echo "too old and not supported by this script  Please update your system first."
-        f; os; echo "You can however continue risk free here to the detailed informations provided."
-        os; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
+        o3; echo "too old and not supported by this script  Please update your system first."
+        f
+        o3; echo "You can however continue risk free here to the detailed informations provided."
+        o3; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
         B[force]=_
         ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked to_old || exit1
     elif [ $today -le $eos ]; then
         echo ",$(lB) wich is"
-        os; echo "an interim release without long term support and not suited for server use."
-        os; echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
-        os; echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
-        os; echo "provided by Ondřej Surý for interim releases."
-        os; echo "You can however continue risk free here to the detailed informations provided."
-        os; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
+        o3; echo "an interim release without long term support and not suited for server use."
+        o3; echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
+        o3; echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
+        o3; echo "provided by Ondřej Surý for interim releases."
+        o3; echo "You can however continue risk free here to the detailed informations provided."
+        o3; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
         B[force]=_
         ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked nolts || exit1
     else
         echo ",$(lB) wich is"
-        os; echo "an interim release without long term support and not suited for server use."
-        os; echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
-        os; echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
-        os; echo "provided by Ondřej Surý for interim releases. Additionally, support for this"
-        os; echo "version has expired. Please update your system first."
-        f; os; echo "You can however continue risk free here to the detailed informations provided."
-        os; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
+        o3; echo "an interim release without long term support and not suited for server use."
+        o3; echo "LTS or ‘Long Term Support’ releases are published every two years in April and"
+        o3; echo "are the ‘enterprise grade’ releases of Ubuntu. There are no apt repositories"
+        o3; echo "provided by Ondřej Surý for interim releases. Additionally, support for this"
+        o3; echo "version has expired. Please update your system first."
+        f
+        o3; echo "You can however continue risk free here to the detailed informations provided."
+        o3; echo "All other steps may work but have not been tested and therefore been deactivated."; N; f
         B[force]=_
         ask "$(qpf)continue in $(lG)safe mode$(N) now" "$YES" && mark_checked to_old nolts || exit1
     fi

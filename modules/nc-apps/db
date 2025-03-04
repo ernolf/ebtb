@@ -10,16 +10,16 @@ __license__
 ${DB_BASHLIB:-_} && return
 DB_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire $sin/github_api)
+# TODO 0 -->
+. <(lrequire spinner)
 . <(lrequire nc/nextcloud)
-
+. <(lrequire nc-apps/github_api)
+# TODO <-- 0
 # used (globaly) by database:
 B[database_created]=_
 
 declare runtime_etag appstore_dir db
-runtime_etag="$rte.000000"
+runtime_etag="${T[rte]}.000000"
 appstore_dir="$TMPDIR/nc-appstore-tmp"
 db="$appstore_dir/apps.db"
 
@@ -140,10 +140,10 @@ create_database(){
         ${X[sqlite3]} "$db" "CREATE TABLE IF NOT EXISTS database_created (runtime_etag TEXT PRIMARY KEY);"
     }
 
-# TODO 0 -->
+# TODO 1 -->
 #TODO: create tests if up to date
 #    [ -f "$db" ] && return 0
-# TODO <-- 0
+# TODO <-- 1
     if ${B[bgjobs]}; then
         GRAY;echo " . . . . . . . . . . . . . . .  create  database  . . . . . . . . . . . . . . .";N
         ${B[pager]} || spinner &
@@ -158,25 +158,22 @@ create_database(){
         write_local_ids
     fi
 
-
-#trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
-
     for latest in $(list_latest) master; do
         meta="stable"
 
-# TODO 1 -->
+# TODO 2 -->
 # TODO Possible fix for wrong github labels:
 #    case $latest in
 #        v28.0.0rc1) version="28.0.0.7" versionstring="28.0.0 RC1";;
 #        *)
-# TODO <-- 1
+# TODO <-- 2
         version_php="$(tf)"
         ${X[curl]} -so "$version_php" "$rawURL/$latest/version.php"
         version="$(nc_version_ short $version_php)"
         versionstring="$(nc_version_ string $version_php)"
-# TODO 2 -->
+# TODO 3 -->
 #    esac
-# TODO <-- 2
+# TODO <-- 3
 
         local -a parts=(${version//./ })
         major="${parts[0]}" minor="${parts[1]}"

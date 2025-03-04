@@ -10,12 +10,7 @@ __license__
 ${FIRST_RUN_BASHLIB:-false} && return
 FIRST_RUN_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
-. <(lrequire vdir)
-. <(lrequire ask)
-. <(lrequire $sin/disclaimer)
+. <(lrequire php-module-builder/disclaimer)
 
 # First run wizzard runs allways and only if occ could not be found in NC_DIR #
 first_run(){
@@ -25,10 +20,12 @@ first_run(){
         local flags=""
         [ -d "$*" ] || ${X[mkdir]} -p "$*"
         setvdir v "$*"
-        f; o2; echo "- $(lG)first run wizard completed successfully."; N; f
+        f
+        o2; echo "- $(lG)first run wizard completed successfully."; N
+        f
         ${B[force]} && flags="--force"
         ${B[remove]} && flags="$flags --remove"
-        $me "json=$my_json" $php_version $module $flags
+        $ME "json=${J[json]}" $php_version $module $flags
         exit 0
     }
     local yn q p dir
@@ -37,9 +34,11 @@ first_run(){
 
     yn="$(N)[$(lG)Y$(N)/$(R)n$(N)] " q="$(B)(or $(N)[$(P)q$(N)] $(B)to quit)$(N)"
 
-    f; o2; GRAY; echo "This step is required once after a new installation, sometimes after an update"
+    f
+    o2; GRAY; echo "This step is required once after a new installation, sometimes after an update"
     o2; echo "or if$(N) --firstrun $(GRAY)was passed:"
-    f; o2; B; echo "Hello, this is the first run wizard of$(N) \"$(Y)$me$(N)\""
+    f
+    o2; B; echo "Hello, this is the first run wizard of$(N) \"$(Y)$ME$(N)\""
     while :; do
         if ${B[remove]}; then
             o2; B; echo "enter the directory where the$(N) \"$(Y)$project$(N)\" $(B)directory resides $q"

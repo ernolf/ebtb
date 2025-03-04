@@ -10,20 +10,21 @@ __license__
 ${TEMPFILE_BASHLIB:-_} && return
 TEMPFILE_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
-
+# TODO <-- 0
 # standard for root:
 : "${TMPDIR:=/tmp}"
 [[ "$TMPDIR" == '/' || ! -d "$TMPDIR" ]] && TMPDIR='/tmp'
 [ -d "$TMPDIR" ] || TMPDIR='/temp'
 
 # unprivileged users need their own writable tmp dir:
-if (( $(${X[id]} -u) )); then
+if ! ${B[rt]}; then
     TMPDIR="${TMPDIR%/}"
     if (( $(${X[gawk]} -F/ '{print NF-1}' <<< "$TMPDIR") == 1 )) && [ -w "$TMPDIR" ]; then
-        TMPDIR="$TMPDIR/user-$(${X[id]} -u)"
+        TMPDIR="$TMPDIR/user-${I[u]}"
     elif [ ! -w "$TMPDIR" ]; then
-        TMPDIR="$(${X[gawk]} -F/ '{print "/"$2}' <<< "$TMPDIR")/user-$(${X[id]} -u)"
+        TMPDIR="$(${X[gawk]} -F/ '{print "/"$2}' <<< "$TMPDIR")/user-${I[u]}"
     fi
     [ -d "$TMPDIR" ] || q0 ${X[mkdir]} -m 755 "$TMPDIR"
 fi
@@ -32,7 +33,7 @@ ttf="$(${X[mktemp]} -p "$TMPDIR")"
 if [[ -n "$ttf" && -f "$ttf" ]]; then
     ${X[rm]} -f -- "$ttf"
 else
-    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '$(${X[id]} -un)'\e[0m" >&2
+    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '${I[un]}'\e[0m" >&2
     [ -t 0 ] || exit 1
 fi
 unset ttf

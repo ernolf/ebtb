@@ -7,19 +7,18 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter prefix exit anykey verbose line
-    array ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
-    $sin/help $sin/list_shares
-)
-
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter prefix exit anykey verbose line
+#    array ask sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db
+#    $MS/help $MS/list_shares
+#)
+# TODO <-- 0
+modules=(verbose nc/nextcloud nc/nextcloud_db $MS/help $MS/list_shares)
 __debug__
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__

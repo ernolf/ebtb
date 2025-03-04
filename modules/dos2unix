@@ -10,8 +10,6 @@ __license__
 ${DOS2UNIX_BASHLIB:-_} && return
 DOS2UNIX_BASHLIB=:
 
-. <(lrequire binaries)
-
 is_unix(){
     local file
     file="$1"

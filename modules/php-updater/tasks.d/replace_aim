@@ -91,15 +91,15 @@ replace_aim(){ # replace admin installed modules
                 serializers="$(${X[php]} -i | ${X[grep]} "Available serializers" | ${X[sed]} 's/.*=> //;s/,//g')"
                 compression="$(${X[php]} -i | ${X[grep]} "Available compression" | ${X[sed]} 's/.*=> //;s/,//g')"
                 if [[ ! "$serializers" =~ igbinary ]] && [ -z "$compression" ]; then
-                    bundle echo "$(xpf;format_string "$(Y)The actually installed $(C)redis$(Y) module was poorly built without enabled igbinary serializer support and without any compression ($(dY)lzf, zstd, and/or lz4$(Y)) support enabled, which results in a loss of performance." 3;N)"
+                    bundle echo "$(xpf; Y; format_string "The actually installed $(C)redis$(Y) module was poorly built without enabled igbinary serializer support and without any compression ($(dY)lzf, zstd, and/or lz4$(Y)) support enabled, which results in a loss of performance." 3;N)"
                 fi
             fi
-            bundle echo "$(ipf;format_string "The php module$plu $modstring can be replaced by this script. You can answer $(box no) here, but then you may be confronted with some error messages after the upgrade while migrating the settings." 3)"
+            bundle echo "$(ipf; format_string "The php module$plu $modstring can be replaced by this script. You can answer $(box no) here, but then you may be confronted with some error messages after the upgrade while migrating the settings." 3)"
             ask "$(qpf)Do you want to replace $modstring now" "$YES" && { bool[replaced]=:; replace_;}
             separator
         fi
     else
-        bundle echo "$(xpf;format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
+        bundle echo "$(xpf; format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
     fi
-    ${bool[replaced]} && "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+    ${bool[replaced]} && "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
 }

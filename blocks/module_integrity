@@ -1,18 +1,13 @@
-[ -f "$lmj" ] || $curlc -o "$lmj" -A "$(fp)$A" $cargs/$rmj
-q2 ${X[jq]} -r '.modules[] | "\(.hash) \(.name)"' $lmj >$lincld/modules.sha256
-cd $lincld
+[ -f "${F[lmj]}" ] || ${V[curl]} -o "${F[lmj]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
+q2 ${X[jq]} -r '.modules[] | "\(.hash) \(.name)"' ${F[lmj]} >${D[li]}/modules.sha256
+cd ${D[li]}
 tntd=($(
     q2 ${X[sha256sum]} -c --ignore-missing --quiet modules.sha256 | ${X[sed]} 's/:.*//'
 ))
-((${#tntd[@]})) && {
-    B[res]=:
-    for tm in ${tntd[@]}; do
-        q0 ${X[rm]} "$tm" || B[res]=_
+(( ${#tntd[@]} )) && {
+    for x in ${tntd[@]}; do
+        q0 ${X[rm]} "$x" || B[r]=_
     done
-    ${B[res]} && {
-        "$me" "json=$my_json" $my_args
-        exit 0
-    }
+    ${B[r]:-:} && $CMA
 }
 cd
-unset -v lcf tntd tm

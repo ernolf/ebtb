@@ -10,12 +10,9 @@ __license__
 ${LIST_BASHLIB:-_} && return
 LIST_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
 . <(lrequire xml)
-. <(lrequire $sin/github_api)
-. <(lrequire $sin/db)
+. <(lrequire nc-apps/github_api)
+. <(lrequire nc-apps/db)
 
 declare -i count=0
 list(){
@@ -39,7 +36,7 @@ list(){
     local section="$(get_applist_section_ $id)"
     # nextcloud version used for database queries must exist
     local query_version
-    (( $(v2i "$nc_version") > $(v2i "$nc_master") )) && query_version="$nc_master" || query_version="$nc_version"
+    (( $(v2i "${V[nc_version]}") > $(v2i "${V[nc_master]}") )) && query_version="${V[nc_master]}" || query_version="${V[nc_version]}"
     # eather a="shipped and alwaysEnabled", d="shipped and defaultEnabled", s="shipped"
     # if a, d or s, set bool[is_shipped]=:
 
@@ -54,8 +51,8 @@ list(){
         fi
         echo "app_id              - $id" >/dev/tty
         echo "section             - $section" >/dev/tty
-        echo "nc_version          - $nc_version" >/dev/tty
-        echo "nc_key              - $nc_key" >/dev/tty
+        echo "V[nc_version]       - ${V[nc_version]}" >/dev/tty
+        echo "V[nc_key]           - ${V[nc_key]}" >/dev/tty
         echo -e "==TRACE=end===\n" >/dev/tty
     fi
 
@@ -64,7 +61,7 @@ list(){
         bool[is_shipped]=:
     else
         local platform app_json
-        for platform in $(r_db "SELECT platform FROM filtered_apps WHERE platform <= '$query_version' AND platform >= '$nc_min_version' ORDER BY platform DESC;"); do
+        for platform in $(r_db "SELECT platform FROM filtered_apps WHERE platform <= '$query_version' AND platform >= '${V[nc_min_version]}' ORDER BY platform DESC;"); do
             if $(q2 ${X[jq]} -r --arg id "$id" 'any(.[];.id==$id)' "${filtered_appstore_json_[$platform]}"); then
                 bool[inappstore]=:
                 app_json="$(${X[jq]} --arg id "$id" '.[]|select(.id==$id)' "${filtered_appstore_json_[$platform]}")"
@@ -80,7 +77,7 @@ list(){
         if ${bool[inappstore]}; then
             # eval json values into sh vars
             eval "$(echo "$app_json" | ${X[jq]} -r 'keys[] as $key | "\($key)=\(.[$key] | @sh)"')"
-            (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section=store
+            (( $(v2i ${V[nc_version]%.*}) != $(v2i ${V[nc_key]}) )) && section=store
         fi
     fi
 
@@ -96,8 +93,8 @@ list(){
         echo "app_id              - $id" >/dev/tty
         echo "section             - $section" >/dev/tty
         echo "shipped             - $shipped" >/dev/tty
-        echo "v2i nc_version      - $(v2i ${nc_version%.*})" >/dev/tty
-        echo "v2i nc_key          - $(v2i $nc_key)" >/dev/tty
+        echo "v2i V[nc_version]   - $(v2i ${V[nc_version]%.*})" >/dev/tty
+        echo "v2i V[nc_key]       - $(v2i ${V[nc_key]})" >/dev/tty
         echo -e "==TRACE=end===\n" >/dev/tty
     fi
 
@@ -107,14 +104,14 @@ list(){
             for apps_path in ${apps_paths[@]}; do
                 [ -f "$NC_DIR/$apps_path/$id/appinfo/info.xml" ] && info_xml="$NC_DIR/$apps_path/$id/appinfo/info.xml"
             done
-            if ${bool[is_shipped]} && (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )); then
+            if ${bool[is_shipped]} && (( $(v2i ${V[nc_version]%.*}) != $(v2i ${V[nc_key]}) )); then
                 tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
                 local rawURLserver="$GITHUB_RAW/server/$tag/apps/$id/appinfo/info.xml"
                 local rawURLapp="$GITHUB_RAW/$id/$tag/appinfo/info.xml"
                 local github_info_xml="$(tf)"
-                if (( $(hc sD $bm-$epoch -o $github_info_xml $rawURLserver) == 200 )); then
+                if (( $(hc sD $MS-${M[epoch]} -o $github_info_xml $rawURLserver) == 200 )); then
                     info_xml=$github_info_xml
-                elif (( $(hc sD $bm-$epoch -o $github_info_xml $rawURLapp) == 200 )); then
+                elif (( $(hc sD $MS-${M[epoch]} -o $github_info_xml $rawURLapp) == 200 )); then
                     info_xml=$github_info_xml
                 fi #; unset -v tag rawURLserver rawURLapp
             fi
@@ -127,28 +124,28 @@ list(){
                 else
                     echo "$(Pbg)  Database too old.  $(N)"
                     delete_db
-                    $me "json=$my_json" $my_args
+                    $CMA
                     exit 0
                 fi
             fi
-            name=$(xmls -v "(//info/name)" "$info_xml" | ${X[sed]} '2,$d')
-            summary=$(xmls -v "//info/summary[@lang='$lang']" "$info_xml" | ${X[sed]} '2,$d')
-            [ -n "$summary" ] || summary=$(xmls -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | ${X[sed]} '2,$d')
-            categories="$(xmls -v "(//info/category)" "$info_xml" | ${X[tr]} '\n' ' ')"
-            version=$(xmls -v "//info/version" "$info_xml" | ${X[sed]} '2,$d')
-            userDocs=$(xmls -v "//info/documentation/user" "$info_xml" | ${X[sed]} '2,$d')
-            adminDocs=$(xmls -v "//info/documentation/admin" "$info_xml" | ${X[sed]} '2,$d')
-            developerDocs=$(xmls -v "//info/documentation/developer" "$info_xml" | ${X[sed]} '2,$d')
-            repo=$(xmls -v "//info/repository" "$info_xml" | ${X[sed]} '2,$d;s|.git$||1')
-            issueTracker=$(xmls -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
-            website=$(xmls -v "//info/website" "$info_xml" | ${X[sed]} '2,$d')
-            databases=$(xmls -m "//info/dependencies/database" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
-            phpExtensions=$(xmls -m "//info/dependencies/lib" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
-            phpMinIntSize=$(xmls -v "//info/dependencies/php/@min-int-size" "$info_xml" | ${X[sed]} '2,$d')
-            phpMin=$(xmls -v "//info/dependencies/php/@min-version" "$info_xml" | ${X[sed]} '2,$d')
-            phpMax=$(xmls -v "//info/dependencies/php/@max-version" "$info_xml" | ${X[sed]} '2,$d')
-            NCmin=$(xmls -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | ${X[sed]} '2,$d')
-            NCmax=$(xmls -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | ${X[sed]} '2,$d')
+            name=$(${X[xmls]} -v "(//info/name)" "$info_xml" | ${X[sed]} '2,$d')
+            summary=$(${X[xmls]} -v "//info/summary[@lang='$lang']" "$info_xml" | ${X[sed]} '2,$d')
+            [ -n "$summary" ] || summary=$(${X[xmls]} -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | ${X[sed]} '2,$d')
+            categories="$(${X[xmls]} -v "(//info/category)" "$info_xml" | ${X[tr]} '\n' ' ')"
+            version=$(${X[xmls]} -v "//info/version" "$info_xml" | ${X[sed]} '2,$d')
+            userDocs=$(${X[xmls]} -v "//info/documentation/user" "$info_xml" | ${X[sed]} '2,$d')
+            adminDocs=$(${X[xmls]} -v "//info/documentation/admin" "$info_xml" | ${X[sed]} '2,$d')
+            developerDocs=$(${X[xmls]} -v "//info/documentation/developer" "$info_xml" | ${X[sed]} '2,$d')
+            repo=$(${X[xmls]} -v "//info/repository" "$info_xml" | ${X[sed]} '2,$d;s|.git$||1')
+            issueTracker=$(${X[xmls]} -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
+            website=$(${X[xmls]} -v "//info/website" "$info_xml" | ${X[sed]} '2,$d')
+            databases=$(${X[xmls]} -m "//info/dependencies/database" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
+            phpExtensions=$(${X[xmls]} -m "//info/dependencies/lib" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
+            phpMinIntSize=$(${X[xmls]} -v "//info/dependencies/php/@min-int-size" "$info_xml" | ${X[sed]} '2,$d')
+            phpMin=$(${X[xmls]} -v "//info/dependencies/php/@min-version" "$info_xml" | ${X[sed]} '2,$d')
+            phpMax=$(${X[xmls]} -v "//info/dependencies/php/@max-version" "$info_xml" | ${X[sed]} '2,$d')
+            NCmin=$(${X[xmls]} -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | ${X[sed]} '2,$d')
+            NCmax=$(${X[xmls]} -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | ${X[sed]} '2,$d')
             ;;
         *)  :
     esac
@@ -161,21 +158,21 @@ list(){
         fi
     fi
     [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${X[sed]} 's|/issues$||1')
-    (( $(v2i ${nc_version%.*}) != $(v2i $nc_key) )) && section="$(get_applist_section_ $id)"
+    (( $(v2i ${V[nc_version]%.*}) != $(v2i ${V[nc_key]}) )) && section="$(get_applist_section_ $id)"
 
     if [ -z "$info_xml" ]; then
         if [[ "$repo" =~ github.com ]]; then
             local url="$(${X[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
             local github_info_xml=$(tf)
             for tag in "$version" "v$version" master main; do
-                if (( $(hc sD $bm-$epoch -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
+                if (( $(hc sD $MS-${M[epoch]} -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
                     info_xml=$github_info_xml
                     break
                 fi
             done
         fi
     fi
-    [ -z "$info_xml" ] || mapfile -t types< <(xmls -m "//types/*" -v "name()" -n "$info_xml")
+    [ -z "$info_xml" ] || mapfile -t types< <(${X[xmls]} -m "//types/*" -v "name()" -n "$info_xml")
 
     not_restrictable_to_groups() {
         (( ${#types[@]} )) || return 1
@@ -204,19 +201,19 @@ list(){
 
   # Check the conditions for further processing
     if ${bool[supp]}; then
-        if ( [ -n "$NCmax" ]  && (( ${nc_version%%.*} > ${NCmax%%.*} )) ) ||
-           ( [ -n "$NCmin" ]  && (( ${nc_version%%.*} < ${NCmin%%.*} )) ) ||
+        if ( [ -n "$NCmax" ]  && (( ${V[nc_version]%%.*} > ${NCmax%%.*} )) ) ||
+           ( [ -n "$NCmin" ]  && (( ${V[nc_version]%%.*} < ${NCmin%%.*} )) ) ||
            ( [ -n "$phpMax" ] && (( $(v2i $php_version) > $(v2i $phpMax) )) ); then
             return 0
         fi
     elif ${bool[unsupp]}; then
-        if ( [ -z "$NCmax" ]  || (( ${NCmax%%.*} >= ${nc_version%%.*} )) ) &&
+        if ( [ -z "$NCmax" ]  || (( ${NCmax%%.*} >= ${V[nc_version]%%.*} )) ) &&
            ( [ -z "$phpMax" ] || (( $(v2i $phpMax) >= $(v2i $php_version) )) ); then
             return 0
         fi
     fi
 
-    if ( [ -n "$NCmax" ] && (( ${NCmax%%.*} < ${nc_min_version%%.*} )) ); then
+    if ( [ -n "$NCmax" ] && (( ${NCmax%%.*} < ${V[nc_min_version]%%.*} )) ); then
         return 0
     fi
 
@@ -339,9 +336,9 @@ list(){
     fi
 
     # Nextcloud min / max
-    if ( ! ${bool[md]} && [ -n "$NCmax" ] && (( ${nc_version%%.*} > ${NCmax%%.*} )) ); then
+    if ( ! ${bool[md]} && [ -n "$NCmax" ] && (( ${V[nc_version]%%.*} > ${NCmax%%.*} )) ); then
         NCmax="$(blinkR)$NCmax$(N)"
-    elif ( ! ${bool[md]} && [ -n "$NCmax" ] && (( ${nc_version%%.*} <= ${NCmax%%.*} )) ); then
+    elif ( ! ${bool[md]} && [ -n "$NCmax" ] && (( ${V[nc_version]%%.*} <= ${NCmax%%.*} )) ); then
         NCmax="$(lG)$NCmax$(N)"
     fi
     echo "${in}NC min/max$(N)$mid$(${bool[md]} || es 6)$NCmin / $NCmax"
