@@ -1,6 +1,27 @@
-# whoami, whereami
-# b=basename m=me a=absolute p=path ca=canonical
-declare bm apm me ca_me ca_dir
-bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
-[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
-ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
+declare A CMA MD ME MP MS REQ x
+declare -a modules bools args tntd
+# asociative arrays: B = bools, C = commands, D = dirs, F = files, I = user/group, J = json, M = me, T = time, V = vars
+declare -A B C D F I J M T V
+declare -n TD=TMPDIR H=HOME
+_(){ false;}
+C[e]="$(command -v env)"
+for x in b:basename c:cat cu:curl d:dirname f:flock g:gawk h:head id l:lsof md:mkdir mt:mktemp p:ps rp:realpath r:rm u:uname; do
+    if [ -x "$(command -v ${x#*:})" ]; then
+        C[${x%:*}]="${C[e]} LC_MESSAGES=C $(command -v ${x#*:})"
+    fi
+done
+A="$(${C[u]} -srvmpio)"
+for x in u un g gn G Gn; do I[$x]="$(${C[id]} -$x)"; done
+(( ${I[u]} )) && { B[rt]=_
+    if [ "${I[un]}" = www-data ]; then I[l]=www-data
+    elif [[ "${I[Gn]} " =~ " sudo " ]]; then I[l]=sudo_user
+    else I[l]=unprivileged_user; fi
+} || B[rt]=: I[l]=root
+readonly I
+# b=basename m=me a=absolute p=path ca=canonical n=name s=sin c=channel
+M[b]="$(${C[b]} "$0")"
+M[ap]="$(cd "$(${C[d]} "$0")" && pwd)/${M[b]}"
+[ "$(command -v ${M[b]})" = "${M[ap]}" ] && ME="${M[b]}" || ME="${M[ap]}"
+MP="$(${C[rp]} "${M[ap]}")"
+MD="$(${C[d]} "$MP")"
+

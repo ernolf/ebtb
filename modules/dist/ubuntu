@@ -10,16 +10,12 @@ __license__
 ${UBUNTU_BASHLIB:-_} && return
 UBUNTU_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire line)
 . <(lrequire interval)
 . <(require php/sury)
 
 declare -A UBUNTU_VERSIONS_DATA UBUNTU_VERSIONS
 
-# TODO 0 -->
+# TODO 1 -->
 declare -A UBUNTU_VERSIONS_LIFECYCLE UBUNTU_VERSIONS_DATA UBUNTU_VERSIONS_CODENAME_LONG  UBUNTU_VERSIONS
 UBUNTU_VERSIONS_LIFECYCLE=(
     [24.04]='1714003200;1874880000'
@@ -63,7 +59,7 @@ UBUNTU_VERSIONS_LIFECYCLE=(
     [5.04]='1112918400;1162252800'
     [4.10]='1098748800;1146355200'
 )
-# TODO <-- 0
+# TODO <-- 1
 UBUNTU_VERSIONS_DATA=(
     [24.10]="Oracular Oriole;1728518400;1753920000"
     [24.04]="Noble Numbat;1714003200;1874880000"
@@ -81,7 +77,7 @@ UBUNTU_VERSIONS_DATA=(
     [18.04]="Bionic Beaver;1524700800;1685491200"
 )
 
-# TODO 1 -->
+# TODO 2 -->
 UBUNTU_VERSIONS_CODENAME_LONG=(
     [24.10]="Oracular Oriole"
     [24.04]="Noble Numbat"
@@ -125,7 +121,7 @@ UBUNTU_VERSIONS_CODENAME_LONG=(
     [5.04]="Hoary Hedgehog"
     [4.10]="Warty Warthog"
 )
-# TODO <-- 1
+# TODO <-- 2
 UBUNTU_VERSIONS=(
     [oracular]="24.10"
     [noble]="24.04"
@@ -141,7 +137,7 @@ UBUNTU_VERSIONS=(
     [disco]="19.04"
     [cosmic]="18.10"
     [bionic]="18.04"
-# TODO 2 -->
+# TODO 3 -->
     [artful]="17.10"
     [zesty]="17.04"
     [yakkety]="16.10"
@@ -169,7 +165,7 @@ UBUNTU_VERSIONS=(
     [breezy]="5.10"
     [hoary]="5.04"
     [warty]="4.10"
-# TODO <-- 2
+# TODO <-- 3
 )
 
 is_ubuntu_lts(){

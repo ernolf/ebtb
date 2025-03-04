@@ -10,8 +10,6 @@ __license__
 ${NGINX_BASHLIB:-_} && return
 NGINX_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire httpd)
 
 # Extract all server lines in the upstream $name block with line numbers
@@ -82,8 +80,8 @@ detect_nginx_php_fpm(){
                 }
                 if [ "$quiet" = 'verbose' ]; then
                     socket="${pass_line##* }"
-                    o 6; C; bundle echo "Direct socket '$(Y)${socket#unix:}$(C)' found:"; N
-                    o 6; bundle echo "Line-Nr. $pass_line"
+                    echo "$(o 6; C)Direct socket '$(Y)${socket#unix:}$(C)' found:"; N
+                    echo "$(o 6)Line-Nr. $pass_line"
                 elif ${bool[lineonly]}; then
                     [[ "$pass_line" =~ $sock ]] && echo "$pass_line"
                 fi
@@ -101,13 +99,13 @@ detect_nginx_php_fpm(){
                         elif (( ${#sockets_in_group[@]} > 1 )); then
                             plu='s'
                         fi
-                        $conf_file_printed || {
+                        ${bool[conf_file_printed]} || {
                             ${bool[lineonly]} || readlink_if_ "$conf_file" $quiet
-                            conf_file_printed=:
+                            bool[conf_file_printed]=:
                         }
                         if [ "$quiet" = 'verbose' ]; then
-                            o 6; C; bundle echo "Upstream server group '$(Y)${pass_line##* }$(C)' found."; N
-                            o 6; C; bundle echo "Configured server socket$plu in this block:"; N
+                            echo "$(o 6; C)Upstream server group '$(Y)${pass_line##* }$(C)' found."; N
+                            echo "$(o 6; C)Configured server socket$plu in this block:"; N
                         fi
                     }
                     for socket_in_group in "${sockets_in_group[@]}"; do
@@ -117,7 +115,7 @@ detect_nginx_php_fpm(){
                                 echo "${BASH_REMATCH[2]#unix:}"
                             else
                                 if [ "$quiet" = 'verbose' ]; then
-                                    o 6; bundle echo "Line-Nr. $socket_in_group"
+                                    echo "$(o 6)Line-Nr. $socket_in_group"
                                 elif ${bool[lineonly]}; then
                                     [[ "$socket_in_group" =~ $sock ]] && echo "$socket_in_group"
                                 fi

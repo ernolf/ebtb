@@ -10,15 +10,15 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire nc/nextcloud_logo)
-
+# TODO 0 -->
+. <(lrequire nc/logo)
+# TODO <-- 0
 print_help(){
     local s
     local -A bool
     if (($(backups | ${X[wc]} -l))); then
         bool[bak]=:
-        r_b(){ echo "$(f)    $me restore_backup";}
+        r_b(){ echo -e "\n    $ME restore_backup"; }
         [ $(backups | ${X[wc]} -l) -gt 1 ] && s=s || s=''
     else
         r_b(){ :; }
@@ -27,33 +27,32 @@ print_help(){
 $(nextcloud_logo)
 
  $(line = P 81)
-  $(Bi)This is the help page of $me
+  $(Bi)This is the help page of $ME
  $(line = dP 81)
 
-  $(GRAY)Feedback and suggestions for improvements/additions are always welcome!
-  $(GRAY)You can write me here:
-  $(W)https://help.nextcloud.com/t/script-nc-who-similar-to-unix-who-follow-live-who-is-logged-in/164972
+  $(GRAY)You can call
 
-  $(W)Future versions of this script may offer to complete much more steps for you.
-  $(W)This script will update itself automatically, so no need to reinstall it.
+    $(N)$ME --contribute
+
+  $(GRAY).. for information about how you can contribute to the project.
 
   $(W)Good luck!
   $(W)ernolf
 
-  $(GRAY)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
-
  $(line = P 81)
 
-  $me - Version $version $upinf
+  $ME - version ${M[v]} ${V[upinf]}
 
   This utility is similar to the Unix \`who\` command, allowing you to monitor
   live user logins and activities on your nextcloud server-instance.
+  The script’s activity is logged for reference. You can view this log under:
+  - $(C)$lf$(N)
 
   Usage:
-    $me -h|--help
-    $me monitor
-    $me last
-    $me integrity_check$(r_b)
+    $ME -h|--help
+    $ME monitor [--trace]
+    $ME last [--trace]
+    $ME integrity_check$(r_b)
 
   Options:
 
@@ -69,8 +68,12 @@ $(nextcloud_logo)
                 to the output of \`occ user:lastseen --all\`
                 * \`--all\` is actually not available for that occ command.
 
+    --trace     In combination with:
+                  - monitor: produce extensive log traces
+                  - last: print the sql query used for the output
+
     integrity_check
-                verify the integrity of this script with signature
+                Verify the integrity of this script with signature
 
 HELP
     ${bool[bak]:-_} && ${X[cat]}<<BACKUP; exit 0

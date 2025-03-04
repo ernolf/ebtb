@@ -7,18 +7,18 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter prefix button fstring exit
-    spinner anykey line array ask sudo dependency xml vdir integrity
-    nc/nextcloud nc/nextcloud_db
-)
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter prefix button fstring exit
+#    spinner anykey line array ask sudo dependency vdir integrity
+#    nc/nextcloud nc/nextcloud_db
+#)
+# TODO <-- 0
+modules=(fstring spinner nc/nextcloud nc/nextcloud_db)
 __debug__
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__
@@ -109,9 +109,9 @@ nc_download_default(){
                 url2="$GITHUB_RAW/$app_id/$version_tag/$file"
             else
                 xml_f="$NC_DIR/apps/$app_id/appinfo/info.xml"
-                repo="$(xmls -v "//info/repository" "$xml_f" | ${X[sed]} '2,$d;s|.git$||1')"
+                repo="$(${X[xmls]} -v "//info/repository" "$xml_f" | ${X[sed]} '2,$d;s|.git$||1')"
                 if [ -z "$repo" ]; then
-                    issueTracker=$(xmls -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
+                    issueTracker=$(${X[xmls]} -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
                     repo=$(${X[sed]} 's|/issues$||1' <<< "${issueTracker%/}")
                 fi
                 if [[ "$repo" =~ github.com ]]; then
@@ -119,7 +119,7 @@ nc_download_default(){
                 else
                     echo "download of '$path' failed. You must check this one yourself"
                 fi
-                version_tag="$(xmls -v "//info/version" "$xml_f" | ${X[sed]} '2,$d')"
+                version_tag="$(${X[xmls]} -v "//info/version" "$xml_f" | ${X[sed]} '2,$d')"
                 path="apps/$app_id/$file"
                 url1="$url/$version_tag/$file"
                 url2="$url/v$version_tag/$file"

@@ -10,7 +10,6 @@ __license__
 ${FUNCTIONS_BASHLIB:-_} && return
 FUNCTIONS_BASHLIB=:
 
-. <(lrequire binaries)
 . <(lrequire verbose)
 . <(lrequire nc/nextcloud)
 

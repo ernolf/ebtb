@@ -7,13 +7,8 @@ __copyright__
 __license__
 #
 
-${HELP_BASHLIB:-_} && return
-HELP_BASHLIB=:
-
-. <(lrequire binaries)
-. <(lrequire php/version)
-. <(lrequire nc/nextcloud_logo)
-. <(lrequire $sin/l10n)
+${COMMANDS_HELP_BASHLIB:-_} && return
+COMMANDS_HELP_BASHLIB=:
 
 print_help(){
     local s htf cat_or_pager
@@ -26,7 +21,7 @@ print_help(){
     esac
     if (($(backups | ${X[wc]} -l))); then
         bool[bak]=:
-        r_b(){ echo -e "\n    $me restore_backup"; }
+        r_b(){ echo -e "\n    $ME restore_backup"; }
         [ $(backups | ${X[wc]} -l) -gt 1 ] && s=s || s=""
     else
         r_b(){ :;}
@@ -42,20 +37,20 @@ $(nextcloud_logo)
 
 
  $(line = P 81)
-  $(Bi)This is the help page of $me
+  $(Bi)This is the help page of $ME
  $(line = dP 81)
 
   $(W)You can call this help with:
 
-    $(G)user@box:~# $(B)$me -h
+    $(G)user@box:~# $(B)$ME -h
   $(W)or:
-    $(G)user@box:~# $(B)$me --help
+    $(G)user@box:~# $(B)$ME --help
 
   $(W)and if you don't want the help to be piped into a pager:
 
-    $(G)user@box:~# $(B)$me -h --nopager
+    $(G)user@box:~# $(B)$ME -h --nopager
   $(W)or:
-    $(G)user@box:~# $(B)$me --help --nopager
+    $(G)user@box:~# $(B)$ME --help --nopager
 
  $(line = P 81)
 
@@ -69,27 +64,27 @@ $(nextcloud_logo)
   $(W)Good luck!
   $(W)ernolf
 
-  $(GRAY)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
+  $(GRAY)Contribute: $(lG)$ME --contribute
 
  $(line = P 81)
 
-  $me - version $version $upinf
+  $ME - version ${M[v]} ${V[upinf]}
   command line nextcloud-appstore browser with enhanced search functions and more
 
   Usage:
-    $me -h|--help [ --nopager ]
-    $me -H|--filters
-    $me install_overwrite [ -u [ --allow-unstable ]]
-    $me shipped [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --nopager ]
-    $me not_shipped [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ] [ --nopager ]
-    $me all_apps [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ] [ --nopager ]
-    $me id=[pattern] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ]
-    $me name=[pattern] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ]
-    $me lang=[ISO 639-1]
-    $me updatable [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption
-    $me update [ *'section' ] [ --allow-unstable ]$phpversionoption
-    $me rebuild_db
-    $me integrity_check$(r_b)
+    $ME -h|--help [ --nopager ]
+    $ME -H|--filters
+    $ME install_overwrite [ -u [ --allow-unstable ]]
+    $ME shipped [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --nopager ]
+    $ME not_shipped [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ] [ --nopager ]
+    $ME all_apps [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ] [ --nopager ]
+    $ME id=[pattern] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ]
+    $ME name=[pattern] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption [ --(un)supported ] [ --markdown ]
+    $ME lang=[ISO 639-1]
+    $ME updatable [ *'section' ] [ --version=NC-VER ] [ --min_version=NC-VER ]$phpversionoption
+    $ME update [ *'section' ] [ --allow-unstable ]$phpversionoption
+    $ME rebuild_db
+    $ME integrity_check$(r_b)
 
   Options:
 
@@ -135,6 +130,8 @@ $(nextcloud_logo)
 
    --markdown               list as markdown table code
 
+   --trace                  debug the communication with the app store
+
 HELP
     if ((${#alternative_php_versions[@]})); then
         local plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
@@ -148,7 +145,7 @@ HELP
     *) NC-VER = only 2 digits
 
    --version=NC-VER*)       simulates an assumed nextcloud version instead of actual installed real nextcloud version.
-   --min_version=NC-VER*)   simulates an assumed minimum nextcloud version. Defaults to ${nc_lowest%%.*}
+   --min_version=NC-VER*)   simulates an assumed minimum nextcloud version. Defaults to ${V[nc_min_version]%%.*}
                             example: --version=26 and/or --min_version=25
                             '--(min_)version=' has no effect on install_overwrite, shipped and update
 
@@ -172,32 +169,32 @@ BACKUP
  $(line = dP 81)
 
    $(W)List all installed and enabled apps:
-    $(G)user@box:~# $(B)$me all_apps enabled
+    $(G)user@box:~# $(B)$ME all_apps enabled
 
    $(W)List not shipped, installed and enabled apps, not supported by your nextcloud version,
    $(W)not piped through pager:
-    $(G)user@box:~# $(B)$me not_shipped enabled --unsupported --nopager
+    $(G)user@box:~# $(B)$ME not_shipped enabled --unsupported --nopager
 
    $(W)List updatable apps only for enabled apps:
-    $(G)user@box:~# $(B)$me updatable
+    $(G)user@box:~# $(B)$ME updatable
 
    $(W)List all updatable apps:
-    $(G)user@box:~# $(B)$me updatable local
+    $(G)user@box:~# $(B)$ME updatable local
 
    $(W)Update all updatable apps, allow to update to unstable (beta) app-versions:
-    $(G)user@box:~# $(B)$me update local --allow-unstable
+    $(G)user@box:~# $(B)$ME update local --allow-unstable
 
    $(W)Update all apps, allowing unstable versions and re-create the "apps_install_overwrite'
    $(W)array in config/config.php:
-    $(G)user@box:~# $(B)$me install_overwrite -u --allow-unstable
+    $(G)user@box:~# $(B)$ME install_overwrite -u --allow-unstable
 
    $(W)List all apps with the pattern “text” in App-Id:
-    $(G)user@box:~# $(B)$me id=text
+    $(G)user@box:~# $(B)$ME id=text
 
    $(W)Show, which of your installed, not shipped apps are NOT (yet) supported by Nextcloud 29,
    $(W)taking into account all installed and enabled apps supported by minimum Nextcloud 26,
    $(W)not piped through pager:
-    $(G)user@box:~# $(B)$me --version=29 --min_version=26 --unsupported not_shipped enabled --nopager
+    $(G)user@box:~# $(B)$ME --version=29 --min_version=26 --unsupported not_shipped enabled --nopager
 
    $(W)... many many more (hidden) features....$(N)
 

@@ -10,9 +10,6 @@ __license__
 ${SURY_BASHLIB:-_} && return
 SURY_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire tempfile)
 . <(lrequire fstring)
 . <(lrequire dpkg)
 . <(lrequire dist/os_release)
@@ -28,7 +25,7 @@ sury(){
     #   37 = 36 and 33
     #   38 = 36 and 34
     #   39 = 36, 33 and 34
-    #   40 = 1 or more wrong suit AND wrong protocol
+    #   40 = 1 or more wrong suite AND wrong protocol
     #   41 = 40 and 33
     #   42 = 40 and 34
     #   43 = 40, 33 and 34
@@ -48,8 +45,8 @@ sury(){
     bools=(wrong_protocol wrong_architecture wrong_suite wrong_suite_protocol wrong_distrib)
     for i in "${!bools[@]}"; do bool[${bools[i]}]=_; done
     if tnh1_strg sury; then # OS is supported!
-        id="$(tnh1 | ${X[gawk]} '{print $(NF-1)}')"
-        codename="$(tnh1 | ${X[gawk]} '{print $(NF)}')"
+        id="$(tnh1 3 | ${X[gawk]} '{print $(NF-1)}')"
+        codename="$(tnh1 3 | ${X[gawk]} '{print $(NF)}')"
         case $id in
             ubuntu) aptsource="$asu" wrong_aptsource="$asd" ;;
             debian) aptsource="$asd" wrong_aptsource="$asu"
@@ -157,8 +154,8 @@ need_sury_repo(){
     sury_return="$(sury)"
     sury_r=$?
     if tnh1_strg sury; then # OS is supported!
-        id="$(tnh1 | ${X[gawk]} '{print $(NF-1)}')"
-        codename="$(tnh1 | ${X[gawk]} '{print $(NF)}')"
+        id="$(tnh1 3 | ${X[gawk]} '{print $(NF-1)}')"
+        codename="$(tnh1 3 | ${X[gawk]} '{print $(NF)}')"
         case "$id" in
             ubuntu) aptsource="$asu" wrong_aptsource="$asd"
                     http_aptsource='http://ppa.launchpad.net/ondrej/php/ubuntu'
@@ -169,13 +166,18 @@ need_sury_repo(){
         if ((sury_r)); then # NOT 0
             if ((sury_r == 32)); then # no sury repo
                 list_apt_sources
-                f; os; GRAY; echo "r=$sury_r, $sury_return"; N
-                f; echo " -$(format_string "$(Y)Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3; N)"
-                f; os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N
-                f; os; echo "This script can add the right repo to your apt sources."
+                f
+                os; GRAY; echo "r=$sury_r, $sury_return"; N
+                f
+                echo "$(format_string "- $(Y)Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3; N)"
+                f
+                os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N
+                f
+                os; echo "This script can add the right repo to your apt sources."
                 fix_yourself_if_fails
                 if ask "$(qpf)Do you want to add sury repo now" "$YES"; then
-                    switch_php_to_ $PHP_VERSION
+                    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+                    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
                     if min_version apt 2.4; then
                         add_repository_deb822 "$id" "$codename"
                     else
@@ -185,25 +187,31 @@ need_sury_repo(){
                     sury_r=$?
                     if ((sury_r == 32)); then # still no sury repo
                         mh "adding apt source failed"
-                        f; os; R; echo "Unfortunately this step was not successfull. Please add the apt source yourself."; N
+                        f
+                        os; R; echo "Unfortunately this step was not successfull. Please add the apt source yourself."; N
                         anykey
                     else
                         mh "adding apt source succeeded"
-                        f; os; G; echo "This step was successfull"; N
+                        f
+                        os; G; echo "This step was successfull"; N
                         anykey
-                        "$me${FLAG[forceflag]}" "json=$my_json" --list-candidates
+                        "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-candidates
                     fi
                 fi
             elif ((sury_r == 33)); then # http instead of https
                 list_apt_sources
-                f; os; GRAY;echo "r=$sury_r, $sury_return"; N
-                f; echo " -$(format_string "Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)http://ppa.launchpad.net/..$(N) is used instead of $(B)https://ppa.launchpadcontent.net/.." 3; N)"
+                f
+                os; GRAY;echo "r=$sury_r, $sury_return"; N
+                f
+                echo "$(format_string "- Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)http://ppa.launchpad.net/..$(N) is used instead of $(B)https://ppa.launchpadcontent.net/.." 3; N)"
                 if min_version apt 2.0; then
-                    echo "  $(format_string "$(Y)Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)http://ppa.launchpad.net$(N) with $(B)https://ppa.launchpadcontent.net$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
-                    f; os; echo "This script can replace the http URIs with the new https URIs for you."
+                    echo "$(format_string "  $(Y)Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)http://ppa.launchpad.net$(N) with $(B)https://ppa.launchpadcontent.net$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
+                    f
+                    os; echo "This script can replace the http URIs with the new https URIs for you."
                     fix_yourself_if_fails
                     if ask "$(qpf)Do you want to replace http URIs with https URIs now" "$YES"; then
-                        switch_php_to_ $PHP_VERSION
+                        [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+                        [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
                         if (nonullglob "/etc/apt/sources.list.d/*\.list" || nonullglob "/etc/apt/sources.list.d/*\.sources"); then
                             for aptsource_file in /etc/apt/sources.list.d/*\.{list,sources}; do
                                 if [ -f "$aptsource_file" ]; then
@@ -248,7 +256,7 @@ need_sury_repo(){
                                 anykey
                             fi
                             apt_update
-                            "$me${FLAG[forceflag]}" "json=$my_json" --list-candidates
+                            "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-candidates
                         else
                             os; R; echo "Unfortunately this step was not successfull. Please fix it yourself."; N
                             anykey
@@ -260,13 +268,17 @@ need_sury_repo(){
             elif ((sury_r == 36)); then # apt source for ${aptsources[i]#$aptsource} instead of $codename"
                 wrong_codename=$(echo "$sury_return"|${X[gawk]} '{print $(NF-3)}')
                 list_apt_sources
-                f; os; GRAY; echo "r=$sury_r, $sury_return"; N
-                f; echo "  $(format_string "Ondřej Surý's repo is added to the apt sopurces but for $wrong_codename instead of $codename. You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
-                f; os; echo "This script can replace $wrong_codename with $codename  in sury apt-source file for you."
+                f
+                os; GRAY; echo "r=$sury_r, $sury_return"; N
+                f
+                echo "  $(format_string "Ondřej Surý's repo is added to the apt sopurces but for $wrong_codename instead of $codename. You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
+                f
+                os; echo "This script can replace $wrong_codename with $codename  in sury apt-source file for you."
                 fix_yourself_if_fails
                 if ask "$(qpf)Do you want to replace $wrong_codename with $codename in sury apt-source file now" "$YES"; then
                     bool[success]=_
-                    switch_php_to_ $PHP_VERSION
+                    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+                    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
                     if nonullglob "/etc/apt/sources.list.d/*\.list"; then
                         for aptsource_file in /etc/apt/sources.list.d/*\.list; do
                             if [ -f "$aptsource_file" ]; then
@@ -303,7 +315,7 @@ need_sury_repo(){
                         apt_update
                         os; G; echo "This step was successfull"; N
                         anykey
-                        "$me${FLAG[forceflag]}" "json=$my_json" --list-candidates
+                        "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-candidates
                     else
                         os; R; echo "Unfortunately this step was not successfull. Please fix it yourself."; N
                         anykey
@@ -313,11 +325,13 @@ need_sury_repo(){
 
         else # = 0, means everything is OK
             list_apt_sources
-            f; os; GRAY; echo "r=$sury_r, $sury_return"; N
+            f
+            os; GRAY; echo "r=$sury_r, $sury_return"; N
         fi
     else
         os; Y; echo "There exists no Ondřej Surý repo for your OS version"; N
-        os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N; f
+        os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N
+        f
     fi
 }
 
@@ -572,8 +586,8 @@ sources_list_deb822(){
     esac
     ${X[cat]} << DEB822
 ## $package repository list
-# created $(${X[date]} -d @$rte "+%F %R %Z") by ernolfs $bm script
-# https://global-social.net/script/$bm
+# created $(${X[date]} -d @${T[rte]} "+%F %R %Z") by ernolfs $MS script
+# https://github.com/ernolf/ebtb
 
 ## Deb822-style format:
 # https://deb.sury.org

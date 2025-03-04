@@ -10,23 +10,20 @@ __license__
 ${POOL_BASHLIB:-_} && return
 POOL_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
 . <(lrequire fstring)
-. <(lrequire line)
-. <(lrequire ask)
 . <(lrequire php/versions)
 . <(lrequire php/fpm)
 
 check_fpm_pool_files(){
     fpm_configfile_corupt(){
         separator; f
-        bundle echo "$(xpf;R;format_string "FATAL ERROR $(W)The configuration file of PHP-FPM version $(C)$1$(W) ($(C)$2$(W)) could not be found or is corrupted. If you want to deactivate php-fpm for that version, you should use other means. You can deactivate php-fpm with systemd or uninstall it but removing or renaming the config file itself damages the functionality of this script. Please fix that and once more run" 3;N)"
-        f; G; echo "$(prompt; lB) $me${FLAG[forceflag]}$(C) $old $new"; N
-        f; os; W; echo "to finalize the migration."; N
-        f ;exit1
+        bundle echo "$(xpf; R; format_string "FATAL ERROR $(W)The configuration file of PHP-FPM version $(C)$1$(W) ($(C)$2$(W)) could not be found or is corrupted. If you want to deactivate php-fpm for that version, you should use other means. You can deactivate php-fpm with systemd or uninstall it but removing or renaming the config file itself damages the functionality of this script. Please fix that and once more run" 3;N)"
+        f
+        echo "$(G; prompt; lB) $ME${FLAG[forceflag]}$(C) $old $new"; N
+        f
+        os; W; echo "to finalize the migration."; N
+        f
+        exit1
     }
     local old new pkgold pkgnew odir ndir ext be plu this
     local -a ofiles nfiles alt_indexes alt_files pools
@@ -74,7 +71,8 @@ check_fpm_pool_files(){
         fi
         if (( ${#alt_files[@]} ));then
             separator
-            f;bundle echo " -$(format_string "$string" 3)"
+            f
+            bundle echo "$(format_string "- $string" 3)"
             if ask "$(qpf)Do you want to migrate $this pool${plu#*:} from $pkgold to $pkgnew" "$YES"; then
                 if ((www_index));then
                     mv $ndir/www.$ext $ndir/${ofiles[www_index]}

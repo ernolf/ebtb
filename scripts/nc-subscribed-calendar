@@ -7,18 +7,18 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter prefix button exit anykey line
-    array sudo ask dependency vdir integrity nc/nextcloud nc/nextcloud_db
-    $sin/functions
-)
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter prefix button exit anykey line
+#    array sudo ask dependency vdir integrity nc/nextcloud nc/nextcloud_db
+#    $MS/functions
+#)
+# TODO <-- 0
+modules=(nc/nextcloud nc/nextcloud_db $MS/functions)
 __debug__
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__

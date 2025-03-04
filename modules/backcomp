@@ -8,7 +8,6 @@ __license__
 #
 
 declare -f _ &>/dev/null || _(){ false; }
-
 ${BACKCOMP_BASHLIB:-_} && return
 BACKCOMP_BASHLIB=:
 
@@ -26,7 +25,7 @@ fi
 # removed function for backwards compatibility:
 populate_pkgs_by_dpkg_array(){ :; }
 
-if (( epoch < 1731244919 )); then
+if (( ${M[epoch]:-$epoch} < 1731244919 )); then
     sourced() {
         local am
         local -u m="${1/\.d\//_}_BASHLIB"
@@ -36,19 +35,20 @@ if (( epoch < 1731244919 )); then
 fi
 
 # moved to #general
-if (( epoch < 1737773190 )); then
+if (( ${M[epoch]:-$epoch} < 1737773190 )); then
     q0(){ "$@" &>/dev/null; }
     q1(){ "$@" >/dev/null; }
     q2(){ "$@" 2>/dev/null; }
 fi
 
-if (( epoch < 1738066400 )); then
+if (( ${M[epoch]:-$epoch} < 1738066400 )); then # 1738164268 ?
     echo -e "\n\n\e[31m - The current script version is very old.\n   It could be that the integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
+    exit 1
 fi
 
-if (( epoch < 1739905000 )); then
-    # Create a nameref for BINARIES named X
-    declare -n X=BINARIES
+if (( ${M[epoch]:-$epoch} < 1739905000 )); then
+    # Create a nameref for BINARY named BINARIES
+    declare -n BINARIES=BINARY
 
     # link legacy boolean variables to the coresponding new associative array "BOOL"
     if ! q2 declare -p BOOL | grep -qs 'declare -A'; then
@@ -82,7 +82,7 @@ if (( epoch < 1739905000 )); then
 fi
 
 #if (( epoch < 1739977000 )); then
-if (( epoch < 1739977500 )); then
+if (( ${M[epoch]:-$epoch} < 1739977500 )); then
     . <(lreq filter)
 
     # do an extra check for old modules if not root. This was broken before this epoch
@@ -96,20 +96,65 @@ if (( epoch < 1739977500 )); then
     fi
 fi
 
-if (( epoch < 1740340000 )); then
+if (( ${M[epoch]:-$epoch} < 1740340000 )); then
     declare -n B=BOOL
+fi
+
+if (( ${M[epoch]:-$epoch} < 1740748000 )); then
+    declare x; declare -A ID
+    for x in u un g gn G Gn; do I[$x]="$(${X[id]} -$x)"; done; unset -v x
+fi
+
+if (( ${M[epoch]:-$epoch} < 1741300000 )); then
+    if [ -n "$includedir" ]; then
+        lincld="$includedir"
+    fi
+
+## asociative arrays: B = bools, D = dirs, F = files, I = integers, ID  = user/group, J = json, M = me, T = time
+#declare A x; declare -a modules; declare -A B D F I ID J M T; _(){ false;}
+
+    declare CMA MD ME MP MS
+#    declare -n I=ID
+    declare -A D F J M T V
+
+#    M[b]="$bm"
+#    M[ap]="$apm"
+
+    ME="$me"
+    MP="$ca_me"
+    MD="$ca_dir"
+    MS="$sin"
+    CMA="$me json=$my_json $@"
+
+    D[li]="$lincld"
+    D[ri]="$rincld"
+    F[log]="$lf"
+    D[log]="${lf%/*}"
+    F[fp]="${D[log]}/fp"
+    M[n]="$scriptname"
+    M[v]="$version"
+    M[epoch]="$epoch"
+#    J[epoch]="$my_epoch"
+#    J[hash]="$my_hash"
+    T[rte]="$rte"
+    V[cargs]="$cargs"
+    V[upinf]="$upinf"
+fi
+
+if [[ -d "${D[log]}" && -d "${D[log]}files" ]]; then
+    ${X[rm]} -fr "${D[log]}files"
 fi
 
 # get rid of unused libraries in old directories
 if ${B[rt]}; then
     if ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ebtb' /usr/local/bin; then
-        [ -d "${ca_dir%/*}/include/ebtb" ] && ${X[rm]} -r "${ca_dir%/*}/include/ebtb"
+        [ -d "/usr/local/include/ebtb" ] && ${X[rm]} -r "/usr/local/include/ebtb"
     fi
-    if [[ "$lincld" =~ ebtb ]] && ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ernolf' /usr/local/bin/; then
-        [ -d "${ca_dir%/*}/include/ernolf" ] && ${X[rm]} -r "${ca_dir%/*}/include/ernolf"
+    if [[ "${D[li]}" =~ ebtb ]] && ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ernolf' /usr/local/bin/; then
+        [ -d "/usr/local/include/ernolf" ] && ${X[rm]} -r "/usr/local/include/ernolf"
     fi
 fi
 
 q0 declare -f lrequire || lrequire(){ require $@;}
 
-${FP_BASHLIB:-_} || . <(q2 require fp)
+di(){ :;}

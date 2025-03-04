@@ -10,9 +10,6 @@ __license__
 ${PHP_LOGO_BASHLIB:-_} && return
 PHP_LOGO_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire ansi)
-
 php_logo(){
     ${X[cat]} << PHPLOGO
   $(dPHP)hhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhHhhHhhHHhhHhhHhhHhhhHhhHhhHhhHHhhHhhH$(N)

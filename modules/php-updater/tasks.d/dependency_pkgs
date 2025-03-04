@@ -32,7 +32,7 @@ remove_dependency_packages(){
         echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_remove --yes ${dependency_pkgs[@]}
-            "$me${FLAG[forceflag]}" "json=$my_json" --list-installed-only
+            "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
             anykey
             return 0
         else

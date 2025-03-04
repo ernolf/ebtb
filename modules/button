@@ -10,10 +10,11 @@ __license__
 ${BUTTON_BASHLIB:-_} && return
 BUTTON_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire ansi)
 . <(lrequire basics)
-
+# TODO <-- 0
 buttonize(){
     local oldcolor
     oldcolor="$(q2 ${X[cat]} $COLOR)"

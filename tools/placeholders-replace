@@ -54,9 +54,13 @@ placeholder_replace(){
         license)
             ${X[cat]} "blocks/license"
             ;;
+        whoami_whereami)
+            ${MINIFY:-false} && echo '# minified codeblocks in human readable format: https://github.com/ernolf/ebtb/tree/main/blocks'
+            echo "### whoami, whereami$minified"
+            tools/minify "blocks/whoami_whereami"
+            ;;
         scriptname)
-            echo 'declare scriptname sin; declare -a modules; declare -A B; _(){ false;}'
-            echo "scriptname='$name' sin='${name%-test}'"
+            echo "M[n]='$name' MS='${name%-test}' M[pid]=\$\$"
             ;;
         debug)
             if [ "${channel:-prod}" = "test" ]; then
@@ -64,22 +68,18 @@ placeholder_replace(){
             fi
             ;;
         when)
-            echo -e '# when\ndeclare -i rte; printf -v rte "%(%s)T" -2'
-            ;;
-        whoami_whereami)
-            ${X[cat]} "blocks/whoami_whereami"
+            echo -e '# when\nprintf -v T[rte] "%(%s)T" -2'
             ;;
         vdirname)
             ${X[cat]} "blocks/vdirname"
             ;;
         tempdir)
-            ${MINIFY:-false} && echo '# read minified codeblocks here: https://github.com/ernolf/ebtb/tree/main/blocks'
             echo "### find a writable tempdir$minified"
             tools/minify "blocks/tempdir"
             ;;
         module_server)
             echo '### module handling'
-            echo "declare my_home=$MY_HOME"
+            echo "M[home]=$MY_HOME"
             if $LOCAL_SERVER; then
                 case $LOCAL_SERVER_BINARY in
                        php) http_server_string='php -S localhost:' ;;

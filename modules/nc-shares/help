@@ -11,16 +11,16 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-
 function print_help(){
-#. <(require $sin/disclaimer)
+#. <(require nc-shares/disclaimer)
 #disclaimer
 
     ${X[cat]} <<HELP
 
-  Usage:  $me [-s|--sharetype=(0-13)] -- user|all
-          $me -h|--help
+  $ME - version ${M[v]} ${V[upinf]}
+
+  Usage:  $ME [-s|--sharetype=(0-13)] -- user|all
+          $ME -h|--help
 
   Options:                     (* = default value)
          -h --help               help (print this help information)
@@ -45,9 +45,9 @@ function print_help(){
 
   examples:
   list all shares from all users shared with groups
-         $me -s 1 -- all
+         $ME -s 1 -- all
   list all link-shares from user "Max"
-         $me Max
+         $ME Max
 
 HELP
     exit 0

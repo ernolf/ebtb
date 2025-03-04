@@ -10,12 +10,13 @@ __license__
 ${DEPENDENCY_BASHLIB:-_} && return
 DEPENDENCY_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire array)
 . <(lrequire sudo)
 . <(lrequire ask)
 . <(lrequire anykey)
-
+# TODO <-- 0
 dependency_check(){
     local dependency bin plu pkg
     local -i c2 c3
@@ -29,7 +30,7 @@ dependency_check(){
         "gpg#gnupg#GNU Privacy Guard"
         "jq#jq#command-line JSON processor"
     )
-    case "$sin" in
+    case "$MS" in
         nc-apps)
             dependencies+=(
                 "less#less#A terminal pager similar to more"
@@ -83,8 +84,8 @@ dependency_check(){
         if [ -z "${X[$dependency]}" ]; then
             if ${X[dpkg]} -l | ${X[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
                 if (( epoch > 1737549000 )); then
-                    o2; R; bundle echo "The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
-                    o2; R; bundle echo "You should fix that first!"; N
+                    R; bundle echo "  The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
+                    R; bundle echo "  You should fix that first!"; N
                     anykey
                 fi
             else
@@ -124,7 +125,7 @@ dependency_check(){
                         if [[ "$install" =~ apt-file ]]; then
                             apt-file update
                         fi
-                        sudo $me "json=$my_json" $my_args
+                        ${X[sudo]} $CMA
                         exit 0
                     else
                         o2; R; echo "looks like something went wrong."

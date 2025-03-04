@@ -10,9 +10,6 @@ __license__
 ${HTML2TEXT_BASHLIB:-_} && return
 HTML2TEXT_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire ansi)
-
 function pipe_h2t(){
     local query psql_fix1 col sed_empty_row psql_fix2 sed_pre_html2text html2text_command
     query="$1\"$2\""

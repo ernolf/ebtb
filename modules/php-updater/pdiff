@@ -10,8 +10,6 @@ __license__
 ${PDIFF_BASHLIB:-_} && return
 PDIFF_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire dpkg)
 . <(lrequire php/extensions)
 

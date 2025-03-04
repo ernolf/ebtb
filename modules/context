@@ -10,11 +10,12 @@ __license__
 ${CONTEXT_BASHLIB:-_} && return
 CONTEXT_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
+. <(lrequire ansi)
 . <(lrequire basics)
-. <(lrequire exit)
+# TODO <-- 0
 . <(lrequire fstring)
-. <(lrequire anykey)
 
 check_systemd(){
     local pid1 infstr

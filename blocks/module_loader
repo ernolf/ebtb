@@ -1,31 +1,29 @@
 ## include bashmodules ->
-declare channel='prod' lincld rincld REQ mod lmj lmjn rmj lcf fp
-w4uc=300
-[[ "$scriptname" =~ test ]] && { channel='test' w4uc=30; }
-[ -z "$HOME" ] && eval HOME=~
-[[ -d "$HOME" && "$HOME" != / && -w "$HOME" ]] && lincld="$HOME/.ebtb/modules/$channel" || lincld="$TMPDIR/ebtb/modules/$channel"
-rincld="modules/$channel"
-mkdir -p "$lincld/$sin"
-REQ=". $lincld" lmj="$lincld/modules.json" rmj="$rincld/modules.json" lcf="$lincld/$sin/.checked"
-lmjn="$lmj~new" lce=$(q2 cat "$lcf")
-((rte - lce > w4uc)) && {
-    $curlc -o "$lmjn" -A "$(fp)$A" $cargs/$rmj
-    if mje=$(json_etag "$lmj") && mjne=$(json_etag "$lmjn"); then ((mje < mjne)) && B[check]=:; fi
+[[ "${M[n]}" =~ test ]] && { M[c]='test' T[w4uc]=30; } || { M[c]='prod' T[w4uc]=300; }
+[ -z "$H" ] && eval H=~
+[[ -d "$H" && "$H" != / && -w "$H" ]] && D[li]="$H/.ebtb/modules/${M[c]}" || D[li]="$TD/ebtb/modules/${M[c]}"
+D[ri]="modules/${M[c]}"
+${C[md]} -p "${D[li]}/$MS"
+REQ=". ${D[li]}" F[lmj]="${D[li]}/modules.json" F[rmj]="${D[ri]}/modules.json" F[lcf]="${D[li]}/$MS/.checked"
+F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}")
+(( T[rte] - T[lce] > T[w4uc] )) && {
+    ${C[cc]} -o "${F[lmjn]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
+    if T[mje]=$(json_etag "${F[lmj]}") && T[mjne]=$(json_etag "${F[lmjn]}"); then (( T[mje] < T[mjne] )) && B[check]=:; fi
 }
 : ${B[check]:=_} ${B[pager]:=_}
-for mod in ${modules[@]}; do
+for x in binaries fp mh basics awksed tempfile ansi filter prefix button exit debug anykey line array ask sudo dependency vdir integrity ${modules[@]}; do
     ${B[check]} && {
-        ${B[pager]} || printf "\r\e[K.. checking modules - $mod"
-        c4u "$mod"
-    } || { ${B[pager]} || printf "\r\e[K.. loading modules - $mod"; }
-    . <(lreq $mod)
+        ${B[pager]} || printf "\r\e[K.. checking modules - $x"
+        c4u "$x"
+    } || { ${B[pager]} || printf "\r\e[K.. loading modules - $x"; }
+    . <(lreq $x)
 done
-${B[check]} && echo $rte >"$lcf"
-[ -f "$lmjn" ] && mv "$lmjn" "$lmj"
-${B[rt]} && ! ((lce)) && echo $rte >"$lcf"
+${B[check]} && echo ${T[rte]} > "${F[lcf]}"
+[ -f "${F[lmjn]}" ] && ${X[mv]} "${F[lmjn]}" "${F[lmj]}"
+${B[rt]} && ! (( T[lce] )) && echo ${T[rte]} > "${F[lcf]}"
 ${B[pager]} || te1
-eval "$(echo "$(unquote $my_json)" | ${X[jq]} -r 'keys[] as $key|"my_\($key)=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
-declare upinf='(no update info available)'
+eval "$(echo "$(unquote ${J[json]})" | ${X[jq]} -r 'keys[] as $key|"J[\($key)]=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
+V[upinf]='(no update info available)'
 . <(req update)
 "${B[do_update]}" && my_update
 [ "$1" = "my_update_check" ] && my_update_check

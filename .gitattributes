@@ -3,6 +3,7 @@ config/* linguist-language=Bash
 modules/dist/* linguist-language=Bash
 modules/nc/* linguist-language=Bash
 modules/nc-apps/* linguist-language=Bash
+modules/nc-apps/commands.d/* linguist-language=Bash
 modules/nc-mimecheck/* linguist-language=Bash
 modules/nc-shares/* linguist-language=Bash
 modules/nc-sharetoken-length/* linguist-language=Bash

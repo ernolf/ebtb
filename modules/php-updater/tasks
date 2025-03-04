@@ -9,23 +9,18 @@ __license__
 
 ${TASKS_BASHLIB:-_} && return
 TASKS_BASHLIB=:
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
-. <(lrequire ask)
 . <(lrequire dpkg)
-. <(lrequire $sin/merge)
+. <(lrequire php-updater/merge)
 . <(lrequire php/versions)
 . <(lrequire php/extensions)
 . <(lrequire php/apache2)
 . <(lrequire php/fpm)
 
-${X[mkdir]} -p $lincld/$sin/tasks.d
+${X[mkdir]} -p ${D[li]}/php-updater/tasks.d
 
-. <(lrequire $sin/tasks.d/replace_aim)
-. <(lrequire $sin/tasks.d/unused_sapis)
-. <(lrequire $sin/tasks.d/dependency_pkgs)
-. <(lrequire $sin/tasks.d/meta_pkgs)
-. <(lrequire $sin/tasks.d/change_sapi)
-. <(lrequire $sin/tasks.d/ext_config)
+. <(lrequire php-updater/tasks.d/replace_aim)
+. <(lrequire php-updater/tasks.d/unused_sapis)
+. <(lrequire php-updater/tasks.d/dependency_pkgs)
+. <(lrequire php-updater/tasks.d/meta_pkgs)
+. <(lrequire php-updater/tasks.d/change_sapi)
+. <(lrequire php-updater/tasks.d/ext_config)

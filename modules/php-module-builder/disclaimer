@@ -10,10 +10,6 @@ __license__
 ${DISCLAIMER_BASHLIB:-_} && return
 DISCLAIMER_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
 . <(lrequire php/logo)
 
 disclaimer(){

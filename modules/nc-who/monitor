@@ -10,38 +10,66 @@ __license__
 ${MONITOR_BASHLIB:-_} && return
 MONITOR_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
 . <(lrequire nc/nextcloud_db)
 
 # $1=pid $2=cls (clear screen)
 cleanup(){
+    (
+    if ${B[trace]:-_}; then
+        local outfile
+        outfile="$(${X[mktemp]} -p "$TMPDIR")"
+        echo "==TRACE=start=" > "$outfile"
+        print_stack_trace >> "$outfile"
+        echo "arguments - $@" >> "$outfile"
+        echo "==TRACE=end===" >> "$outfile"
+        haul cat "$outfile"
+        ${X[rm]} -f "$outfile"
+        unset outfile
+    fi
+    ) &
+
     kill -TERM $1 &>/dev/null
     wait -f $1 &>/dev/null
     if [ "$2" = "cls" ]; then
-        reset
+        ${X[reset]}
         ${X[clear]}
     fi
 }
 
 nc_monitor(){
+#trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
     q0 database_call --html
     local watch_command_tempfile prompt proviso list query db_query
     local -l choice key
-    local -i watch_pid=0
-    watch_command_tempfile="$(tf)"
+    local -i watch_pid
+    watch_command_tempfile="$(tf)" watch_pid=0
     prompt="$(C)press $(button 1) for cookie based logins, $(button 2) for all, $(button q) to quit$(N)"
     f
     o2; B; echo "This script looks up for logged in users on your Nextcloud in$(N) \"$(Y)$NC_DIR$(N)\""
     o2; B; echo "it updates at an adjustable refresh rate and lists ordered by last activity"; N
     f
+    (
+        if ${B[trace]:-_}; then
+            local outfile
+            outfile="$(${X[mktemp]} -p "$TMPDIR")"
+            echo "==TRACE=start=" > "$outfile"
+            print_funcname >> "$outfile"
+            echo -n "global bool values  -" >> "$outfile"
+            local iter
+            for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >> "$outfile"; done; echo >> "$outfile"
+            unset -v iter
+            ${X[grep]} '=' <<< $(local) >> "$outfile"
+            echo "==TRACE=end===" >> "$outfile"
+            haul cat "$outfile"
+            ${X[rm]} -f "$outfile"
+            unset outfile
+        fi
+    ) &
     while :; do
         cursor_ hide
         while :; do
             read -rsn 1 -p "  $prompt " choice
+            ${B[trace]:-_} && haul echo "TRACE: choice: '$choice'" &
             if [ "$choice" = "q" ]; then
                 break 2
             elif (( choice < 1 || choice >= 3 )); then
@@ -107,24 +135,42 @@ nc_monitor(){
 # TODO 1 -->
 #            watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
 # TODO <-- 1
-            ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > $watch_command_tempfile
-. $lincld/binaries
+            ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > "$watch_command_tempfile"
+. ${D[li]}/binaries
 declare -A B
 B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB_STRG="$(${X[sed]} 's/\$/\\$/' <<< "$DB_STRG")" DB_EXEC="$DB_EXEC"
+#\$(declare -f cleanup)
+#trap 'cleanup \$$ cls; interrupted INT' INT
+#trap 'cleanup \$$ cls; interrupted TERM' TERM
 $(declare -f _)
 $(declare -f q0)
 $(declare -f aio_wrapper)
 $(declare -f db_exec_)
-$db_query |
-$sed_pre_html2text |
-$html2text_command |
+$db_query | \
+$sed_pre_html2text | \
+$html2text_command | \
 $sed_post_html2text
 WATCH_COMMAND_TEMPFILE
-#            export X; ${X[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
             ${X[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
             trap 'cleanup $watch_pid cls; interrupted INT' INT
             trap 'cleanup $watch_pid cls; interrupted TERM' TERM
+            (
+                if ${B[trace]:-_}; then
+                    local outfile
+                    outfile="$(${X[mktemp]} -p "$TMPDIR")"
+                    echo "==TRACE=start=" > "$outfile"
+                    print_funcname >> "$outfile"
+                    ${X[grep]} '=' <<< $(local) >> "$outfile"
+                    echo "watch-command: ${X[watch]} -tn $rr 'bash $watch_command_tempfile'" >> "$outfile"
+                    echo "watch-command pid: $watch_pid" >> "$outfile"
+                    echo "==TRACE=end===" >> "$outfile"
+                    haul cat "$outfile"
+                    ${X[rm]} -f "$outfile"
+                    unset outfile
+                fi
+            ) &
             while :; do read -rsn 1 key
+                ${B[trace]:-_} && haul echo "TRACE: key '$key' pressed" &
                 case $key in
                     q)  break 3
                         ;;

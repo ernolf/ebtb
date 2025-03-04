@@ -1,4 +1,4 @@
-__minified_bashlib__
+__bashlib__
 __path_and_modulename__
 __version_and_datestring__
 #
@@ -13,31 +13,25 @@ FP_BASHLIB=:
 declare MACHINE_ID
 
 machine_id(){
-    local -A bool
-    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
     if [[ -f /etc/machine-id || -f /var/lib/dbus/machine-id ]]; then
         [ -f /etc/machine-id ] && ${X[cat]} "/etc/machine-id" || ${X[cat]} "/var/lib/dbus/machine-id"
     else # computing pseudo machine-id - md5sum from mac address:
         q2 ${X[ip]} link show | ${X[gawk]} '/ether/ {print $2}' | ${X[md5sum]} | ${X[tr]} -d ' -'
     fi
-    ${bool[debugx]:-_} && set -x
 }
 
 MACHINE_ID="$(machine_id 2>&1)"
 
 fp(){
-    local -A bool
-    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
     local fingerprint
-    if [ -f "${lf%/*}/fp" ]; then
+    if [ -f "${F[fp]}" ]; then
         local -i fpe
-        fpe=$(${X[stat]} -c %Z "${lf%/*}/fp")
-        (( rte-fpe > 3600 )) && echo > "${lf%/*}/fp"
-        fingerprint=$(< "${lf%/*}/fp")
+        fpe=$(${X[stat]} -c %Z "${F[fp]}")
+        (( rte-fpe > 3600 )) && echo > "${F[fp]}"
+        fingerprint=$(< "${F[fp]}")
     fi
     if (( ${#fingerprint} == 7 )); then
         echo $fingerprint
-        ${bool[debugx]:-_} && set -x
         return 0
     else
         local decimal_number
@@ -56,9 +50,35 @@ fp(){
             decimal_number=$checksum
         done
         fingerprint=":${MACHINE_ID:14:4}${checksum}:"
-        echo "$fingerprint" | ${X[tee]} "${lf%/*}/fp"
+        echo "$fingerprint" | ${X[tee]} "${F[fp]}"
     fi
-    ${bool[debugx]:-_} && set -x
 }
 
-${MH_BASHLIB:-_} || . <(q2 require mh)
+detect_hashed_file(){
+    local item hash
+    local -A bool
+    hash="$1" bool[echo]="$2"
+    for item in $(cd $TMPDIR; ${X[ls]}); do
+        if [ -f "$TMPDIR/$item" ]; then
+            if [[ "$hash" =~ ${item%%_*} ]]; then
+                ${bool[echo]} && echo "$TMPDIR/$item"
+                return 0
+            fi
+        fi
+    done
+    return 1
+}
+
+create_hashed_file(){
+    local -i len
+    local f hash
+# TODO 2 -->
+#    hashlen=${#hash}
+#    random_start=$(${X[shuf]} -i 0-$(($hashlen-$len)) -n 1)
+#    random_sequence=${hash:$random_start:$len}
+# TODO <-- 2
+    len=16 hash="$1"
+    f="$(q2 ${X[mktemp]} -p $TMPDIR -t ${hash:$(${X[shuf]} -i 0-$((${#hash}-$len)) -n 1):$len}_XXXXXXXXXXXX)"
+    ${X[chmod]} 666 "$f"
+    echo "$f"
+}

@@ -1,6 +1,6 @@
-if [ "$(${X[id]} -un)" = "$NC_USER" ]; then
-    if ((my_epoch>epoch)); then
-        upinf="(update available)"
+if [ "${I[un]}" = "$NC_USER" ]; then
+    if (( J[epoch] > M[epoch] )); then
+        V[upinf]="(update available)"
         f
         ipf
         Yi
@@ -8,8 +8,8 @@ if [ "$(${X[id]} -un)" = "$NC_USER" ]; then
         N
         f
         anykey
-    elif ((my_epoch==epoch)); then
-        upinf="(latest version)"
+    elif (( J[epoch] == M[epoch] )); then
+        V[upinf]="(latest version)"
     fi
 else
     my_update_check

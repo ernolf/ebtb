@@ -25,42 +25,50 @@ switch_a2module_version(){
         if ! [[ " ${a2_installed[@]} " =~ " $ver_n " ]]; then
             if (( ${#a2_alternatives[@]} == 1 )); then
                 ver_o=${a2_alternatives[0]}
-                o3; bundle echo "$(xpf;R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run" 6; N)"
-                f; G; bundle echo "$(prompt;P) $me${FLAG[forceflag]} $ver_o $ver_n"; N
-                f; o 5; bundle echo "$(R; format_string ".. to ensure that all required packages for a apache2handler version switch are installed." 6; N)"
-                f; O; echo "  $(format_string "or run it now:" 3; N)"
-                if ask "$(qpf)Do you want to run '$me${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
-                    $me${FLAG[forceflag]} $ver_o $ver_n
+                bundle echo "$(es3; xpf;R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run" 6; N)"
+                f
+                bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} $ver_o $ver_n"; N
+                f
+                bundle echo "$(es5; R; format_string ".. to ensure that all required packages for a apache2handler version switch are installed." 6; N)"
+                f
+                bundle echo "$(es3; O)or run it now:"; N
+                if ask "$(qpf)Do you want to run '$ME${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
+                    $ME${FLAG[forceflag]} $ver_o $ver_n
                     exit 0
                 else
                     return 3
                 fi
             elif (( ${#a2_alternatives[@]} > 1 )); then
-                o3; bundle echo "$(xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run either one of" 6; N)"
+                bundle echo "$(es3; xpf; R; format_string "The $(dY)apache2handler SAPI$(R) for version $(Y)$ver_n $(GRAY)(libapache2-mod-php$ver_n)$(R) is not installed. You should first run either one of" 6; N)"
                 f
                 for ver_o in  ${a2_alternatives[@]}; do
-                    G; bundle echo "$(prompt; P) $me${FLAG[forceflag]} $ver_o $ver_n"; N
+                    bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} $ver_o $ver_n"; N
                 done
-                f; o 5; bundle echo "$(R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
-                f; O; echo "  $(format_string "or run it now:" 3; N)"
+                f
+                bundle echo "$(es5; R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
+                f
+                bundle echo "$(es3; O)or run it now:"; N
 
-                pf; Y; echo "Either run"
+                bundle echo "$(pf; Y)Either run"
 
                 for i in ${!a2_alternatives[@]}; do
-                    f; o 10; echo "$(button $((i + 1))) - $me${FLAG[forceflag]} ${a2_alternatives[i]} $ver_n"
+                    f
+                    bundle echo "$(es 10; button $((i + 1)); pf)$ME${FLAG[forceflag]} ${a2_alternatives[i]} $ver_n"
                 done
-                f; o 10; echo "$(button q) - do nothing, quit"; N
                 f
-                while :;do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
+                bundle echo "$(es 10; button q; pf)do nothing, quit"; N
+                f
+                while :; do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
                     if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+                        mh "key: [$key]" &
                         echo "Confirmed choice $(button $key)"
                         case $key in
                                 q)  f 2;break
                                     ;;
-                            [1-9])  P; pf; echo "Your choice:$(Yi) $me${FLAG[forceflag]} ${a2_alternatives[$key-1]} $ver_n"; N
+                            [1-9])  pf; P; echo "Your choice:$(Yi) $ME${FLAG[forceflag]} ${a2_alternatives[$key-1]} $ver_n"; N
                                     anykey
                                     separator
-                                    $me${FLAG[forceflag]} $ver_o $ver_n
+                                    $ME${FLAG[forceflag]} $ver_o $ver_n
                                     exit 0
                         esac
                     else
@@ -83,13 +91,13 @@ switch_a2module_version(){
                 fi
             done
             if [ "$ver_n" = "$ver_o" ]; then
-                o3; G; bundle echo "The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))"; N
+                bundle echo "$(es3; G)The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))"; N
                 return 0
             fi
             php_a2module_switch_2_ $ver_n
             populate_a2conffiles
             if [[ "${A2CONFFILES[@]}" =~ php$ver_n\.conf && "${A2CONFFILES[@]}" =~ php$ver_n\.load ]]; then
-                o3; G; bundle echo "Successfully switched the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)"; N
+                bundle echo "$(es3; G)Successfully switched the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)"; N
             else
                 return 1
             fi

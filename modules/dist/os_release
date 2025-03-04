@@ -75,7 +75,7 @@ check_os_release(){
 }
 
 mark_checked(){
-    ${X[sed]} -i "/^v=\(true\|false\|:\|_\)$/i distrib_checked $*" "$ca_me"
+    ${X[sed]} -i "/^v=\(true\|false\|:\|_\)$/i distrib_checked $*" "$MP"
     f
     anykey
 }

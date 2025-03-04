@@ -10,7 +10,6 @@ __license__
 ${APP_UPDATE_BASHLIB:-_} && return
 APP_UPDATE_BASHLIB=:
 
-. <(lrequire binaries)
 . <(lrequire nc/nextcloud)
 
 query_updates(){

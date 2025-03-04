@@ -10,10 +10,6 @@ __license__
 ${MIME_TYPES_BASHLIB:-_} && return
 MIME_TYPES_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire ansi)
-. <(lrequire basics)
-
 declare -a mime_ext_regex_image mime_ext_regex_video mime_ext_regex_audio mime_ext_regex_text mime_ext_regex_array
 
 mime_ext_regex_image=(
@@ -133,14 +129,14 @@ mime_ext_regex_audio=(
 )
 
 mime_ext_regex_text=(
-# TODO 0 -->
+# TODO 1 -->
 #    "text/plain:.txt:^.*\.(te?xt)$"
 #    "text/plain:.conf:^.*\.(conf)$"
 #    "text/plain:.cfg:^.*\.(cfg)$"
 #    "text/plain:.rc:^.*\.(rc)$"
 #    "text/plain:.ini:^.*\.(ini)$"
 #    "text/plain:.properties:^.*\.(properties)$"
-# TODO <-- 0
+# TODO <-- 1
     "text/html:.html:^.*\.(html?)$"
     "text/css:.css:^.*\.(css)$"
     "text/javascript:.js:^.*\.(js)$"

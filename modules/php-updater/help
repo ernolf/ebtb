@@ -10,10 +10,6 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
-. <(lrequire line)
 . <(lrequire prompt)
 . <(lrequire fstring)
 . <(lrequire php/logo)
@@ -28,11 +24,11 @@ brief_help(){
         pf; echo "$*"
         f
     fi
-    os; pf; B; echo "$me $(C)--help$(o 44;dY)Detailed explanation"; N
-    os; pf; B; echo "$me$(o 44;dY)Run in interactive mode"; N
-    os; pf; B; echo "$me $(C)--list-installed$(o 44;dY)Detailed information about php on this machine."; N
+    os; pf; B; echo "$ME $(C)--help$(o 44;dY)Detailed explanation"; N
+    os; pf; B; echo "$ME$(o 44;dY)Run in interactive mode"; N
+    os; pf; B; echo "$ME $(C)--list-installed$(o 44;dY)Detailed information about php on this machine."; N
     f; os; W; echo "Only if multiple PHP versions are installed:"; N
-    f; os; pf; B; echo "$me${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new"
+    f; os; pf; B; echo "$ME${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new"
     if (( ${#versions[@]} > 1 )); then
         for i in ${!versions[@]}; do
             pkgct[i]=$(${X[dpkg]} -l|${X[gawk]} '/^[hiu]i.*php'${versions[i]}'/{print $2}'|${X[wc]} -l)
@@ -46,13 +42,13 @@ brief_help(){
             SUGGESTION="$(i_ver "$sugg_old")" || SUGGESTION="$(d_ver "$sugg_old")"
             sugg_new="$SUGGESTION"
         fi
-        o 6; GRAY; echo -n "\ Example: $(B)$me${FLAG[forceflag]} $(C)$sugg_old $sugg_new"; N
+        o 6; GRAY; echo -n "\ Example: $(B)$ME${FLAG[forceflag]} $(C)$sugg_old $sugg_new"; N
 #        te
     fi
     te; o 43; echo "$(dY;format_string "Migrate all settings from $(B)php$(GRAY)\$$(C)old$(dY) to $(B)php$(GRAY)\$$(C)new$(dY). $(B)php$(GRAY)\$$(C)new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44; N)"
     o 43; echo "$(dY;format_string "Important: $(B)php$(GRAY)\$$(C)old$(dY) should be the best-configured PHP version on your system. $(B)php$(GRAY)\$$(C)new$(dY) will be configured based on $(B)php$(GRAY)\$$(C)old$(dY)’s setup, so $(B)php$(GRAY)\$$(C)old$(dY) doesn’t have to be the active version!" 44; N)"
     o 43; echo "$(O;format_string "Tip: $(W)If your active ($(GRAY)latest$(N)) PHP version has not been installed$(GRAY)/$(W)updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 49; N)"
-    f; os; pf; B; echo "$me $(C)--switch-version$(o 44;dY)switch default php version interactively"; N
+    f; os; pf; B; echo "$ME $(C)--switch-version$(o 44;dY)switch default php version interactively"; N
 }
 
 first_brief_help(){
@@ -78,20 +74,20 @@ explain(){
 $(q2 phplogo)
 
  $(line = P 81)
-  $(Bi)This is the help page of $me
+  $(Bi)This is the help page of $ME
  $(line = dP 81)
 
   $(W)You can call this help with:
 
-$(G;prompt;B) $me -h
+$(G;prompt;B) $ME -h
   $(W)or:
-$(G;prompt;B) $me --help
+$(G;prompt;B) $ME --help
 
   $(W)and if you don't want the help to be piped into a pager:
 
-$(G;prompt;B) $me -h --no-pager
+$(G;prompt;B) $ME -h --no-pager
   $(W)or:
-$(G;prompt;B) $me --help --no-pager
+$(G;prompt;B) $ME --help --no-pager
 
  $(line = P 81)
 
@@ -155,7 +151,7 @@ $(G;prompt -su;B) $sudo apache2ctl -M 2>/dev/null | grep mpm
 
   $(W)this call:
 
-$(G;prompt -su;B) $me --list-installed
+$(G;prompt -su;B) $ME --list-installed
 
  $(format_string "$(W)… provides a list of all installed php related packages where the active SAPI is marked if detected by this script." 2 W)
 
@@ -172,7 +168,7 @@ $(separator dP)
 
   $(W)this call:
 
-$(G;prompt -su;B) $me --list-installed
+$(G;prompt -su;B) $ME --list-installed
 
  $(format_string "$(W)… provides a list of all installed php related packages where all SAPI, meta- and depenency packages are marked." 2 W)
 
@@ -187,7 +183,7 @@ $(separator dP)
 
   $(W)this call:
 
-$(G;prompt -su;B) $me --list-candidates
+$(G;prompt -su;B) $ME --list-candidates
 
   $(W)… provides a list of all available php candidates available from your apt sources.
   $(W)It will hint you, if you need to add a PPA/DPA.
@@ -202,7 +198,7 @@ $(separator dP)
 
   $(Y)execute the script simply by calling it:
 
-$(G;prompt -su;B) $me
+$(G;prompt -su;B) $ME
 
  $(format_string "$(W)it looks for installed php-versions and installation candidates from the Apt sources. If only one php Version is installed, it will offer you to install a new version of your choice." 2 W)
   $(W)After installation, it migrates all settings from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W):
@@ -217,7 +213,7 @@ $(G;prompt -su;B) $me
 
   $(Y)an other possible call is:
 
-$(G;prompt -su;B) $me $(C)<OLD> <NEW>
+$(G;prompt -su;B) $ME $(C)<OLD> <NEW>
 
  $(format_string "$(W)in this case it will assume $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) as refference, which does not have to be the $(C)running$(W) version. If required, it installs missing packages which are installed in $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) but not in $(GRAY)*\`$(C)<NEW>$(GRAY)\`*$(W). Then it will do the migration of all settings." 2 W)
 
@@ -231,7 +227,7 @@ $(separator dP)
 
   $(P)You can call:
 
-$(G;prompt -su;B) $me $(C)--switch-version
+$(G;prompt -su;B) $ME $(C)--switch-version
 
   $(P)to complete that step.
 
@@ -251,7 +247,7 @@ $(G;prompt -su;B) $sudo systemctl restart apache2 php$(C)<NEW>$(B)-fpm
 
   $(P)You can call:
 
-$(G;prompt -su;B) $me $(C)--switch-version
+$(G;prompt -su;B) $ME $(C)--switch-version
 
   $(P)to complete these steps, so that you don't have to edit any files.
 
@@ -266,8 +262,6 @@ $(G;prompt -su;B) $me $(C)--switch-version
 
   $(W)Good luck!
   $(W)ernolf
-
-  $(C)PayPal: $(lG) ernolf$(C)<at>$(lG)global-social.net
 
 EOF
     anykey

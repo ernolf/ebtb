@@ -10,11 +10,7 @@ __license__
 ${VERSIONS_BASHLIB:-_} && return
 VERSIONS_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire interval)
-. <(lrequire line)
-. <(lrequire array)
 . <(lrequire php/sury)
 
 # globals
@@ -31,12 +27,12 @@ PHPVREGEX='php(5\.6|[78]\.[01234])'
 no_php(){
     f; R
     pf; echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
-    if [[ " php-module-builder php-module-builder-test " =~ " $bm " ]]; then
-        os; echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
-        os; echo "You should at least install the package php\$version-cli first"
+    if [[ "$MS" =~ php-module-builder ]]; then
+        o3; echo "This script is meant to build extensions for an installed basic php but not (yet) to do a first install"
+        o3; echo "You should at least install the package php\$version-cli first"
         exit0
-    elif [[ " php-updater php-updater-test " =~ " $bm " ]]; then
-        os; echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
+    elif [[ "$MS" =~ php-updater ]]; then
+        o3; echo "This script is meant to up- or downgrade php but not (yet) to do a first install"
         N
         anykey
         explain
@@ -44,6 +40,7 @@ no_php(){
 }
 
 [ -n "${X[php]}" ] && PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
+mh "PHP_VERSION: $PHP_VERSION" &
 
 existing_php_versions(){
     ${X[cat]} <<PHP_VERSIONS
@@ -191,11 +188,11 @@ does_exist_(){
         if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
             if ! [[ " ${CAN[@]%%;*} " =~ " $1 " ]]; then
                 r=1
-                no_candidate $1
+                no_candidate "$1"
             fi
         else
             r=1
-            does_not_exist $1
+            does_not_exist "$1"
         fi
     fi
 #    ((r))&&exit$r

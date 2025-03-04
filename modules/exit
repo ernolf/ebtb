@@ -10,31 +10,24 @@ __license__
 ${EXIT_BASHLIB:-_} && return
 EXIT_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire ansi)
+# TODO <-- 0
 . <(lrequire debug)
 
 exit0(){
-    G; echo "exiting script."
-    N; echo "generous? feedback? questions? run: '$me --contribute'"
-    N; exit 0
+    mh "exit: 0"
+    G; echo "exiting script."; N
+    echo "generous? feedback? questions? run: '$ME --contribute'"; N
+    exit 0
 }
 
 exit1(){
-    R; echo "exiting…"
-    N; exit 1
-}
-
-# define a trap to clean up the temporary file
-exit_trap(){
-    [ -f "$spinner_pid_file" ] && kill_spinner
-    ${local_server:-_} && ls_ stop
-#    nonullglob "$TMPDIR/${bm}$$_*" && (${X[rm]} -f $TMPDIR/${bm}$$_*) 2>/dev/null
-#    nonullglob "$TMPDIR/${bm:-$$}_*" && (${X[rm]} -f $TMPDIR/${bm:-$$}_*) 2>/dev/null
-    nonullglob "$TMPDIR/${bm}$$_*" && q2 ${X[rm]} -f $TMPDIR/${bm}$$_*
-    nonullglob "$TMPDIR/${bm:-$$}_*" && q2 ${X[rm]} -f $TMPDIR/${bm:-$$}_*
-    ansi_reset
+    mh "exit: 1"
+    R; echo "exiting…"; N
+    exit 1
 }
 
 cleanup(){
@@ -45,8 +38,18 @@ cleanup(){
     done
 }
 
+# define a trap to clean up the lock- and temporary files
+exit_trap(){
+    [ -f "$spinner_pid_file" ] && kill_spinner
+    ${local_server:-_} && ls_ stop
+    cleanup "${D[lock]}"
+    nonullglob "$TMPDIR/${bm}$$_*" && q2 ${X[rm]} -f $TMPDIR/${bm}$$_*
+    nonullglob "$TMPDIR/${bm:-$$}_*" && q2 ${X[rm]} -f $TMPDIR/${bm:-$$}_*
+    ansi_reset
+}
+
 interrupted(){
-    if [ -z "$bm" ]; then
+    if [ -z "${M[b]}" ]; then
         return 0
     else
         te1; Yi; echo "TRAP: interrupted by sig$1"

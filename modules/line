@@ -10,9 +10,10 @@ __license__
 ${LINE_BASHLIB:-_} && return
 LINE_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire ansi)
-
+# TODO <-- 0
 # $1=pattern $2=color $3=(empty spaces/)repetition of pattern((int/)int)
 # $4 and $5 either a$i or b$i where a is after and b is before
 # and $i the amount of empty lines

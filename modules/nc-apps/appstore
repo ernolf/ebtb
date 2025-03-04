@@ -10,9 +10,7 @@ __license__
 ${APPSTORE_BASHLIB:-_} && return
 APPSTORE_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire $sin/db)
+. <(lrequire nc-apps/db)
 
 # appstore-functions:
 dl_appstore_json_db(){
@@ -69,7 +67,7 @@ dl_appstore_json_db(){
         unix_etag="$(r_db "SELECT etag FROM $unit;")"
     fi
     etag="\"$(u2e $unix_etag)\""
-    response="$(${X[curl]} --compressed -D - -H "If-None-Match: $etag" -s $appstore_url/$unit.json)"
+    response="$(${X[curlc]} -D - -H "If-None-Match: $etag" -s $appstore_url/$unit.json)"
     http_code="$(echo "$response" | ${X[head]} -n1 | ${X[gawk]} 'tolower($0)~/http\//{print $2}')"
     new_etag="$(echo "$response" | ${X[grep]} -ioPs 'etag: "\K[^"]+')"
     new_unix_etag="$(e2u "$new_etag")"
@@ -111,9 +109,9 @@ dl_appstore_json_db(){
 }
 
 appstore(){
-    local JQ_FILTER platform extra_jq response http_code unix_etag json_data_file ids
+    local jq_filter platform extra_jq response http_code unix_etag json_data_file ids
     local -A bool
-    platform="$nc_version" bool[ids]=_ bool[new]=_
+    platform="${V[nc_version]}" bool[ids]=_ bool[new]=_
     case "$(varname "$1")" in
         platform) platform="$(varval "$1")"
                   shift ;;
@@ -161,7 +159,7 @@ appstore(){
     fi
 
   # jq-filter as here-document:
-    read -rd '' JQ_FILTER << 'JQ'
+    read -rd '' jq_filter << 'JQ'
   # Define a function to get the translation for a given language
     def get_translation($lang):
       .translations[$lang] // .translations["en"];
@@ -205,28 +203,28 @@ appstore(){
         latestPlatformVersion: (.releases|sort_by(.created)|last|.rawPlatformVersionSpec),
     })|map(. + (extract_php_versions)|del(.phpVersionSpec))|map(. + (extract_version)|del(.latestPlatformVersion))
 JQ
-    [ -z "$extra_jq" ] || JQ_FILTER="$JQ_FILTER|$extra_jq"
+    [ -z "$extra_jq" ] || jq_filter="$jq_filter|$extra_jq"
     ${bool[new]} && (( $(r_db "SELECT COUNT(*) FROM filtered_apps WHERE platform == '$platform' AND etag == '$unix_etag' AND lang == '$lang';") )) && return 0
     if ${bool[new]}; then
         local json_filtered_data_file="$(jsontf)"
-        ${X[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" > $json_filtered_data_file
+        ${X[jq]} --arg lang "$lang" -f <(echo "$jq_filter") "$json_data_file" > $json_filtered_data_file
         ${X[rm]} -f "$(r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$platform' AND lang == '$lang'")"
         w_db filtered_apps "$platform" "$lang" "$unix_etag" "$json_filtered_data_file"
         return 0
     elif ${bool[ids]}; then
-        ids="$(${X[jq]} -cr --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file" | ${X[base64]} -w 0)"
+        ids="$(${X[jq]} -cr --arg lang "$lang" -f <(echo "$jq_filter") "$json_data_file" | ${X[base64]} -w 0)"
         w_db app_ids appstore_$platform "$unix_etag" "$ids"
         return 0
     fi
-    ${X[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") "$json_data_file"
+    ${X[jq]} --arg lang "$lang" -f <(echo "$jq_filter") "$json_data_file"
     exit 0
 }
 
 # TODO: Fix this or throw it out?
 categories(){
-    local JQ_FILTER extra_jq="$*" query json_data
+    local jq_filter extra_jq="$*" query json_data
     dl_appstore_json_db categories 2>/dev/tty
-    read -rd '' JQ_FILTER << 'JQ'
+    read -rd '' jq_filter << 'JQ'
       # Define a function to get the translation for a given language
         def get_translation($lang):
           .translations[$lang] // .translations["en"];
@@ -236,9 +234,9 @@ categories(){
           description: (get_translation($lang)|.description)
         })
 JQ
-    [ -z "$extra_jq" ] || JQ_FILTER="$JQ_FILTER|$extra_jq"
+    [ -z "$extra_jq" ] || jq_filter="$jq_filter|$extra_jq"
     query="SELECT json_data FROM categories;"
     json_data="$(q2 r_db "$query")"
-    ${X[jq]} --arg lang "$lang" -f <(echo "$JQ_FILTER") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
+    ${X[jq]} --arg lang "$lang" -f <(echo "$jq_filter") <<< "$json_data" # "$TMPDIR/${basename_me}_categories.json"
     exit 0
 }

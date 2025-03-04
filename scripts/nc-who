@@ -7,18 +7,18 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
-modules=(
-    binaries basics awksed tempfile ansi filter button exit anykey line array
-    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db $sin/help
-    $sin/last $sin/monitor
-)
+# TODO 0 -->
+#modules=(
+#    binaries basics awksed tempfile ansi filter button exit anykey line array
+#    sudo dependency vdir integrity nc/nextcloud nc/nextcloud_db $MS/help
+#    $MS/last $MS/monitor
+#)
+# TODO <-- 0
+modules=(nc/nextcloud nc/nextcloud_db nc/logo $MS/help $MS/last $MS/monitor)
 __debug__
 __when__
-
-__whoami_whereami__
-
 __vdirname__
 __tempdir__
 __module_server__
@@ -35,12 +35,22 @@ contribute_(){
 }; donate_(){ contribute_;}
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
-declare command
+declare arg command
+declare -a args
+
+for arg in "$@"; do
+    case "$arg" in
+        --trace) B[trace]=:  ;;
+              *) args+=("$arg")
+    esac
+done
+set -- "${args[@]}" && unset -v arg args
+
 command=print_help
 while (($#));do
     case "$1" in
         monitor|last)
-            command=nc_$1
+            command="nc_$1"
             break 2
             ;;
         -h|--help)

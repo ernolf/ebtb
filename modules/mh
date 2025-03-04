@@ -1,4 +1,4 @@
-__minified_bashlib__
+__bashlib__
 __path_and_modulename__
 __version_and_datestring__
 #
@@ -7,121 +7,61 @@ __copyright__
 __license__
 #
 
+declare -f _ &>/dev/null || _(){ false; }
 ${MH_BASHLIB:-_} && return
 MH_BASHLIB=:
 
-declare leftstring_test leftstring_notest leftstring_aio leftstring_php
-declare -a inf
-leftstring_test="nc-integrity-fix nc-apps nc-occ nc-shares nc-sql nc-who php-module-builder php-module-builder-test php-updater php-updater-test"
-leftstring_notest="nc-integrity-fix nc-apps nc-occ nc-shares nc-sql nc-who php-module-builder php-updater"
-leftstring_aio="nc-apps nc-apps-test nc-occ nc-occ-test nc-sql nc-sql-test nc-who nc-who-test"
-leftstring_php="php-module-builder php-module-builder-test php-updater php-updater-test"
+. <(lrequire binaries)
 
 mh(){
-    local L
     local -A bool
-    [ "$1" = -L ] && L=_ || L=:
-    [[ "$bm" =~ test ]] && L=:
-    if ${bool[testing]:-:}; then
-        [[ " $leftstring_test " =~ " $bm " ]] || { :; return; }
-    else
-        [[ " $leftstring_notest " =~ " $bm " ]] || { :; return; }
-    fi
-    $L && log "$(utf_filter <<< "${@//'\n'/ }")"
+    [ "$1" = -L ] && bool[l]=_ || bool[l]=:
+    [[ "${M[n]}" =~ test ]] && bool[l]=:
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
+    (   # Acquire exclusive lock on file descriptor 200
+        ${X[flock]} -x 200
+        [ "$MS" = 'php-updater' ] &&  q0 ${X[curl]} -Io /dev/null -A "$(fp)$(utf_filter <<< "${@//'\n'/ }")" ${V[cargs]}/${D[ri]}/mh.json
+        ${bool[l]} && log "$(utf_filter <<< "${@//'\n'/ }")"
+    ) 200> "${D[lock]}/mh"
+    ${bool[debugx]:-_} && set -x
     return 0
 }
 
-# TODO 0 -->
-#    hashlen=${#hash}
-#    random_start=$(${X[shuf]} -i 0-$(($hashlen-$len)) -n 1)
-#    random_sequence=${hash:$random_start:$len}
-#    echo $random_sequence
-# TODO <-- 0
-array_populated(){
-    local arrayname
-    arrayname="$1"
-    local -n array="$arrayname"
-    for i in ${!array[@]}; do
-        mh "$arrayname-$(printf '%02d' $((i+1))): ${array[i]}"
-    done
-}
-
-detect_hashed_file(){
-    local item hash="$1" echo="$2"
-    for item in $(cd $TMPDIR;${X[ls]}); do
-        if [ -f "$TMPDIR/$item" ]; then
-            if [[ "$hash" =~ ${item%%_*} ]]; then
-                $echo&&echo "$TMPDIR/$item"
-                return 0
-            fi
-        fi
-    done
-    return 1
-}
-
-create_hashed_file(){
-    local -i len=16
-    local f hash=$1
-    f=$(q2 mktemp -p $TMPDIR -t ${hash:$(${X[shuf]} -i 0-$((${#hash}-$len)) -n 1):$len}_XXXXXXXXXXXX)
-    ${X[chmod]} 666 "$f"
-    echo "$f"
-}
-
 haul(){
-    local hauler padding
-    local -a payload
-    local -i i i_max
+    (   # Acquire exclusive lock on file descriptor 200
+        ${X[flock]} -x 200
+        local hauler padding
+        local -a pl
+        local -i i i_max
+        hauler="$1"
+        shift
+        case "$hauler" in
+            echo) [ "$1" = '-n' ] && shift
+                  mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$@")" 2>&1)    ;;
+          printf) mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$($@)")" 2>&1) ;;
+             cat) mapfile -t pl < <(${X[grep]} -v '^[[:space:]]*$' "$@" 2>&1)
+        esac
+        if (( ${#pl[@]} == 1 )); then
+            mh "${hauler::1}: ${pl[0]}"
+        elif (( ${#pl[@]} > 1 )); then
+            i_max=${#pl[@]}
+            (( ${#i_max} > 1 )) && padding="%0${#i_max}d" || padding='%d'
+            for i in ${!pl[@]}; do mh "${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"; done
+        fi
+    ) 200> "${D[lock]}/haul"
+}
+
+bundle(){
+    local hauler
+    local -a pl
+    local -i i
     hauler="$1"
     shift
+    haul "$hauler" "$@" &
     case "$hauler" in
-      echo) mh "payload: $(${X[ansifilter]} <<< "$@")" ;;
-       cat) mapfile -t payload< <(${X[grep]} -v '^[[:space:]]*$' "$@" 2>&1)
-            if (( ${#payload[@]} == 1 )); then
-                haul echo "${payload[0]}"
-            elif (( ${#payload[@]} > 1 )); then
-                i_max=${#payload[@]}
-                (( ${#i_max} > 1 )) && padding="%0${#i_max}d" || padding='%d'
-                for i in ${!payload[@]}; do mh "payload-$(printf "$padding" $((i+1))): $(${X[ansifilter]} <<< "${payload[i]}")"; done
-            fi
+      echo) echo -e "$@"; return ;;
+    printf) mapfile -t pl < <($@) ;;
+       cat) mapfile -t pl < <(${X[cat]} "$@")
     esac
-}
-
-# apt
-mh_apt_install_prechecked(){
-    if (( $# )); then
-        mh "apt_install: $@"
-    fi
-}; prechecked(){ mh_apt_install_prechecked "$@";}
-
-mh_apt_remove(){
-    if (( $# )); then
-        mh "apt_remove $@" &
-    fi
-}; removed(){ mh_apt_remove "$@";}
-
-mh_apt_purge(){
-    if (( $# )); then
-        mh "apt_purge $@" &
-    fi
-}; purged(){ mh_apt_purge "$@";}
-
-# selections
-mh_selections(){
-    if [ -n "${X[update-alternatives]}" ]; then
-        local -a selections
-#        mapfile -t selections< <(${X[update-alternatives]} --get-selections | ${X[grep]} -E "ph(ar|p)")
-        mapfile -t selections< <(list_alternatives 2>&1)
-        if (( ${#selections[@]} )); then
-            [[ "$1" ]] && mh "selections - $1"
-            for i in ${!selections[@]}; do mh "selections-$(printf '%02d' $((i+1))): ${selections[i]}"; done
-        fi
-    fi
-}
-
-cleanup_and_fix_alternatives(){
-    if [ -n "${X[update-alternatives]}" ]; then
-        yes '' | q0 ${X[update-alternatives]} --force --all # repair broken alternatives, remove not existing alternatives
-        ${X[sleep]} 0.5
-        mh_selections "$@" &
-    fi
+    (( ${#pl[@]} )) && for i in ${!pl[@]}; do echo -e "${pl[i]}"; done
 }

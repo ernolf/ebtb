@@ -7,20 +7,24 @@ __copyright__
 __license__
 #
 
+__whoami_whereami__
 __scriptname__
-
+# TODO 0 -->
+#modules=(
+#    binaries today interval basics awksed tempfile prompt ansi filter prefix
+#    button fstring exit spinner anykey line array httpd sudo php/version
+#    php/versions dpkg ask dependency php/fpm vdir integrity dist/os_release
+#    php/sury php/extensions $MS/disclaimer $MS/ini $MS/pecl $MS/patch
+#    $MS/data_refine
+#)
+# TODO <-- 0
 modules=(
-    binaries today interval basics awksed tempfile prompt ansi filter prefix
-    button fstring exit spinner anykey line array httpd sudo php/version
-    php/versions dpkg ask dependency php/fpm vdir integrity dist/os_release
-    php/sury php/extensions $sin/disclaimer $sin/ini $sin/pecl $sin/patch
-    $sin/data_refine
+    today interval prompt fstring spinner httpd php/version dpkg ask
+    php/versions php/fpm dist/os_release php/sury php/extensions
+    $MS/disclaimer $MS/ini $MS/pecl $MS/patch $MS/data_refine
 )
 __debug__
 __when__
-
-__whoami_whereami__
-
 # don't change this by hand, its done safe and interactively by the script:
 declare vdirname='project_dir' # <-- don't change this!
 declare dflt_$vdirname='UNDEFINED' # <-- don't change this!
@@ -41,7 +45,7 @@ contribute_(){
 # you MUST be root:
 su_root "to run this script"
 my_update_check
-tnh1_strg distrib_checked || . <(require $sin/distrib)
+tnh1_strg distrib_checked || . <(require $MS/distrib)
 
 ##########
 ## void ##
@@ -70,7 +74,7 @@ set -- "${args[@]}" && unset -v args
 declare project
 project="PHP-Extensions"
 if ${B[firstrun]} || [[ -z "$project_dir" || ! -d "$project_dir" || "$project_dir" = "UNDEFINED" ]]; then
-    . <(require $sin/first_run) && first_run
+    . <(require $MS/first_run) && first_run
 fi
 
 declare php_version module etc_dir ini_dir pv m mv configure_opts need m4_patch mver ini extension_dir extension_include_dir installed_modules extension
@@ -94,7 +98,7 @@ ext_state cleanup
 ext_state fix
 
 [ "$#" -ne 2 ] && {
-    echo "$(Pbg)Usage:$(B) $me <php_version> <module> [--firstrun] [--remove] [--force] [--step]"
+    echo "$(Pbg)Usage:$(B) $ME <php_version> <module> [--firstrun] [--remove] [--force] [--step]"
     o 9; B; echo "--firstrun  - first run wizard"
     o 9; B; echo "--remove    - remove module instead if install"
     o 9; B; echo "--force     - install or remove modules even though the script does not know if it works"
@@ -116,10 +120,10 @@ basics=(build-essential php-pear php$php_version-dev php$php_version-xml)
 B[supported]=true
 priority=20
 ini_file=(
-    "; php $module module built by $me"
+    "; php $module module built by $ME"
     "; build dir $project_dir/$project/$php_version/$module"
     "; if you want to completely remove this php $module module run"
-    "; $me $php_version $module --remove"
+    "; $ME $php_version $module --remove"
     ";")
 [ -z "$module" ] || echo "${built_modules[$php_version]}"|${X[grep]} -wqs "$module" && B[module_is_built]=true
 
@@ -186,7 +190,7 @@ else
         echo "$(Pbg)- php$php_version-$module is already installed but apperently not built by this script $(N)"
         exit 1
     else
-        if ! echo "${supported_modules[@]}" | ${X[grep]} -wqs "$module"; then supported=false
+        if ! echo "${supported_modules[@]}" | ${X[grep]} -wqs "$module"; then B[supported]=false
             if echo "${not_supported_modules[@]}" | ${X[grep]} -wqs "$module"; then
                 echo "$(Pbg)- This script has already been tested to build \"php-$module\" but it failed. $(N)"
                 echo "$(Pbg)  please give me feedback if you have working patches to make build process succeed. $(N)"
@@ -312,11 +316,14 @@ else
     esac
     case $need in
       igbinary) [ -d "$extension_include_dir/$need/src/php7" ] || {
-                    f; o2; R; echo "The $module module depends on $need but it could not be found."
+                    f
+                    o2; R; echo "The $module module depends on $need but it could not be found."
                     o2; R; echo "You must first install or build php$php_version-$need:"
-                    f; G; echo "$(prompt; P) $me $php_version $need"
-                    cd; f; o2; G; echo -n "cleaning up..."
-                    q0 "$me" "json=$my_json" $php_version $module --remove
+                    f
+                    echo "$(G; prompt; P) $ME $php_version $need"
+                    cd; f
+                    o2; G; echo -n "cleaning up..."
+                    q0 $ME "json=${J[json]}" $php_version $module --remove
                     te1; exit0
                 }
                 ;;
@@ -333,15 +340,17 @@ else
     ${B[step]:-false} && anykey
     if ./configure --with-php-config=/usr/bin/php-config$php_version $configure_opts && ${X[make]}; then
         lG; echo "- from the point of view of this script, it looks like the build process was a success!"
-        $supported||{ o2; lG; echo "even though this module was not tested. Please give me feedback."; }
+        ${B[supported]} || { o2; lG; echo "even though this module was not tested. Please give me feedback."; }
         ${B[step]:-false} && anykey
-        f; GRAY; echo "- next step: $(B)make install:"
+        f
+        GRAY; echo "- next step: $(B)make install:"
         ${B[step]:-false} && anykey
-        f; C; ${X[make]} install
+        f
+        C; ${X[make]} install
         module_ini
     else
         R; echo "- from the point of view of this script, it looks like the build process failed! "
-        $supported && { o2; R; echo "even though it has successfully been tested before. Please give me feedback"; }
+        ${B[supported]} && { o2; R; echo "even though it has successfully been tested before. Please give me feedback"; }
     fi
 fi
 

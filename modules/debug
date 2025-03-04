@@ -10,10 +10,11 @@ __license__
 ${DEBUG_BASHLIB:-_} && return
 DEBUG_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire tempfile)
 . <(lrequire exit)
-
+# TODO <-- 0
 [[ "${dependencies[@]}" =~ lsof ]] || dependencies+=("lsof#lsof#Unix-specific diagnostic tool to LiSt Open Files")
 
 resolve_source_path() {
@@ -127,7 +128,10 @@ require_arg() {
 something_went_wrong(){
     local outfile1 outfile2 message
     outfile1="$(tf)" outfile2="$(tf)" message="$1"
-    echo "Error:$(R; format_string "Something went wrong. This error and its stack trace have been recorded and will be analyzed to develop a fix if possible." 7; N)" > "$outfile1"
+# TODO 1 -->
+#    echo "Error:$(R; format_string "Something went wrong. This error and its stack trace have been recorded and can be analyzed to develop a fix if possible." 7; N)" > "$outfile1"
+# TODO <-- 1
+    echo "Error:$(R; format_string "Something went wrong." 7; N)" > "$outfile1"
     if (( $# )); then
         echo >> "$outfile1"
         echo "$(o2; R; format_string "- $message" 5; N)" >> "$outfile1"

@@ -10,37 +10,29 @@ __license__
 ${LINSTALLED_BASHLIB:-_} && return
 LINSTALLED_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
 . <(lrequire dos2unix)
-. <(lrequire button)
-. <(lrequire exit)
-. <(lrequire anykey)
 . <(lrequire fstring)
 . <(lrequire spinner)
-. <(lrequire line)
-. <(lrequire array)
-. <(lrequire ask)
 . <(lrequire httpd)
 . <(lrequire php/versions)
 . <(lrequire php/extensions)
 . <(lrequire php/apache2)
 . <(lrequire php/fpm)
-. <(lrequire $sin/tasks)
+. <(lrequire php-updater/tasks)
 
 list_installed_sapi(){
     cursor_ hide
-    local sapi pkg fullpath pv httpd modstring q0 bundle
+    local sapi pkg fullpath pv httpd modstring q0 bundle f
     local -a sockets
     local -A bool # local booleans
     local -i c2 c3 i
     if [ "$1" = 'quiet' ]; then
-        q0='q0' bundle='' bool[quiet]=:
+        q0='q0' bundle='' bool[quiet]=: f=''
     else
-        q0='' bumdle='bundle' bool[quiet]=_
+        q0='' bumdle='bundle' bool[quiet]=_ f=f
     fi
     c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
-    $q0 detect_and_assign_extensions apache2
+    $q0 detect_and_assign_extensions assign apache2
     populate_httpd_ active
     ${bool[quiet]} || for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
     for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=${PHPVREGEX//\./\\.} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
@@ -52,11 +44,11 @@ list_installed_sapi(){
     if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && (( ${#SAPI_A2[@]} )); then
         if ! apache2_mpm prefork; then
             modstring="$(listify C $(p_sort ${!SAPI_A2[@]}))"
-            $bundle echo "$(xpf; format_string "$(R)The Apache2handler libapache2-mod-php is installed$(N) for $modstring, $(R)but the mpm_prefork module required by this SAPI is not loaded, so this SAPI is effectively inactive." 3; N)"
+            $bundle echo "$(xpf; R; format_string "The Apache2handler libapache2-mod-php is installed$(N) for $modstring, $(R)but the mpm_prefork module required by this SAPI is not loaded, so this SAPI is effectively inactive." 3; N)"
             if apache2_mpm event; then
-                $bundle echo "$(ipf; format_string "$(Yi)Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3; N)"
+                $bundle echo "$(ipf; Yi; format_string "Instead, the mpm_event module is loaded, which is required by the PHP Fast Process Manager (php-fpm). Only one mpm module can be loaded, they exclude each other." 3; N)"
             fi
-            f
+            $f
         fi
         for pv in $(p_sort ${!SAPI_A2[@]}); do
             pkg="libapache2-mod-php$pv"
@@ -75,30 +67,30 @@ list_installed_sapi(){
                 o $c3; W; W; echo " <<INACTIVE"; N
             fi
         done
-        f
+        $f
     fi
     if (( ${#SAPI_FPM[@]} )); then
         if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && ! apache2_mpm event; then
             modstring="$(listify C $(p_sort ${!SAPI_FPM[@]}))"
-            $bundle echo "$(xpf; format_string "$(R)The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3; N)"
+            $bundle echo "$(xpf; R; format_string "The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3; N)"
             $bundle echo "  $(format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3; N)"
             if apache2_mpm prefork; then
-                $bundle echo "$(ipf; format_string "$(Yi)Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3; N)"
+                $bundle echo "$(ipf; Yi; format_string "Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3; N)"
                 if (( ${#SAPI_A2[@]} )); then
-                    $bundle echo "$(ipf; format_string "$(Yi)Apache2handler (libapache2-mod-php) is installed for version $(listify C ${!SAPI_A2[@]})" 3; N)"
-                    $bundle echo "$(ipf; format_string "$(Yi)You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the SAPI" 3; N)"
+                    $bundle echo "$(ipf; Yi; format_string "Apache2handler (libapache2-mod-php) is installed for version $(listify C ${!SAPI_A2[@]})" 3; N)"
+                    $bundle echo "$(ipf; Yi; format_string "You can switch to fpm when you call this script again without arguments, it will detect the malconfiguration and offer you to switch the SAPI" 3; N)"
                 else
-                    $bundle echo "$(ipf; format_string "$(Yi)But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3; N)"
+                    $bundle echo "$(ipf; Yi; format_string "But since the Apache2handler (libapache2-mod-php) is not installed in any version, I will try to fix this by unloading the mpm_prefork_module and loading the mpm_event_module and other required modules for fpm to work.." 3; N)"
                     php_a2module_ disable
                     php_fpm_module_ enable
                     ${X[systemctl]} restart apache2
                 fi
             else
-                $bundle echo "$(ipf; format_string "$(Yi)But since the mpm_prefork module is not loaded either, I will try to load the mpm_event_module and other required modules for fpm to work.." 3; N)"
+                $bundle echo "$(ipf; Yi; format_string "But since the mpm_prefork module is not loaded either, I will try to load the mpm_event_module and other required modules for fpm to work.." 3; N)"
                 php_fpm_module_ enable
                 ${X[systemctl]} restart apache2
             fi
-            f
+            $f
         fi
         for pv in $(p_sort ${!SAPI_FPM[@]}); do
             sockets=()
@@ -129,7 +121,7 @@ list_installed_sapi(){
                                         fi
                             esac
                             case ${HTTPD["$httpd"]} in
-                                2)  connected_httpd="$connected_httpd $(N;GRAY)$httpd(inactive)$(lG)" ;;
+                                2)  connected_httpd="$connected_httpd $(N; GRAY)$httpd(inactive)$(lG)" ;;
                                 3)  connected_httpd=" $httpd $connected_httpd"
                             esac
                         done
@@ -214,7 +206,7 @@ list_installed(){
                     printf "$mod"
                     ctr=$((ctr+${#mod}))
                 done
-                N;f
+                N; f
             fi # <--
             # --> Active SAPI
             if [ "${sapi%:*}" = 'apache2' ]; then
@@ -329,7 +321,7 @@ list_installed(){
     line '-' dP 2/78
     if [ 0$(${X[phpquery]} -V | wc -w) -gt 1 ]; then
         o2; Yi; echo "You can switch the $(lG)<ACTIVE>$(Yi) and $(lG)<CONNECTED>$(Yi) version with:"
-        o 35; B; echo "$me --switch-version"
+        o 35; B; echo "$ME --switch-version"
         line '-' dP 2/78
     fi
     ${bool[quiet]:-_} || call_me installed
@@ -341,7 +333,7 @@ list_installed(){
     if ${B[supported]:-_}; then
         if ((aimct));then
             ((aimct==1))&&plu='s a:'||plu=':s'
-            bundle echo " -$(format_string "$(Y)Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3; N)"
+            bundle echo "$(Y; format_string "- Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3; N)"
             replace_aim
             anykey
         fi

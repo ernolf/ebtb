@@ -10,9 +10,6 @@ __license__
 ${PECL_BASHLIB:-_} && return
 PECL_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire exit)
-
 pecl_download(){
     local chan download_output file_name
     if (( $# )); then

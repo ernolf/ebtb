@@ -10,15 +10,17 @@ __license__
 ${DPKG_BASHLIB:-_} && return
 DPKG_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire button)
 . <(lrequire exit)
-. <(lrequire spinner)
 . <(lrequire anykey)
 . <(lrequire awksed)
-. <(lrequire fstring)
 . <(lrequire ask)
+# TODO <-- 0
+. <(lrequire spinner)
+. <(lrequire fstring)
 . <(lrequire today)
 . <(lrequire php/versions)
 
@@ -43,7 +45,9 @@ check_lockfile(){
         if [ -n "$fuser_output" ]; then
             processstring="$(listify_ Yi R "$(for pid in $fuser_output; do echo "$(${X[ps]} -p $pid -o comm=) (pid:$pid)"; done)")"
             o3; R; echo "- Lockfile '$(C)$lockfile$(R)' is used by: $processstring";N
+# TODO 1 -->
 #            for pid in $fuser_output; do echo "$(ps -p $pid -o comm=) (pid:$pid))"; done
+# TODO <-- 1
         else
             ${bool[verbose]} && { o3; echo "- Lockfile '$(C)$lockfile$(N)' exists but no process seems to be using it."; }
         fi
@@ -89,7 +93,6 @@ apt_need_update(){
         if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
             apt_update
         else
-#            te0; te0; te0
             te0 3
         fi
     fi
@@ -151,37 +154,39 @@ apt_install(){
 
 apt_install_prechecked(){
     check_lockfiles || exit1
-    prechecked "$@"
+    (( $# )) && mh "apt_install_prechecked $@"
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
         shift
     fi
-    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@ || { echo "  $(Pbg) something went wrong $(N)"; f; exit1; }
+    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@ || { something_went_wrong "apt-get install returned an error"; exit1; }
 }
 
 apt_remove(){
     check_lockfiles || exit1
-    removed "$@" &
+    (( $# )) && mh "apt_remove $@"
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
         shift
     fi
-    switch_php_to_ $PHP_VERSION
-    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@
+    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@ || { something_went_wrong "apt-get remove returned an error"; exit1; }
 }
 
 apt_purge(){
     check_lockfiles || exit1
-    purged "$@" &
+    (( $# )) && mh "apt_purge $@"
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
         shift
     fi
-    switch_php_to_ $PHP_VERSION
-    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@
+    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@ || { something_went_wrong "apt-get purge returned an error"; exit1; }
 }
 
 rdepends(){
@@ -310,9 +315,9 @@ switch_php_to_(){
     require_arg $@
     q0 ${X[apt-mark]} manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
     set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
-# TODO 0 -->
+# TODO 2 -->
 #    q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
-# TODO <-- 0
+# TODO <-- 2
 }
 
 list_apt_sources(){
@@ -340,9 +345,9 @@ list_apt_sources(){
     f; o2; B; echo "This is a list of the files containing the apt sources for your information:"; N
     # apt sources files
         mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
-# TODO 1 -->
-#    mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
-# TODO <-- 1
+# TODO 3 -->
+#        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
+# TODO <-- 3
         mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
         for i in ${!aptsourcesfiles[@]}; do o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N; done
     fi
@@ -383,4 +388,14 @@ list_alternatives_extended(){
             fi
         done
     done
+}
+
+# repair broken alternatives, remove not existing alternatives
+cleanup_and_fix_alternatives(){
+    if [ -n "${X[update-alternatives]}" ]; then
+        q0 ${X[update-alternatives]} --force --all < <(${X[yes]} '')
+# TODO 4 -->
+#        ${X[yes]} '' | ${X[update-alternatives]} --force --all &>/dev/null
+# TODO <-- 4
+    fi
 }

@@ -10,10 +10,11 @@ __license__
 ${SPINNER_BASHLIB:-_} && return
 SPINNER_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire exit)
-
+# TODO <-- 0
 declare spinner_pid_file
 spinner_pid_file="$TMPDIR/${bm}-spinner.pid"
 

@@ -10,9 +10,6 @@ __license__
 ${FPM_BASHLIB:-_} && return
 FPM_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-
 #globals
 if ! q2 declare -p SAPI_FPM | ${X[grep]} -qs 'declare -A'; then
     unset SAPI_FPM

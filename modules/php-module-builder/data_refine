@@ -10,10 +10,6 @@ __license__
 ${DATA_REFINE_BASHLIB:-_} && return
 DATA_REFINE_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire basics)
-. <(lrequire ansi)
-
 # p=PHP, v=Version, m=Module, d=Dir, trailing s=plural
 find_built_modules(){
     local pv pvd m

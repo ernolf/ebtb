@@ -10,8 +10,9 @@ __license__
 ${FILTER_BASHLIB:-_} && return
 FILTER_BASHLIB=:
 
+# TODO 0 -->
 . <(lrequire binaries)
-
+# TODO <-- 0
 ansi_filter() {
     local sedscript
     sedscript='s/\x1B\[[0-9;?]*[a-zA-Z]//g'
@@ -26,43 +27,45 @@ ansi_filter() {
 utf_filter(){
     local perlscript
     perlscript='
-        # Handle \uXXXX notation
+        # Convert \uXXXX notation to the corresponding Unicode character
         s/\\u([0-9A-Fa-f]{4})/chr(hex($1))/ge;
 
-        # Invisible Unicode characters
-        s/\x{00A0}//g;  # Non-breaking Space (NBSP)
-        s/\x{2000}//g;  # En Quad (EN QUAD)
-        s/\x{2001}//g;  # Em Quad (EM QUAD)
-        s/\x{2002}//g;  # En Space (EN SPACE)
-        s/\x{2003}//g;  # Em Space (EM SPACE)
-        s/\x{2004}//g;  # Three-Per-Em Space (3/4 EM SPACE)
-        s/\x{2005}//g;  # Four-Per-Em Space (4/4 EM SPACE)
-        s/\x{2006}//g;  # Six-Per-Em Space (6/4 EM SPACE)
-        s/\x{2007}//g;  # Figure Space (F SP)
-        s/\x{2008}//g;  # Punctuation Space (PU SP)
-        s/\x{2009}//g;  # Thin Space (TH SP)
-        s/\x{200A}//g;  # Hair Space (H SP)
-        s/\x{200B}//g;  # Zero Width Space (ZWSP)
-        s/\x{200C}//g;  # Zero Width Non-Joiner (ZWNJ)
-        s/\x{200D}//g;  # Zero Width Joiner (ZWJ)
-        s/\x{200E}//g;  # Left-To-Right Mark (LRM)
-        s/\x{200F}//g;  # Right-To-Left Mark (RLM)
-        s/\x{2028}//g;  # Line Separator (L SEP)
-        s/\x{2029}//g;  # Paragraph Separator (P SEP)
-        s/\x{202A}//g;  # Left-To-Right Enbedding (LRE)
-        s/\x{202B}//g;  # Right-To-Left Enbedding (RLE)
-        s/\x{202C}//g;  # Pop Directional Formatting (PDF)
-        s/\x{202D}//g;  # Left-To-Right Override (LRO)
-        s/\x{202E}//g;  # Right-To-Left Override (RLO)
-        s/\x{202F}//g;  # Narrow No-Break Space (NNB SP)
-        s/\x{205F}//g;  # Medium Mathematical Space (M  SP)
-        s/\x{2060}//g;  # Word Joiner (WJ)
+        # Remove various invisible Unicode characters
+        s/\x{00A0}//g;    # Non-breaking Space (NBSP)
+        s/\x{2000}//g;    # En Quad (EN QUAD)
+        s/\x{2001}//g;    # Em Quad (EM QUAD)
+        s/\x{2002}//g;    # En Space (EN SPACE)
+        s/\x{2003}//g;    # Em Space (EM SPACE)
+        s/\x{2004}//g;    # Three-Per-Em Space (3/4 EM SPACE)
+        s/\x{2005}//g;    # Four-Per-Em Space (4/4 EM SPACE)
+        s/\x{2006}//g;    # Six-Per-Em Space (6/4 EM SPACE)
+        s/\x{2007}//g;    # Figure Space (F SP)
+        s/\x{2008}//g;    # Punctuation Space (PU SP)
+        s/\x{2009}//g;    # Thin Space (TH SP)
+        s/\x{200A}//g;    # Hair Space (H SP)
+        s/\x{200B}//g;    # Zero Width Space (ZWSP)
+        s/\x{200C}//g;    # Zero Width Non-Joiner (ZWNJ)
+        s/\x{200D}//g;    # Zero Width Joiner (ZWJ)
+        s/\x{200E}//g;    # Left-To-Right Mark (LRM)
+        s/\x{200F}//g;    # Right-To-Left Mark (RLM)
+        s/\x{2028}//g;    # Line Separator (L SEP)
+        s/\x{2029}//g;    # Paragraph Separator (P SEP)
+        s/\x{202A}//g;    # Left-To-Right Enbedding (LRE)
+        s/\x{202B}//g;    # Right-To-Left Enbedding (RLE)
+        s/\x{202C}//g;    # Pop Directional Formatting (PDF)
+        s/\x{202D}//g;    # Left-To-Right Override (LRO)
+        s/\x{202E}//g;    # Right-To-Left Override (RLO)
+        s/\x{202F}//g;    # Narrow No-Break Space (NNB SP)
+        s/\x{205F}//g;    # Medium Mathematical Space (M  SP)
+        s/\x{2060}//g;    # Word Joiner (WJ)
 
-        s/\x{26A0}/!/g; # Unicode ⚠️ to !
-        s/\x{FE0E}//g;  # Variation Selector-15 (text)
-        s/\x{FE0F}//g;  # Variation Selector-16 (emoji)
-        s/\x{FFFC}//g;  # Object Replacement Character
-        s/\x{FFFD}//g;  # Replacement Character
+        # Replace special Unicode characters
+        s/\x{2026}/.../g; # Horizontal Ellipsis … to ...
+        s/\x{26A0}/!/g;   # Unicode ⚠️ to !
+        s/\x{FE0E}//g;    # Variation Selector-15 (text)
+        s/\x{FE0F}//g;    # Variation Selector-16 (emoji)
+        s/\x{FFFC}//g;    # Object Replacement Character
+        s/\x{FFFD}//g;    # Replacement Character
     '
     if [[ -t 0 ]]; then # if no STDIN;
         ${X[perl]} -CSD -pe "$perlscript" <<< "$@"
@@ -87,42 +90,43 @@ filter_(){
 #            s/\x1B\[[0-9;?]*[a-zA-Z]//g # Remove ANSI sequences
 
 #            # Invisible Unicode characters
-#            s/\xC2\xA0//g       # Non-breaking Space (NBSP)
-#            s/\xE2\x80\x80//g   # En Quad (EN QUAD)
-#            s/\xE2\x80\x81//g   # Em Quad (EM QUAD)
-#            s/\xE2\x80\x82//g   # En Space (EN SPACE)
-#            s/\xE2\x80\x83//g   # Em Space (EM SPACE)
-#            s/\xE2\x80\x84//g   # Three-Per-Em Space (3/4 EM SPACE)
-#            s/\xE2\x80\x85//g   # Four-Per-Em Space (4/4 EM SPACE)
-#            s/\xE2\x80\x86//g   # Six-Per-Em Space (6/4 EM SPACE)
-#            s/\xE2\x80\x87//g   # Figure Space (F SP)
-#            s/\xE2\x80\x88//g   # Punctuation Space (PU SP)
-#            s/\xE2\x80\x89//g   # Thin Space (TH SP)
-#            s/\xE2\x80\x8A//g   # Hair Space (H SP)
-#            s/\xE2\x80\x8B//g   # Zero Width Space (ZWSP)
-#            s/\xE2\x80\x8C//g   # Zero Width Non-Joiner (ZWNJ)
-#            s/\xE2\x80\x8D//g   # Zero Width Joiner (ZWJ)
-#            s/\xE2\x80\x8E//g   # Left-To-Right Mark (LRM)
-#            s/\xE2\x80\x8F//g   # Right-To-Left Mark (RLM)
-#            s/\xE2\x80\xA8//g   # Line Separator (L SEP)
-#            s/\xE2\x80\xA9//g   # Paragraph Separator (P SEP)
-#            s/\xE2\x80\xAA//g   # Left-To-Right Enbedding (LRE)
-#            s/\xE2\x80\xAB//g   # Right-To-Left Enbedding (RLE)
-#            s/\xE2\x80\xAC//g   # Pop Directional Formatting (PDF)
-#            s/\xE2\x80\xAD//g   # Left-To-Right Override (LRO
-#            s/\xE2\x80\xAE//g   # Right-To-Left Override (RLO)
-#            s/\xE2\x80\xAF//g   # Narrow No-Break Space (NNB SP)
-#            s/\xE2\x81\x9F//g   # Medium Mathematical Space (M SP)
-#            s/\xE2\x81\xA0//g   # Word Joiner (WJ)
+#            s/\xC2\xA0//g;        # Non-breaking Space (NBSP)
+#            s/\xE2\x80\x80//g;    # En Quad (EN QUAD)
+#            s/\xE2\x80\x81//g;    # Em Quad (EM QUAD)
+#            s/\xE2\x80\x82//g;    # En Space (EN SPACE)
+#            s/\xE2\x80\x83//g;    # Em Space (EM SPACE)
+#            s/\xE2\x80\x84//g;    # Three-Per-Em Space (3/4 EM SPACE)
+#            s/\xE2\x80\x85//g;    # Four-Per-Em Space (4/4 EM SPACE)
+#            s/\xE2\x80\x86//g;    # Six-Per-Em Space (6/4 EM SPACE)
+#            s/\xE2\x80\x87//g;    # Figure Space (F SP)
+#            s/\xE2\x80\x88//g;    # Punctuation Space (PU SP)
+#            s/\xE2\x80\x89//g;    # Thin Space (TH SP)
+#            s/\xE2\x80\x8A//g;    # Hair Space (H SP)
+#            s/\xE2\x80\x8B//g;    # Zero Width Space (ZWSP)
+#            s/\xE2\x80\x8C//g;    # Zero Width Non-Joiner (ZWNJ)
+#            s/\xE2\x80\x8D//g;    # Zero Width Joiner (ZWJ)
+#            s/\xE2\x80\x8E//g;    # Left-To-Right Mark (LRM)
+#            s/\xE2\x80\x8F//g;    # Right-To-Left Mark (RLM)
+#            s/\xE2\x80\xA8//g;    # Line Separator (L SEP)
+#            s/\xE2\x80\xA9//g;    # Paragraph Separator (P SEP)
+#            s/\xE2\x80\xAA//g;    # Left-To-Right Enbedding (LRE)
+#            s/\xE2\x80\xAB//g;    # Right-To-Left Enbedding (RLE)
+#            s/\xE2\x80\xAC//g;    # Pop Directional Formatting (PDF)
+#            s/\xE2\x80\xAD//g;    # Left-To-Right Override (LRO)
+#            s/\xE2\x80\xAE//g;    # Right-To-Left Override (RLO)
+#            s/\xE2\x80\xAF//g;    # Narrow No-Break Space (NNB SP)
+#            s/\xE2\x81\x9F//g;    # Medium Mathematical Space (M SP)
+#            s/\xE2\x81\xA0//g;    # Word Joiner (WJ)
 
 #            # Special Unicode characters
-#            s/\xE2\x9A\xA0/!/g  # Unicode ⚠️ to !
-#            s/\xEF\xB8\x8E//g   # Variation Selector-15 (text)
-#            s/\xEF\xB8\x8F//g   # Variation Selector-16 (emoji)
+#            s/\xe2\x80\xA6/.../g; # Horizontal Ellipsis … to ...
+#            s/\xE2\x9A\xA0/!/g;   # Unicode ⚠️ to !
+#            s/\xEF\xB8\x8E//g;    # Variation Selector-15 (text)
+#            s/\xEF\xB8\x8F//g;    # Variation Selector-16 (emoji)
 
 #            # Replacement and object characters
-#            s/\xEF\xBF\xBC//g   # Object Replacement Character
-#            s/\xEF\xBF\xBD//g   # Replacement Character
+#            s/\xEF\xBF\xBC//g;    # Object Replacement Character
+#            s/\xEF\xBF\xBD//g;    # Replacement Character
 #        ' <<< "$*"
 #    }
 
@@ -135,38 +139,39 @@ filter_(){
 #            s/\\u([0-9A-Fa-f]{4})/chr(hex($1))/ge;
 
 #            # Invisible Unicode characters
-#            s/\x{00A0}//g;  # Non-breaking Space (NBSP)
-#            s/\x{2000}//g;  # En Quad (EN QUAD)
-#            s/\x{2001}//g;  # Em Quad (EM QUAD)
-#            s/\x{2002}//g;  # En Space (EN SPACE)
-#            s/\x{2003}//g;  # Em Space (EM SPACE)
-#            s/\x{2004}//g;  # Three-Per-Em Space (3/4 EM SPACE)
-#            s/\x{2005}//g;  # Four-Per-Em Space (4/4 EM SPACE)
-#            s/\x{2006}//g;  # Six-Per-Em Space (6/4 EM SPACE)
-#            s/\x{2007}//g;  # Figure Space (F SP)
-#            s/\x{2008}//g;  # Punctuation Space (PU SP)
-#            s/\x{2009}//g;  # Thin Space (TH SP)
-#            s/\x{200A}//g;  # Hair Space (H SP)
-#            s/\x{200B}//g;  # Zero Width Space (ZWSP)
-#            s/\x{200C}//g;  # Zero Width Non-Joiner (ZWNJ)
-#            s/\x{200D}//g;  # Zero Width Joiner (ZWJ)
-#            s/\x{200E}//g;  # Left-To-Right Mark (LRM)
-#            s/\x{200F}//g;  # Right-To-Left Mark (RLM)
-#            s/\x{2028}//g;  # Line Separator (L SEP)
-#            s/\x{2029}//g;  # Paragraph Separator (P SEP)
-#            s/\x{202A}//g;  # Left-To-Right Enbedding (LRE)
-#            s/\x{202B}//g;  # Right-To-Left Enbedding (RLE)
-#            s/\x{202C}//g;  # Pop Directional Formatting (PDF)
-#            s/\x{202D}//g;  # Left-To-Right Override (LRO)
-#            s/\x{202E}//g;  # Right-To-Left Override (RLO)
-#            s/\x{202F}//g;  # Narrow No-Break Space (NNB SP)
-#            s/\x{205F}//g;  # Medium Mathematical Space (M  SP)
-#            s/\x{2060}//g;  # Word Joiner (WJ)
+#            s/\x{00A0}//g;    # Non-breaking Space (NBSP)
+#            s/\x{2000}//g;    # En Quad (EN QUAD)
+#            s/\x{2001}//g;    # Em Quad (EM QUAD)
+#            s/\x{2002}//g;    # En Space (EN SPACE)
+#            s/\x{2003}//g;    # Em Space (EM SPACE)
+#            s/\x{2004}//g;    # Three-Per-Em Space (3/4 EM SPACE)
+#            s/\x{2005}//g;    # Four-Per-Em Space (4/4 EM SPACE)
+#            s/\x{2006}//g;    # Six-Per-Em Space (6/4 EM SPACE)
+#            s/\x{2007}//g;    # Figure Space (F SP)
+#            s/\x{2008}//g;    # Punctuation Space (PU SP)
+#            s/\x{2009}//g;    # Thin Space (TH SP)
+#            s/\x{200A}//g;    # Hair Space (H SP)
+#            s/\x{200B}//g;    # Zero Width Space (ZWSP)
+#            s/\x{200C}//g;    # Zero Width Non-Joiner (ZWNJ)
+#            s/\x{200D}//g;    # Zero Width Joiner (ZWJ)
+#            s/\x{200E}//g;    # Left-To-Right Mark (LRM)
+#            s/\x{200F}//g;    # Right-To-Left Mark (RLM)
+#            s/\x{2028}//g;    # Line Separator (L SEP)
+#            s/\x{2029}//g;    # Paragraph Separator (P SEP)
+#            s/\x{202A}//g;    # Left-To-Right Enbedding (LRE)
+#            s/\x{202B}//g;    # Right-To-Left Enbedding (RLE)
+#            s/\x{202C}//g;    # Pop Directional Formatting (PDF)
+#            s/\x{202D}//g;    # Left-To-Right Override (LRO)
+#            s/\x{202E}//g;    # Right-To-Left Override (RLO)
+#            s/\x{202F}//g;    # Narrow No-Break Space (NNB SP)
+#            s/\x{205F}//g;    # Medium Mathematical Space (M  SP)
+#            s/\x{2060}//g;    # Word Joiner (WJ)
 
-#            s/\x{26A0}/!/g; # Unicode ⚠️ to !
-#            s/\x{FE0E}//g;  # Variation Selector-15 (text)
-#            s/\x{FE0F}//g;  # Variation Selector-16 (emoji)
-#            s/\x{FFFC}//g;  # Object Replacement Character
-#            s/\x{FFFD}//g;  # Replacement Character
+#            s/\x{2026}/.../g; # Horizontal Ellipsis … to ...
+#            s/\x{26A0}/!/g;   # Unicode ⚠️ to !
+#            s/\x{FE0E}//g;    # Variation Selector-15 (text)
+#            s/\x{FE0F}//g;    # Variation Selector-16 (emoji)
+#            s/\x{FFFC}//g;    # Object Replacement Character
+#            s/\x{FFFD}//g;    # Replacement Character
 #        ' <<< "$*"
 #    }

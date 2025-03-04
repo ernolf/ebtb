@@ -10,12 +10,9 @@ __license__
 ${HELP_BASHLIB:-_} && return
 HELP_BASHLIB=:
 
-. <(lrequire binaries)
-. <(lrequire ansi)
-
 # help information
 try_help(){
-    echo "try $(B)$me -h$(N) for help";f
+    echo "try $(B)$ME -h$(N) for help";f
     exit 1
 }
 
@@ -27,7 +24,7 @@ print_help(){
         bool[bak]=:
         r_b(){
             f
-            echo "    $me restore_backup"
+            echo "    $ME restore_backup"
         }
         if (( $(backups | ${X[wc]} -l) > 1 )); then
             s=s
@@ -42,13 +39,13 @@ print_help(){
 
     ${X[cat]} <<HELP
 
-  $me - version $version $upinf
+  $ME - version ${M[v]} ${V[upinf]}
 
   Usage:
-    $me $opts [ -vv | --debug ] [--] <user_id or path/to/dir/or/file>
-    $me [ -h | --help ]
-    $me [ -l | --listmimes=(i|v|a|t) ]
-    $me integrity_check$(r_b)
+    $ME $opts [ -vv | --debug ] [--] <user_id or path/to/dir/or/file>
+    $ME [ -h | --help ]
+    $ME [ -l | --listmimes=(i|v|a|t) ]
+    $ME integrity_check$(r_b)
 
        The "path/to/dir/or/file" argument can be either an absolute or
        relative path within the Nextcloud data directory. This script
@@ -91,17 +88,17 @@ Options:
 
 Examples:
   Process a single file "user/files/path/to/file" in quiet mode:
-  $me -q -- "user/files/path/to/file"
+  $ME -q -- "user/files/path/to/file"
   (this is the behaviour if invoked by "Flow external script")
 
   Process an absolute path "/path2/nextcloud/data/user/files/path":
-  $me "/path2/nextcloud/data/user/files/path"
+  $ME "/path2/nextcloud/data/user/files/path"
 
   Process a relative path "user/files/path/to/dir" recursively:
-  $me -rd -- "user/files/path/to/dir"
+  $ME -rd -- "user/files/path/to/dir"
 
   Analyze a directory recursively with dry run and verbose output:
-  $me -vrd -- "/path2/nextcloud/data/user/files/path/to/dir"
+  $ME -vrd -- "/path2/nextcloud/data/user/files/path/to/dir"
 
 
   This script checks the MIME types of files within Nextcloud's data
@@ -119,7 +116,7 @@ Examples:
       and [File MIME type] [is] [Custom mimetype] [image/jpeg]
       and [File name] [does not match] [/^.*\.(jpe?g)$/i]
    >_ Pass files to external scripts for processing outside of Nextcloud
-            [$ca_me -q %n]
+            [$MP -q %n]
 
 HELP
     if ${bool[bak]:-_}; then
