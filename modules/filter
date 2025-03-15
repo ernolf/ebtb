@@ -10,9 +10,8 @@ __license__
 ${FILTER_BASHLIB:-_} && return
 FILTER_BASHLIB=:
 
-# TODO 0 -->
 . <(lrequire binaries)
-# TODO <-- 0
+
 ansi_filter() {
     local sedscript
     sedscript='s/\x1B\[[0-9;?]*[a-zA-Z]//g'
@@ -22,7 +21,7 @@ ansi_filter() {
         ${X[cat]} | ${X[sed]} -E "$sedscript"
     fi
 }
-: ${X[ansifilter]:=ansi_filter}
+: ${X[ansifilter]:=ansi_filter} &>/dev/null
 
 utf_filter(){
     local perlscript

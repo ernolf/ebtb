@@ -15,14 +15,13 @@ BINARIES_BASHLIB=:
 declare binary
 declare -a binaries
 
-unset BINARIES BINARY X
 declare -gA BINARY 2>/dev/null || declare -A BINARY
 
 BINARY[env]="$(command -v env)"
 
 for binary in gawk sed; do
     if [ -x "$(command -v $binary)" ]; then
-        BINARY[$binary]="${BINARY[env]} LC_MESSAGES=C $(command -v $binary)"
+        BINARY[$binary]="${BINARY[env]} LC_MESSAGES=C $(command -v $binary)" &>/dev/null
     else
         echo -e "\e[31mERROR: no '$binary' binary or '$binary' not executable\e[0m" > /dev/tty
         [ -t 0 ] || exit 1
@@ -54,14 +53,12 @@ mapfile -t binaries < <(glob_path)
 for binary in "${binaries[@]}"; do
     [ -z "${BINARY[${binary##*/}]}" ] || continue
     [ -x "$binary" ] || continue
-    BINARY[${binary##*/}]="${BINARY[env]} LC_MESSAGES=C $binary"
+    BINARY[${binary##*/}]="${BINARY[env]} LC_MESSAGES=C $binary" &>/dev/null
 done
 unset -v binary binaries
 
-# Create curlc for `curl --compress`
-BINARY[curlc]="${BINARY[curl]} --compressed"
 # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
-[ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t"
+[ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>/dev/null
 
 
 # Create a nameref for BINARY named X

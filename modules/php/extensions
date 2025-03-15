@@ -16,7 +16,6 @@ EXTENSIONS_BASHLIB=:
 
 # globals
 q2 declare -ag EXTS_ADMIN || declare -a EXTS_ADMIN
-unset APIS
 q2 declare -Ag APIS || declare -A APIS
 APIS=(
     [5.6]="20131226"
@@ -31,7 +30,6 @@ APIS=(
     [8.3]="20230831"
     [8.4]="20240924"
 )
-unset SAPIS
 q2 declare -Ag SAPIS || declare -A SAPIS
 SAPIS=(
     [apache2]="libapache2-mod-php@VER@"
@@ -41,8 +39,45 @@ SAPIS=(
     [embed]="libphp@VER@-embed"
     [phpdbg]="php@VER@-phpdbg"
 )
-
-readonly -A APIS SAPIS
+q2 declare -Ag SAPIDESCR || declare -A SAPIDESCR
+SAPIDESCR=(
+    [apache2]="Apache 2.0 Handler SAPI"
+    [fpm]="FastCGI Process Manager SAPI"
+    [cli]="Command Line Interpreter SAPI"
+    [cgi]="Common Gateway Interface SAPI"
+    [embed]="Embedded SAPI library"
+    [phpdbg]="PHPDBG binary command interpreter SAPI"
+    [apcu]="APC User Cache for PHP"
+    [bcmath]="Bcmath module for PHP"
+    [bz2]="bzip2 module for PHP"
+    [curl]="CURL module for PHP"
+    [gd]="GD module for PHP"
+    [gmp]="GMP module for PHP"
+    [igbinary]="igbinary PHP serializer"
+    [imagick]="PHP wrapper for the ImageMagick library"
+    [inotify]="Inotify bindings for PHP"
+    [intl]="Internationalisation module for PHP"
+    [ldap]="LDAP module for PHP"
+    [lz4]="LZ4 Extension for PHP"
+    [maxminddb]="Reader for the MaxMind DB file format for PHP"
+    [mbstring]="MBSTRING module for PHP"
+    [memchache]="memcache extension module for PHP"
+    [memchached]="memchached (libmemcached) extension module for PHP"
+    [mysql]="MySQL module for PHP"
+    [oauth]="OAuth 1.0 consumer and provider extension"
+    [odbc]="ODBC module for PHP"
+    [opcache]="Zend OpCache module for PHP"
+    [pgsql]="PostgreSQL module for PHP"
+    [pq]="PostgreSQL client library (libpq) binding for PHP"
+    [readline]="readline module for PHP"
+    [redis]="PHP extension for interfacing with Redis"
+    [smbclient]="PHP wrapper for libsmbclient"
+    [sqlite3]="SQLite3 module for PHP"
+    [xdebug]="Xdebug Module for PHP"
+    [xml]="DOM, SimpleXML, XML, and XSL module for PHP"
+    [zip]="Zip module for PHP"
+)
+readonly -A APIS SAPIS SAPIDESCR
 
 detect_installed_by_dpkg(){
     local e

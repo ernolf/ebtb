@@ -19,8 +19,8 @@ __scriptname__
 #)
 # TODO <-- 0
 modules=(
-    spinner php/version nc/nextcloud nc/logo $MS/github_api $MS/app_update
-    $MS/db $MS/appstore $MS/data_refine $MS/assumed_version $MS/list $MS/l10n
+    php/version nc/nextcloud nc/logo $MS/github_api $MS/app_update $MS/db
+    $MS/appstore $MS/data_refine $MS/assumed_version $MS/list $MS/l10n
     $MS/commands
 )
 __debug__

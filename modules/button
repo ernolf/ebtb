@@ -32,16 +32,16 @@ buttonize(){
 }
 
 button(){
-    case $1 in
-      no|q) buttonize NOK "$1"
+    case ${1,,} in
+  not|no|q) buttonize NOK "$1"
             ;;
          *) buttonize OK "$1"
     esac
 }
 
 box(){
-    case $1 in
-      no|q) buttonize NOK " $1 "
+    case ${1,,} in
+  not|no|q) buttonize NOK " $1 "
             ;;
          *) buttonize OK " $1 "
     esac

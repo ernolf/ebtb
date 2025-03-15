@@ -56,11 +56,11 @@ placeholder_replace(){
             ;;
         whoami_whereami)
             ${MINIFY:-false} && echo '# minified codeblocks in human readable format: https://github.com/ernolf/ebtb/tree/main/blocks'
-            echo "### whoami, whereami$minified"
+            echo "## bootstrap, whoami, whereami$minified"
             tools/minify "blocks/whoami_whereami"
             ;;
         scriptname)
-            echo "M[n]='$name' MS='${name%-test}' M[pid]=\$\$"
+            echo "M[n]='$name' MS='${name%-test}' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
         debug)
             if [ "${channel:-prod}" = "test" ]; then
@@ -74,13 +74,12 @@ placeholder_replace(){
             ${X[cat]} "blocks/vdirname"
             ;;
         tempdir)
-            echo "### find a writable tempdir$minified"
+            echo "## find a writable tempdir$minified"
             tools/minify "blocks/tempdir"
             ;;
         module_server)
-            echo '### module handling'
-            echo "M[home]=$MY_HOME"
             if $LOCAL_SERVER; then
+                echo '## module server'
                 case $LOCAL_SERVER_BINARY in
                        php) http_server_string='php -S localhost:' ;;
                    python3) http_server_string='python3 -m http.server '
@@ -104,7 +103,6 @@ placeholder_replace(){
             ;;
         nextcloud_updater)
             echo "## nextcloud updater$minified ->"
-            echo '# Update can be done by all but $NC_USER, since NC_USER normaly has no sudo rights.'
             tools/minify "blocks/nextcloud_updater"
             echo '## <- nextcloud updater end #'
     esac

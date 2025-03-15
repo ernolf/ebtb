@@ -116,12 +116,13 @@ merge_settings(){
         esac
     }
     first_step(){
-        local old new opkg npkg opath npath key nkey val nval question
+        local old new opkg npkg opath npath sapi key nkey val nval question
         local -a osettings nsettings
         local -i i ni
-        old="$1" new="$2" opkg="$3" opath="$4"
+        old="$1" new="$2" opkg="$3" opath="$4" sapi="$5"
         npkg="${opkg/$old/$new}"
         npath="${opath/$old/$new}"
+        [ -n "$sapi" ] || sapi="$(${X[gawk]} -F/ '{ print $(NF-1) }' <<< "$opath")"
         mapfile -t osettings< <(stripconf "$opath")
         mapfile -t nsettings< <(stripconf "$npath")
         for i in ${!osettings[@]}; do
@@ -138,7 +139,7 @@ merge_settings(){
                         echo "$(format_string "- The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
                         defaults_and_changelog "$key"
                         if [[ "${keep[@]}" =~ $key ]]; then
-                            bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set a specific value for this directive, you have to edit the file $(C)$npath$(N) yourself with an editor of your choice. Refer to https://www.php.net/manual/errorfunc.configuration.php#ini.$key for further information" 3; N)"
+                            bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set this directive to a specific value for the $(B)${SAPIDESCR[$sapi]}$(N), you will have to edit the file $(C)$npath$(N) with an editor of your choice. Refer to $(GRAY)https://www.php.net/manual/errorfunc.configuration.php#ini.$key$(N) for further information" 3; N)"
                             anykey
                         else
                             question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
@@ -195,11 +196,11 @@ merge_settings(){
         separator
     }
     first_step $@
-    local old new opkg npkg opath npath key val question
+    local old new opkg npkg opath npath sapi key val question
     local -a settings2merge1_ settings2merge2_
     local -i i1 i2 last
     local -A bool
-    old="$1" new="$2" opkg="$3" opath="$4" bool[ael]=:
+    old="$1" new="$2" opkg="$3" opath="$4" sapi="$5" bool[ael]=:
     npkg="${opkg/$old/$new}"
     npath="${opath/$old/$new}"
     last=0

@@ -46,16 +46,16 @@ switch_default_version(){
     echo "  $(format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3; N)"
     f
     bundle echo "$(es3; dY)this is how the alternatives system is configured at present:"; N
-    ${X[sleep]} 0.1
-    haul printf list_alternatives &
+    ${X[sleep]} .1
+    haul printf list_alternatives
     f
     for i in ${!selections[@]}; do
         o3; pf; lG; echo "${selections[i]}"; N
     done
     f
     bundle echo "$(es3; dY)and this is how php is connected to the httpd:"; N
-    ${X[sleep]} 0.1
-    haul printf list_installed_sapi quiet &
+    ${X[sleep]} .1
+    haul printf list_installed_sapi quiet
     f
     list_installed_sapi
     N
@@ -88,8 +88,8 @@ switch_default_version(){
                             cleanup_and_fix_alternatives # afterwards  # repair broken alternatives, remove not existing alternatives
                             mapfile -t selections < <(list_alternatives)
                             bundle echo "$(es3; dY)alternatives system is now switched to:"; N
-                            ${X[sleep]} 0.1
-                            haul printf list_alternatives &
+                            ${X[sleep]} .1
+                            haul printf list_alternatives
                             f
                             for i in ${!selections[@]}; do
                                 o3; pf; lG; echo "${selections[i]}"; N
@@ -143,8 +143,8 @@ switch_default_version(){
                             separator
                             f
                             bundle echo "$(es3; dY)This is how php is connected to the httpd now:"; N
-                            ${X[sleep]} 0.1
-                            haul printf list_installed_sapi quiet &
+                            ${X[sleep]} .1
+                            haul printf list_installed_sapi quiet
                             f
                             list_installed_sapi
                             N

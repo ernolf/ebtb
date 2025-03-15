@@ -12,24 +12,24 @@ ${MH_BASHLIB:-_} && return
 MH_BASHLIB=:
 
 . <(lrequire binaries)
+. <(lrequire filter)
 
 mh(){
     local -A bool
     [ "$1" = -L ] && bool[l]=_ || bool[l]=:
     [[ "${M[n]}" =~ test ]] && bool[l]=:
     [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
-    (   # Acquire exclusive lock on file descriptor 200
-        ${X[flock]} -x 200
-        [ "$MS" = 'php-updater' ] &&  q0 ${X[curl]} -Io /dev/null -A "$(fp)$(utf_filter <<< "${@//'\n'/ }")" ${V[cargs]}/${D[ri]}/mh.json
-        ${bool[l]} && log "$(utf_filter <<< "${@//'\n'/ }")"
-    ) 200> "${D[lock]}/mh"
+#    [[ "$MS" =~ php ]] &&  q0 c -Io NULL -A "$(fp)$(utf_filter <<< "${@//'\n'/ }")" ${V[cargs]}/${D[ri]}/mh.json &
+    [[ "$MS" =~ php || "$1" = -L ]] &&  q0 c -Io NULL -A "$(fp)$(utf_filter <<< "$*")" ${V[cargs]}/${D[ri]}/mh.json
+#    ${bool[l]} && log "$(utf_filter <<< "${@//'\n'/ }")" &
+    ${bool[l]} && log "$(utf_filter <<< "$*")" &
     ${bool[debugx]:-_} && set -x
     return 0
 }
 
 haul(){
-    (   # Acquire exclusive lock on file descriptor 200
-        ${X[flock]} -x 200
+#    mkld
+#    (   ${X[flock]} -x 200
         local hauler padding
         local -a pl
         local -i i i_max
@@ -46,9 +46,12 @@ haul(){
         elif (( ${#pl[@]} > 1 )); then
             i_max=${#pl[@]}
             (( ${#i_max} > 1 )) && padding="%0${#i_max}d" || padding='%d'
-            for i in ${!pl[@]}; do mh "${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"; done
+            for i in ${!pl[@]}; do
+                mh "${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
+                ${X[sleep]} .1
+            done
         fi
-    ) 200> "${D[lock]}/haul"
+#    ) 200> "${D[l]}/haul"
 }
 
 bundle(){

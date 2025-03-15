@@ -1,18 +1,26 @@
 : "${TD:=/tmp}"
 [[ "$TD" == '/' || ! -d "$TD" ]] && TD='/tmp'
 [ -d "$TD" ] || TD='/temp'
+# unprivileged users need their own writable temporary directory
 ${B[rt]} || {
     TD="${TD%/}"
-    if (( $(${C[g]} -F/ '{print NF-1}' <<< "$TD") == 1 )) && [ -w "$TD" ]; then
+    if (( $(${C[a]} -F/ '{print NF-1}' <<< "$TD") == 1 )) && [ -w "$TD" ]; then
+        # if TD has only one directory level and is writable, append a user-specific subdirectory
         TD="$TD/user-${I[u]}"
     elif [ ! -w "$TD" ]; then
-        TD="$(${C[g]} -F/ '{print "/"$2}' <<< "$TD")/user-${I[u]}"
+        # if TD is not writable, derive a base directory from TD and append a user-specific subdirectory
+        TD="$(${C[a]} -F/ '{print "/"$2}' <<< "$TD")/user-${I[u]}"
     fi
+    # create the directory if it does not exist, with permissions 755
     [ -d "$TD" ] || ${C[md]} -m 755 "$TD" &>/dev/null
 }
+# create a temporary file in the directory TD and store its name in the variable ttf
 declare ttf="$(${C[mt]} -p "$TD")"
+# if the temporary file exists, remove it
 [[ -n "$ttf" && -f "$ttf" ]] && ${C[r]} -f -- "$ttf" || {
+    # if the temporary file was not created, print an error message
     echo -e "\e[31mERROR: TMPDIR '$TD' is not writable by user '${I[un]}'\e[0m" >&2
     exit 1
 }
+# unset the temporary file variable
 unset ttf

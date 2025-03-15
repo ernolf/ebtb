@@ -27,7 +27,7 @@ fp(){
     if [ -f "${F[fp]}" ]; then
         local -i fpe
         fpe=$(${X[stat]} -c %Z "${F[fp]}")
-        (( rte-fpe > 3600 )) && echo > "${F[fp]}"
+        (( T[rte] - fpe > 3600 )) && echo > "${F[fp]}"
         fingerprint=$(< "${F[fp]}")
     fi
     if (( ${#fingerprint} == 7 )); then
@@ -58,10 +58,10 @@ detect_hashed_file(){
     local item hash
     local -A bool
     hash="$1" bool[echo]="$2"
-    for item in $(cd $TMPDIR; ${X[ls]}); do
-        if [ -f "$TMPDIR/$item" ]; then
+    for item in $(cd $TD; ${X[ls]}); do
+        if [ -f "$TD/$item" ]; then
             if [[ "$hash" =~ ${item%%_*} ]]; then
-                ${bool[echo]} && echo "$TMPDIR/$item"
+                ${bool[echo]} && echo "$TD/$item"
                 return 0
             fi
         fi
@@ -78,7 +78,7 @@ create_hashed_file(){
 #    random_sequence=${hash:$random_start:$len}
 # TODO <-- 2
     len=16 hash="$1"
-    f="$(q2 ${X[mktemp]} -p $TMPDIR -t ${hash:$(${X[shuf]} -i 0-$((${#hash}-$len)) -n 1):$len}_XXXXXXXXXXXX)"
+    f="$(q2 ${X[mktemp]} -p $TD -t ${hash:$(${X[shuf]} -i 0-$(( ${#hash} - $len )) -n 1):$len}_XXXXXXXXXXXX)"
     ${X[chmod]} 666 "$f"
     echo "$f"
 }

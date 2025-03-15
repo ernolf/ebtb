@@ -14,29 +14,37 @@ TEMPFILE_BASHLIB=:
 . <(lrequire binaries)
 # TODO <-- 0
 # standard for root:
-: "${TMPDIR:=/tmp}"
-[[ "$TMPDIR" == '/' || ! -d "$TMPDIR" ]] && TMPDIR='/tmp'
-[ -d "$TMPDIR" ] || TMPDIR='/temp'
+: "${TD:=/tmp}"
+[[ "$TD" == '/' || ! -d "$TD" ]] && TD='/tmp'
+[ -d "$TD" ] || TD='/temp'
 
 # unprivileged users need their own writable tmp dir:
 if ! ${B[rt]}; then
-    TMPDIR="${TMPDIR%/}"
-    if (( $(${X[gawk]} -F/ '{print NF-1}' <<< "$TMPDIR") == 1 )) && [ -w "$TMPDIR" ]; then
-        TMPDIR="$TMPDIR/user-${I[u]}"
-    elif [ ! -w "$TMPDIR" ]; then
-        TMPDIR="$(${X[gawk]} -F/ '{print "/"$2}' <<< "$TMPDIR")/user-${I[u]}"
+    # remove trailing slash from TD
+    TD="${TD%/}"
+    if (( $(${X[gawk]} -F/ '{print NF-1}' <<< "$TD") == 1 )) && [ -w "$TD" ]; then
+        # if TD has only one directory level and is writable, append a user-specific subdirectory
+        TD="$TD/user-${I[u]}"
+    elif [ ! -w "$TD" ]; then
+        # if TD is not writable, derive a base directory from TD and append a user-specific subdirectory
+        TD="$(${X[gawk]} -F/ '{print "/"$2}' <<< "$TD")/user-${I[u]}"
     fi
-    [ -d "$TMPDIR" ] || q0 ${X[mkdir]} -m 755 "$TMPDIR"
+    # create the directory if it does not exist, with permissions 755
+    [ -d "$TD" ] || q0 ${X[mkdir]} -m 755 "$TD"
 fi
 declare ttf
-ttf="$(${X[mktemp]} -p "$TMPDIR")"
+# create a temporary file in the directory TD and store its name in the variable ttf
+ttf="$(${X[mktemp]} -p "$TD")"
 if [[ -n "$ttf" && -f "$ttf" ]]; then
+    # if the temporary file exists, remove it
     ${X[rm]} -f -- "$ttf"
 else
-    echo -e "\e[31mERROR: TMPDIR '$TMPDIR' is not writable by user '${I[un]}'\e[0m" >&2
+    # if the temporary file was not created, print an error message
+    echo -e "\e[31mERROR: TD '$TD' is not writable by user '${I[un]}'\e[0m" >&2
+    # exit with error if not running interactively
     [ -t 0 ] || exit 1
 fi
-unset ttf
+unset ttf  # unset the temporary file variable
 
 # tempfile creation $1=u (--dry-run)
 tf(){
@@ -47,9 +55,9 @@ tf(){
       666|777)  mode=$arg
         esac
     done
-    t="$(${X[mktemp]} -p $TMPDIR -${u}t ${bm}$$_XXXXXXXXXXXX)"
+    t="$(${X[mktemp]} -p $TD -${u}t ${M[b]}${M[pid]}_XXXXXXXXXXXX)"
 # TODO 0 -->
-#    t="$(${X[mktemp]} -p $TMPDIR -${u}t ${bm:-$$}_XXXXXXXXXXXX)"
+#    t="$(${X[mktemp]} -p $TD -${u}t ${M[b]:-$$}_XXXXXXXXXXXX)"
 # TODO <-- 0
     if [ -z "$u" ]; then
         if [ -n "$mode" ]; then

@@ -3,9 +3,9 @@
 # whoami, whereami
 # b=basename m=me a=absolute p=path ca=canonical
 declare bm apm me ca_me ca_dir
-bm="$(basename "$0")";apm="$(cd "$(dirname "$0")"&&pwd)/$bm"
-[ "$(command -v "$bm")" = "$apm" ]&&me="$bm"||me="$apm"
-ca_me="$(readlink -e "$apm")";ca_dir="$(dirname "$ca_me")"
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
@@ -16,14 +16,14 @@ source config/configure
 # Source the placeholders file
 source config/placeholders
 # source anykey function
-source <(tail -n +10 modules/anykey)
+source <(${X[tail]} -n +10 modules/anykey)
 
 occ(){
-    sudo -u $HT_USER -E /usr/bin/php -f "$NC_DIR/occ" "$@"
+    ${X[sudo]} -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"
 }
 
 epoch_(){
-    awk '/^# version 20/ {print $NF}' "$1"
+    ${X[gawk]} '/^# version 20/ {print $NF}' "$1"
 }
 
 sign_(){
@@ -31,17 +31,17 @@ sign_(){
     local -i size epoch
 
     script="$1"
-    scriptname="$(basename "$script")"
+    scriptname="$(${X[basename]} "$script")"
 
     target="$DATA_DIR/$target_scripts_dir/$scriptname"
 
     # first strip old signatures before signing
     echo "    strip old signature"
-    sed -i -n '/^-----BEGIN PGP SIGNATURE-----$/q;p' "$script"
-    sed -i -n '/^\(v\|verified\)=\(true\|false\)$/q;p' "$script"
+    ${X[sed]} -i -n '/^-----BEGIN PGP SIGNATURE-----$/q;p' "$script"
+    ${X[sed]} -i -n '/^\(v\|verified\)=\(true\|false\)$/q;p' "$script"
 
     # sign script
-    gpg --yes --default-key $OpenPGP_Key --armor --detach-sign "$script"
+    ${X[gpg]} --yes --default-key $OpenPGP_Key --armor --detach-sign "$script"
 
     # add "verified" flag for integrity test
     echo "    add 'v=false' flag for integrity test"
@@ -49,38 +49,38 @@ sign_(){
 
     # calculate hash
     echo "    calculate and add sha256sum"
-    hash=$(sha256sum "$script" | awk '{printf $1}')
+    hash=$(${X[sha256sum]} "$script" | ${X[gawk]} '{printf $1}')
     echo "# sha256sum: $hash" >> "$script.asc"
 
     # append signature and hash
     echo "    append new signature"
-    cat "$script.asc" >> "$script" && rm "$script.asc"
+    ${X[cat]} "$script.asc" >> "$script" && rm "$script.asc"
 
     # calculate size and (new) hash before copying to target
     epoch=$(epoch_ "$script")
-    size=$(stat -c%s  "$script")
-    hash=$(sha256sum "$script" | awk '{printf $1}')
+    size=$(${X[stat]} -c%s  "$script")
+    hash=$(${X[sha256sum]} "$script" | awk '{printf $1}')
 
     # copy file to target
     echo "    copy '$script' to '$target'"
-    cp "$script" "$target"
+    ${X[cp]} "$script" "$target"
 
     # create json object
     echo "    create json object '$target.json'"
-    jq -n --compact-output --arg scriptname "$scriptname" --arg epoch "$epoch" --arg size "$size" --arg hash "$hash" \
-      '{ scriptname: $scriptname, epoch: $epoch, size: $size, hash: $hash }' > "$target.json"
+    ${X[jq]} -n --compact-output --arg scriptname "$scriptname" --arg epoch "$epoch" --arg size "$size" --arg hash "$hash" \
+      '{ name: $scriptname, epoch: $epoch, size: $size, hash: $hash }' > "$target.json"
 }
 
 scan_(){
-    chown -R $HT_USER:$HT_USER "$DATA_DIR/$target_scripts_dir"
+    ${X[chown]} -R $HT_USER:$HT_USER "$DATA_DIR/$target_scripts_dir"
     occ files:scan --path="$target_scripts_dir"
 }
 
-(($#))&&{
+(( $# )) && {
     echo "  signing this scripts"
     echo "  - $@"
     anykey
-}||{
+} || {
     echo "  no scripts past to sign"
     exit 1
 }

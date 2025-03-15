@@ -46,7 +46,7 @@ $(nextcloud_logo)
   This utility is similar to the Unix \`who\` command, allowing you to monitor
   live user logins and activities on your nextcloud server-instance.
   The script’s activity is logged for reference. You can view this log under:
-  - $(C)$lf$(N)
+  - $(C)${F[log]}$(N)
 
   Usage:
     $ME -h|--help
@@ -70,7 +70,7 @@ $(nextcloud_logo)
 
     --trace     In combination with:
                   - monitor: produce extensive log traces
-                  - last: print the sql query used for the output
+                  - last:    print the sql query used for the output
 
     integrity_check
                 Verify the integrity of this script with signature

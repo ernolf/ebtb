@@ -82,9 +82,8 @@ declare -i woi=0
 
 # parsing options
 # Check if -l|--list option has an argument and add 'all' if missing
-declare -a shiftedoption
 shopt -s extglob
-while (($#));do
+while (( $# ));do
     case "$1" in
         -l|--list)
             if ! [[ -n "$2" && "$2" != -* ]]; then
@@ -95,13 +94,13 @@ while (($#));do
             ;;
         --detector)
             if [[ -n "$2" && "$2" != -* ]]; then
-                shiftedoption+=("$1" "$2")
+                args+=("$1" "$2")
                 shift 2
             fi
             ;;
         @(-)+([a-z])p)
             if [[ -n "$2" && "$2" != -* ]]; then
-                shiftedoption+=("$1" "$2")
+                args+=("$1" "$2")
                 shift 2
             fi
             ;;
@@ -117,13 +116,13 @@ while (($#));do
             ;;
         --) break 2
             ;;
-        *)  shiftedoption+=("$1")
+        *)  args+=("$1")
             shift
     esac
 done
 shopt -u extglob
-(( ${#shiftedoption[@]} )) && set -- "${shiftedoption[@]}" "$@"
-unset -v shiftedoption
+(( ${#args[@]} )) && set -- "${args[@]}" "$@"
+unset -v args
 
 options=$(${X[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$ME" -- "$@")
 if (($?==0)); then

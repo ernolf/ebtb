@@ -16,7 +16,7 @@ __scriptname__
 #    nc/nextcloud nc/nextcloud_db
 #)
 # TODO <-- 0
-modules=(fstring spinner nc/nextcloud nc/nextcloud_db)
+modules=(fstring nc/nextcloud nc/nextcloud_db)
 __debug__
 __when__
 __vdirname__
@@ -126,7 +126,7 @@ nc_download_default(){
             fi
     esac
 
-${B[debug]} && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag = $version_tag\nurl = $url\nurl1 = $url1\nurl2 = $url2";anykey;}
+${B[debug]} && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag = $version_tag\nurl = $url\nurl1 = $url1\nurl2 = $url2"; anykey; }
 
     if (($(${X[curl]} -so "$tempfile" -w %{http_code} "$url1") == 200)); then
         mv "$tempfile" "$NC_DIR/$path"
@@ -143,7 +143,7 @@ ${B[debug]} && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_
 
 db_integritycheck_ cull > $integritycheck_json
 
-${B[debug]} && { echo "integritycheck_json:";${X[jq]} '.' $integritycheck_json;anykey;}
+${B[debug]} && { echo "integritycheck_json:"; ${X[jq]} '.' $integritycheck_json; anykey; }
 
 mapfile -t affected_apps< <(${X[jq]} -r keys[] $integritycheck_json)
 
@@ -168,7 +168,7 @@ if (( ${#affected_apps[@]} )); then
         json_2_array "$(${X[jq]} ".$affected_app" "$integritycheck_json")" > $scan_result
         . $scan_result
 
-${B[debug]} && { echo "scan_result:";${X[cat]} $scan_result;anykey;}
+${B[debug]} && { echo "scan_result:"; ${X[cat]} $scan_result; anykey; }
 
         if (( ${#FILE_MISSING[@]} )); then
             if (( ${#FILE_MISSING[@]} > 1 )); then
@@ -180,8 +180,8 @@ ${B[debug]} && { echo "scan_result:";${X[cat]} $scan_result;anykey;}
             for affected_file in ${FILE_MISSING[@]}; do
                 pf; echo "$affected_file"
             done
-            question="Q:$(format_string "Do you want to download t$this missing file$pl1 for your version from github" 3;N)"
-            if ask "$question" "$YES";then
+            question="Q:$(format_string "Do you want to download t$this missing file$pl1 for your version from github" 3; N)"
+            if ask "$question" "$YES"; then
                 for affected_file in ${FILE_MISSING[@]}; do
                     nc_download_default $affected_app $affected_file
                 done
@@ -216,8 +216,8 @@ ${B[debug]} && { echo "scan_result:";${X[cat]} $scan_result;anykey;}
             for affected_file in ${INVALID_HASH[@]}; do
                 pf; echo "$affected_file"
             done
-            question="Q:$(format_string "Do you want to replace t$this invalid file$pl1 with$one file$pl1 downloaded from github for your version" 3;N)"
-            if ask "$question" "$YES";then
+            question="Q:$(format_string "Do you want to replace t$this invalid file$pl1 with$one file$pl1 downloaded from github for your version" 3; N)"
+            if ask "$question" "$YES"; then
                 for affected_file in ${INVALID_HASH[@]}; do
                     nc_download_default $affected_app $affected_file
                 done
@@ -233,13 +233,13 @@ ${B[debug]} && { echo "scan_result:";${X[cat]} $scan_result;anykey;}
     done
     db_integritycheck_ clean
     echo
-    echo " -$(format_string "You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3;N)"
+    echo "$(format_string "- You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3; N)"
     f
     anykey
     contribute_
 else
     echo
-    echo " -$(format_string "This script could not find any integrity warnings to resolve." 3;N)"
+    echo "$(format_string "- This script could not find any integrity warnings to resolve." 3; N)"
     exit 0
 fi
 

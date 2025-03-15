@@ -10,10 +10,4 @@ __license__
 ${XML_BASHLIB:-_} && return
 XML_BASHLIB=:
 
-# TODO 0 -->
-. <(lrequire binaries)
-# TODO <-- 0
-# xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
-xmls(){
-    ${X[xmlstarlet]} sel -B -t "$@"
-}
+:

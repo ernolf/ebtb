@@ -24,7 +24,7 @@ placeholders=(
 # binaries for build process
 declare binary
 declare -a build_binaries
-build_binaries=(basename cat chown cp diff dirname find gawk grep gpg head jq mkdir php sed seq sha256sum shfmt tail)
+build_binaries=(basename cat chown cp diff dirname find gawk grep gpg head jq mkdir php rm sed seq sha256sum shfmt stat sudo tail)
 unset BINARIES
 declare -gA BINARIES 2>/dev/null || declare -A BINARIES
 BINARIES[env]="$(command -v env) LC_MESSAGES=C"

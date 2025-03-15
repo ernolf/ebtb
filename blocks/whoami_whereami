@@ -1,11 +1,11 @@
-declare A CMA MD ME MP MS REQ x
-declare -a modules bools args tntd
+declare A CMA MD ME MP MS REQ TDU x
+declare -a modules bools args tntd jnr
 # asociative arrays: B = bools, C = commands, D = dirs, F = files, I = user/group, J = json, M = me, T = time, V = vars
 declare -A B C D F I J M T V
 declare -n TD=TMPDIR H=HOME
 _(){ false;}
 C[e]="$(command -v env)"
-for x in b:basename c:cat cu:curl d:dirname f:flock g:gawk h:head id l:lsof md:mkdir mt:mktemp p:ps rp:realpath r:rm u:uname; do
+for x in a:gawk b:basename c:cat cu:curl d:dirname f:flock g:grep h:head id l:lsof md:mkdir mt:mktemp p:ps rp:realpath r:rm s:stat st:systemd-tmpfiles u:uname; do
     if [ -x "$(command -v ${x#*:})" ]; then
         C[${x%:*}]="${C[e]} LC_MESSAGES=C $(command -v ${x#*:})"
     fi

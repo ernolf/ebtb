@@ -1,16 +1,19 @@
-if [ "${I[un]}" = "$NC_USER" ]; then
-    if (( J[epoch] > M[epoch] )); then
-        V[upinf]="(update available)"
-        f
-        ipf
-        Yi
-        echo " A new version of this script is available.$(f; o3)Start this script again as user $(W)root$(Yi) if you want to update."
-        N
-        f
-        anykey
-    elif (( J[epoch] == M[epoch] )); then
-        V[upinf]="(latest version)"
+# Update can be done by all but $NC_USER, since NC_USER normaly has no sudo rights.
+[[ "$*" =~ (-q|--quiet) ]] || {
+    if [ "${I[un]}" = "$NC_USER" ]; then
+        if (( J[e] > M[e] )); then
+            V[upinf]="(update available)"
+            f
+            ipf
+            Yi
+            echo " A new version of this script is available.$(f; o3)Start this script again as user $(W)root$(Yi) if you want to update."
+            N
+            f
+            anykey
+        elif (( J[e] == M[e] )); then
+            V[upinf]="(latest version)"
+        fi
+    else
+        my_update_check
     fi
-else
-    my_update_check
-fi
+}

@@ -40,24 +40,26 @@ cleanup(){
 
 # define a trap to clean up the lock- and temporary files
 exit_trap(){
-    [ -f "$spinner_pid_file" ] && kill_spinner
+    [ -f "${F[spinner_pid]}" ] && kill_spinner
     ${local_server:-_} && ls_ stop
-    cleanup "${D[lock]}"
-    nonullglob "$TMPDIR/${bm}$$_*" && q2 ${X[rm]} -f $TMPDIR/${bm}$$_*
-    nonullglob "$TMPDIR/${bm:-$$}_*" && q2 ${X[rm]} -f $TMPDIR/${bm:-$$}_*
+    cleanup "${D[l]}"
+    nonullglob "$TD/${M[b]}${M[pid]}_*" && q2 ${X[rm]} -f $TD/${M[b]}${M[pid]}_*
+    nonullglob "$TD/${M[b]:-$$}_*" && q2 ${X[rm]} -f $TD/${M[b]:-$$}_*
     ansi_reset
 }
 
 interrupted(){
+    local sig t
+    sig="$1" t="$(O)TRAP$(Yi): -"
     if [ -z "${M[b]}" ]; then
         return 0
     else
-        te1; Yi; echo "TRAP: interrupted by sig$1"
-        if [ -f "$spinner_pid_file" ]; then
-            te1; Yi; echo "TRAP: - spinner killed"
+        te1; echo "$t interrupted by sig$sig"
+        if [ -f "${F[spinner_pid]}" ]; then
+            te1; echo "$t spinner killed"
         fi
-        if nonullglob "$TMPDIR/${bm}_*"; then
-            te1; Yi; echo "TRAP: - temporary files removed"
+        if nonullglob "$TD/${M[b]}${M[pid]}_*" || nonullglob "$TD/${M[b]:-$$}_*"; then
+            te1; echo "$t temporary files removed"
         fi
         exit1
     fi

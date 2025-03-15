@@ -67,7 +67,7 @@ dl_appstore_json_db(){
         unix_etag="$(r_db "SELECT etag FROM $unit;")"
     fi
     etag="\"$(u2e $unix_etag)\""
-    response="$(${X[curlc]} -D - -H "If-None-Match: $etag" -s $appstore_url/$unit.json)"
+    response="$(${X[curl]} --compressed -D - -H "If-None-Match: $etag" -s $appstore_url/$unit.json)"
     http_code="$(echo "$response" | ${X[head]} -n1 | ${X[gawk]} 'tolower($0)~/http\//{print $2}')"
     new_etag="$(echo "$response" | ${X[grep]} -ioPs 'etag: "\K[^"]+')"
     new_unix_etag="$(e2u "$new_etag")"

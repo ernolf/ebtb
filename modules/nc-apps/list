@@ -109,9 +109,9 @@ list(){
                 local rawURLserver="$GITHUB_RAW/server/$tag/apps/$id/appinfo/info.xml"
                 local rawURLapp="$GITHUB_RAW/$id/$tag/appinfo/info.xml"
                 local github_info_xml="$(tf)"
-                if (( $(hc sD $MS-${M[epoch]} -o $github_info_xml $rawURLserver) == 200 )); then
+                if (( $(c -sD NULL -w %{http_code} -A $MS-${M[e]} -o $github_info_xml $rawURLserver) == 200 )); then
                     info_xml=$github_info_xml
-                elif (( $(hc sD $MS-${M[epoch]} -o $github_info_xml $rawURLapp) == 200 )); then
+                elif (( $(c -sD NULL -w %{http_code} -A $MS-${M[e]} -o $github_info_xml $rawURLapp) == 200 )); then
                     info_xml=$github_info_xml
                 fi #; unset -v tag rawURLserver rawURLapp
             fi
@@ -165,7 +165,7 @@ list(){
             local url="$(${X[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
             local github_info_xml=$(tf)
             for tag in "$version" "v$version" master main; do
-                if (( $(hc sD $MS-${M[epoch]} -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
+                if (( $(c -sD NULL -w %{http_code} -A $MS-${M[e]} -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
                     info_xml=$github_info_xml
                     break
                 fi

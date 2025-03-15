@@ -14,23 +14,28 @@ remove_unused_sapis(){
     spinner C " . searching misconfigurations: unused SAPIs ." &
     if $(is_sapi_true_ cgi) || $(is_sapi_true_ embed) || $(is_sapi_true_ phpdbg); then
         local unused_sapi plu be modstring pkgstring
-        local -a unused_sapis packages_2_purge
+        local -a unused_sapis unused_sapis_descr packages_2_purge
         for unused_sapi in cgi embed phpdbg; do
             if $(is_sapi_true_ $unused_sapi); then
                 unused_sapis+=("$unused_sapi")
                 packages_2_purge+=(${SAPIS[$unused_sapi]/@VER@/*})
             fi
         done
+        mapfile -t unused_sapis_descr < <(for unused_sapi in ${unused_sapis[@]}; do echo "${SAPIDESCR[$unused_sapi]}$(GRAY) ($unused_sapi)$(B)"; done)
         if (( ${#unused_sapis[@]} == 1 )); then
-            plu='is:' be='is a' modstring="$(B)${unused_sapis[0]}$(N)" pkgstring="$(B)${packages_2_purge[@]}$(N)"
+            plu='is:' be='is a'
         else
-            plu='ese:s' be='are' modstring="$(listify B ${unused_sapis[@]})" pkgstring="$(listify B ${packages_2_purge[@]})"
+            plu='ese:s' be='are'
         fi
+        modstring="$(listify B ${unused_sapis[@]})"
+        modstringdescr="$(listify B "${unused_sapis_descr[@]}")"
+        pkgstring="$(listify B ${packages_2_purge[@]})"
         question="Q:$(format_string "Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} package${plu#*:} $pkgstring now" 3)"
         kill_spinner
-        bundle echo "$(xpf; format_string "There $be $modstring SAPI${plu#*:} installed on this machine." 3;N)"
+        separator R
+        bundle echo "$(xpf; format_string "There $be $modstringdescr installed on this machine." 3;N)"
         echo "$(ipf; format_string "In most cases, th${plu%:*} SAPI${plu#*:} get installed because of a dependency package. There is not a single use case that requires th${plu%:*} SAPI${plu#*:} to operate an application like Nextcloud. $(Y)Consider removing th${plu%:*} unnecessary SAPI${plu#*:} before updating." 3;N)"
-        echo " -$(format_string "This script can remove th${plu%:*} $modstring package${plu#*:} in a safe way." 3)"
+        echo " -$(format_string "This script can remove the $modstring package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_purge --yes ${packages_2_purge[@]}
             "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only

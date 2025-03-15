@@ -16,26 +16,28 @@ DEPENDENCY_BASHLIB=:
 . <(lrequire sudo)
 . <(lrequire ask)
 . <(lrequire anykey)
+. <(lrequire dpkg)
 # TODO <-- 0
 dependency_check(){
     local dependency bin plu pkg
     local -i c2 c3
     local -a dependencies mis
     dependencies=(
-# TODO 0 -->
+# TODO 1 -->
         "curl#curl#Command line file transfer tool with URL syntax"
-# TODO <-- 0
+# TODO <-- 1
         "gawk#gawk#GNU awk"
         "grep#grep#GNU grep, egrep and fgrep"
         "gpg#gnupg#GNU Privacy Guard"
         "jq#jq#command-line JSON processor"
+        "ansifilter#ansifilter#parse common (terminal) ANSI codes and remove or convert them"
     )
     case "$MS" in
         nc-apps)
             dependencies+=(
                 "less#less#A terminal pager similar to more"
                 "sqlite3#sqlite3#Command line interface for SQLite 3"
-                "php#php-cli#PHP Commandline Interface"
+                "php#php-cli#PHP Commandline Interpreter"
                 "xmlstarlet#xmlstarlet#Command line XML toolkit"
             )
             ;;
@@ -46,7 +48,7 @@ dependency_check(){
             ;;
         nc-occ)
             dependencies+=(
-                "php#php-cli#PHP Commandline Interface"
+                "php#php-cli#PHP Commandline Interpreter"
             )
             ;;
         nc-who)
@@ -62,12 +64,12 @@ dependency_check(){
             ;;
         php-updater)
             dependencies+=(
-# TODO 1 -->
+# TODO 2 -->
                 "apt-file#apt-file#Search for files within Debian packages"
                 "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
                 "sponge#moreutils#additional Unix utilities"
                 "dos2unix#dos2unix#Convert text file line endings between CRLF and LF"
-# TODO <-- 1
+# TODO <-- 2
                 "less#less#A terminal pager similar to more"
                 "ss#iproute2#Networking and traffic control tools"
                 "phpquery#php-common#Common files for PHP packages"
@@ -81,16 +83,24 @@ dependency_check(){
     c2=18 c3=34
     mapfile -t dependencies< <(p_sort "${dependencies[@]}")
     for dependency in ${dependencies[@]%%#*}; do
-        if [ -z "${X[$dependency]}" ]; then
-            if ${X[dpkg]} -l | ${X[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
-                if (( epoch > 1737549000 )); then
-                    R; bundle echo "  The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
-                    R; bundle echo "  You should fix that first!"; N
-                    anykey
-                fi
-            else
-                mis+=("$dependency")
-            fi
+#        if [ -z "${X[$dependency]}" ]; then
+        if ! [[ "${X[$dependency]}" =~ $dependency ]]; then
+            case "$dependency" in
+                ansifilter)
+                    if [[ "$(type -t apt_exist)" == function ]]; then
+                        apt_exist "$dependency" && mis+=("$dependency")
+                    fi
+                    ;;
+                *)  if ${X[dpkg]} -l | ${X[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
+                        if (( M[e] > 1737549000 )); then
+                            R; bundle echo "  The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
+                            R; bundle echo "  You should fix that first!"; N
+                            anykey
+                        fi
+                    else
+                        mis+=("$dependency")
+                    fi
+            esac
         fi
     done
     if (( ${#mis[@]} )); then

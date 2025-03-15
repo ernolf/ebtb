@@ -18,11 +18,10 @@ DPKG_BASHLIB=:
 . <(lrequire anykey)
 . <(lrequire awksed)
 . <(lrequire ask)
-# TODO <-- 0
 . <(lrequire spinner)
+# TODO <-- 0
 . <(lrequire fstring)
 . <(lrequire today)
-. <(lrequire php/versions)
 
 declare -ga DPKG_LOCKFILES || declare -a DPKG_LOCKFILES
 DPKG_LOCKFILES=(
@@ -129,9 +128,10 @@ apt_exist(){
     local -a pkgnames
     mapfile -t pkgnames< <(${X[apt-cache]} pkgnames "$1")
     [[ " ${pkgnames[@]} " =~ " $1 " ]] || return 1
-    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -qs "has no installation candidate" && return 1
-    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -qs "Unable to locate package" && return 1
     ${X[apt-cache]} policy "$1" 2>&1 | ${X[grep]} -qs "Candidate: (none)" && return 1
+# TODO 2 -->
+#    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -Eqs "(has no installation candidate|Unable to locate package)" && return 1
+# TODO <-- 2
     q0 ${X[apt-get]} -qqs install "$1"
 }
 
@@ -280,44 +280,11 @@ rdep_tree(){
     fi
 }
 
-## PHP related:
-# $1=grep -E search string: "ph(ar|p)"
-# $2=modus manual/auto
-# $3=old: 8.1
-# $4=new: 8.2
-set_selections(){
-    required_args 4 "$@"
-    local regex modus old new mf
-    regex="$1" modus="$2" old="$3" new="$4"
-    q0 ${X[apt-mark]} unhold *php*
-    [ "$modus" = "manual" ] && mf=auto
-    [ "$modus" = "auto" ] && mf=manual
-    ${X[update-alternatives]} --get-selections | ${X[grep]} -E "$regex" |  ${X[sed]} -E "s/$mf/$modus/;s/$old/$new/" | q0 ${X[update-alternatives]} --set-selections
-}
-
-min_version(){
+# used in php/sury
+dpkg_min_version(){
     required_args 2 "$@"
     local bin="$1" min="$2"
     ${X[dpkg]} --compare-versions "$(q2 $bin --version | ${X[grep]} -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
-}
-
-# switch all findable php related packages to manual
-# if $1 and $2 are given, then change from $1 to $2
-# $1=old: 8.1
-# $2=new: 8.2
-switch_php(){
-    required_args 2 "$@"
-    set_selections "ph(ar|p)" "manual" "$1" "$2"
-}
-
-# switch all findable php related packages to manual Version $1 if $1 exists
-switch_php_to_(){
-    require_arg $@
-    q0 ${X[apt-mark]} manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
-    set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
-# TODO 2 -->
-#    q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
-# TODO <-- 2
 }
 
 list_apt_sources(){
@@ -327,75 +294,38 @@ list_apt_sources(){
 
     mapfile -t foreign_architectures< <(${X[dpkg]} --print-foreign-architectures 2>&1)
     if (( ${#foreign_architectures[@]} )); then
-        f; o2; B; echo "This is a list of the supported architectures on this machine for your information:"; N
+        f
+        o2; B; echo "This is a list of the supported architectures on this machine for your information:"; N
         o2; pf; GRAY; echo "main architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
-        (( ${#foreign_architectures[@]} > 1 ))&&plu='s'||plu=''
-        for i in ${!foreign_architectures[@]}; do o2; pf; GRAY; echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}"; N; done
+        (( ${#foreign_architectures[@]} > 1 )) && plu='s' || plu=''
+        for i in ${!foreign_architectures[@]}; do
+            o2; pf; GRAY; echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}"; N
+        done
     else
-        f; o2; B; echo "This is the supported architecture on this machine for your information:"; N
+        f
+        o2; B; echo "This is the supported architecture on this machine for your information:"; N
         o2; pf; GRAY; echo "architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
     fi
 
-    f; o2; B;echo "This is a list of the effective apt sources on this machine for your information:"; N
+    f
+    o2; B; echo "This is a list of the effective apt sources on this machine for your information:"; N
     # apt sources
     if [ -d /var/lib/apt/lists ]; then
         mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_Packages.*$//;s/-deb.*$//;s/_dists_/ /;s/_binary-/ /')")
-        for i in ${!aptsources[@]}; do o2;pf;GRAY;echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|${X[sed]} 's/\(.*\)\/\(.*\)/\1 \2/')"; N; done
+        for i in ${!aptsources[@]}; do
+            o2; pf; GRAY; echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|${X[sed]} 's/\(.*\)\/\(.*\)/\1 \2/')"; N
+        done
 
-    f; o2; B; echo "This is a list of the files containing the apt sources for your information:"; N
+    f
+    o2; B; echo "This is a list of the files containing the apt sources for your information:"; N
     # apt sources files
         mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
 # TODO 3 -->
 #        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
 # TODO <-- 3
-        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}";do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}';done))
-        for i in ${!aptsourcesfiles[@]}; do o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N; done
-    fi
-}
-
-list_alternatives(){
-    local regex target target_version name mode path
-    regex="${1:-ph(ar|p)}"
-    ${X[update-alternatives]} --get-selections 2>&1 | ${X[grep]} -E "$regex" | while read -r name mode path; do
-        if target="$(q2 ${X[realpath]} "$path")"; then
-            target_version="$(q2 echo "$target" | ${X[grep]} -o "[0-9.]*")"
-            if [[ "$path" =~ default ]]; then
-                printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(GRAY)-> ${path//.default/${target_version%.}}$(N)"
-            else
-                printf "%-30s %-8s %-30s\n" "$name" "$mode" "$path"
-            fi
-        else
-            printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(xpf)no target - dead link!"
-        fi
-    done
-}
-
-list_alternatives_extended(){
-    [ -n "${X[update-alternatives]}" ] || { echo -e "\e[31mERROR: no 'update-alternatives' binary\e[0m" >&2; return 1; }
-    local regex candidate key value
-    regex="${1:-ph(ar|p)}"
-    for candidate in $(q2 ${X[update-alternatives]} --get-selections | ${X[gawk]} '/'$regex'/{print $1}'); do
-        echo -e "Name: $candidate"
-        ${X[update-alternatives]} --query "$candidate" | ${X[grep]} -Ev '(^$|Name:)' | while IFS= read -r line; do
-            if [[ "$line" =~ (Slaves|Priority) ]]; then
-                echo "  \`- $line"
-            elif [[ "$line" =~ ^([^:]+):\ (.*) ]]; then
-                key="${BASH_REMATCH[1]}"
-                value="${BASH_REMATCH[2]}"
-                pf; echo "$key: $value"
-            else
-                echo "    \`- $line"
-            fi
+        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}"; do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done))
+        for i in ${!aptsourcesfiles[@]}; do
+            o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N
         done
-    done
-}
-
-# repair broken alternatives, remove not existing alternatives
-cleanup_and_fix_alternatives(){
-    if [ -n "${X[update-alternatives]}" ]; then
-        q0 ${X[update-alternatives]} --force --all < <(${X[yes]} '')
-# TODO 4 -->
-#        ${X[yes]} '' | ${X[update-alternatives]} --force --all &>/dev/null
-# TODO <-- 4
     fi
 }

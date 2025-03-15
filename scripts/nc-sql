@@ -16,7 +16,7 @@ __scriptname__
 #    nc/nextcloud nc/nextcloud_db
 #)
 # TODO <-- 0
-modules=(fstring spinner httpd nc/nextcloud nc/nextcloud_db)
+modules=(fstring httpd nc/nextcloud nc/nextcloud_db)
 __debug__
 __when__
 __vdirname__
@@ -51,27 +51,24 @@ HELP
 
 # first search for options --raw, -r, --execute, -e and remove from @() array
 # and then add the remaining arguments into the new array
-declare bool arg
-declare -a bools args
 bools=(raw execute)
-for bool in ${bools[@]}; do B[$bool]=false; done
-unset -v bool bools
+for x in ${bools[@]}; do B[$x]=_; done
 
-for arg in "$@";do
-    case "$arg" in
+for x in "$@"; do
+    case "$x" in
         --help|-h)
             help
             ;;
         --raw|-r)
-            B[raw]=true
+            B[raw]=:
             ;;
         --execute|-e)
-            B[execute]=true
+            B[execute]=:
             ;;
-        *)  args+=("$arg")
+        *)  args+=("$x")
     esac
 done
-set -- "${args[@]}"&&unset -v args
+set -- "${args[@]}"
 
 if ${B[aio]} && [ -n "${X[psql]}" ]; then
         B[docker]=false

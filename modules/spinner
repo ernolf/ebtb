@@ -15,16 +15,15 @@ SPINNER_BASHLIB=:
 . <(lrequire basics)
 . <(lrequire exit)
 # TODO <-- 0
-declare spinner_pid_file
-spinner_pid_file="$TMPDIR/${bm}-spinner.pid"
+F[spinner_pid]="$TD/${M[b]}-spinner.pid"
 
 # Function to display the spinning animation
 spinner(){
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
-    [ -f "$spinner_pid_file" ] && return 0
+    [ -f "${F[spinner_pid]}" ] && return 0
     local cursor_status color spinr spinl
     local -i L R prog dir pos marg
-    echo $BASHPID > $spinner_pid_file
+    echo $BASHPID > ${F[spinner_pid]}
     cursor_status=''
     if [ -f "$CURSOR" ]; then
         if ${X[grep]} -qsw 'hide' "$CURSOR"; then
@@ -79,23 +78,22 @@ spinner(){
 kill_spinner(){
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 0
     local -i ct=0
-    until [ -f "$spinner_pid_file" ]; do
-        (( ct > 500 )) && return 0
+    until [ -f "${F[spinner_pid]}" ]; do
+        (( ct > 20 )) && return 0
         (( ct++ ))
-        ${X[sleep]} 0.0001
+        ${X[sleep]} 0.001
     done
     local cursor
     local -i pid
-    pid="$(${X[cat]} "$spinner_pid_file")"
+    pid="$(${X[cat]} "${F[spinner_pid]}")"
     cursor='show'
     if [ -f "$CURSOR" ]; then
         if ${X[grep]} -qsw 'hide' "$CURSOR"; then
             cursor='hide'
         fi
     fi
-    kill $pid &>/dev/null
-    te0
+    kill $pid &>/dev/null && te0
     N
     cursor_ "$cursor"
-    ${X[rm]} -f "$spinner_pid_file"
+    ${X[rm]} -f "${F[spinner_pid]}"
 }

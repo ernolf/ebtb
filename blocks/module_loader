@@ -7,11 +7,11 @@ ${C[md]} -p "${D[li]}/$MS"
 REQ=". ${D[li]}" F[lmj]="${D[li]}/modules.json" F[rmj]="${D[ri]}/modules.json" F[lcf]="${D[li]}/$MS/.checked"
 F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}")
 (( T[rte] - T[lce] > T[w4uc] )) && {
-    ${C[cc]} -o "${F[lmjn]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
-    if T[mje]=$(json_etag "${F[lmj]}") && T[mjne]=$(json_etag "${F[lmjn]}"); then (( T[mje] < T[mjne] )) && B[check]=:; fi
+    c -o ${F[lmjn]} -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
+    if T[mje]=$(json_etag ${F[lmj]}) && T[mjne]=$(json_etag ${F[lmjn]}); then (( T[mje] < T[mjne] )) && B[check]=:; fi
 }
 : ${B[check]:=_} ${B[pager]:=_}
-for x in binaries fp mh basics awksed tempfile ansi filter prefix button exit debug anykey line array ask sudo dependency vdir integrity ${modules[@]}; do
+for x in binaries fp filter mh basics awksed tempfile ansi prefix button exit debug anykey line array ask sudo spinner dpkg dependency vdir integrity ${modules[@]}; do
     ${B[check]} && {
         ${B[pager]} || printf "\r\e[K.. checking modules - $x"
         c4u "$x"
@@ -22,7 +22,7 @@ ${B[check]} && echo ${T[rte]} > "${F[lcf]}"
 [ -f "${F[lmjn]}" ] && ${X[mv]} "${F[lmjn]}" "${F[lmj]}"
 ${B[rt]} && ! (( T[lce] )) && echo ${T[rte]} > "${F[lcf]}"
 ${B[pager]} || te1
-eval "$(echo "$(unquote ${J[json]})" | ${X[jq]} -r 'keys[] as $key|"J[\($key)]=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
+eval "$(echo "$(unquote ${J[o]})" | ${X[jq]} -r 'keys[] as $key|"J[\($key[0:1])]=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
 V[upinf]='(no update info available)'
 . <(req update)
 "${B[do_update]}" && my_update

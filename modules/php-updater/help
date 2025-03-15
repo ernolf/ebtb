@@ -12,6 +12,7 @@ HELP_BASHLIB=:
 
 . <(lrequire prompt)
 . <(lrequire fstring)
+. <(lrequire php/extensions)
 . <(lrequire php/logo)
 
 brief_help(){
@@ -24,11 +25,13 @@ brief_help(){
         pf; echo "$*"
         f
     fi
-    os; pf; B; echo "$ME $(C)--help$(o 44;dY)Detailed explanation"; N
-    os; pf; B; echo "$ME$(o 44;dY)Run in interactive mode"; N
-    os; pf; B; echo "$ME $(C)--list-installed$(o 44;dY)Detailed information about php on this machine."; N
-    f; os; W; echo "Only if multiple PHP versions are installed:"; N
-    f; os; pf; B; echo "$ME${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new"
+    os; pf; B; echo "$ME $(C)--help$(o 44; dY)Detailed explanation"; N
+    os; pf; B; echo "$ME$(o 44; dY)Run in interactive mode"; N
+    os; pf; B; echo "$ME $(C)--list-installed$(o 44; dY)Detailed information about php on this machine."; N
+    f
+    os; W; echo "Only if multiple PHP versions are installed:"; N
+    f
+    os; pf; B; echo "$ME${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new"
     if (( ${#versions[@]} > 1 )); then
         for i in ${!versions[@]}; do
             pkgct[i]=$(${X[dpkg]} -l|${X[gawk]} '/^[hiu]i.*php'${versions[i]}'/{print $2}'|${X[wc]} -l)
@@ -117,25 +120,28 @@ $(separator dP)
 
   $(W)These are the most important SAPIs:
 
-  $(dY)Command Line Interface
-  $(W)- term    - $(GRAY)**$(B)cli$(GRAY)**
-  $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-cli$(GRAY)\`*
-  $(W)- description:
-     $(format_string "$(GRAY)cli is used by PHP scripts that are called from the command line. i.e. all processes that were explicitly NOT called by the web server (cron jobs, occ commands, etc.)" 6 GRAY)
+  $(dYul)${SAPIDESCR[cli]}$(N)
 
-  $(dY)Apache2 module
-  $(W)- term    - $(GRAY)**$(B)apache2$(GRAY)**
-  $(W)- package - $(GRAY)*\`$(B)libapache2-mod-php$(C)<VER>$(GRAY)\`*
-  $(W)- description:
-     $(format_string "$(GRAY)the apache2 module is the default SAPI for apache2. The downside is that it's not particularly scalable and doesn't support http2." 6 GRAY)
-     $(format_string "$(GRAY)libapache2-mod-php relies on the old but stable Multi-Processing Module (MPM) \"mpm-prefork\"." 6 GRAY)
+   $(W)- term    - $(GRAY)**$(B)cli$(GRAY)**
+   $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-cli$(GRAY)\`*
+   $(W)- description:
+      $(format_string "$(GRAY)cli is used by PHP scripts that are called from the command line. i.e. all processes that were explicitly NOT called by the web server (cron jobs, occ commands, etc.)" 6 GRAY)
 
-  $(dY)Fast Process Manager
-  $(W)- term    - $(GRAY)**$(B)fpm$(GRAY)**
-  $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-fpm$(GRAY)\`*
-  $(W)- description:
-      $(GRAY)this is the default SAPI used by nginx.
-     $(format_string "$(GRAY)On apache2 php-fpm relies on the more scalable threaded MPM \"mpm-event\". Additionally it needs the apache2-modules \"proxy_fcgi\" and \"setenvif\"." 6 GRAY)
+  $(dYul)${SAPIDESCR[apache2]}$(N)
+
+   $(W)- term    - $(GRAY)**$(B)apache2$(GRAY)**
+   $(W)- package - $(GRAY)*\`$(B)libapache2-mod-php$(C)<VER>$(GRAY)\`*
+   $(W)- description:
+      $(format_string "$(GRAY)the apache2 module is the default SAPI for apache2. The downside is that it's not particularly scalable and doesn't support http2." 6 GRAY)
+      $(format_string "$(GRAY)libapache2-mod-php relies on the old but stable Multi-Processing Module (MPM) \"mpm-prefork\"." 6 GRAY)
+
+  $(dYul)${SAPIDESCR[fpm]}$(N)
+
+   $(W)- term    - $(GRAY)**$(B)fpm$(GRAY)**
+   $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-fpm$(GRAY)\`*
+   $(W)- description:
+       $(GRAY)this is the default SAPI used by nginx.
+      $(format_string "$(GRAY)On apache2 php-fpm relies on the more scalable threaded MPM \"mpm-event\". Additionally it needs the apache2-modules \"proxy_fcgi\" and \"setenvif\"." 6 GRAY)
 
   $(W)Every SAPI has its own php.ini file:
 

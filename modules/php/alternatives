@@ -1,0 +1,107 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${ALTERNATIVES_BASHLIB:-_} && return
+ALTERNATIVES_BASHLIB=:
+
+# TODO 0 -->
+. <(lrequire binaries)
+. <(lrequire basics)
+. <(lrequire button)
+. <(lrequire exit)
+. <(lrequire anykey)
+. <(lrequire awksed)
+. <(lrequire ask)
+. <(lrequire dpkg)
+# TODO <-- 0
+. <(lrequire spinner)
+. <(lrequire fstring)
+. <(lrequire today)
+. <(lrequire php/versions)
+
+## PHP related:
+# $1=grep -E search string: "ph(ar|p)"
+# $2=modus manual/auto
+# $3=old: 8.1
+# $4=new: 8.2
+set_selections(){
+    required_args 4 "$@"
+    local regex modus old new mf
+    regex="$1" modus="$2" old="$3" new="$4"
+    q0 ${X[apt-mark]} unhold *php*
+    [ "$modus" = "manual" ] && mf=auto
+    [ "$modus" = "auto" ] && mf=manual
+    ${X[update-alternatives]} --get-selections | ${X[grep]} -E "$regex" |  ${X[sed]} -E "s/$mf/$modus/;s/$old/$new/" | q0 ${X[update-alternatives]} --set-selections
+}
+
+# switch all findable php related packages to manual
+# if $1 and $2 are given, then change from $1 to $2
+# $1=old: 8.1
+# $2=new: 8.2
+switch_php(){
+    required_args 2 "$@"
+    set_selections "ph(ar|p)" "manual" "$1" "$2"
+}
+
+# switch all findable php related packages to manual Version $1 if $1 exists
+switch_php_to_(){
+    require_arg $@
+    q0 ${X[apt-mark]} manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
+    set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
+# TODO 2 -->
+#    q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
+# TODO <-- 2
+}
+
+list_alternatives(){
+    local regex target target_version name mode path
+    regex="${1:-ph(ar|p)}"
+    ${X[update-alternatives]} --get-selections 2>&1 | ${X[grep]} -E "$regex" | while read -r name mode path; do
+        if target="$(q2 ${X[realpath]} "$path")"; then
+            target_version="$(q2 echo "$target" | ${X[grep]} -o "[0-9.]*")"
+            if [[ "$path" =~ default ]]; then
+                printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(GRAY)-> ${path//.default/${target_version%.}}$(N)"
+            else
+                printf "%-30s %-8s %-30s\n" "$name" "$mode" "$path"
+            fi
+        else
+            printf "%-30s %-8s %-30s%s\n" "$name" "$mode" "$path" "$(xpf)no target - dead link!"
+        fi
+    done
+}
+
+list_alternatives_extended(){
+    [ -n "${X[update-alternatives]}" ] || { echo -e "\e[31mERROR: no 'update-alternatives' binary\e[0m" >&2; return 1; }
+    local regex candidate key value
+    regex="${1:-ph(ar|p)}"
+    for candidate in $(q2 ${X[update-alternatives]} --get-selections | ${X[gawk]} '/'$regex'/{print $1}'); do
+        echo -e "Name: $candidate"
+        ${X[update-alternatives]} --query "$candidate" | ${X[grep]} -Ev '(^$|Name:)' | while IFS= read -r line; do
+            if [[ "$line" =~ (Slaves|Priority) ]]; then
+                echo "  \`- $line"
+            elif [[ "$line" =~ ^([^:]+):\ (.*) ]]; then
+                key="${BASH_REMATCH[1]}"
+                value="${BASH_REMATCH[2]}"
+                pf; echo "$key: $value"
+            else
+                echo "    \`- $line"
+            fi
+        done
+    done
+}
+
+# repair broken alternatives, remove not existing alternatives
+cleanup_and_fix_alternatives(){
+    if [ -n "${X[update-alternatives]}" ]; then
+        q0 ${X[update-alternatives]} --force --all < <(${X[yes]} '')
+# TODO 4 -->
+#        ${X[yes]} '' | ${X[update-alternatives]} --force --all &>/dev/null
+# TODO <-- 4
+    fi
+}

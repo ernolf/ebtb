@@ -41,10 +41,6 @@ minify() {
         ${X[sed]} ':a;N;$!ba;s/{\n/{ /g' |\
         # replace all remaining newlines with semicolons
         ${X[sed]} ':a;N;$!ba;s/\n/;/g' |\
-#        # replace the sequence ')";[' with ')" [' to correctly separate array elements.
-#        ${X[sed]} -E 's/\)";\[/)" \[/g' |\
-#        # replace the sequence ")';[" with "), [" to correctly separate array elements.
-#        ${X[sed]} -E "s/\)';\[/)' \[/g" |\
         # Only replace the sequence ')";[' with ')" [' (and similarly for the single-quoted variant)
         # if it is not part of a variable assignment (i.e., there is no '=' before the sequence on the same line).
         ${X[sed]} -E '/^[^=]*\)";\[/ s/\)";\[/)" \[/g' |\

@@ -15,7 +15,7 @@ __scriptname__
 #    spinner anykey line array ask sudo dependency vdir integrity nc/nextcloud
 #)
 # TODO <-- 0
-modules=(fstring spinner nc/nextcloud)
+modules=(fstring nc/nextcloud)
 __debug__
 __when__
 __vdirname__
@@ -36,7 +36,7 @@ declare JSON_FILE arg
 declare -i JSON_TTL
 
 # File containing the JSON output from 'occ list --format=json'
-JSON_FILE="$TMPDIR/$MS-tmp/occ_commands.json"
+JSON_FILE="$TD/$MS-tmp/occ_commands.json"
 # time in seconds during which the JSON object file is not updated
 JSON_TTL=300 # <- do not move this
 # Bools to include all options and help option
@@ -91,7 +91,7 @@ create_json_object(){
     local -i joe
     [ -d "${JSON_FILE%/*}" ] || ${X[mkdir]} -p "${JSON_FILE%/*}"
     [ -f "$JSON_FILE" ] && joe=$(${X[stat]} -c %Z $JSON_FILE)
-    if ((rte-joe>JSON_TTL)); then
+    if (( T[rte] - joe > JSON_TTL)); then
         occ list --format=json > "$JSON_FILE"
     fi
 }

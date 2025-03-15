@@ -1,4 +1,4 @@
-[ -f "${F[lmj]}" ] || ${V[curl]} -o "${F[lmj]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
+[ -f "${F[lmj]}" ] || c -o "${F[lmj]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
 q2 ${X[jq]} -r '.modules[] | "\(.hash) \(.name)"' ${F[lmj]} >${D[li]}/modules.sha256
 cd ${D[li]}
 tntd=($(

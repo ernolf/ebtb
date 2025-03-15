@@ -72,7 +72,7 @@ epoch_(){ ${X[gawk]} '/^# version 20/ {print $NF}' "$1"; }
 
 version_sufix(){ ${X[sed]} -ne '/^# version 20/ s/:/./g' -e '/^# version 20/ s/ /_/g' -e '/^#_version_20/ s/#_version_/~/p' "$1"; }
 
-occ(){ sudo -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"; }
+occ(){ ${X[sudo]} -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"; }
 
 sign_(){
 #${bool[debug]} && set -x
@@ -195,7 +195,7 @@ ${bool[test2]} && test_2_
 if ${bool[all]}; then
     bulk_
 else
-    (($#)) && {
+    (( $# )) && {
         echo "  signing this libraries"
         echo "  - $@"
         anykey

@@ -20,11 +20,11 @@ __scriptname__
 #)
 # TODO <-- 0
 modules=(
-    today interval dos2unix prompt fstring sort spinner httpd context
-    php/version php/nginx php/apache2 php/fpm php/versions dpkg php/extensions
-    php/sury ask dist/os_release php.net/ini_directives $MS/inp $MS/pdiff
-    $MS/merge $MS/diff $MS/pool $MS/tasks $MS/linstalled $MS/help $MS/chfiles
-    $MS/switch
+    today interval dos2unix prompt fstring sort httpd context
+    php/version php/nginx php/apache2 php/fpm php/versions php/alternatives
+    php/extensions php/sury ask dist/os_release php.net/ini_directives
+    $MS/inp $MS/pdiff $MS/merge $MS/diff $MS/pool $MS/tasks $MS/linstalled
+    $MS/help $MS/chfiles $MS/switch
 )
 __debug__
 __when__
@@ -98,7 +98,9 @@ wrong_first_argument(){
     f
     bundle echo -n " $(Pbg; pf)First argument must be the version of an installed php but "
     if ((a)); then
-        bundle echo "php$1 is not installed$(pf; N)"; f; list_candidates
+        bundle echo "php$1 is not installed$(pf; N)"
+        f
+        list_candidates
         call_me candidates
         call_help
         f
@@ -214,8 +216,8 @@ tasks(){
 }
 # TODO <-- 1
 ## void ##
-declare lang=$(echo "$LANG"|${X[cut]} -d'_' -f1)
-declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW DEFAULT_ANSWER FILE
+declare lang=$(echo "$LANG" | ${X[cut]} -d'_' -f1)
+declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW SAPI DEFAULT_ANSWER FILE
 
 ${B[supported]} && apt_need_update
 
@@ -355,7 +357,7 @@ if ${B[supported]}; then
                     else
                         plu='ese:s' plu2='some:are' mnp_string="$(listify B ${missing_new_packages[@]})"
                     fi
-                    separator
+                    separator O
                     bundle echo "$(format_string "- You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Although php$NEW is installed, ${plu2%:*} $(Y)php$NEW$(N) package${plu#*:} ${plu2#*:} still missing compared to $(Y)php$OLD$(N) and the minimum packages that are needed to run a server like Nextcloud. Th${plu%:*} ${plu2#*:} the missing one${plu#*:}:" 3)"
                     bundle echo "$(format_string "  $mnp_string" 3)"
                     o3; echo "If you answer $(box no) here, the script will continue without installing th${plu%:*} package${plu#*:}."
@@ -378,21 +380,26 @@ if ${B[supported]}; then
             for FILE in ${c_f_a[@]}; do
                 separator O
                 PKG=${FILE%:*} FILE=${FILE#*:}
-                [ -f "$FILE" ]||continue
+                [ -f "$FILE" ] || continue
                 f
                 if [ "$PKG" = "libapache2-mod-php$OLD" ]; then
-                    PKGOLD="$PKG"
+                    PKGOLD="$PKG" SAPI="apache2"
                 elif [ "$PKG" = "libphp$OLD-embed" ]; then
-                    PKGOLD="$PKG"
+                    PKGOLD="$PKG" SAPI="embed"
                 elif [ "$PKG" = 'embed' ]; then
-                    PKGOLD="libphp$OLD-embed"
+                    PKGOLD="libphp$OLD-embed" SAPI="embed"
+                elif [ "$PKG" = "php$OLD-phpdbg" ]; then
+                    PKGOLD="$PKG" SAPI="phpdbg"
+                elif [ "$PKG" = 'phpdbg' ]; then
+                    PKGOLD="php$OLD-phpdbg" SAPI="phpdbg"
                 else
-                    PKGOLD="php$OLD-$PKG"
+                    PKGOLD="php$OLD-$PKG" SAPI="$PKG"
                 fi
                 PKGNEW="${PKGOLD/$OLD/$NEW}"
-                preq="Q:$(P;format_string "Do you want to migrate the values from the$(C) $(basename $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(basename $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
+                preq="Q:$(P; format_string "Do you want to migrate the values for the $(B)${SAPIDESCR[$SAPI]}$(P) from the$(C) $(${X[basename]} $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(${X[basename]} $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
+
                 if ask "$preq" "$YES"; then
-                    merge_settings "$OLD" "$NEW" "$PKGOLD" "$FILE"
+                    merge_settings "$OLD" "$NEW" "$PKGOLD" "$FILE" "$SAPI"
                 fi
             done
         fi
@@ -405,15 +412,20 @@ if ${B[supported]}; then
             for FILE in ${o_c_f_a[@]}; do
                 separator O
                 PKG=${FILE%:*} FILE=${FILE#*:}
-                f;diff_other_files
+                f
+                diff_other_files
             done
         fi
         separator
         echo "$(format_string "- The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
-        f; G; echo "$(prompt;lB) $ME${FLAG[forceflag]}$(C) "$OLD" "$NEW""; N
-        f; O; echo "$(format_string "- You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3; N)"
-        f; G; echo "$(prompt;P) $ME${FLAG[forceflag]} --switch-version"; N
-        f; O; echo "$(format_string "  or run it now:" 3; N)"
+        f
+        echo "$(G; prompt; lB) $ME${FLAG[forceflag]}$(C) "$OLD" "$NEW""; N
+        f
+        echo "$(O; format_string "- You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3; N)"
+        f
+        echo "$(G; prompt; P) $ME${FLAG[forceflag]} --switch-version"; N
+        f
+        O; echo "  or run it now:"; N
         if ask "$(qpf)Do you want to switch the php version now" "$YES"; then
             $ME${FLAG[forceflag]} --switch-version
         else
@@ -436,7 +448,9 @@ if ${B[supported]}; then
         separator
         f
         brief_help "this would be possible calls:"
-        N;f;exit0
+        N
+        f
+        exit0
     fi
 else
     f
@@ -455,7 +469,8 @@ else
     anykey
     separator
     ask "$(qpf)Do you want to read the help" "$YES" && explain
-    N; f
+    N
+    f
     exit0
 fi
 
