@@ -12,6 +12,19 @@ NEXTCLOUD_DB_BASHLIB=:
 
 . <(lrequire nc/nextcloud)
 
+no_client_binary(){
+    local binary database package cver
+    cver="$(GRAY)(-\$$(C)ver$(GRAY))$(R)"
+    case "$DB_TYPE" in
+        my) binary=mysql database="MySQL/MariaDB" package="$(B)mysql-client$cver or $(B)mariadb-client$cver" ;;
+        pg) binary=psql database="PostgreSQL" package="$(B)postgresql-client$cver"
+    esac
+    xpf > /dev/tty; echo "$(R; format_string "This script requires the appropriate command-line client $(GRAY)(the '$(C)$binary$(GRAY)' binary) to access the $(dY)$database$(GRAY)-database$(R) to be installed. This could not be found." 3; N)" > /dev/tty
+    echo "$(o2; R; format_string "Since the client version must match the database server and its version, this script cannot perform or offer the installation automatically." 3; N)" > /dev/tty
+    echo "$(o2; R; format_string "Please first install the required package $package and restart this script." 3; N)" > /dev/tty
+    exit1
+}
+
 # Database globals:
 globals="DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY"
 for global in $globals; do q2 declare -g $global || declare $global; done
@@ -27,7 +40,11 @@ database_call(){
     DB_TYPE=${db_type%sql} DB_PREF=$db_pref
     db_host="$(echo $db_host | ${X[sed]} 's/localhost.*/localhost/')"
     case $DB_TYPE in
-        my) local my_cnf=$(tf)
+        my) local my_client
+            [ -n "${my_client:=${X[mysql]}}" ] || {
+                [ -n "${X[mariadb]}" ] && my_client="${X[mariadb]}" || no_client_binary
+            }
+            local my_cnf=$(tf)
             echo -e "[client]\nhost=$db_host\nuser=$db_user\npassword=$db_pass">$my_cnf
             db_utf8mb4=$(nc_configkey mysql.utf8mb4)
             if ${db_utf8mb4:-_}; then
@@ -35,14 +52,16 @@ database_call(){
             else
                 dcs="utf8"
             fi
-            DB_STRG="${X[mysql]} --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
+            DB_STRG="$my_client --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
             DB_EXEC="--execute="
             DB_RAW="-srN"
             DB_U2T="FROM_UNIXTIME"
             DB_UT2TS="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
             TYPE_SQL_QUERY="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
             ;;
-        pg) ${B[aio]} && db_host="$(${X[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)"
+        pg) ${B[aio]} && db_host="$(${X[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)" || {
+                [ -n "${X[psql]}" ] || no_client_binary
+            }
             export PGPASSWORD=$db_pass
             DB_STRG="${X[psql]} --user=$db_user --host=$db_host $html -d $db_name"
             DB_EXEC="--command="
