@@ -136,16 +136,16 @@ merge_settings(){
                     if [ "${val/$old/}" != "${nval/$new/}" ]; then
                         kill_spinner
                         f
-                        echo "$(format_string "- The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
+                        echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
                         defaults_and_changelog "$key"
                         if [[ "${keep[@]}" =~ $key ]]; then
                             bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set this directive to a specific value for the $(B)${SAPIDESCR[$sapi]}$(N), you will have to edit the file $(C)$npath$(N) with an editor of your choice. Refer to $(GRAY)https://www.php.net/manual/errorfunc.configuration.php#ini.$key$(N) for further information" 3; N)"
                             anykey
                         else
-                            question="Q:$(format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
+                            question="$(qpf; format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                             if ask "$question" "$YES"; then
                                 ${X[sed]} -i "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$old/$new}|" "$npath"
-                                echo "R:$(format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
+                                echo "$(rpf; format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
                             fi
                         fi
                         separator
@@ -164,18 +164,18 @@ merge_settings(){
         # append the val at the end of the section
         if [ "${path##*/}" = "php.ini" ]; then
             f
-            echo "$(format_string "- Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+            echo "$(pf; format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="at the end of the $(bY; section "${key%.*}"; N) section" nl='\n'
         elif [ "$(sufix "$path")" = "conf" ]; then
             f
-            echo "$(format_string "- Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+            echo "$(pf; format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="under the other environment variables" nl=''
         fi
         defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
-        question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) $section" 3)"
+        question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) $section" 3)"
         if ask "$question" "$defaultanswer"; then
             ${X[sed]} -i "${last}a\\$nl$key = $val" "$path"
-            echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) at the end of the $(Y; section "${key%.*}"; N) section in $(B)$path" 3; N)"
+            echo "$(rpf; format_string "Added $(GRAYbg)\"$key = $val\"$(N) at the end of the $(Y; section "${key%.*}"; N) section in $(B)$path" 3; N)"
         fi
         separator
     }
@@ -185,13 +185,14 @@ merge_settings(){
         local -A bool
         key="$1" val="$2" path="$3" bool[ael]="$4"
         kill_spinner
-        f; echo "$(format_string "- Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+        f
+        echo "$(pf; format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
         defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
-        question="Q:$(format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
+        question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
         if ask "$question" "$defaultanswer"; then
             ${bool[ael]:-_} && echo >> "$path"
             echo "$key = $val" >> "$path"
-            echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) appended to the end of $(B)$path" 3; N)"
+            echo "$(rpf; format_string "Setting $(GRAYbg)\"$key = $val\"$(N) appended to the end of $(B)$path" 3; N)"
         fi
         separator
     }
@@ -214,23 +215,25 @@ merge_settings(){
         if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
             kill_spinner
             lnr=$(${X[grep]} -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | ${X[cut]} -d ":" -f 1)
-            f; echo "$(format_string "- The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
+            f
+            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
-            question="Q:$(format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new ${opath##*/} as well" 3)"
+            question="$(qpf; format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
                 ${X[sed]} -i -E "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" "$npath"
-                echo "R:$(format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3; N)"
+                echo "$(rpf; format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3; N)"
             fi
             separator
         elif ((last)); then
             kill_spinner
             # append the val after the last occurrence
-            f; echo "$(format_string "- The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) and $(P)is not set$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
+            f
+            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) and $(P)is not set$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
-            question="Q:$(format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
+            question="$(qpf; format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
             if ask "$question" "$YES"; then
                 ${X[sed]} -i "${last}a\\$key = $val" "$npath"
-                echo "R:$(format_string "Added $(GRAYbg)\"$key = $val\"$(N) after line $last in $(B)$npath" 3; N)"
+                echo "$(rpf; format_string "Added $(GRAYbg)\"$key = $val\"$(N) after line $last in $(B)$npath" 3; N)"
             fi
             separator
         elif [[ "$key" == *"."* ]]; then
@@ -262,12 +265,13 @@ merge_settings(){
         [ "$key" = "" ] && continue
         if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
             kill_spinner
-            f; echo "$(format_string "- The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
+            f
+            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
             defaults_and_changelog "$key"
-            question="Q:$(format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new ${opath##*/} as well" 3)"
+            question="$(qpf; ormat_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
                 ${X[sed]} -i -E "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" "$npath"
-                echo "R:$(format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3; N)"
+                echo "$(rpf; format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3; N)"
             fi
             separator
         fi

@@ -18,24 +18,26 @@ DB_BASHLIB=:
 # used (globaly) by database:
 B[database_created]=_
 
-declare runtime_etag appstore_dir db
+declare runtime_etag db
 runtime_etag="${T[rte]}.000000"
-appstore_dir="$TMPDIR/nc-appstore-tmp"
-db="$appstore_dir/apps.db"
+D[apps]="${D[vt]}/nc-apps-data"
+db="${D[apps]}/apps.db"
+
+[ -d "${D[apps]}" ] && chrf "${D[apps]}" "${NC[u]}"
 
 q0 declare -p db_sleep || declare -r db_sleep=0.1
 q0 declare -p db_max_attempts || declare -ri db_max_attempts=10
 
 jsontf(){
     local t
-    t="$(${X[mktemp]} -p $appstore_dir -t json_data_XXXXXXXXXXXX)"
-    ${X[chown]} "$NC_USER":"$NC_USER" "$t"
+    t="$(${X[mktemp]} -p ${D[apps]} -t json_data_XXXXXXXXXXXX)"
+    ${X[chown]} "${NC[u]}":"${NC[u]}" "$t"
     ${X[chmod]} 666 "$t"
     echo "$t"
 }
 
 delete_db(){
-    ${X[rm]} -rf "$appstore_dir"
+    cleanup "${D[apps]}"
 }
 
 rebuild_db(){
@@ -47,11 +49,11 @@ rebuild_db(){
 
 # initialise the SQLite-database-file, in case it does not exist
 init_db(){
-    [ -d "$appstore_dir" ] || {
-        ${X[mkdir]} -m 1777 "$appstore_dir"
-        ${X[chown]} "$NC_USER":"$NC_USER" "$appstore_dir"
+    [ -d "${D[apps]}" ] && chrf "${D[apps]}" "${NC[u]}" || {
+        ${X[mkdir]} -m 777 "${D[apps]}"
+        ${X[chown]} "${NC[u]}":"${NC[u]}" "${D[apps]}"
     }
-    ${X[sqlite3]} "$db" <<SQL && ${X[chmod]} 666 "$db"
+    ${X[sqlite3]} "$db" <<SQL && { ${X[chown]} "${NC[u]}":"${NC[u]}" "$db"; ${X[chmod]} 666 "$db"; }
     CREATE TABLE IF NOT EXISTS versions (platform TEXT PRIMARY KEY, major INTEGER, minor INTEGER, version TEXT, versionstring TEXT, tag TEXT, meta TEXT);
     CREATE TABLE IF NOT EXISTS shipped (platform TEXT PRIMARY KEY, json_data BLOB);
     CREATE TABLE IF NOT EXISTS categories (etag TEXT, lang TEXT, json_data TEXT);
@@ -121,7 +123,6 @@ SQL
 create_database(){
     local -l latest
     local meta version_php version versionstring major minor item
-    rawURL="$GITHUB_RAW/server"
 
     write_local_ids(){
         local local_applist="$(occ app:list --output=json)"
@@ -168,7 +169,7 @@ create_database(){
 #        *)
 # TODO <-- 2
         version_php="$(tf)"
-        ${X[curl]} -so "$version_php" "$rawURL/$latest/version.php"
+        ${X[curl]} -so "$version_php" "${NC[github_raw]}/server/$latest/version.php"
         version="$(nc_version_ short $version_php)"
         versionstring="$(nc_version_ string $version_php)"
 # TODO 3 -->
@@ -188,27 +189,27 @@ create_database(){
         done
 
         if ${B[trace]:-_}; then
-            echo "==TRACE=start=" >/dev/tty
-            print_stack_trace >/dev/tty
-            echo -n "global bool values  -" >/dev/tty
+            echo "==TRACE=start=" >$TTY
+            print_stack_trace >$TTY
+            echo -n "global bool values  -" >$TTY
             local iter
-            for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >/dev/tty; done; echo >/dev/tty
+            for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >$TTY; done; echo >$TTY
             unset iter
-            echo "latest              - $latest" >/dev/tty
-            echo "version             - $version" >/dev/tty
-            echo "versionstring       - $versionstring" >/dev/tty
-            echo "meta                - $meta" >/dev/tty
-            echo -e "==TRACE=end===\n" >/dev/tty
+            echo "latest              - $latest" >$TTY
+            echo "version             - $version" >$TTY
+            echo "versionstring       - $versionstring" >$TTY
+            echo "meta                - $meta" >$TTY
+            echo -e "==TRACE=end===\n" >$TTY
         fi
 
         if ${B[bgjobs]}; then
             write_appstore_ids "$version" & job_ids="$job_ids $!"
             w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta" & job_ids="$job_ids $!"
-            w_db shipped "$version" "$(${X[curl]} -s "$rawURL/$latest/core/shipped.json" | ${X[jq]} -c '.' | ${X[base64]} -w 0)" & job_ids="$job_ids $!"
+            w_db shipped "$version" "$(${X[curl]} -s "${NC[github_raw]}/server/$latest/core/shipped.json" | ${X[jq]} -c '.' | ${X[base64]} -w 0)" & job_ids="$job_ids $!"
         else
             write_appstore_ids "$version"
             w_db versions "$version" "$major" "$minor" "$version" "$versionstring" "$latest" "$meta"
-            w_db shipped "$version" "$(${X[curl]} -s "$rawURL/$latest/core/shipped.json" | ${X[jq]} -c '.' | ${X[base64]} -w 0)"
+            w_db shipped "$version" "$(${X[curl]} -s "${NC[github_raw]}/server/$latest/core/shipped.json" | ${X[jq]} -c '.' | ${X[base64]} -w 0)"
         fi
     done
     database_created && w_db database_created $runtime_etag && B[database_created]=:

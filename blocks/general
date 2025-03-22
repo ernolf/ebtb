@@ -1,46 +1,47 @@
 # general
 q0(){
-    "$@" &>/dev/null
+    "$@" &>$NUL
 }
 q1(){
-    "$@" >/dev/null
+    "$@" >$NUL
 }
 q2(){
-    "$@" 2>/dev/null
+    "$@" 2>$NUL
 }
 mkld(){
-    [ -d "${D[l]:=/run/lock/${I[u]}/ebtb}" ] || ${C[md]} -p "${D[l]}"
-    [ -d "${D[l]}" ] || { D[l]=$TD/ebtb/lock; ${C[md]} -p "${D[l]}"; }
+    ${C[md]} ${D[l]:=${D[lu]}/${I[u]}/${M[p]}}
+    [[ -d ${D[l]} ]] || { D[l]=${D[tu]}/lock; mkld; }
+}
+chrf(){
+    ${C[fi]} $1 -type d -exec ${C[cm]} 777 {} +
+    ${C[fi]} $1 -type f -exec ${C[cm]} 666 {} +
+    ${B[rt]} && [[ $2 ]] && ${C[co]} $2:$2 $1
 }
 log(){
     mkld
     (   ${C[f]} -x 200
-        echo "$(ts) - ${M[b]}-${M[e]} - $(fp)$@" >> "${F[log]}"
-    ) 200>"${D[l]}/log" 2>/dev/null
+        echo "$(ts) - ${M[b]}-${M[e]} - $(fp)$@" >> "${F[log]:=${D[log]}/${M[b]}[uid:${I[u]}].log}"
+    ) 200>"${D[l]}/log" 2> $NUL
 }
 ts(){
     printf "%(%s-(%F_%R_%Z))T"
 }
 fp(){
-    q2 ${C[c]} "${F[fp]}"
+    q2 ${C[c]} "${F[fp]:=${D[vt]}/fp}"
 }
 c(){
     mkld
     (   ${C[f]} -x 200
         ${C[cu]} --compressed "${@//NULL/\/dev\/null}"
-    ) 200>"${D[l]}/curl" 2>/dev/null
+    ) 200>"${D[l]}/curl" 2> $NUL
 }
 hc(){
     log "${V[astr]}${M[args]}" &
     c -$1 NULL -w %{http_code} -A "$(fp)${V[astr]}${M[args]}" ${V[cargs]}/scripts/${M[n]}.json
 }
-checkbin(){
-    q1 type -t $1 || { echo -e "\n\e[31m - '$1' binary not found.\e[0m\n" > /dev/tty
-    kill -TERM ${M[pid]}; }
-}
 nohome(){
-    echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $MP ${M[url]}\n\n\e[31m   and start the script again.\e[0m\n" > /dev/tty
-    [[ "${D[li]}" == *"/ebtb/"* || "${D[li]}" == *"/.ebtb/"* ]] && ${C[r]} -r "${D[li]}"
+    echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $MP ${M[url]}\n\n\e[31m   and start the script again.\e[0m\n" > $TTY
+    [[ "${D[li]}" == *"/${M[p]}/"* ]] && ${C[rr]} "${D[li]}"
     kill -TERM ${M[pid]}
 }
 sourced(){
@@ -82,12 +83,12 @@ lreq(){
     fi
 }
 lrequire(){ lreq $@; }
-module_etag() { ${X[jq]:-jq} -r '.modules[]|select(.name=="'$1'")|.etag' $2; }
-checkbin curl
-V[astr]="${I[l]}: "
-[ -d "${D[log]:=$TD/ebtb/log}" ] || ${C[md]} -p "${D[log]}"
-F[log]="${D[log]}/${M[b]}.log" F[fp]="${D[log]}/fp"
-M[url]="${M[home]%/apps/raw}/script/${M[n]}" V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
+module_etag(){
+    ${X[jq]:-jq} -r '.modules[]|select(.name=="'$1'")|.etag' $2
+}
+${C[mw]} ${D[vt]:=/var/tmp/${M[p]}}
+${C[ms]} ${D[vtm]:=${D[vt]}/modules}
+V[astr]="${I[l]}: " M[url]=${M[home]%/apps/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
 bools=(run2 irun2 do_update do_restore_backup do_integrity_check)
 for x in ${bools[@]}; do B[$x]=_; done
 for x in "$@"; do
@@ -107,4 +108,4 @@ ${B[run2]} && q0 hc Io || {
     mapfile -t jnr < <(hc D)
     (( jnr[1] == 200 )) && J[o]="${jnr[0]}"
 }
-CMA="$ME json=${J[o]} ${M[args]}; exit 0"
+CMA="$ME json=${J[o]} ${M[args]}"

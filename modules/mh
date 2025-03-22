@@ -7,7 +7,7 @@ __copyright__
 __license__
 #
 
-declare -f _ &>/dev/null || _(){ false; }
+declare -f _ &>$NUL || _(){ false; }
 ${MH_BASHLIB:-_} && return
 MH_BASHLIB=:
 

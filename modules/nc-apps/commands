@@ -12,7 +12,6 @@ COMMANDS_BASHLIB=:
 
 # TODO 0 -->
 . <(lrequire spinner)
-. <(lrequire xml)
 . <(lrequire php/version)
 . <(lrequire nc/nextcloud)
 . <(lrequire nc/logo)
@@ -27,28 +26,48 @@ ${X[mkdir]} -p ${D[li]}/nc-apps/commands.d
 . <(lrequire nc-apps/commands.d/help)
 . <(lrequire nc-apps/commands.d/filters)
 
+search_matching_spinner(){
+    ${X[sleep]} .1
+    ${B[bgjobs]} && ! ${B[pager]} && {
+        [ -f "${F[spinner_pid]}" ] || echo "$(GRAY) . . . . . . . . . .   searching  for  matching  apps   . . . . . . . . . . .$(N)"
+        spinner &
+    }
+}
+
+summary(){
+    kill_spinner
+    o2; echo -n "Summary: "
+    if (( V[appcount] )); then
+        echo "${V[appcount]} matching apps"
+    else
+        echo "no matching apps"
+    fi
+    line '-' GRAY 80
+    line '=' N 80
+}
+
 all_apps(){
     stock_up_arrays filtered_appstore=:
     local all_endis app
     local -a local_args
     local -A bool
 # TODO 1 -->
-    if ${B[trace]:-_}; then
-        echo "==TRACE=start=" >/dev/tty
-        print_stack_trace >/dev/tty
-        echo -n "global bool values  -" >/dev/tty
-        for x in ${!B[@]}; do echo -n " $x=${B[$x]}" >/dev/tty; done; echo >/dev/tty
-        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
-            echo -n "local bool values   -" >/dev/tty
-            for x in ${!bool[@]}; do echo -n " $x=${bool[$x]}" >/dev/tty; done; echo >/dev/tty
-        fi
-        echo "V[app_id]           - ${V[app_id]}" >/dev/tty
-        echo "section             - $section" >/dev/tty
-        echo "v2i V[nc_version]   - $(v2i ${V[nc_version]%.*})" >/dev/tty
-        echo "v2i V[nc_key]       - $(v2i ${V[nc_key]})" >/dev/tty
-        echo "==TRACE=end===" >/dev/tty
-    fi
-trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
+#    if ${B[trace]:-_}; then
+#        echo "==TRACE=start=" >$TTY
+#        print_stack_trace >$TTY
+#        echo -n "global bool values  -" >$TTY
+#        for x in ${!B[@]}; do echo -n " $x=${B[$x]}" >$TTY; done; echo >$TTY
+#        if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
+#            echo -n "local bool values   -" >$TTY
+#            for x in ${!bool[@]}; do echo -n " $x=${bool[$x]}" >$TTY; done; echo >$TTY
+#        fi
+#        echo "V[app_id]           - ${V[app_id]}" >$TTY
+#        echo "section             - $section" >$TTY
+#        echo "v2i NC[version]     - $(v2i ${NC[version]%.*})" >$TTY
+#        echo "v2i NC[key]         - $(v2i ${NC[key]})" >$TTY
+#        echo "==TRACE=end===" >$TTY
+#    fi
+#trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
 # TODO <-- 1
     while (( $# )); do
         case "$1" in
@@ -74,6 +93,7 @@ trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press 
     done
     ( ${bool[s]:-_} || ${bool[up:-_]} ) && [[ "$all_endis" =~ all|store ]] && all_endis=local
     for app in $(apps_ "$all_endis"); do
+        search_matching_spinner
         if ${bool[s]:-_}; then     # only list the shipped apps
             is_shipped_ "$app" -q && list "$app" "${local_args[@]}"
         elif ${bool[ns]:-_}; then  # only list the not shipped apps
@@ -84,6 +104,7 @@ trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press 
             list "$app" "${local_args[@]}"
         fi
     done
+    summary
 }
 
 shipped(){
@@ -101,13 +122,21 @@ updatable(){
 id(){
     stock_up_arrays filtered_appstore=: all=:
     local app
-    for app in $(apps_ all); do [[ "${app,,}" =~ ${V[app_id],,} ]] && list "$app" "$@" use_json_all=:; done
+    for app in $(apps_ all); do
+        search_matching_spinner
+        [[ "${app,,}" =~ ${V[app_id],,} ]] && list "$app" "$@" use_json_all=:
+    done
+    summary
 }
 
 ids(){
     stock_up_arrays filtered_appstore=: all=:
     local app
-    for app in "${app_ids[@]}"; do list "$app" "$@" use_json_all=:; done
+    for app in "${app_ids[@]}"; do
+        search_matching_spinner
+        list "$app" "$@" use_json_all=:
+    done
+    summary
 }
 
 name(){
@@ -119,7 +148,7 @@ name(){
         appstore platform=all ".[]|select(.name|ascii_downcase|contains(\"$(tolower "$@")\"))|.id" | ${X[jq]} -r >> "$tmp"
         for app in $(apps_ all); do
             if ! ${X[grep]} -qsw "$app" "$tmp"; then
-                xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
+                xml_f="${NC[d]}/apps/$app/appinfo/info.xml"
                 if [ -f "$xml_f" ]; then
                     name=$(${X[xmls]} -v "(//info/name)" "$xml_f" | ${X[sed]} '2,$d')
                     echo "$name" | ${X[grep]} -iqs "$*" && echo "$app" >> "$tmp"
@@ -128,13 +157,19 @@ name(){
         done
     }
     local n_tmp=$(tf)
-    echo "$(GRAY) . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . .$(N)"
-    spinner &
+    ${B[bgjobs]} && {
+        echo "$(GRAY) . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . .$(N)"
+        ${B[pager]} || spinner &
+    }
     build_id_name_array $n_tmp "${V[app_name]}" & job_id=$!
     wait $job_id
-    mapfile id_name_array < "$n_tmp"
+    mapfile -t id_name_array < "$n_tmp"
     kill_spinner
-    for app in "${id_name_array[@]}";do list "$app" "$@" use_json_all=:; done
+    for app in "${id_name_array[@]}";do
+        search_matching_spinner
+        list "$app" "$@" use_json_all=:
+    done
+    summary
 }
 
 update(){

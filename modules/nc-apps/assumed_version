@@ -45,12 +45,12 @@ assumed_version_select(){
       # Get the selected backup directory
         selected_index=$((version_num - n))
         if [ "$2" = "min_" ]; then
-            V[nc_min_version]="${available_versions[$selected_index]}"
+            NC[min_version]="${available_versions[$selected_index]}"
         else
-            V[nc_version]="${available_versions[$selected_index]}"
+            NC[version]="${available_versions[$selected_index]}"
         fi
 #        eval echo \"Your choice: \$nc_$2version\"
-        echo "Your choice: ${V[nc_$2version]}"
+        echo "Your choice: ${NC[$2version]}"
         echo "Do you want to assume this as $2version?"
         anykey
       # Exit the loop if a valid input is provided
@@ -64,25 +64,25 @@ assumed_version_set(){
     local cquery query
     if [[ ! ${1%%.*} =~ ^[0-9]+$ ]]; then
         assumed_version_select
-    elif [ 0${1%%.*} -lt 0${V[nc_min_version]%%.*} ]; then
-        o2; echo "the min version supported by this script is ${V[nc_min_version]}"
+    elif [ 0${1%%.*} -lt 0${NC[min_version]%%.*} ]; then
+        o2; echo "the min version supported by this script is ${NC[min_version]}"
         if (( $# == 1 )); then
-            V[nc_version]="${V[nc_min_version]}"
+            NC[version]="${NC[min_version]}"
         fi
     else
         cquery="SELECT COUNT(platform) FROM versions WHERE major == ${1%%.*};"
         query="SELECT platform FROM versions WHERE major == ${1%%.*};"
         case $(r_db "$cquery") in
             0)  if [ "$2" = "min_" ]; then
-                    V[nc_min_version]=${1%%.*}.0.0
+                    NC[min_version]=${1%%.*}.0.0
                 else
-                    V[nc_version]=${1%%.*}.0.0
+                    NC[version]=${1%%.*}.0.0
                 fi
                 ;;
             1)  if [ "$2" = "min_" ]; then
-                    V[nc_min_version]="$(r_db "$query")"
+                    NC[min_version]="$(r_db "$query")"
                 else
-                    V[nc_version]="$(r_db "$query")"
+                    NC[version]="$(r_db "$query")"
                 fi
                 ;;
             *)  assumed_version_select ${1%%.*} $2

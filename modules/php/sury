@@ -141,7 +141,7 @@ sury(){
 fix_yourself_if_fails(){
     local string
     string="If this step fails, you should fix it yourself please. Do not run this step multiple times then. If it doesn't work after one attempt, it won't work on the second and subsequent attempts either. It will propably be fixed though in a future version of this script, so you can run this script again at a later time to try again if it fails now."
-    GRAY; echo "  $(format_string "$string" 3; N)"
+    echo "$(o3; GRAY; format_string "$string" 3; N)"
 }
 
 need_sury_repo(){
@@ -169,7 +169,7 @@ need_sury_repo(){
                 f
                 os; GRAY; echo "r=$sury_r, $sury_return"; N
                 f
-                echo "$(format_string "- $(Y)Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3; N)"
+                echo "$(pf; Y; format_string "Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3; N)"
                 f
                 os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N
                 f
@@ -195,7 +195,7 @@ need_sury_repo(){
                         f
                         os; G; echo "This step was successfull"; N
                         anykey
-                        "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-candidates
+                        "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
                     fi
                 fi
             elif ((sury_r == 33)); then # http instead of https
@@ -203,9 +203,9 @@ need_sury_repo(){
                 f
                 os; GRAY;echo "r=$sury_r, $sury_return"; N
                 f
-                echo "$(format_string "- Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)http://ppa.launchpad.net/..$(N) is used instead of $(B)https://ppa.launchpadcontent.net/.." 3; N)"
+                echo "$(pf; format_string "Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)http://ppa.launchpad.net/..$(N) is used instead of $(B)https://ppa.launchpadcontent.net/.." 3; N)"
                 if dpkg_min_version apt 2.0; then
-                    echo "$(format_string "  $(Y)Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)http://ppa.launchpad.net$(N) with $(B)https://ppa.launchpadcontent.net$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
+                    echo "$(o3; Y; format_string "Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)http://ppa.launchpad.net$(N) with $(B)https://ppa.launchpadcontent.net$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
                     f
                     os; echo "This script can replace the http URIs with the new https URIs for you."
                     fix_yourself_if_fails
@@ -256,7 +256,7 @@ need_sury_repo(){
                                 anykey
                             fi
                             apt_update
-                            "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-candidates
+                            "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
                         else
                             os; R; echo "Unfortunately this step was not successfull. Please fix it yourself."; N
                             anykey
@@ -271,7 +271,7 @@ need_sury_repo(){
                 f
                 os; GRAY; echo "r=$sury_r, $sury_return"; N
                 f
-                echo "  $(format_string "Ondřej Surý's repo is added to the apt sopurces but for $wrong_codename instead of $codename. You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
+                echo "$(o3; format_string "Ondřej Surý's repo is added to the apt sopurces but for $wrong_codename instead of $codename. You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
                 f
                 os; echo "This script can replace $wrong_codename with $codename  in sury apt-source file for you."
                 fix_yourself_if_fails
@@ -315,7 +315,7 @@ need_sury_repo(){
                         apt_update
                         os; G; echo "This step was successfull"; N
                         anykey
-                        "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-candidates
+                        "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
                     else
                         os; R; echo "Unfortunately this step was not successfull. Please fix it yourself."; N
                         anykey

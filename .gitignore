@@ -1,5 +1,6 @@
 /build
 /config/secrets
+/modules/contribute
 /modules/di
 /TODO.txt
 *.new

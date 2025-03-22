@@ -12,20 +12,18 @@ ${UPDATE_BASHLIB:-_} && return
 UPDATE_BASHLIB=:
 
 # TODO 0 -->
-. <(lrequire binaries)
-. <(lrequire button)
-. <(lrequire line)
-. <(lrequire sudo)
-. <(lrequire vdir)
-. <(lrequire integrity)
+#    . <(lrequire binaries)
+#    . <(lrequire button)
+#    . <(lrequire line)
+#    . <(lrequire sudo)
+#    . <(lrequire vdir)
+#    . <(lrequire integrity)
 # TODO <-- 0
 . <(lrequire prefix)
 
-[[ -n "${M[epoch]:=$epoch}" && -z "${M[e]}"  ]] && M[e]=${M[epoch]}
-[[ -n "${J[epoch]:=$my_epoch}" && -z "${J[e]}"  ]] && J[e]=${J[epoch]}
-[[ -n "${J[hash]:=$my_hash}" && -z "${J[h]}"  ]] && J[h]=${J[hash]}
-
-mh -L "TMPDIR: $TD" &
+: ${M[e]:=${M[epoch]:=$epoch}}
+: ${J[e]:=${J[epoch]:=$my_epoch}}
+: ${J[h]:=${J[hash]:=$my_hash}}
 
 version_(){ ${X[gawk]} '/^# version 20/ {print $3, $4}' "$1";}
 
@@ -54,8 +52,8 @@ my_update(){
     local -l key
     local -a bkp_list
     local -i max_backups num_bkps num2del i
-    my_tmp="$(tf u)" max_backups=0 num_bkps=0 num2del=0 i=0
-    [ "${M[c]}" = test ] && max_backups=10
+    my_tmp="$(tf shm u)" max_backups=0 num_bkps=0 num2del=0 i=0
+    [ "${M[c]}" = test ] && max_backups=20
     su_root "to update" my_update
     while :; do
         c -o "$my_tmp" -A "$A" ${V[cargs]}/scripts/${M[n]}
@@ -77,7 +75,7 @@ my_update(){
                 a)  o5; echo "abort update atempt. You can retry later."
                     exit1
                     ;;
-                r)  ${X[rm]} -f "$my_tmp"
+                r)  cleanup "$my_tmp"
             esac
         fi
     done
@@ -96,7 +94,7 @@ my_update(){
         o5; echo "cleaning up old backups"
         for (( i=0; i<num2del; i++ )); do
             o5; echo "- deleting: ${bkp_list[i]}"
-            ${X[rm]} "${bkp_list[i]}"
+            cleanup "${bkp_list[i]}"
         done
     fi
     integrity_check && {
@@ -109,6 +107,7 @@ my_update(){
 }
 
 my_update_check(){
+#    configure_systemd_tmpfiles
     local -l key
     if (( J[e] > M[e] )); then
         f
@@ -156,9 +155,9 @@ restore_backup(){
     line '-' dP 2/78 a2
     o3; echo "Enter the number of the backup you want to restore or $(q2q)"
     while :; do
-        read -rsn 1 num
+        read -rsn 2 num
         [ "$num" = "q" ] && exit1
-        [[ "$num" =~ ^[1-9]$ ]] || {
+        [[ "$num" =~ ^[1-9][0-9]{0,1}$ ]] || {
             o3; echo "$invi Please enter a valid number or $(q2q)"
             continue
         }

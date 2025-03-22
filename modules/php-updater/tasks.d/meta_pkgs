@@ -25,14 +25,14 @@ remove_meta_packages(){
         else
             plu='ese:s' be='are' modstring="$(listify B ${meta_pkgs[@]})"
         fi
-        question="Q:$(format_string "Do you want to remove the meta package${plu#*:} $modstring now" 3)"
+        question="$(qpf; format_string "Do you want to remove the meta package${plu#*:} $modstring now" 3)"
         kill_spinner
         bundle echo "$(xpf; format_string "There $be unnecessary $(O)meta package${plu#*:}$(N) ($modstring) installed on this machine." 3; N)"
         echo "$(ipf; Y; format_string "Meta packages do not contain any software; they only depend on other packages to be installed. Essentially, they are package bundles that include multiple packages and SAPIs, many of which may not align with your specific use case. Removing a meta package does NOT remove the individual packages it installed. This script does not require meta packages, as it manages package selection much more precisely without the \"scattershot\" approach. Consider to remove th${plu%:*} package${plu#*:} before updating. The removal makes your system more resilient against unintended changes made without your decision." 3; N)"
-        echo " -$(format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
+        echo "$(pf; format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_remove --yes ${meta_pkgs[@]}
-            "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+            "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
             anykey
             return 0
         else

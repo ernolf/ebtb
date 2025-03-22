@@ -1,27 +1,50 @@
-declare A CMA MD ME MP MS REQ TDU x
-declare -a modules bools args tntd jnr
+declare A CMA MD ME MP MS NUL=/dev/null REQ TTY=/dev/tty x
+declare -a modules tdc bools args tntd jnr
 # asociative arrays: B = bools, C = commands, D = dirs, F = files, I = user/group, J = json, M = me, T = time, V = vars
 declare -A B C D F I J M T V
-declare -n TD=TMPDIR H=HOME
-_(){ false;}
-C[e]="$(command -v env)"
-for x in a:gawk b:basename c:cat cu:curl d:dirname f:flock g:grep h:head id l:lsof md:mkdir mt:mktemp p:ps rp:realpath r:rm s:stat st:systemd-tmpfiles u:uname; do
-    if [ -x "$(command -v ${x#*:})" ]; then
-        C[${x%:*}]="${C[e]} LC_MESSAGES=C $(command -v ${x#*:})"
-    fi
+declare -n TD=TMPDIR
+_(){
+    false
+}
+__(){
+    echo -e "\n\e[31mERROR: $1\e[0m\n" >&2
+    exit 1
+}
+C[e]=$(command -v env)
+for x in a:gawk b:basename c:cat cm:chmod co:chown cu:curl d:dirname fi:find f:flock g:grep h:head id l:lsof md:mkdir mt:mktemp mv p:ps rp:realpath r:rm s:stat u:uname; do
+    [ -x $(command -v ${x#*:}) ] && C[${x%:*}]="${C[e]} LC_MESSAGES=C $(command -v ${x#*:})" || __ "'${x#*:}' binary not found."
 done
+# mkdir -p
+C[md]+=" -p"
+# mkdir -pm 777 (make world-open)
+C[mw]="${C[md]}m 777"
+# mkdir -pm 1777 (make sticky)
+C[ms]="${C[md]}m 1777"
+# rm fr (remove recursive)
+C[rr]="${C[r]} -fr --"
+# rm -f (remove file)
+C[r]+=" -f --"
+# chmod -f
+C[cm]+=" -f"
+# chmod -f +t (change mode sticky)
+C[cms]="${C[cm]} +t"
+# chown -R (change owner recursive)
+C[co]+=" -R"
 A="$(${C[u]} -srvmpio)"
 for x in u un g gn G Gn; do I[$x]="$(${C[id]} -$x)"; done
-(( ${I[u]} )) && { B[rt]=_
-    if [ "${I[un]}" = www-data ]; then I[l]=www-data
-    elif [[ "${I[Gn]} " =~ " sudo " ]]; then I[l]=sudo_user
-    else I[l]=unprivileged_user; fi
+(( ${I[u]} )) && {
+    B[rt]=_
+    if [ ${I[un]} = www-data ]; then
+        I[l]=www-data
+    elif [[ "${I[Gn]} " =~ " sudo " ]]; then
+        I[l]=sudo_user
+    else
+        I[l]=unprivileged_user
+    fi
 } || B[rt]=: I[l]=root
 readonly I
 # b=basename m=me a=absolute p=path ca=canonical n=name s=sin c=channel
-M[b]="$(${C[b]} "$0")"
-M[ap]="$(cd "$(${C[d]} "$0")" && pwd)/${M[b]}"
-[ "$(command -v ${M[b]})" = "${M[ap]}" ] && ME="${M[b]}" || ME="${M[ap]}"
-MP="$(${C[rp]} "${M[ap]}")"
-MD="$(${C[d]} "$MP")"
+M[ap]="$(cd "$(${C[d]} "$0")" && pwd)/${M[b]:=$(${C[b]} "$0")}"
+[[ $(command -v ${M[b]}) == ${M[ap]} ]] && ME=${M[b]} || ME="${M[ap]}"
+MP=$(${C[rp]} ${M[ap]}) MD=$(${C[d]} $MP)
 

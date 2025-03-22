@@ -17,7 +17,7 @@ BUTTON_BASHLIB=:
 # TODO <-- 0
 buttonize(){
     local oldcolor
-    oldcolor="$(q2 ${X[cat]} $COLOR)"
+    oldcolor="$(q2 ${X[cat]} ${F[color]})"
     GRAYbg
     printf '%s' '['
     case $1 in

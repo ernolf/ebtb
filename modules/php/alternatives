@@ -101,7 +101,7 @@ cleanup_and_fix_alternatives(){
     if [ -n "${X[update-alternatives]}" ]; then
         q0 ${X[update-alternatives]} --force --all < <(${X[yes]} '')
 # TODO 4 -->
-#        ${X[yes]} '' | ${X[update-alternatives]} --force --all &>/dev/null
+#        ${X[yes]} '' | ${X[update-alternatives]} --force --all &>$NUL
 # TODO <-- 4
     fi
 }

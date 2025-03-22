@@ -26,9 +26,9 @@ list_latest(){
     for version in "${versions[@]}"; do
         parts=(${version//./ })
         key="${parts[0]}.${parts[1]}"
-        if [ "$key" = "${V[nc_key]}" ]; then
+        if [ "$key" = "${NC[key]}" ]; then
             if [ -z "${latest_versions["$key"]}" ]; then
-                latest_versions["$key"]=${V[nc_version_tag]}
+                latest_versions["$key"]=${NC[version_tag]}
             fi
         elif [ -z "${latest_versions[$key]}" ]; then
             latest_versions["$key"]=$version

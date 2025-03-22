@@ -14,7 +14,6 @@ php_fpm_sites_available_conf_nginx(){
     local ver_n pool plu
     local -a pools sock_o canonicalized_sock_o conffiles
     local -A sock_n bool
-    local -i i
     ver_n="$1"
     mapfile -t pools< <(fpm_pools)
     if (( ${#pools[@]} == 1 )); then
@@ -50,7 +49,7 @@ php_fpm_sites_available_conf_nginx(){
         mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles_regex "${sock_n[$pool]}" | ${X[sort]} -u)
         if (( ${#conffiles[@]} )); then
             f
-            bundle echo "$(es3; ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6;N)"
+            bundle echo "$(es3; ipf; format_string "The nginx server is connected to PHP-FPM via a unix-socket." 6; N)"
 
             if (( ${#conffiles[@]} == 1 )); then
                 this='This' be='is' plu=''
@@ -109,7 +108,7 @@ php_fpm_sites_available_conf_nginx(){
                     line="$(detect_nginx_php_fpm lineonly quiet "${conffiles[i]}" "$sock")"
                     [ -n "$line" ] || continue
                     [[ "${line##*:}" != "${sock_n[$pool]}" ]] || continue
-                    question="Q:$(format_string "Do you want to replace \"$(Y)${line##*:}$(N)\" with \"$(Yi)${sock_n[$pool]}$(N)\" in line $(GRAYbg)\"${line%%:*}\"$(N) of $(C)$conf$(N)" 3)"
+                    question="$(qpf; format_string "Do you want to replace \"$(Y)${line##*:}$(N)\" with \"$(Yi)${sock_n[$pool]}$(N)\" in line $(GRAYbg)\"${line%%:*}\"$(N) of $(C)$conf$(N)" 3)"
                     separator
                     if ask "$question" "$YES"; then
                         echo "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" >> "$xtemp"
@@ -119,13 +118,13 @@ php_fpm_sites_available_conf_nginx(){
                 echo "' $conf" >> "$xtemp"
                 if ${bool[do_change]}; then
                     f
-                    bundle echo " -$(format_string "If you continue here, the changes will be written to file." 3)"
+                    bundle echo "$(pf; format_string "If you continue here, the changes will be written to file." 3)"
                     f
                     anykey
                     haul cat "$xtemp"
                     . $xtemp
                     bool[changed]=:
-                    bundle echo "$(es3; Pbg) IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
+                    bundle echo "$(es3; Pbg) IMPORTANT: $(P; format_string " A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 16; N)"
                 else
                     f
                     bundle echo "$(es4; P)Nothing selected to change in $(C)$conf."; N

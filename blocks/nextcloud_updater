@@ -1,6 +1,6 @@
-# Update can be done by all but $NC_USER, since NC_USER normaly has no sudo rights.
+# Update can be done by all but ${NC[u]}, since NC[u] normaly has no sudo rights.
 [[ "$*" =~ (-q|--quiet) ]] || {
-    if [ "${I[un]}" = "$NC_USER" ]; then
+    if [ "${I[un]}" = "${NC[u]}" ]; then
         if (( J[e] > M[e] )); then
             V[upinf]="(update available)"
             f

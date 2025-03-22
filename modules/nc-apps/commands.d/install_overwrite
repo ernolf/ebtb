@@ -14,9 +14,9 @@ install_overwrite(){
     list_apps_4_array(){
         local app xml_f max
         for app in $(occ app:list --shipped=false --output=json | ${X[jq]}  -r '.enabled | keys | sort []'); do
-            xml_f="$NC_DIR/apps/$app/appinfo/info.xml"
+            xml_f="${NC[d]}/apps/$app/appinfo/info.xml"
             max=$(${X[xmls]} -v "//nextcloud/@max-version" "$xml_f" | ${X[sed]} '2,$d')
-            if [ -z "$max" ] || (( ${max%%.*} >= ${V[nc_version]%%.*} )); then
+            if [ -z "$max" ] || (( ${max%%.*} >= ${NC[version]%%.*} )); then
                 continue
             fi
             echo "$app" >> $1
@@ -39,12 +39,12 @@ install_overwrite(){
 
     local file configfile app array_content apps_in_array_tf aioa
     local -i counter job_id c2 c3 c4
-    configfile="$NC_CDIR/config.php"
+    configfile="${NC[cd]}/config.php"
     counter=0 c2=8 c3=24 c4=30
 
-#    if ${X[grep]} -qsw "'app_install_overwrite'" $NC_CDIR/*config.php; then
+#    if ${X[grep]} -qsw "'app_install_overwrite'" ${NC[cd]}/*config.php; then
     if nc_configkey_exist_ "'app_install_overwrite'"; then
-        for file in $NC_CDIR/*config.php; do
+        for file in ${NC[cd]}/*config.php; do
             if [ "$file" = "$configfile" ]; then
                 continue
             elif ${X[grep]} -qs "[[:space:]]*'app_install_overwrite'" $file; then
@@ -62,7 +62,7 @@ install_overwrite(){
     wait $job_id
     while read -r app; do
         array_content+="    $counter => '$app',\\n"
-        ((counter++))
+        (( counter++ ))
     done < $apps_in_array_tf
     kill_spinner
     # Create the array content with proper formatting

@@ -145,7 +145,7 @@ HELP
     *) NC-VER = only 2 digits
 
    --version=NC-VER*)       simulates an assumed nextcloud version instead of actual installed real nextcloud version.
-   --min_version=NC-VER*)   simulates an assumed minimum nextcloud version. Defaults to ${V[nc_min_version]%%.*}
+   --min_version=NC-VER*)   simulates an assumed minimum nextcloud version. Defaults to ${NC[min_version]%%.*}
                             example: --version=26 and/or --min_version=25
                             '--(min_)version=' has no effect on install_overwrite, shipped and update
 

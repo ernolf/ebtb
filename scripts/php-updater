@@ -358,13 +358,13 @@ if ${B[supported]}; then
                         plu='ese:s' plu2='some:are' mnp_string="$(listify B ${missing_new_packages[@]})"
                     fi
                     separator O
-                    bundle echo "$(format_string "- You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Although php$NEW is installed, ${plu2%:*} $(Y)php$NEW$(N) package${plu#*:} ${plu2#*:} still missing compared to $(Y)php$OLD$(N) and the minimum packages that are needed to run a server like Nextcloud. Th${plu%:*} ${plu2#*:} the missing one${plu#*:}:" 3)"
-                    bundle echo "$(format_string "  $mnp_string" 3)"
+                    bundle echo "$(pf; format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Although php$NEW is installed, ${plu2%:*} $(Y)php$NEW$(N) package${plu#*:} ${plu2#*:} still missing compared to $(Y)php$OLD$(N) and the minimum packages that are needed to run a server like Nextcloud. Th${plu%:*} ${plu2#*:} the missing one${plu#*:}:" 3)"
+                    bundle echo "$(es3; format_string "$mnp_string" 3)"
                     o3; echo "If you answer $(box no) here, the script will continue without installing th${plu%:*} package${plu#*:}."
                     ask "$(qpf)Do you want to install th${plu%:*} package${plu#*:}" "$YES" && install_new_php "$OLD" "$NEW"
                 fi
             else
-                bundle echo "$(format_string "- You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Since php$NEW is not yet installed at all, it will be installed from scratch." 3)"
+                bundle echo "$(pf; format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Since php$NEW is not yet installed at all, it will be installed from scratch." 3)"
                 ask "$(qpf)Are you ready to install php$NEW" "$YES" && install_new_php "$OLD" "$NEW" || exit1
             fi
         else
@@ -396,7 +396,7 @@ if ${B[supported]}; then
                     PKGOLD="php$OLD-$PKG" SAPI="$PKG"
                 fi
                 PKGNEW="${PKGOLD/$OLD/$NEW}"
-                preq="Q:$(P; format_string "Do you want to migrate the values for the $(B)${SAPIDESCR[$SAPI]}$(P) from the$(C) $(${X[basename]} $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(${X[basename]} $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
+                preq="$(qpf; P; format_string "Do you want to migrate the values for the $(B)${SAPIDESCR[$SAPI]}$(P) from the$(C) $(${X[basename]} $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(${X[basename]} $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
 
                 if ask "$preq" "$YES"; then
                     merge_settings "$OLD" "$NEW" "$PKGOLD" "$FILE" "$SAPI"
@@ -417,11 +417,11 @@ if ${B[supported]}; then
             done
         fi
         separator
-        echo "$(format_string "- The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
+        echo "$(pf; format_string "The migration of the settings from php-$OLD to php-$NEW is now completed, unless you have deliberately left out files or settings. These can be made up at any time with:" 3)"
         f
         echo "$(G; prompt; lB) $ME${FLAG[forceflag]}$(C) "$OLD" "$NEW""; N
         f
-        echo "$(O; format_string "- You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3; N)"
+        echo "$(O; pf; format_string "You now can switch the php version from $(C)php-$OLD$(O) to $(C)php-$NEW$(O) for the commandline and your webserver. Therefore call:" 3; N)"
         f
         echo "$(G; prompt; P) $ME${FLAG[forceflag]} --switch-version"; N
         f
@@ -454,7 +454,7 @@ if ${B[supported]}; then
     fi
 else
     f
-    bundle echo "$(lB; format_string "- Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$(${B[needforce]} && bundle echo -n " unless you call it with $(GRAYbg)[ --force ]"; N)" 3)"
+    bundle echo "$(lB; pf; format_string "Your distribution is marked as not fully supported. The script is running in $(lG)safe mode$(lB) and will only provide informations about your system but will make no changes to your system$(${B[needforce]} && bundle echo -n " unless you call it with $(GRAYbg)[ --force ]"; N)" 3)"
     f
     anykey
     separator

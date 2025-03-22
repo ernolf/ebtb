@@ -39,7 +39,7 @@ module_ini(){
         ${B[quiet]} || { f; GRAY; echo "- next step: $(B)module_ini (remove):"; }
         ${B[step]:-_} && anykey
         o2; B; echo "rm \"$ini_dir/$module.ini\""; N
-        ${X[rm]} -f "$ini_dir/$module.ini"
+        cleanup "$ini_dir/$module.ini"
     else
         f
         GRAY; echo "- next step: $(B)module_ini (create):"

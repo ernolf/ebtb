@@ -15,13 +15,13 @@ change_sapi(){
         case "$1" in
             explain_the_diference)
                 separator
-                echo "- FYI:$(Y; format_string "diferences between the '$(dY)${SAPIDESCR[apache2]}$(Y)' and the '$(dY)${SAPIDESCR[fpm]}$(Y)':" 7)"
+                echo "- FYI: $(Y; format_string "diferences between the '$(dY)${SAPIDESCR[apache2]}$(Y)' and the '$(dY)${SAPIDESCR[fpm]}$(Y)':" 7)"
                 f
-                echo "$(o 6; GRAY; format_string "- the '$(dY)${SAPIDESCR[apache2]}$(GRAY)' integrates php as an apache2 module (package $(B)libapache2-mod-php$(GRAY)\$$(C)ver$(GRAY)) It is the default SAPI for apache2 and relies on the old but stable Multi-Processing Module (MPM) 'mpm-prefork' which is not particularly scalable and $(W)doesn't support http2" 9)"
+                echo "$(o 6; GRAY; pf; format_string "the '$(dY)${SAPIDESCR[apache2]}$(GRAY)' integrates php as an apache2 module (package $(B)libapache2-mod-php$(GRAY)\$$(C)ver$(GRAY)) It is the default SAPI for apache2 and relies on the old but stable Multi-Processing Module (MPM) 'mpm-prefork' which is not particularly scalable and $(W)doesn't support http2" 9)"
                 f
-                echo "$(o 6; GRAY; format_string "- the '$(dY)${SAPIDESCR[fpm]}$(GRAY)' (package $(B)php$(GRAY)\$$(C)ver$(B)-fpm$(GRAY)) is a little bit more complicated to administer, it relies on the more scalable threaded MPM 'mpm-event' which $(W)supports http2" 9)"
+                echo "$(o 6; GRAY; pf; format_string "the '$(dY)${SAPIDESCR[fpm]}$(GRAY)' (package $(B)php$(GRAY)\$$(C)ver$(B)-fpm$(GRAY)) is a little bit more complicated to administer, it relies on the more scalable threaded MPM 'mpm-event' which $(W)supports http2" 9)"
                 f
-                echo "$(o 6; Y; format_string "Due to the dependency on different multi-processing modules, of which only one can be loaded into the Apache core at a time, these two SAPIs are mutually exclusive in any use case with Apache2. Although both can be installed side by side, this is not recommended, especially if php-fpm is used, as after an update the apache2 module always tries to load the mpm it needs and may render the server inaccessible" 7; N)"
+                echo "$(o 7; Y; format_string "Due to the dependency on different multi-processing modules, of which only one can be loaded into the Apache core at a time, these two SAPIs are mutually exclusive in any use case with Apache2. Although both can be installed side by side, this is not recommended, especially if php-fpm is used, as after an update the apache2 module always tries to load the mpm it needs and may render the server inaccessible" 7; N)"
                 separator
                 ;;
             misconfiguration)
@@ -85,7 +85,7 @@ change_sapi(){
                                 1)  cursor_ show
                                     f
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -93,7 +93,7 @@ change_sapi(){
                                     f
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -102,7 +102,7 @@ change_sapi(){
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -148,7 +148,7 @@ change_sapi(){
                                 1)  cursor_ show
                                     f
                                     php_a2module_2_fpm "$active_a2_version"
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -156,7 +156,7 @@ change_sapi(){
                                     f
                                     php_fpm_2_a2module "$active_a2_version"
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -165,7 +165,7 @@ change_sapi(){
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -174,7 +174,7 @@ change_sapi(){
                                     php_fpm_2_a2module "$active_a2_version"
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -227,7 +227,7 @@ change_sapi(){
                                 1)  cursor_ show
                                     f
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -235,7 +235,7 @@ change_sapi(){
                                     f
                                     php_fpm_2_a2module $active_fpm_version
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -244,7 +244,7 @@ change_sapi(){
                                     php_fpm_2_a2module $active_fpm_version
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -291,7 +291,7 @@ change_sapi(){
                                     f
                                     php_fpm_2_a2module "$active_fpm_version"
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -299,7 +299,7 @@ change_sapi(){
                                     f
                                     php_a2module_2_fpm "$active_fpm_version"
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -308,7 +308,7 @@ change_sapi(){
                                     php_fpm_2_a2module "$active_fpm_version"
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -317,7 +317,7 @@ change_sapi(){
                                     php_a2module_2_fpm "$active_fpm_version"
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -366,7 +366,7 @@ change_sapi(){
                                     f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -374,7 +374,7 @@ change_sapi(){
                                     f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -383,7 +383,7 @@ change_sapi(){
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -392,7 +392,7 @@ change_sapi(){
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -441,7 +441,7 @@ change_sapi(){
                                     f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -449,7 +449,7 @@ change_sapi(){
                                     f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -458,7 +458,7 @@ change_sapi(){
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -467,7 +467,7 @@ change_sapi(){
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -507,7 +507,7 @@ change_sapi(){
                                     f
                                     php_a2module_2_fpm "$PHP_VERSION"
                                     apt_remove 'libapache2-mod-php*'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
@@ -515,7 +515,7 @@ change_sapi(){
                                     f
                                     php_fpm_2_a2module $PHP_VERSION
                                     apt_remove 'php*-fpm'
-                                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                             esac
@@ -610,16 +610,16 @@ change_sapi(){
         bundle echo "$(ipf; format_string "$infostring" 3)"
         case $webserver in
             both)
-                bundle echo "  $(format_string "Your usecase looks complex, because of multiple installed webservers. If you know exactly what you are doing and everything is working well, you can leave this unchanged." 3)"
+                bundle echo "$(es3; format_string "Your usecase looks complex, because of multiple installed webservers. If you know exactly what you are doing and everything is working well, you can leave this unchanged." 3)"
                 case $active_webserver in
                     apache2)
-                        bundle echo "  $(format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
+                        bundle echo "$(es3; format_string "However, since only apache2 seems to be active and nginx is not, you should consider uninstalling nginx if you are not using it. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
                         ;;
                     nginx)
-                        bundle echo "  $(format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
+                        bundle echo "$(es3; format_string "However, since only nginx seems to be active and apache2 is not, you should consider uninstalling apache2 if you are not using it. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
                         ;;
                     both)
-                        bundle echo "  $(format_string "However, if you are not using one of the two webservers apache2 or nginx, you should consider uninstalling the not used one. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
+                        bundle echo "$(es3; format_string "However, if you are not using one of the two webservers apache2 or nginx, you should consider uninstalling the not used one. After you have done that, you should run this script again to check the configuration for the new use case." 3)"
                         ;;
                     *)  :
                 esac
@@ -633,7 +633,7 @@ change_sapi(){
                 pf; N; echo "Consider removing the apache2-mod-php SAPI (recommended)"; N
                 if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
                     apt_purge 'libapache2-mod-php*'
-                    "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+                    "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                     anykey
                     return 0
                 fi

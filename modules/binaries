@@ -15,15 +15,15 @@ BINARIES_BASHLIB=:
 declare binary
 declare -a binaries
 
-declare -gA BINARY 2>/dev/null || declare -A BINARY
+declare -gA BINARY 2>${NUL:=/dev/null} || declare -A BINARY
 
 BINARY[env]="$(command -v env)"
 
 for binary in gawk sed; do
     if [ -x "$(command -v $binary)" ]; then
-        BINARY[$binary]="${BINARY[env]} LC_MESSAGES=C $(command -v $binary)" &>/dev/null
+        BINARY[$binary]="${BINARY[env]} LC_MESSAGES=C $(command -v $binary)" &>$NUL
     else
-        echo -e "\e[31mERROR: no '$binary' binary or '$binary' not executable\e[0m" > /dev/tty
+        echo -e "\e[31mERROR: no '$binary' binary or '$binary' not executable\e[0m" > ${TTY:=/dev/tty}
         [ -t 0 ] || exit 1
     fi
 done
@@ -53,18 +53,18 @@ mapfile -t binaries < <(glob_path)
 for binary in "${binaries[@]}"; do
     [ -z "${BINARY[${binary##*/}]}" ] || continue
     [ -x "$binary" ] || continue
-    BINARY[${binary##*/}]="${BINARY[env]} LC_MESSAGES=C $binary" &>/dev/null
+    BINARY[${binary##*/}]="${BINARY[env]} LC_MESSAGES=C $binary" &>$NUL
 done
 unset -v binary binaries
 
 # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
-[ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>/dev/null
+[ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
 
 
 # Create a nameref for BINARY named X
 declare -n X=BINARY
 # readonly -A X # this is declared as readonly after the depency_check passed
 
-[[ "$(type -t req)" == function ]] && . <(req backcomp 2>/dev/null)
+[[ "$(type -t req)" == function ]] && . <(req backcomp 2>$NUL)
 
 ${B[binaries_debugx]:-false} && set -x

@@ -16,45 +16,51 @@ FSTRING_BASHLIB=:
 . <(lrequire filter)
 # TODO <-- 0
 # format a long string in lines with a maximum length
+
 format_string() {
-    [[ "$-" =~ x ]] && { set +x; local debugx=true; } || local debugx=_
+    local -A bool
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; } || bool[debugx]=_
     local input output word noansi_word basic_color indent_type
-    local -i indent max_length current_length marg
-    input="$1" indent="${2/o/}" output=''
+    local -i indent max_cols max_length current_length marg
+    input="$1" indent="${2/o/}" max_cols=$(max_cols) output='' basic_color=''
     indent_type='es' # default to "empty spaces"
     [[ "$2" =~ o ]] && indent_type='o' # offset to not overwrite indent space
-    if [[ "$3" ]]; then
-        basic_color="$($3)"
+    if [[ "$3" =~ ^[0-9]+$ ]]; then
+        max_cols=$3
     else
-        basic_color=''
+        basic_color="$($3)" # TODO: is this used?
     fi
 
-    if (( $(${X[tput]} cols) > 90 )); then
+    if (( max_cols > 90 )); then
         marg=10
-    elif (( 90 > $(${X[tput]} cols) && $(${X[tput]} cols) > 80  )); then
-        marg=$(( $(${X[tput]} cols) - 80 ))
+    elif (( 90 > max_cols && max_cols > 80  )); then
+        marg=$(( max_cols - 80 ))
     else
         marg=0
     fi
 
-    if (( $(${X[tput]} cols) < 80 )); then
+    if (( max_cols < 80 )); then
         max_length=$(( 80 - indent ))
     else
-        max_length=$(( $(${X[tput]} cols) - $(( marg + indent )) ))
+        max_length=$(( max_cols - $(( marg + indent )) ))
     fi
 
     for word in $input; do
         noansi_word="$(${X[ansifilter]} <<< "$word")"
-        if (( $(( current_length + ${#noansi_word} )) > $(( max_length + 1 )) )); then
+        if (( $(( current_length + ${#noansi_word} )) > $(( max_length - 1 )) )); then
             output+="\n$($indent_type $indent)$basic_color$word"
             current_length=${#noansi_word}
+        elif ${bool[firstword]:-:}; then
+            output+="$word"
+            current_length=$(( current_length + ${#noansi_word} ))
+            bool[firstword]=_
         else
             output+=" $word"
             current_length=$(( current_length + ${#noansi_word} + 1 ))
         fi
     done
     echo -en "$output"
-    $debugx && set -x
+    ${bool[debugx]} && set -x
 }
 
 listify(){

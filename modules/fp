@@ -10,7 +10,41 @@ __license__
 ${FP_BASHLIB:-_} && return
 FP_BASHLIB=:
 
-declare MACHINE_ID
+# for the sake of robustness:
+: "${TD:=/tmp}" # if TD is empty, prefill it with /tmp
+[[ "$TD" == '/' || ! -d "$TD" ]] && TD='/tmp' # if TD is / or not a directory we use /tmp
+[ -d "$TD" ] || { # if after these tests, $TD is still not a directory, try the candidates
+    for x in /run/user/${I[u]} /var/tmp ~/tmp; do
+        [ -d "$x" ] && { TD="$x"; break; }
+    done
+}
+# remove trailing slash
+TD="${TD%/}"
+[ -d "$TD" ] && {
+    V[tsa]=$(${X[stat]} -c %A $TD)
+    while :; do
+        [[ $TD == */user/${I[u]} && $(${X[stat]} -c %u%g $TD) == ${I[u]}${I[g]} ]] && break  # directory is owned by the user and can be used
+        [[ $TD == */user && ${V[tsa]} == ${V[w]} ]] && { TD="$TD/${I[u]}"; break; }  # user subdirectory exists, directory can be created
+        [[ ${V[tsa]} == ${V[w]} ]] && { ${X[mkdir]} -pm 1777 $TD/user; TD=$TD/user/${I[u]}; } # user subdirectory does not exist, can be created
+        break
+    done
+}
+D[t]="${TD%/user*}"       # basic temp dir    /tmp                  1777 root root  exists
+D[tu]="${D[t]}/user"      # user temp dir     /tmp/user             1777 root root  created in tempdir
+D[tp]="${D[t]}/${M[p]}"   # project temp dir  /tmp/ebtb -           1777 root root  created in tempdir
+D[log]="${D[tp]}/log"     # project log dir   /tmp/ebtb/log         1777 root root  created in tempdir
+D[lu]="/run/lock/user"    # lock dir for user /run/lock/user        1777 root root  created in tempdir
+D[vt]="/var/tmp/${M[p]}"  # /var/tmp dir      /var/tmp/ebtb         0777 root root  created in general
+D[vtm]="${D[vt]}/modules" # /var/tmp dir      /var/tmp/ebtb/modules 1777 root root  created in general
+D[shm]="/dev/shm/${M[p]}" # shm dir           /dev/shm/ebtb         1777 root root  created in fp
+for x in tu:1 tp:1 log:1 lu:1 vt:0 vtm:1 shm:1; do
+    if [ -d "${D[${x%:*}]}" ]; then
+        ${X[chmod]} -f ${x#*:}777 ${D[${x%:*}]}
+        ${B[rt]} && ${X[chown]} -f root:root ${D[${x%:*}]}
+    else
+        q2 ${X[mkdir]} -pm ${x#*:}777 ${D[${x%:*}]}
+    fi
+done
 
 machine_id(){
     if [[ -f /etc/machine-id || -f /var/lib/dbus/machine-id ]]; then
@@ -19,15 +53,20 @@ machine_id(){
         q2 ${X[ip]} link show | ${X[gawk]} '/ether/ {print $2}' | ${X[md5sum]} | ${X[tr]} -d ' -'
     fi
 }
-
+declare MACHINE_ID
 MACHINE_ID="$(machine_id 2>&1)"
 
 fp(){
     local fingerprint
     if [ -f "${F[fp]}" ]; then
-        local -i fpe
+        local -i fpttl fpe # fpo
+        fpttl=86400
         fpe=$(${X[stat]} -c %Z "${F[fp]}")
-        (( T[rte] - fpe > 3600 )) && echo > "${F[fp]}"
+        (( T[rte] - fpe > fpttl )) && echo > "${F[fp]}"
+# TODO 1 -->
+#        fpo=$(${X[stat]} -c %u%g "${F[fp]}")
+#        (( fpo == ${I[u]}${I[g]} && T[rte] - fpe > fpttl )) && echo > "${F[fp]}"
+# TODO <-- 1
         fingerprint=$(< "${F[fp]}")
     fi
     if (( ${#fingerprint} == 7 )); then
@@ -51,6 +90,7 @@ fp(){
         done
         fingerprint=":${MACHINE_ID:14:4}${checksum}:"
         echo "$fingerprint" | ${X[tee]} "${F[fp]}"
+        ${X[chmod]} -f 666 "${F[fp]}"
     fi
 }
 
@@ -58,10 +98,10 @@ detect_hashed_file(){
     local item hash
     local -A bool
     hash="$1" bool[echo]="$2"
-    for item in $(cd $TD; ${X[ls]}); do
-        if [ -f "$TD/$item" ]; then
+    for item in $(cd ${D[shm]}; ${X[ls]}); do
+        if [ -f "${D[shm]}/$item" ]; then
             if [[ "$hash" =~ ${item%%_*} ]]; then
-                ${bool[echo]} && echo "$TD/$item"
+                ${bool[echo]} && echo "${D[shm]}/$item"
                 return 0
             fi
         fi
@@ -78,7 +118,22 @@ create_hashed_file(){
 #    random_sequence=${hash:$random_start:$len}
 # TODO <-- 2
     len=16 hash="$1"
-    f="$(q2 ${X[mktemp]} -p $TD -t ${hash:$(${X[shuf]} -i 0-$(( ${#hash} - $len )) -n 1):$len}_XXXXXXXXXXXX)"
+    f="$(q2 ${X[mktemp]} -p ${D[shm]} -t ${hash:$(${X[shuf]} -i 0-$(( ${#hash} - $len )) -n 1):$len}_XXXXXXXXXXXX)"
     ${X[chmod]} 666 "$f"
     echo "$f"
+}
+
+max_cols(){
+    local mc # max cols
+    local -i dmc tmc
+    dmc=100 # default and minimal value for max cols
+    tmc=$(${X[tput]} cols) # available cols on terminal
+    [ -f "${F[mc]:=${D[vt]}/cols}" ] || echo "$dmc" > "${F[mc]}"
+    ${X[chmod]} -f 666 "${F[mc]}"
+    mc=$(< "${F[mc]}")
+    [[ "$mc" =~ ^[0-9]+$ ]] || mc=$dmc
+    (( mc < dmc )) && mc=$dmc
+    (( mc > tmc )) && mc=$tmc
+    echo $mc
+    return 0
 }

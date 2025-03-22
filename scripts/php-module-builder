@@ -142,12 +142,12 @@ if ${B[remove]}; then
         ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\""; }
         ${B[step]:-false} && anykey
         o2; B; echo "rm -r \"$project_dir/$project/$php_version/$module\""
-        ${X[rm]} -r "$project_dir/$project/$php_version/$module"
+        cleanup "$project_dir/$project/$php_version/$module"
         ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""; }
         ${B[step]:-false} && anykey
         o2; B; echo "rm \"$extension_dir/$extension.{so,la}\""
-        ${X[rm]} -f "$extension_dir/$extension".{so,la}
-        [ -d "$extension_include_dir/$module" ] && ${X[rm]} -fr "$extension_include_dir/$module"
+        cleanup "$extension_dir/$extension".{so,la}
+        cleanup "$extension_include_dir/$module"
         module_ini
         ext_state purge "$module" "$php_version"
     elif ${B[module_is_installed]}; then
@@ -162,8 +162,8 @@ if ${B[remove]}; then
             ${B[quiet]} || { f ;GRAY; echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""; }
             ${B[step]:-false} && anykey
             o2; B; echo "rm \"$extension_dir/$extension.{so,la}\""
-            ${X[rm]} -f "$extension_dir/$extension.{so,la}"
-            [ -d "$extension_include_dir/$module" ] && ${X[rm]} -fr "$extension_include_dir/$module"
+            cleanup "$extension_dir/$extension.{so,la}"
+            cleanup "$extension_include_dir/$module"
             module_ini
             ext_state purge $module $php_version
         else
@@ -333,7 +333,7 @@ else
     patch_code
     ${B[step]:-false} && anykey
     declare phpize_output autoupdate_required
-    phpize_output=$(${X[phpize$php_version]} 2>&1 | ${X[tee]} /dev/tty)
+    phpize_output=$(${X[phpize$php_version]} 2>&1 | ${X[tee]} $TTY)
     autoupdate_required=$(echo "$phpize_output" | ${X[grep]} -c "You should run autoupdate")
     ${B[step]:-false} && anykey
     (("$autoupdate_required")) && { echo "running autoupdate.."; ${X[autoupdate]}; }

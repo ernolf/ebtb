@@ -1,26 +1,28 @@
-: "${TD:=/tmp}"
-[[ "$TD" == '/' || ! -d "$TD" ]] && TD='/tmp'
-[ -d "$TD" ] || TD='/temp'
-# unprivileged users need their own writable temporary directory
-${B[rt]} || {
-    TD="${TD%/}"
-    if (( $(${C[a]} -F/ '{print NF-1}' <<< "$TD") == 1 )) && [ -w "$TD" ]; then
-        # if TD has only one directory level and is writable, append a user-specific subdirectory
-        TD="$TD/user-${I[u]}"
-    elif [ ! -w "$TD" ]; then
-        # if TD is not writable, derive a base directory from TD and append a user-specific subdirectory
-        TD="$(${C[a]} -F/ '{print "/"$2}' <<< "$TD")/user-${I[u]}"
-    fi
-    # create the directory if it does not exist, with permissions 755
-    [ -d "$TD" ] || ${C[md]} -m 755 "$TD" &>/dev/null
+: "${TD:=/tmp}" # if TD is empty, prefill it with /tmp
+[[ $TD == '/' || ! -d $TD ]] && TD='/tmp' # if TD is / or not a directory we use /tmp
+[ -d "$TD" ] || { # if after these tests, $TD is still not a directory, try the candidates
+    for x in /run/user/${I[u]} /dev/shm /var/tmp ~/tmp; do
+        [ -d "$x" ] && { TD="$x"; break; }
+    done
 }
-# create a temporary file in the directory TD and store its name in the variable ttf
-declare ttf="$(${C[mt]} -p "$TD")"
-# if the temporary file exists, remove it
-[[ -n "$ttf" && -f "$ttf" ]] && ${C[r]} -f -- "$ttf" || {
-    # if the temporary file was not created, print an error message
-    echo -e "\e[31mERROR: TMPDIR '$TD' is not writable by user '${I[un]}'\e[0m" >&2
-    exit 1
+# remove trailing slash
+TD="${TD%/}"
+[ -d "$TD" ] && {
+    V[tsa]=$(${C[s]} -c %A $TD) V[w]=drwxrwxrwt
+    while :; do
+        [[ $TD == */user/${I[u]} && $(${C[s]} -c %u%g $TD) == ${I[u]}${I[g]} ]] && break  # directory is owned by the user and can be used
+        [[ $TD == */user && ${V[tsa]} == ${V[w]} ]] && { TD="$TD/${I[u]}"; break; }  # user subdirectory exists, directory can be created
+        [[ ${V[tsa]} == ${V[w]} ]] && { ${C[ms]} $TD/user; TD=$TD/user/${I[u]}; } # user subdirectory does not exist, can be created
+        break
+    done
 }
+${C[cms]} ${D[tu]:=${D[t]:=${TD%/user*}}/user}
+${C[ms]} ${D[tp]:=${D[t]}/${M[p]}} ${D[log]:=${D[tp]}/log} ${D[lu]:=/run/lock/user}
+# create the directory if it does not exist, with permissions 700
+[ -d "${D[t]}/user-${I[u]}" ] && ${C[mv]} "${D[t]}/user-${I[u]}" $TD
+${C[md]}m 700 "$TD"
+# if the temporary file exists, remove it and if the temporary file was not created, print an error message and die
+[[ -n "${F[ttf]:=$(${C[mt]} -p $TD)}" && -f "${F[ttf]}" ]] && ${C[r]} "${F[ttf]}" || __ "TMPDIR '$TD' is not writable by user '${I[un]}'"
 # unset the temporary file variable
-unset ttf
+unset F[ttf]
+D[td]=$TD

@@ -14,7 +14,6 @@ php_fpm_sites_available_conf_apache2(){
     local ver_n pool plu
     local -a pools sock_o canonicalized_sock_o conffiles
     local -A sock_n sock_regex
-    local -i i
     ver_n="$1"
     mapfile -t pools< <(fpm_pools)
     if (( ${#pools[@]} == 1 )); then
@@ -114,17 +113,20 @@ php_fpm_sites_available_conf_apache2(){
             for i in ${!conffiles[@]}; do
                 f
                 bundle printf detect_apache2_php_fpm_ tag "${conffiles[i]}"
+                ${X[sleep]} .5
             done
             f
-            bundle echo " -$(format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
+            bundle echo "$(pf; format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
             f
             anykey
+            ${X[sleep]} .5
             local line conf
             for i in ${!conffiles[@]}; do
                 line="$(fpm_connections_socket "${conffiles[i]}")"
                 conf="$(${X[realpath]} "${conffiles[i]}")"
                 ${X[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
-                bundle echo "$(es3; Pbg) IMPORTANT:$(format_string "$(P) A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 15;N)"
+                bundle echo "$(es3; Pbg) IMPORTANT: $(P; format_string " A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 16; N)"
+                ${X[sleep]} 1
             done
             unset line conf
             f

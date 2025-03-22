@@ -41,17 +41,6 @@ contribute_(){
     contribute "https://help.nextcloud.com/t/script-nc-apps-a-helpful-and-more-verbose-complement-to-occ-app-list/164389"
 }; [[ "$@" =~ (donat|contrib) ]] && contribute_
 
-V[nc_version_long]="$(nc_version_ long "$NC_DIR/version.php")"
-V[nc_version]="$(nc_version_ short "$NC_DIR/version.php")"
-V[nc_key]="$(nc_version_ key "$NC_DIR/version.php")"
-V[nc_version_string]="$(nc_version_ string "$NC_DIR/version.php")"
-V[nc_version_tag]="$(tolower "${V[nc_version_string]// /}")"
-V[nc_min_version]="${LATEST_EOL[0]}" # this is only prefilled here -> changed by assumed_version module
-
-# declared in $MS/db:
-# TODO 7 -->
-#echo $(r_db .tables;) | ${X[grep]} -qs "database_created" && B[database_created]=:
-# TODO <-- 7
 [[ "$(r_db .tables;)" =~ database_created ]] && B[database_created]=:
 
 declare -a availupd
@@ -69,7 +58,7 @@ for x in "$@"; do
                    --alt) B[use_json_all]=:                    ;;
  -u|--update?([_-])first) B[update_first]=:                    ;;
   --allow?([_-])unstable) B[allow_unstable]=:                  ;;
-        ?(min_)version=*) V[nc_${x%=*}]="${x#*=}"              ;;
+        ?(min_)version=*) NC[${x%=*}]="${x#*=}"                ;;
       ?(--)rebuild[-_]db) ${B[database_created]} && rebuild_db ;;
               ?(--)trace) B[trace]=:                           ;;
                        *) args+=("$x")
@@ -175,7 +164,7 @@ while (( $# )); do
             exit 0
 # TODO <-- 4
         *)  echo "unknown option $1"
-            print_help
+            print_help --cat
     esac
 done
 shopt -u extglob
@@ -189,8 +178,8 @@ elif ${B[unsupported]}; then
     V[suppunsupp]="unsupp=:"
 fi
 
-[[ "${command:=print_help}" =~ print_help ]] && B[nopager]=:
-[[ "${command:=filters}" =~ filters ]] && B[nopager]=:
+[[ "${V[command]:=print_help}" =~ print_help ]] && B[nopager]=:
+[[ "${V[command]}" =~ filters ]] && B[nopager]=:
 # yes, this must be "updat", since it must match with "update" AND "updatable"
 # TODO 8 -->
 #echo ${V[command]} | ${X[grep]} -qs updat && B[nopager]=:
@@ -211,7 +200,7 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     printf ", nopager = "
     ${B[secondrun]} && printf 'false' || { ${B[nopager]} && printf 'true' || printf 'false'; }
     echo ", lang = $lang"
-    echo "Versions: assumed = ${V[nc_version]}, is = ${V[nc_version_long]}, min = ${V[nc_min_version]}, php = $(php_ver)"
+    echo "Versions: assumed = ${NC[version]}, is = ${NC[version_long]}, min = ${NC[min_version]}, php = $(php_ver)"
     line '-' GRAY 80
     line '=' N 80
     ${B[markdown]} && V[command]="${V[command]} md=:"
@@ -221,15 +210,15 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     ${V[command]} ${V[suppunsupp]}
 else
     if ${B[supported]}; then
-        $ME secondrun lang=$lang --supported --nopager min_version=${V[nc_min_version]} version=${V[nc_version]} ${V[command]} | ${X[less]} -R
+        $ME secondrun lang=$lang --supported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     elif ${B[unsupported]}; then
-        $ME secondrun lang=$lang --unsupported --nopager min_version=${V[nc_min_version]} version=${V[nc_version]} ${V[command]} | ${X[less]} -R
+        $ME secondrun lang=$lang --unsupported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
 # TODO 6 -->
     elif ${B[use_json_all]}; then
-        $ME secondrun lang=$lang --alt --nopager min_version=${V[nc_min_version]} version=${V[nc_version]} ${V[command]} | ${X[less]} -R
+        $ME secondrun lang=$lang --alt --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
 # TODO <-- 6
     else
-        $ME secondrun lang=$lang --nopager min_version=${V[nc_min_version]} version=${V[nc_version]} ${V[command]} | ${X[less]} -R
+        $ME secondrun lang=$lang --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     fi
     exit 0
 fi

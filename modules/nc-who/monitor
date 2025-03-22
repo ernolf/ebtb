@@ -13,26 +13,32 @@ MONITOR_BASHLIB=:
 . <(lrequire nc/nextcloud_db)
 
 # $1=pid $2=cls (clear screen)
-cleanup(){
+cleanup_nc_monitor(){
     (
     if ${B[trace]:-_}; then
         local outfile
-        outfile="$(${X[mktemp]} -p "$TMPDIR")"
+        outfile="$(${X[mktemp]} -p "$TD")"
         echo "==TRACE=start=" > "$outfile"
         print_stack_trace >> "$outfile"
         echo "arguments - $@" >> "$outfile"
         echo "==TRACE=end===" >> "$outfile"
         haul cat "$outfile"
-        ${X[rm]} -f "$outfile"
+        cleanup "$outfile"
         unset outfile
     fi
     ) &
 
-    kill -TERM $1 &>/dev/null
-    wait -f $1 &>/dev/null
+    kill -TERM $1 &>$NUL
+    wait -f $1 &>$NUL
     if [ "$2" = "cls" ]; then
-        ${X[reset]}
-        ${X[clear]}
+        ${X[reset]} -IQ
+#        ${X[clear]}
+    fi
+    if [ "$3" = exit ]; then
+        f
+        separator
+        exit_trap
+        exit0
     fi
 }
 
@@ -45,7 +51,7 @@ nc_monitor(){
     watch_command_tempfile="$(tf)" watch_pid=0
     prompt="$(C)press $(button 1) for cookie based logins, $(button 2) for all, $(button q) to quit$(N)"
     f
-    o2; B; echo "This script looks up for logged in users on your Nextcloud in$(N) \"$(Y)$NC_DIR$(N)\""
+    o2; B; echo "This script looks up for logged in users on your Nextcloud in$(N) \"$(Y)${NC[d]}$(N)\""
     o2; B; echo "it updates at an adjustable refresh rate and lists ordered by last activity"; N
     f
     (
@@ -61,7 +67,7 @@ nc_monitor(){
             ${X[grep]} '=' <<< $(local) >> "$outfile"
             echo "==TRACE=end===" >> "$outfile"
             haul cat "$outfile"
-            ${X[rm]} -f "$outfile"
+            cleanup "$outfile"
             unset outfile
         fi
     ) &
@@ -88,13 +94,13 @@ nc_monitor(){
         esac
 
       # authtoken.type constants from lib/private/Authentication/Token/IToken.php line 31
-        query="SELECT $DB_U2T(at.last_activity) AS last_activity,
+        query="SELECT ${DB[u2t]}(at.last_activity) AS last_activity,
             CASE
-                WHEN at.type = '0' AND at.remember = '1' THEN (SELECT us.status FROM ${DB_PREF}user_status us WHERE us.user_id = at.uid)
+                WHEN at.type = '0' AND at.remember = '1' THEN (SELECT us.status FROM ${DB[pref]}user_status us WHERE us.user_id = at.uid)
                 ELSE 'n.a.'
             END AS status,
             at.uid, at.name AS client
-        FROM ${DB_PREF}authtoken at $proviso
+        FROM ${DB[pref]}authtoken at $proviso
         ORDER BY at.last_activity DESC"
       # watch breaks the formating of the tables made by  mysql client.
       # therefore we must build it again from html output.
@@ -137,11 +143,13 @@ nc_monitor(){
 # TODO <-- 1
             ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > "$watch_command_tempfile"
 . ${D[li]}/binaries
-declare -A B
-B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB_STRG="$(${X[sed]} 's/\$/\\$/' <<< "$DB_STRG")" DB_EXEC="$DB_EXEC"
-#\$(declare -f cleanup)
-#trap 'cleanup \$$ cls; interrupted INT' INT
-#trap 'cleanup \$$ cls; interrupted TERM' TERM
+declare -A B DB
+B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB[strg]="$(${X[sed]} 's/\$/\\$/' <<< "${DB[strg]}")" DB[exec]="${DB[exec]}"
+# TODO 2 -->
+#\$(declare -f cleanup_nc_monitor)
+#trap 'cleanup_nc_monitor \$$ cls; interrupted INT' INT
+#trap 'cleanup_nc_monitor \$$ cls; interrupted TERM' TERM
+# TODO <-- 2
 $(declare -f _)
 $(declare -f q0)
 $(declare -f aio_wrapper)
@@ -152,8 +160,8 @@ $html2text_command | \
 $sed_post_html2text
 WATCH_COMMAND_TEMPFILE
             ${X[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
-            trap 'cleanup $watch_pid cls; interrupted INT' INT
-            trap 'cleanup $watch_pid cls; interrupted TERM' TERM
+            trap "cleanup_nc_monitor $watch_pid cls; f; separator; interrupted INT" INT
+            trap "cleanup_nc_monitor $watch_pid cls; f; separator; interrupted TERM" TERM
             (
                 if ${B[trace]:-_}; then
                     local outfile
@@ -165,7 +173,7 @@ WATCH_COMMAND_TEMPFILE
                     echo "watch-command pid: $watch_pid" >> "$outfile"
                     echo "==TRACE=end===" >> "$outfile"
                     haul cat "$outfile"
-                    ${X[rm]} -f "$outfile"
+                    cleanup "$outfile"
                     unset outfile
                 fi
             ) &
@@ -176,22 +184,37 @@ WATCH_COMMAND_TEMPFILE
                         ;;
                     b)  break 2
                         ;;
-                    s)  cursor_ show
-                        C; printf ' - Enter new refresh rate: '; N
-                        read -r new_rr; rr=$new_rr
-                        cursor_ hide
+                    s)  echo
+                        while :; do
+                            cursor_ show
+                            C; printf ' - Enter new refresh rate: '; N
+                            read -r new_rr
+                            [[ "$new_rr" =~ ^[1-9][0-9]{0,1}$ ]] || {
+                                o3; echo "$invi Please enter a number between 1 and 99"
+                                continue
+                            }
+                            cursor_ hide
+                            rr=$new_rr
+                            break
+                        done
+                        cleanup_nc_monitor "$watch_pid"
+                        break
                         ;;
-                    r)  :
+                    r)  cleanup_nc_monitor "$watch_pid"
+                        break
+                        ;;
+                    *)  echo
+                        R; echo " - Wrong key. $(button $key)"; N
+                        echo
+                        C; echo -n " - $(button s) = change refresh rate - $(button r) = reload - $(button b) = back - $(button q) = quit"; N
                 esac
-                cleanup "$watch_pid"
-                break
             done
         done
-        cleanup $watch_pid cls
+        cleanup_nc_monitor $watch_pid cls
     done
     cursor_ show
     if (( watch_pid )); then
-        cleanup $watch_pid cls
+        cleanup_nc_monitor $watch_pid cls exit
     else
         echo
     fi

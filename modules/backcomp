@@ -20,7 +20,6 @@ fi
 [[ "$(type -t q1)" == function ]] || q1(){ "$@" >/dev/null; }
 [[ "$(type -t q2)" == function ]] || q2(){ "$@" 2>/dev/null; }
 [ "$(q2 declare -p TD)" = 'declare -n TD="TMPDIR"' ] || declare -n TD=TMPDIR
-[ "$(q2 declare -p H)" = 'declare -n H="HOME"' ] || declare -n H=HOME
 
 # Migrate legacy variables into new variable names
 
@@ -29,17 +28,25 @@ declare -A D F J M T V
 : "${MS:=$sin}"
 : "${MP:=${ca_me:-$canonical_me}}"
 : "${MD:=${ca_dir:-$canonical_dir}}"
+: "${NUL:=/dev/null}"
+: "${TTY:=/dev/tty}"
 : "${M[b]:=${bm:-$basename_me}}"
 : "${M[ap]:=$apm}"
 : "${M[n]:=$scriptname}"
 : "${M[e]:=${M[epoch]:-$epoch}}"
 : "${M[v]:=$version}"
+: "${M[p]:=ebtb}"
 : "${M[pid]:=$$}"
+: "${D[l]:=${D[lu]:=/run/lock/user}/${I[u]}}"
 : "${D[li]:=${lincld:-$includedir}}"
 : "${D[ri]:=$rincld}"
-: "${D[log]:=$TD/ebt/log}"
-: "${F[log]:=${D[log]}/${M[b]}.log}"
-: "${F[fp]:=${D[log]}/fp}"
+: "${D[tu]=${D[t]:=${TD%/user*}}/user}"
+: "${D[tp]:=${D[t]}/${M[p]}}"
+: "${D[log]:=${D[tp]}/log}"
+: "${D[shm]:=/dev/shm/${M[p]}}"
+: "${D[vt]:=/var/tmp/${M[p]}}"
+: "${F[log]:=${D[log]}/${M[b]}[uid:${I[u]}].log}"
+: "${F[fp]:=${D[vt]}/fp}"
 : "${F[lmj]:=$lmj}"
 : "${F[rmj]:=$rmj}"
 : "${F[lmjn]:=$lmjn}"
@@ -47,10 +54,15 @@ declare -A D F J M T V
 : "${J[o]:=${J[json]:-$my_json}}"
 : "${V[cargs]:=$cargs}"
 : "${V[upinf]:=${upinf:-$updateinfo}}"
-: "${CMA:=$ME json=${J[o]} $@; exit 0}"
+: "${V[w]:=drwxrwxrwt}"
+: "${CMA:=$ME json=${J[o]} $@}"
 : "${T[rte]:=$rte}"
 : "${T[mje]:=$mje}"
 : "${T[mjne]:=$mjne}"
+
+
+[ -z "$HOME" ] && eval HOME=~
+[[ "${D[li]}" = "${D[vt]}/modules/${M[c]}" && -d "$HOME/.${M[p]}" ]] && ${X[rm]} -fr -- "$HOME/.${M[p]}"
 
 # removed function for backwards compatibility:
 populate_pkgs_by_dpkg_array(){ :; }
@@ -119,8 +131,8 @@ if (( M[e] < 1740748000 )); then
 fi
 
 [[ "$(type -t mkld)" == function ]] || mkld(){
-    [ -d "${D[l]:=/run/lock/${I[u]}/ebtb}" ] || ${X[mkdir]} -p "${D[l]}"
-    [ -d "${D[l]}" ] || { D[l]=$TD/ebtb/lock; ${X[mkdir]} -p "${D[l]}"; }
+    [ -d "${D[l]:=/run/lock/${I[u]}/${M[p]}}" ] || ${X[mkdir]} -p "${D[l]}"
+    [ -d "${D[l]}" ] || { D[l]=$TD/${M[p]}/lock; ${X[mkdir]} -p "${D[l]}"; }
 }
 
 [[ "$(type -t c)" == function ]] || c(){

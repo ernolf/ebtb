@@ -103,7 +103,7 @@ required_args() {
             ${X[cat]} "$outfile" >&2
             exit1
         fi
-        ${X[rm]} "$outfile"
+        cleanup "$outfile"
     fi
 }
 
@@ -121,7 +121,7 @@ require_arg() {
             ${X[cat]} "$outfile" >&2
             exit1
         fi
-        ${X[rm]} "$outfile"
+        cleanup "$outfile"
     fi
 }
 
@@ -129,12 +129,12 @@ something_went_wrong(){
     local outfile1 outfile2 message
     outfile1="$(tf)" outfile2="$(tf)" message="$1"
 # TODO 1 -->
-#    echo "Error:$(R; format_string "Something went wrong. This error and its stack trace have been recorded and can be analyzed to develop a fix if possible." 7; N)" > "$outfile1"
+#    echo "Error: $(R; format_string "Something went wrong. This error and its stack trace have been recorded and can be analyzed to develop a fix if possible." 7; N)" > "$outfile1"
 # TODO <-- 1
-    echo "Error:$(R; format_string "Something went wrong." 7; N)" > "$outfile1"
+    echo "Error: $(R; format_string "Something went wrong." 7; N)" > "$outfile1"
     if (( $# )); then
         echo >> "$outfile1"
-        echo "$(o2; R; format_string "- $message" 5; N)" >> "$outfile1"
+        echo "$(o2; R; pf; format_string "$message" 5; N)" >> "$outfile1"
     fi
     bundle cat "$outfile1"
     print_stack_trace >> "$outfile2"
@@ -143,5 +143,5 @@ something_went_wrong(){
         ${X[cat]} "$outfile2" >&2
         exit1
     fi
-    q0 ${X[rm]} "$outfile1" "$outfile2"
+    cleanup "$outfile1" "$outfile2"
 }

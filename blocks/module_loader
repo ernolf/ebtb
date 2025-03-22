@@ -1,9 +1,8 @@
 ## include bashmodules ->
 [[ "${M[n]}" =~ test ]] && { M[c]='test' T[w4uc]=30; } || { M[c]='prod' T[w4uc]=300; }
-[ -z "$H" ] && eval H=~
-[[ -d "$H" && "$H" != / && -w "$H" ]] && D[li]="$H/.ebtb/modules/${M[c]}" || D[li]="$TD/ebtb/modules/${M[c]}"
+${C[mw]} ${D[li]=${D[vtm]}/${M[c]}}
 D[ri]="modules/${M[c]}"
-${C[md]} -p "${D[li]}/$MS"
+${C[md]} "${D[li]}/$MS"
 REQ=". ${D[li]}" F[lmj]="${D[li]}/modules.json" F[rmj]="${D[ri]}/modules.json" F[lcf]="${D[li]}/$MS/.checked"
 F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}")
 (( T[rte] - T[lce] > T[w4uc] )) && {
@@ -11,7 +10,7 @@ F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}")
     if T[mje]=$(json_etag ${F[lmj]}) && T[mjne]=$(json_etag ${F[lmjn]}); then (( T[mje] < T[mjne] )) && B[check]=:; fi
 }
 : ${B[check]:=_} ${B[pager]:=_}
-for x in binaries fp filter mh basics awksed tempfile ansi prefix button exit debug anykey line array ask sudo spinner dpkg dependency vdir integrity ${modules[@]}; do
+for x in binaries fp filter mh basics awksed exit tempfile ansi prefix button debug anykey line array ask sudo spinner dpkg dependency vdir integrity ${modules[@]}; do
     ${B[check]} && {
         ${B[pager]} || printf "\r\e[K.. checking modules - $x"
         c4u "$x"
@@ -19,7 +18,7 @@ for x in binaries fp filter mh basics awksed tempfile ansi prefix button exit de
     . <(lreq $x)
 done
 ${B[check]} && echo ${T[rte]} > "${F[lcf]}"
-[ -f "${F[lmjn]}" ] && ${X[mv]} "${F[lmjn]}" "${F[lmj]}"
+[[ -f ${F[lmjn]} ]] && ${X[mv]} ${F[lmjn]} ${F[lmj]}
 ${B[rt]} && ! (( T[lce] )) && echo ${T[rte]} > "${F[lcf]}"
 ${B[pager]} || te1
 eval "$(echo "$(unquote ${J[o]})" | ${X[jq]} -r 'keys[] as $key|"J[\($key[0:1])]=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq

@@ -54,11 +54,11 @@ db_integritycheck_(){
     local db_query
     case "$1" in
         cull)
-            db_query="SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = 'core' AND configkey = 'oc.integritycheck.checker';"
+            db_query="SELECT configvalue FROM ${DB[pref]}appconfig WHERE appid = 'core' AND configkey = 'oc.integritycheck.checker';"
             db_raw_exec_ "$db_query"
             ;;
         clean)
-            db_query="DELETE FROM ${DB_PREF}appconfig WHERE ${DB_PREF}appconfig.appid = 'core' AND ${DB_PREF}appconfig.configkey = 'oc.integritycheck.checker';"
+            db_query="DELETE FROM ${DB[pref]}appconfig WHERE ${DB[pref]}appconfig.appid = 'core' AND ${DB[pref]}appconfig.configkey = 'oc.integritycheck.checker';"
             db_exec_ "$db_query"
     esac
 }
@@ -97,18 +97,18 @@ ${B[debug]} || kill_spinner
 
 nc_download_default(){
     local app_id file version_tag path url url1 url2 tempfile
-    app_id="$1" file="$2" path="$2"
-    version_tag="v$(${X[gawk]} -F\' '/String/{gsub(/ /,"");$2=tolower($2);print $2}' "$NC_DIR/version.php")"
+    app_id="$1" file="$2" path="$2" # yes, here $2 is both, file and path
+    version_tag="v${NC[version_tag]}"
     tempfile=$(tf)
     case "$app_id" in
-      core) url1="$GITHUB_RAW/server/$version_tag/$file"
+      core) url1="${NC[github_raw]}/server/$version_tag/$file"
             ;;
          *) if is_shipped_ "$app_id"; then
                 path="apps/$app_id/$file"
-                url1="$GITHUB_RAW/server/$version_tag/apps/$app_id/$file"
-                url2="$GITHUB_RAW/$app_id/$version_tag/$file"
+                url1="${NC[github_raw]}/server/$version_tag/apps/$app_id/$file"
+                url2="${NC[github_raw]}/$app_id/$version_tag/$file"
             else
-                xml_f="$NC_DIR/apps/$app_id/appinfo/info.xml"
+                xml_f="${NC[d]}/apps/$app_id/appinfo/info.xml"
                 repo="$(${X[xmls]} -v "//info/repository" "$xml_f" | ${X[sed]} '2,$d;s|.git$||1')"
                 if [ -z "$repo" ]; then
                     issueTracker=$(${X[xmls]} -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
@@ -129,12 +129,12 @@ nc_download_default(){
 ${B[debug]} && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_tag = $version_tag\nurl = $url\nurl1 = $url1\nurl2 = $url2"; anykey; }
 
     if (($(${X[curl]} -so "$tempfile" -w %{http_code} "$url1") == 200)); then
-        mv "$tempfile" "$NC_DIR/$path"
-        chown "$NC_USER:$NC_USER" "$NC_DIR/$path"
+        mv "$tempfile" "${NC[d]}/$path"
+        chown "${NC[u]}:${NC[u]}" "${NC[d]}/$path"
         echo "download of '$file' from '$url1' succeeded"
     elif (($(${X[curl]} -so "$tempfile" -w %{http_code} "$url2") == 200)); then
-        mv "$tempfile" "$NC_DIR/$path"
-        chown "$NC_USER:$NC_USER" "$NC_DIR/$path"
+        mv "$tempfile" "${NC[d]}/$path"
+        chown "${NC[u]}:${NC[u]}" "${NC[d]}/$path"
         echo "download of '$file' from '$url2' succeeded"
     else
         echo "download of '$path' failed. You must check this one yourself"
@@ -160,7 +160,7 @@ if (( ${#affected_apps[@]} )); then
     separator
     for affected_app in ${affected_apps[@]}; do
         case $affected_app in
-            core) abspath="$NC_DIR";;
+            core) abspath="${NC[d]}";;
                *) abspath="$(occ app:getpath -- "$affected_app")"
         esac
         echo -n > $scan_result
@@ -180,7 +180,7 @@ ${B[debug]} && { echo "scan_result:"; ${X[cat]} $scan_result; anykey; }
             for affected_file in ${FILE_MISSING[@]}; do
                 pf; echo "$affected_file"
             done
-            question="Q:$(format_string "Do you want to download t$this missing file$pl1 for your version from github" 3; N)"
+            question="$(qpf; format_string "Do you want to download t$this missing file$pl1 for your version from github" 3; N)"
             if ask "$question" "$YES"; then
                 for affected_file in ${FILE_MISSING[@]}; do
                     nc_download_default $affected_app $affected_file
@@ -216,7 +216,7 @@ ${B[debug]} && { echo "scan_result:"; ${X[cat]} $scan_result; anykey; }
             for affected_file in ${INVALID_HASH[@]}; do
                 pf; echo "$affected_file"
             done
-            question="Q:$(format_string "Do you want to replace t$this invalid file$pl1 with$one file$pl1 downloaded from github for your version" 3; N)"
+            question="$(qpf; format_string "Do you want to replace t$this invalid file$pl1 with$one file$pl1 downloaded from github for your version" 3; N)"
             if ask "$question" "$YES"; then
                 for affected_file in ${INVALID_HASH[@]}; do
                     nc_download_default $affected_app $affected_file
@@ -233,13 +233,13 @@ ${B[debug]} && { echo "scan_result:"; ${X[cat]} $scan_result; anykey; }
     done
     db_integritycheck_ clean
     echo
-    echo "$(format_string "- You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3; N)"
+    echo "$(pf; format_string "You should now return to the 'settings/admin/overview' tab in the browser frontend of your nextcloud server and check if all warnings are resolved. If you are still geting complaints, you should do a rescan from within that error message (wait for it to complete) and run this script again." 3; N)"
     f
     anykey
     contribute_
 else
     echo
-    echo "$(format_string "- This script could not find any integrity warnings to resolve." 3; N)"
+    echo "$(pf; format_string "This script could not find any integrity warnings to resolve." 3; N)"
     exit 0
 fi
 

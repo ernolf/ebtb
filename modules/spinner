@@ -14,62 +14,78 @@ SPINNER_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire exit)
+. <(lrequire fstring)
 # TODO <-- 0
-F[spinner_pid]="$TD/${M[b]}-spinner.pid"
+F[spinner_pid]="${D[shm]}/spinner.pid"
+F[spinner_state]="$(tf 666 shm)"
 
 # Function to display the spinning animation
 spinner(){
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
     [ -f "${F[spinner_pid]}" ] && return 0
     local cursor_status color spinr spinl
-    local -i L R prog dir pos marg
+    local -i L R prog dir pos marg max_cols
+    max_cols=$(max_cols)
+    (( max_cols > 80 )) && max_cols=80
     echo $BASHPID > ${F[spinner_pid]}
     cursor_status=''
-    if [ -f "$CURSOR" ]; then
-        if ${X[grep]} -qsw 'hide' "$CURSOR"; then
+    if [ -f "${F[cursor]}" ]; then
+        if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
             cursor_status='hide'
         fi
     fi
-    color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
-    L=0 prog=0 dir=1
+    cursor_ hide # hide cursor
+    tput rmam   # Disable automatic line wrapping
 
-    if (( $(${X[tput]} cols) > 87 )); then
+    color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
+    shift
+
+    if (( $(${X[tput]} cols) > 90 )); then
         marg=10
-    elif (( 87 > $(${X[tput]} cols) && $(${X[tput]} cols) > 77  )); then
-        marg=$(( $(${X[tput]} cols) - 77 ))
+    elif (( 80 > $(${X[tput]} cols) && $(${X[tput]} cols) > max_cols )); then
+        marg=$(( $(${X[tput]} cols) - max_cols ))
     else
         marg=0
     fi
 
-    if (( $(${X[tput]} cols) < 77 )); then
-        R=77
+    L=0
+    R=max_cols
+
+    # Load spinner state if available; else initialize
+    if [[ -f ${F[spinner_state]} ]] && (( $(( $(now) - $(stat -c %Y ${F[spinner_state]}) )) < 2 )); then
+        read pos dir prog < "${F[spinner_state]}"
     else
-        R=$(( $(${X[tput]} cols) - marg ))
+        pos=$L
+        dir=1
+        prog=0
     fi
 
-    shift
-    pos=$L
-    cursor_ hide
-    echo "$cursor_status" > "$CURSOR"
+    (( dir )) || dir=1 # dir must be either 1 or -1 and never 0
+
+    echo "$cursor_status" > "${F[cursor]}"
     $color
-    (($#)) && echo "$@"
+    (( $# )) && echo "$@"
     while :; do
         (( pos += dir ))
-        (( prog ++ ))
+        (( prog++ ))
         (( prog %= 4 ))
         if (( pos > R )); then
             dir=-1
-            (( pos = R ))
+            pos=$R
         elif (( pos < L )); then
             dir=1
-            (( pos = L ))
+            pos=$L
         fi
+
         if (( dir == -1 )); then
-            printf "\r%-${pos}s %s %${dir}s" "" "${spinl:$prog:1}" ""
+            printf "\r%-${pos}s%s %${dir}s" "" "${spinl:$prog:1}" ""
         else
-            printf "\r%-${pos}s %s %s" "" "${spinr:$prog:1}" ""
+            printf "\r%-${pos}s%s %s" "" "${spinr:$prog:1}" ""
         fi
-        ${X[sleep]} 0.03
+
+        # Clear current line and print spinner at current position
+        echo "$pos $dir $prog" > "${F[spinner_state]}"
+        ${X[sleep]} .04
     done
     N
 }
@@ -78,22 +94,26 @@ spinner(){
 kill_spinner(){
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 0
     local -i ct=0
-    until [ -f "${F[spinner_pid]}" ]; do
+    until [[ -f "${F[spinner_pid]}" ]]; do
         (( ct > 20 )) && return 0
         (( ct++ ))
         ${X[sleep]} 0.001
     done
+    [[ -f "${F[spinner_pid]}" ]] || return 0
     local cursor
     local -i pid
     pid="$(${X[cat]} "${F[spinner_pid]}")"
     cursor='show'
-    if [ -f "$CURSOR" ]; then
-        if ${X[grep]} -qsw 'hide' "$CURSOR"; then
+    if [[ -f "${F[cursor]}" ]]; then
+        if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
             cursor='hide'
         fi
     fi
-    kill $pid &>/dev/null && te0
-    N
-    cursor_ "$cursor"
-    ${X[rm]} -f "${F[spinner_pid]}"
+    if kill $pid &>$NUL; then
+        N
+        tput smam   # Re-enable automatic line wrapping
+        te0
+        cursor_ "$cursor"
+    fi
+    cleanup "${F[spinner_pid]}"
 }

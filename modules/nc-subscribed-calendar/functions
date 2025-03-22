@@ -19,14 +19,14 @@ declare -u refreshrate
 user_has_subscribed_calendar(){
     database_call
     local user="$1" query
-    query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}calendarsubscriptions WHERE $TYPE_SQL_QUERY = '$user') THEN 'true' ELSE 'false' END"
+    query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB[pref]}calendarsubscriptions WHERE ${DB[type_sql_query]} = '$user') THEN 'true' ELSE 'false' END"
     db_raw_exec_ "$query"
 }
 
 # returns total number of calendar subscriptions
 count_calendarsubscriptions(){
     database_call
-    local query="SELECT COUNT(*) FROM ${DB_PREF}calendarsubscriptions"
+    local query="SELECT COUNT(*) FROM ${DB[pref]}calendarsubscriptions"
     db_raw_exec_ "$query"
 }
 
@@ -56,7 +56,7 @@ list_calendars(){
     database_call
     local user="$1" userselect query
     [ -n "$user" ] && userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
-    query="SELECT id, $TYPE_SQL_QUERY as user_id, displayname, refreshrate FROM ${DB_PREF}calendarsubscriptions$userselect"
+    query="SELECT id, ${DB[type_sql_query]} as user_id, displayname, refreshrate FROM ${DB[pref]}calendarsubscriptions$userselect"
     db_exec_ "$query"
 }
 
@@ -65,7 +65,7 @@ list_calendar_ids(){
     database_call
     local userselect user="$1" userselect query
     [ -n "$user" ] && userselect=" WHERE principaluri = 'principals/users/$user'" || userselect=""
-    query="SELECT id FROM ${DB_PREF}calendarsubscriptions$userselect"
+    query="SELECT id FROM ${DB[pref]}calendarsubscriptions$userselect"
     db_raw_exec_ "$query"
 }
 
@@ -140,7 +140,7 @@ enter_yes(){
 update_refreshrate(){
     database_call
     local cal_id=$1 refreshrate=$2 query
-    query="UPDATE ${DB_PREF}calendarsubscriptions SET refreshrate = '$refreshrate' WHERE id = '$cal_id'"
+    query="UPDATE ${DB[pref]}calendarsubscriptions SET refreshrate = '$refreshrate' WHERE id = '$cal_id'"
     db_exec_ "$query"
 }
 

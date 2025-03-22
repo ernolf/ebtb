@@ -18,7 +18,7 @@ function list_shares(){
     ${bool[html]} && H='--html' || H=''
     database_call $H
 
-    d_echo "DB_STRG: \"$DB_STRG\""
+    d_echo "DB[strg]: \"${DB[strg]}\""
 
     local USER USER_ID SHARE_TYPE TOKEN QUERY
     USER=" uid_initiator AS initiator," USER_ID="$*"
@@ -50,9 +50,9 @@ function list_shares(){
     fi
 
     local grpfldr_id thisgrpfldr sed_string
-    if is_app_enabled groupfolders && [ -d "$NC_DATADIR/__groupfolders" ]; then
-        for grpfldr_id in `ls $NC_DATADIR/__groupfolders* | grep [0-9]`; do
-            thisgrpfldr="$(db_raw_exec_ "SELECT mount_point FROM ${DB_PREF}group_folders WHERE folder_id = $grpfldr_id")"
+    if is_app_enabled groupfolders && [ -d "${NC[dd]}/__groupfolders" ]; then
+        for grpfldr_id in `ls ${NC[dd]}/__groupfolders* | grep [0-9]`; do
+            thisgrpfldr="$(db_raw_exec_ "SELECT mount_point FROM ${DB[pref]}group_folders WHERE folder_id = $grpfldr_id")"
             sed_string="${sed_string};s@__groupfolders/${grpfldr_id}@/${thisgrpfldr}@g"
             d_echo "sed_string: \"$sed_string\""
         done
@@ -61,7 +61,7 @@ function list_shares(){
   # permissions from lib/public/Constants.php
 
   # using case statement for if-else branching
-    QUERY="SELECT id, $DB_UT2TS AS \"share_time......\",$USER$SHARE_TYPE
+    QUERY="SELECT id, ${DB[ut2ts]} AS \"share_time......\",$USER$SHARE_TYPE
     item_type AS type,
     CONCAT_WS(',',
         CASE WHEN password IS NOT NULL THEN 'pw' ELSE NULL END,
@@ -72,8 +72,8 @@ function list_shares(){
         CASE (permissions & 16) WHEN 16 THEN 's' ELSE NULL END
     ) AS permissions,
     $TOKEN
-    (SELECT path FROM ${DB_PREF}filecache WHERE ${DB_PREF}filecache.fileid = ${DB_PREF}share.file_source) AS path
-    FROM ${DB_PREF}share
+    (SELECT path FROM ${DB[pref]}filecache WHERE ${DB[pref]}filecache.fileid = ${DB[pref]}share.file_source) AS path
+    FROM ${DB[pref]}share
     WHERE share_type = ${sharetype}"
 
     if [ "$USER_ID" = "all" ]; then
@@ -88,8 +88,8 @@ function list_shares(){
 #        tmp_file=$(tf) targetdir="/nc/dat/data/ich/files" targetfile="$targetdir/${basename_me}_$runtime$@.pdf"
 #        d_echo "tmp_file: $tmp_file"
 #        d_echo "targetfile: $targetfile"
-#        eval $DB_STRG $DB_EXEC\"$query\" | ${X[sed]} "s\ files/\ /\g$sed_string" | ${X[tidy]} -indent -quiet -wrap 0 -f /dev/null -o $tmp_file
-#        eval $DB_STRG $H $DB_EXEC\"$query\" | ${X[tidy]} -indent -quiet -wrap 0 -f /dev/null | ${X[sed]} "s\<td>files/\<td>/\g$sed_string" > $tmp_file
+#        eval ${DB[strg]} ${DB[exec]}\"$query\" | ${X[sed]} "s\ files/\ /\g$sed_string" | ${X[tidy]} -indent -quiet -wrap 0 -f $NUL -o $tmp_file
+#        eval ${DB[strg]} $H ${DB[exec]}\"$query\" | ${X[tidy]} -indent -quiet -wrap 0 -f $NUL | ${X[sed]} "s\<td>files/\<td>/\g$sed_string" > $tmp_file
 
 #    anykey
 
@@ -107,6 +107,6 @@ function list_shares(){
 # TODO <-- 0
     db_exec_ "$query" | ${X[column]} -t -s $'\t' | ${X[sed]} "s\ files/\ /\g$sed_string"
 # TODO 1 -->
-#    pipe_h2t "$DB_STRG $DB_EXEC" "$query"
+#    pipe_h2t "${DB[strg]} ${DB[exec]}" "$query"
 # TODO <-- 1
 }

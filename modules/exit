@@ -14,8 +14,8 @@ EXIT_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire ansi)
-# TODO <-- 0
 . <(lrequire debug)
+# TODO <-- 0
 
 exit0(){
     mh "exit: 0"
@@ -27,39 +27,48 @@ exit0(){
 exit1(){
     mh "exit: 1"
     R; echo "exiting…"; N
+    echo "generous? feedback? questions? run: '$ME --contribute'"; N
     exit 1
 }
 
-cleanup(){
-    local garbage
-    for garbage in "$@"; do
-        [ -d "$garbage" ] && q2 ${X[rm]} -fr "$garbage"
-        [ -f "$garbage" ] && q2 ${X[rm]} -f "$garbage"
+cleanup() {
+    local x
+    for x in "$@"; do
+        if [[ -d "$x" && "$x" != / && "$x" =~ ^(/tmp|/var/tmp|/dev/shm|/run/lock)(/|$) ]]; then
+            ${X[rm]} -fr -- "$x"
+        elif [[ -f "$x" ]]; then
+            ${X[rm]} -f -- "$x"
+        fi
     done
 }
 
 # define a trap to clean up the lock- and temporary files
 exit_trap(){
+    local x
     [ -f "${F[spinner_pid]}" ] && kill_spinner
     ${local_server:-_} && ls_ stop
     cleanup "${D[l]}"
-    nonullglob "$TD/${M[b]}${M[pid]}_*" && q2 ${X[rm]} -f $TD/${M[b]}${M[pid]}_*
-    nonullglob "$TD/${M[b]:-$$}_*" && q2 ${X[rm]} -f $TD/${M[b]:-$$}_*
+    for x in td shm; do
+        nonullglob "${D[$x]}/${M[b]}${M[pid]}_*" && ${X[rm]} -f ${D[$x]}/${M[b]}${M[pid]}_*
+        nonullglob "${D[$x]}/${M[b]:-$$}_*" && ${X[rm]} -f ${D[$x]}/${M[b]:-$$}_*
+    done
+    ${X[reset]} -IQ
     ansi_reset
 }
 
 interrupted(){
     local sig t
-    sig="$1" t="$(O)TRAP$(Yi): -"
+    local -i os # offset
+    sig="$1" t="$(O)TRAP$(Yi): -" os=24
     if [ -z "${M[b]}" ]; then
         return 0
     else
-        te1; echo "$t interrupted by sig$sig"
+        te1; echo "$t $(C)interrupted by$(o $os; Yi)- $(R)sig$sig"
         if [ -f "${F[spinner_pid]}" ]; then
-            te1; echo "$t spinner killed"
+            te1; echo "$t $(C)spinner$(o $os; Yi)- $(G)killed"
         fi
         if nonullglob "$TD/${M[b]}${M[pid]}_*" || nonullglob "$TD/${M[b]:-$$}_*"; then
-            te1; echo "$t temporary files removed"
+            te1; echo "$t $(C)temporary files$(o $os; Yi)- $(G)removed"
         fi
         exit1
     fi

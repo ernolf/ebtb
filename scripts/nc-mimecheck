@@ -238,26 +238,16 @@ fi
 # if errors found, echo them all together, echo help and exit
 wrong_option -x
 
-# cd into NC_DATADIR because nextcloud understands pathes from there
-if nc_configkey_exist_ datadirectory; then
-    NC_DATADIR="$(nc_configkey datadirectory)"
-    if [ -d "$NC_DATADIR" ]; then
-        v_echo "$(pf; Y)the nextcloud data directory is$(N) \"$(B)$NC_DATADIR$(N)\""
-    else
-        error "can not find nextcloud data directory."
-    fi
-elif [ -d "$NC_DIR/data" ]; then
-    NC_DATADIR="$NC_DIR/data"
-    v_echo "$(pf; Y)no information about the nextcloud data directory,$(N)"
-    v_echo "$(pf; Y)use the default directory$(N) \"$(B)$NC_DATADIR$(N)\""
+# cd into NC[dd] because nextcloud understands pathes from there
+if [ -d "${NC[dd]}" ]; then
+    v_echo "$(pf; Y)the nextcloud data directory is $(N)\"$(B)${NC[dd]}$(N)\""
 else
     error "can not find nextcloud data directory."
 fi
+cd "${NC[dd]}"
 
-cd "$NC_DATADIR"
-
-# remove absolute path to NC_DATADIR if not invoked by nextcloud flow
-basepath="$(echo "$*" | ${X[sed]} 's\'$NC_DATADIR'/\\1')"
+# remove absolute path to NC[dd] if not invoked by nextcloud flow
+basepath="$(echo "$*" | ${X[sed]} 's\'${NC[dd]}'/\\1')"
 user2check="$(check_username_case "${basepath%%/*}")"
 [ "$user2check" = "${basepath%%/*}" ] || {
     v_echo "$(pf; Y)user case corrected:$(N) from \"$(B)${basepath%%/*}$(N)\" to \"$(B)$user2check$(N)\" "
@@ -322,7 +312,7 @@ else
 fi
 
 # checks are done, now the work can begin
-${B[quiet]} || echo "$(Y)cd into nextcloud data directory:$(N) \"$(B)$NC_DATADIR$(N)\""
+${B[quiet]} || echo "$(Y)cd into nextcloud data directory:$(N) \"$(B)${NC[dd]}$(N)\""
 v_echo "$(pf; Y)working directory (PWD) now is:$(N) \"$(B)$PWD$(N)\""
 
 ${B[recursive]} && v_echo "$(pf; Y)recursive set to$(N) \"$recursive\""

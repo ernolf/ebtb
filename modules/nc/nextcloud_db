@@ -15,69 +15,68 @@ NEXTCLOUD_DB_BASHLIB=:
 no_client_binary(){
     local binary database package cver
     cver="$(GRAY)(-\$$(C)ver$(GRAY))$(R)"
-    case "$DB_TYPE" in
+    case "${DB[type]}" in
         my) binary=mysql database="MySQL/MariaDB" package="$(B)mysql-client$cver or $(B)mariadb-client$cver" ;;
         pg) binary=psql database="PostgreSQL" package="$(B)postgresql-client$cver"
     esac
-    xpf > /dev/tty; echo "$(R; format_string "This script requires the appropriate command-line client $(GRAY)(the '$(C)$binary$(GRAY)' binary) to access the $(dY)$database$(GRAY)-database$(R) to be installed. This could not be found." 3; N)" > /dev/tty
-    echo "$(o2; R; format_string "Since the client version must match the database server and its version, this script cannot perform or offer the installation automatically." 3; N)" > /dev/tty
-    echo "$(o2; R; format_string "Please first install the required package $package and restart this script." 3; N)" > /dev/tty
+    xpf > $TTY; echo "$(R; format_string "This script requires the appropriate command-line client $(GRAY)(the '$(C)$binary$(GRAY)' binary) to access the $(dY)$database$(GRAY)-database$(R) to be installed. This could not be found." 3; N)" > $TTY
+    echo "$(o3; R; format_string "Since the client version must match the database server and its version, this script cannot perform or offer the installation automatically." 3; N)" > $TTY
+    echo "$(o3; R; format_string "Please first install the required package $package and restart this script." 3; N)" > $TTY
     exit1
 }
 
-# Database globals:
-globals="DB_TYPE DB_PREF DB_STRG DB_EXEC DB_RAW DB_U2T DB_UT2TS TYPE_SQL_QUERY"
-for global in $globals; do q2 declare -g $global || declare $global; done
-unset -v global globals
-B[dc]=_
+# Database global:
+declare -A DB
 
 database_call(){
-    ${B[dc]} && return 0
-    local html=$1 configkey db_utf8mb4 dcs
-    for configkey in type:dbtype host:dbhost user:dbuser pass:dbpassword name:dbname pref:dbtableprefix; do
-        local db_${configkey%:*}=$(nc_configkey ${configkey#*:})
+    ${B[dc]:-_} && return 0
+    local -A db
+    db[html]="$1"
+    for x in type:dbtype host:dbhost user:dbuser pass:dbpassword name:dbname pref:dbtableprefix; do
+        db[${x%:*}]=$(nc_configkey ${x#*:})
     done
-    DB_TYPE=${db_type%sql} DB_PREF=$db_pref
-    db_host="$(echo $db_host | ${X[sed]} 's/localhost.*/localhost/')"
-    case $DB_TYPE in
+
+    DB[type]=${db[type]%sql} DB[pref]=${db[pref]}
+    db[host]="$(echo ${db[host]} | ${X[sed]} 's/localhost.*/localhost/')"
+    case ${DB[type]} in
         my) local my_client
             [ -n "${my_client:=${X[mysql]}}" ] || {
                 [ -n "${X[mariadb]}" ] && my_client="${X[mariadb]}" || no_client_binary
             }
             local my_cnf=$(tf)
-            echo -e "[client]\nhost=$db_host\nuser=$db_user\npassword=$db_pass">$my_cnf
-            db_utf8mb4=$(nc_configkey mysql.utf8mb4)
-            if ${db_utf8mb4:-_}; then
-                dcs="utf8mb4"
+            echo -e "[client]\nhost=${db[host]}\nuser=${db[user]}\npassword=${db[pass]}">$my_cnf
+            db[utf8mb4]=$(nc_configkey mysql.utf8mb4)
+            if ${db[utf8mb4]:-_}; then
+                db[dcs]="utf8mb4"
             else
-                dcs="utf8"
+                db[dcs]="utf8"
             fi
-            DB_STRG="$my_client --defaults-extra-file=$my_cnf $html --no-auto-rehash --default-character-set=$dcs -D $db_name"
-            DB_EXEC="--execute="
-            DB_RAW="-srN"
-            DB_U2T="FROM_UNIXTIME"
-            DB_UT2TS="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
-            TYPE_SQL_QUERY="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
+            DB[strg]="$my_client --defaults-extra-file=$my_cnf ${db[html]} --no-auto-rehash --default-character-set=${db[dcs]} -D ${db[name]}"
+            DB[exec]="--execute="
+            DB[raw]="-srN"
+            DB[u2t]="FROM_UNIXTIME"
+            DB[ut2ts]="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
+            DB[type_sql_query]="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
             ;;
         pg) ${B[aio]} && db_host="$(${X[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)" || {
                 [ -n "${X[psql]}" ] || no_client_binary
             }
-            export PGPASSWORD=$db_pass
-            DB_STRG="${X[psql]} --user=$db_user --host=$db_host $html -d $db_name"
-            DB_EXEC="--command="
-            DB_RAW="-At"
-            DB_U2T="TO_TIMESTAMP"
-            DB_UT2TS="TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')"
+            export PGPASSWORD=${db[pass]}
+            DB[strg]="${X[psql]} --user=${db[user]} --host=${db[host]} ${db[html]} -d ${db[name]}"
+            DB[exec]="--command="
+            DB[raw]="-At"
+            DB[u2t]="TO_TIMESTAMP"
+            DB[ut2ts]="TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')"
 # TODO 1 -->
-#            DB_UT2TS=$(format "TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')")
+#            DB[ut2ts]=$(format "TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')")
 # TODO <-- 1
-            TYPE_SQL_QUERY="REVERSE(SUBSTRING(REVERSE(principaluri) FROM 1 FOR POSITION('/' IN REVERSE(principaluri)) - 1))"
+            DB[type_sql_query]="REVERSE(SUBSTRING(REVERSE(principaluri) FROM 1 FOR POSITION('/' IN REVERSE(principaluri)) - 1))"
             ;;
-         *) echo "$(Pbg) * Only mysql or pgsql as database, $db_type is not (yet) supported by this script $(N)"
+         *) echo "$(Pbg) * Only mysql or pgsql as database, ${db[type]} is not (yet) supported by this script $(N)"
             exit 0
     esac
     if ${B[docker]}; then
-        DB_STRG="export PSQL_HISTORY=\$PGDATA/.psql_history; psql -U $db_user $html -d $db_name"
+        DB[strg]="export PSQL_HISTORY=\$PGDATA/.psql_history; psql -U ${db[user]} ${db[html]} -d ${db[name]}"
     fi
     B[dc]=:
 }
@@ -85,18 +84,18 @@ database_call(){
 db_interactive(){
     q0 database_call
     if ${B[docker]}; then
-        aio_wrapper -it database "$DB_STRG"
+        aio_wrapper -it database "${DB[strg]}"
     else
-        $DB_STRG
+        ${DB[strg]}
     fi
 }
 
 db_raw_interactive(){
     q0 database_call
     if ${B[docker]}; then
-        aio_wrapper -it database "$DB_STRG $DB_RAW"
+        aio_wrapper -it database "${DB[strg]} ${DB[raw]}"
     else
-        $DB_STRG $DB_RAW
+        ${DB[strg]} ${DB[raw]}
     fi
 }
 
@@ -104,9 +103,9 @@ db_exec_(){
     q0 database_call
     local query="$*"
     if ${B[docker]}; then
-        aio_wrapper database "$DB_STRG $DB_EXEC\"$query\""
+        aio_wrapper database "${DB[strg]} ${DB[exec]}\"$query\""
     else
-        $DB_STRG $DB_EXEC"$query"
+        ${DB[strg]} ${DB[exec]}"$query"
     fi
 }
 
@@ -114,14 +113,14 @@ db_raw_exec_(){
     q0 database_call
     local query="$*"
     if ${B[docker]}; then
-        aio_wrapper database "$DB_STRG $DB_RAW $DB_EXEC\"$query\""
+        aio_wrapper database "${DB[strg]} ${DB[raw]} ${DB[exec]}\"$query\""
     else
-        $DB_STRG $DB_RAW $DB_EXEC"$query"
+        ${DB[strg]} ${DB[raw]} ${DB[exec]}"$query"
     fi
 }
 
 is_app_enabled(){
-    if [ "$(db_raw_exec_ "SELECT configvalue FROM ${DB_PREF}appconfig WHERE appid = '$1' AND configkey = 'enabled'")" = yes ]; then
+    if [ "$(db_raw_exec_ "SELECT configvalue FROM ${DB[pref]}appconfig WHERE appid = '$1' AND configkey = 'enabled'")" = yes ]; then
         return 0
     else
         return 1
@@ -132,7 +131,7 @@ is_app_enabled(){
 user_exists(){
     q0 database_call
     local user="$1" query
-    query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN 'true' ELSE 'false' END"
+    query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB[pref]}users WHERE uid_lower = LOWER('$user')) THEN 'true' ELSE 'false' END"
     db_raw_exec_ "$query"
 }
 
@@ -140,7 +139,7 @@ user_exists(){
 check_username_case(){
     q0 database_call
     local user="$1" query
-    query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) THEN (SELECT uid FROM ${DB_PREF}users WHERE uid_lower = LOWER('$user')) END"
+    query="SELECT CASE WHEN EXISTS (SELECT 1 FROM ${DB[pref]}users WHERE uid_lower = LOWER('$user')) THEN (SELECT uid FROM ${DB[pref]}users WHERE uid_lower = LOWER('$user')) END"
     db_raw_exec_ "$query"
 }
 
@@ -148,6 +147,6 @@ check_username_case(){
 user_disabled(){
     q0 database_call
     local user="$1" query
-    query="SELECT CASE WHEN (SELECT configvalue FROM ${DB_PREF}preferences WHERE userid = '$user' AND appid = 'core' AND configkey = 'enabled') = 'false' THEN 'true' ELSE 'false' END"
+    query="SELECT CASE WHEN (SELECT configvalue FROM ${DB[pref]}preferences WHERE userid = '$user' AND appid = 'core' AND configkey = 'enabled') = 'false' THEN 'true' ELSE 'false' END"
     db_raw_exec_ "$query"
 }

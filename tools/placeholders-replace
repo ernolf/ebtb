@@ -60,7 +60,7 @@ placeholder_replace(){
             tools/minify "blocks/whoami_whereami"
             ;;
         scriptname)
-            echo "M[n]='$name' MS='${name%-test}' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
+            echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
         debug)
             if [ "${channel:-prod}" = "test" ]; then

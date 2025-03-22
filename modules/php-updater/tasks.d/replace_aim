@@ -13,7 +13,7 @@ TASKS_REPLACE_AIM_BASHLIB=:
 replace_aim(){ # replace admin installed modules
     replace_(){
         local ini_dir mod
-        if [ "$(${X[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ] && ((imb)); then
+        if [ "$(${X[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ] && (( imb )); then
             if ${bool[pmb]}; then
                 for i in ${!mods[@]}; do
                     ver=${mods[i]#*php}
@@ -36,18 +36,18 @@ replace_aim(){ # replace admin installed modules
 #            anykey
         ext_state cleanup
         ext_state fix
-        apt_install_prechecked --yes ${pakages[@]}
+        apt_install_prechecked --yes ${pkgs[@]}
     }
     if [ -n "${X[pecl]}" ]; then
-        local ver module pakage pkgmod modstring serializers compression
+        local ver module pkg pkgmod modstring serializers compression
         local -i iam imb pecli
-        local -a ibymb pkgmods mods pakages
+        local -a ibymb pkgmods mods pkgs
         local -A bool
         pecli=0 bool[replaced]=_
         for pv in $(${X[phpquery]} -V | ${X[sort]}); do
             local -n C4EIBY4_pv=C4EIBY4_${pv//./}
             iam+=${#C4EIBY4_pv[@]}
-            unset C4EIBY4_pv
+            unset -n C4EIBY4_pv
         done
         [ -n "${X[php-module-builder]}" ] && bool[pmb]=: || bool[pmb]=_
         mapfile -t ibymb< <(${X[grep]} -lr "module built by php-module-builder" /etc/php/)
@@ -60,9 +60,9 @@ replace_aim(){ # replace admin installed modules
                         ver=${inifile#/etc/php/}
                         ver=${ver%%/*}
                         module=$(${X[basename]} ${inifile%.ini})
-                        pakage="php$ver-$module"
-                        if apt_exist "$pakage"; then ((pecli++))
-                            pakages+=("$pakage")
+                        pkg="php$ver-$module"
+                        if apt_exist "$pkg"; then (( pecli++ ))
+                            pkgs+=("$pkg")
                             mods+=("$(${X[gawk]} 'NR==1 {print $3}' $inifile)(php$ver)")
                         fi
                     done
@@ -74,15 +74,15 @@ replace_aim(){ # replace admin installed modules
                     pkgmod="${C4EIBY4_pv[i]}"
                     if (( $(${X[pecl]} list | ${X[grep]} -wc "${pkgmod#*:}") )); then
                         (( pecli++ ))
-                        pakages+=("${pkgmod%:*}")
+                        pkgs+=("${pkgmod%:*}")
                         mods+=("${pkgmod#*:}(php$PHP_VERSION)")
                     fi
                 done
-                unset C4EIBY4_pv
+                unset -n C4EIBY4_pv
             fi
         fi
         if (( pecli )); then
-            if ((pecli==1)); then
+            if (( pecli == 1 )); then
                 plu='' modstring="$(B)${mods[0]}$(N)"
             else
                 plu='s' modstring="$(listify B ${mods[@]})"
@@ -101,5 +101,5 @@ replace_aim(){ # replace admin installed modules
     else
         bundle echo "$(xpf; format_string "Unfortunately pecl is not installed or the pecl installation is broken, so the removal is not posible at present!" 3)"
     fi
-    ${bool[replaced]} && "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+    ${bool[replaced]} && "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
 }

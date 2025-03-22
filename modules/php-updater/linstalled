@@ -73,7 +73,7 @@ list_installed_sapi(){
         if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && ! apache2_mpm event; then
             modstring="$(listify C $(p_sort ${!SAPI_FPM[@]}))"
             $bundle echo "$(xpf; R; format_string "The PHP Fast Process Manager (php-fpm) is installed$(N) for $modstring, $(R)but the mpm_event module for apache2 required by this SAPI is not loaded, so this SAPI is effectively inactive on the apache2 httpd." 3; N)"
-            $bundle echo "  $(format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3; N)"
+            $bundle echo "$(es3; format_string "If a socket here shows as $(lG)<CONNECTED> apache2$(N) though, that means that at least one conf file from your apache2 webserver is configured to connect to that socket, which will fail." 3; N)"
             if apache2_mpm prefork; then
                 $bundle echo "$(ipf; Yi; format_string "Instead, the mpm_prefork module is loaded, which is required by the Apache2handler. Only one mpm module can be loaded, they exclude each other." 3; N)"
                 if (( ${#SAPI_A2[@]} )); then
@@ -333,7 +333,7 @@ list_installed(){
     if ${B[supported]:-_}; then
         if ((aimct));then
             ((aimct==1))&&plu='s a:'||plu=':s'
-            bundle echo "$(Y; format_string "- Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3; N)"
+            bundle echo "$(pf; Y; format_string "Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3; N)"
             replace_aim
             anykey
         fi

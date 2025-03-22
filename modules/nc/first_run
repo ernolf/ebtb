@@ -27,17 +27,22 @@ first_run(){
 
     local p h
     local -l ans num
-    local -i c2 i n
-    h="$(box h) to enter path by hand or $(q2q)" c2=9 n=1
-    if ! ${B[rt]} && [[ -d "$NC_DIR" ]]; then
+    local -i c2 i
+    h="$(box h) to enter path by hand or $(q2q)" c2=9
+
+    if ! ${B[rt]} && [[ -d "${NC[d]}" ]]; then
         su_root "to run this script"
     fi
+
     if ! ${B[irun2]}; then
         f
         o2; GRAY; echo "This step is required once after a new installation or sometimes after an update:"; N
     fi
+
     su_root "for the first run wizard" irun2
+
     populate_httpd_ nc-dir
+
     f
     o2; B; echo "Hello, this is the first run wizard of \"$(Y)$ME$(B)\""
     if (( ${#HTTPD_NC_DIR[@]} == 1 )); then
@@ -60,11 +65,11 @@ first_run(){
         line '-' P 2/78
         for i in "${!HTTPD_NC_DIR[@]}"; do
             p="${HTTPD_NC_DIR[i]}"
-            o3; echo "- $((n+i))$(o $c2)$p"
+            o3; echo "- $(( i + 1 ))$(o $c2)$p"
         done
         line '-' P 2/78 a2
-        o2; printf "Enter the corresponding number, $h"
         while :; do
+            o2; printf "Enter the corresponding number, $h"
             read -rsn 1 num
             te1
             case $num in
@@ -72,16 +77,16 @@ first_run(){
                     ;;
                 h)  break
                     ;;
-            [1-9])  (( num < n || num >= (n+${#HTTPD_NC_DIR[@]}) )) && {
-                        printf "$(o2)Invalid number. Please choose a number from the list, $h"
+            [1-9])  (( num > ( ${#HTTPD_NC_DIR[@]} ) )) && {
+                        echo -e "\n$(o2)Invalid number. Please choose a number from the list, $h"
                         continue
                     }
-                    i="$((num-n))"
+                    i="$(( num - 1 ))"
                     p="${HTTPD_NC_DIR[i]}"
                     o2; echo "Your choice: \"$(C)$p$(N)\""
                     f
                     o2; echo "is this the right Nextcloud installation path?"
-                    o2; echo "Press $(box y) for yes, $(box n) for no, $(box h) enter path by hand or $(q2q): "
+                    o2; echo "Press $(box y) for yes, $(box n) for no, $h: "
                     while :; do
                         read -rsn 1 ans
                         te1
@@ -95,7 +100,7 @@ first_run(){
                     done
                     ;;
                 *)  o2
-                    printf "$invi Please enter a valid number, $h"
+                    echo -e "\n$(o2)$invi Please enter a valid number, $h"
                     continue
             esac
         done
@@ -109,4 +114,4 @@ first_run(){
     done
 }
 # COMMENT -->
-#    [ -r "$NC_DIR/lib/base.php" ] || first_run
+#    [ -r "${NC[d]}/lib/base.php" ] || first_run

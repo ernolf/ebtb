@@ -57,7 +57,7 @@ integrity_check(){
     local key mail aut vdir ddir shash ehash
     local -i r
     local -A bool tf
-    bool[signed]=: tf[i]="$(tf)" tf[v]="$(tf)" r=1
+    bool[signed]=: tf[i]="$(tf shm)" tf[v]="$(tf shm)" r=1
     key="$(${X[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$MP")"
     mail="$(${X[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$MP")"
     aut="$(${X[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$MP")"
@@ -87,6 +87,7 @@ integrity_check(){
         o5; R; echo "- import of public key failed."
         qpf; ask "Continue at own risk without check?" "$NO" && {
             ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
+            cleanup "${tf[i]}" "${tf[v]}"
             return 0
         }
     }
@@ -111,6 +112,7 @@ integrity_check(){
             o5; B; echo "to get a signed version of this script or disable the integrity check."; N
             qpf; ask "Do you want to disable the integrity check at own risk" "$NO" && {
                 echo -e "v=true\nnohash" >> "$MP"
+                cleanup "${tf[i]}" "${tf[v]}"
                 return 0
             }
         fi
@@ -119,6 +121,7 @@ integrity_check(){
         ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
     fi
     line '=' P 5/75
+    cleanup "${tf[i]}" "${tf[v]}"
     return $r
 }
 

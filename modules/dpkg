@@ -86,9 +86,9 @@ apt_update(){
 # returns true if last apt-* update is done more than $1=int (defaults to 4) hours ago
 apt_need_update(){
     check_lockfiles || exit1
-    if [ $(($(($(now)-$(${X[stat]} -c %Y /var/lib/apt/lists/partial)))/3600)) -gt ${1:-4} ]; then
+    if (( $(( $(( $(now) - $(${X[stat]} -c %Y /var/lib/apt/lists/partial) )) / 3600 )) > ${1:-4} )); then
         f
-        echo " -$(format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
+        echo "$(pf; format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
         if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
             apt_update
         else

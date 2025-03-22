@@ -16,8 +16,8 @@ anykey(){
     aim="$1"
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
-        if [ -f "$CURSOR" ]; then
-            cursor_status="$(< "$CURSOR")"
+        if [ -f "${F[cursor]}" ]; then
+            cursor_status="$(< "${F[cursor]}")"
         else
             cursor_status=''
         fi
@@ -49,8 +49,8 @@ anykey_noquit(){
     aim="$1"
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
-        if [ -f "$CURSOR" ]; then
-            cursor_status="$(< "$CURSOR")"
+        if [ -f "${F[cursor]}" ]; then
+            cursor_status="$(< "${F[cursor]}")"
         else
             cursor_status=''
         fi

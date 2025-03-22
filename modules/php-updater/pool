@@ -72,18 +72,18 @@ check_fpm_pool_files(){
         if (( ${#alt_files[@]} ));then
             separator
             f
-            bundle echo "$(format_string "- $string" 3)"
+            bundle echo "$(pf; format_string "$string" 3)"
             if ask "$(qpf)Do you want to migrate $this pool${plu#*:} from $pkgold to $pkgnew" "$YES"; then
                 if ((www_index));then
                     mv $ndir/www.$ext $ndir/${ofiles[www_index]}
                     if [ -f "$ndir/${ofiles[www_index]}" ];then
-                        bundle echo "R:$(format_string "Successfully moved $(C)$ndir/www.$ext$(N) to $(C)$ndir/${ofiles[www_index]}" 3;N)"
+                        bundle echo "$(rpf; format_string "Successfully moved $(C)$ndir/www.$ext$(N) to $(C)$ndir/${ofiles[www_index]}" 3;N)"
                     fi
                 fi
                 for i in ${!alt_files[@]}; do
                     ${X[sed]} "s/$old/$new/g" "$odir/${alt_files[i]}" > "$ndir/${alt_files[i]}"
                     if [ -f "$ndir/${alt_files[i]}" ];then
-                        bundle echo "R:$(format_string "Successfully created poolfile $(C)"$ndir/${alt_files[i]}"$(N)" 3;N)"
+                        bundle echo "$(rpf; format_string "Successfully created poolfile $(C)"$ndir/${alt_files[i]}"$(N)" 3;N)"
                     fi
                 done
                 separator

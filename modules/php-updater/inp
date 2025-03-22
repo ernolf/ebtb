@@ -31,7 +31,8 @@ install_new_php(){
         separator
 # TODO 1 -->
         # update first?
-        f; echo " -$(format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
+        f
+        echo "$(pf; format_string "An update is not recommended at this point but possible. However, if you answer $(box yes) here, all PHP related packages will be marked 'hold' to remain the initial php-situation unchanged." 3)"
         if ask "$(qpf)Do you want to update the system first " "$NO"; then
             q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}') # hold php as it is for this step.
             ${X[apt-get]} dist-upgrade
@@ -65,12 +66,12 @@ install_new_php(){
     fi
     separator
     f
-    echo "$(format_string "- $(P)If everything looks good so far, the migration of the settings from $(B)php-$(C)$old$(P) to $(B)php-$(C)$new$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
+    echo "$(pf; format_string "$(P)If everything looks good so far, the migration of the settings from $(B)php-$(C)$old$(P) to $(B)php-$(C)$new$(P) can be started. If you answer $(box no) here or abort the migration process on some point $(GRAY)(with Ctrl-C)$(P), you can always call and start this step again with" 3)"
     f
     echo "$(G; prompt; B) $ME${FLAG[forceflag]} $(C)$old $new"; N
     f
     o3; P; echo "to finalize or redo the migration."; N
     f
-    echo "$(format_string "- $(P)Please be aware that a malicious configuration under $(B)php-$(C)$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3; N)"
-    ask "$(qpf)Proceed with next step" "$YES" && { separator; "$ME${FLAG[forceflag]}" "json=${J[json]}" $old $new; exit; } || exit0
+    echo "$(pf; format_string "$(P)Please be aware that a malicious configuration under $(B)php-$(C)$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3; N)"
+    ask "$(qpf)Proceed with next step" "$YES" && { separator; "$ME${FLAG[forceflag]}" "json=${J[o]}" $old $new; exit; } || exit0
 }

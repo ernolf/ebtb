@@ -29,7 +29,7 @@ switch_a2module_version(){
                 f
                 bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} $ver_o $ver_n"; N
                 f
-                bundle echo "$(es5; R; format_string ".. to ensure that all required packages for a apache2handler version switch are installed." 6; N)"
+                bundle echo "$(es6; R; format_string ".. to ensure that all required packages for a apache2handler version switch are installed." 6; N)"
                 f
                 bundle echo "$(es3; O)or run it now:"; N
                 if ask "$(qpf)Do you want to run '$ME${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
@@ -45,7 +45,7 @@ switch_a2module_version(){
                     bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} $ver_o $ver_n"; N
                 done
                 f
-                bundle echo "$(es5; R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
+                bundle echo "$(es6; R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
                 f
                 bundle echo "$(es3; O)or run it now:"; N
 
@@ -91,13 +91,13 @@ switch_a2module_version(){
                 fi
             done
             if [ "$ver_n" = "$ver_o" ]; then
-                bundle echo "$(es3; G)The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))"; N
+                bundle echo "$(es3; G; format_string "The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))" 3; N)"
                 return 0
             fi
             php_a2module_switch_2_ $ver_n
             populate_a2conffiles
             if [[ "${A2CONFFILES[@]}" =~ php$ver_n\.conf && "${A2CONFFILES[@]}" =~ php$ver_n\.load ]]; then
-                bundle echo "$(es3; G)Successfully switched the $(dY)apache2handler SAPI $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)"; N
+                bundle echo "$(es3; G; format_string "Successfully switched the $(dY)${SAPIDESCR[apache2]} $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)" 3; N)"
             else
                 return 1
             fi

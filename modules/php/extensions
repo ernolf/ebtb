@@ -269,9 +269,7 @@ ext_state(){
     case "$1" in
         cleanup)
             for dir in $vlpm/*; do
-                if [ -d "$dir" ]; then
-                    [[ "$(${X[phpquery]} -V)" =~ ${dir##*/} ]] || ${X[rm]} -fr "$dir"
-                fi
+                [[ -d "$dir" && ! "$(${X[phpquery]} -V)" =~ ${dir##*/} ]] && cleanup "$dir"
             done
             return
             ;;
@@ -284,7 +282,7 @@ ext_state(){
                     for sapi in $(${X[phpquery]} -v $pv -S); do
                         state_dir="$vlpm/$pv/$sapi"
                         if [ -f "$state_dir/enabled_by_admin/$mod" ]; then
-                            ${X[rm]} "$state_dir/enabled_by_admin/$mod"
+                            cleanup "$state_dir/enabled_by_admin/$mod"
                             [ -d "$state_dir/enabled_by_maint" ] || mkdir -p "$state_dir/enabled_by_maint"
                             touch "$state_dir/enabled_by_maint/$mod"
                             [ -f "$registry_dir/$mod" ] || touch "$registry_dir/$mod"
@@ -400,7 +398,7 @@ EOF
     ${X[chown]} -R www-data:www-data $apache_dir
     if ${bool[debug]:-_}; then
         exec 3>&1 4>&2  # Save the original stdout and stderr
-        exec > /dev/tty 2>&1  # Redirect both stdout and stderr to /dev/tty
+        exec > $TTY 2>&1  # Redirect both stdout and stderr to $TTY
         trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
         ${X[start-stop-daemon]} --start --user www-data --pidfile "$apache_dir/httpd.pid" --exec ${X[apache2]} -- -f "$apache_dir/httpd.conf"
         echo "returnvalue: $? - pid $!"
@@ -431,11 +429,11 @@ php_directive_vals_(){
     local pv sapi ext_file
     local -a garbage
     pv="$2" sapi="$3"
-    >${err:=/dev/null}
+    >${err:=$NUL}
     case "$1" in
         default)
             ext_file="$(php_ext_file_create $pv $sapi)"
-            ini_scan_dir="/dev/null"
+            ini_scan_dir=$NUL
             garbage+=("$ext_file")
         ;;
         local)
@@ -492,7 +490,7 @@ php_default_vals(){
     if [ "$sapi" = 'apache2' ]; then
         q2 php_apache2_vals $pv default
     elif [ "$sapi" = 'fpm' ]; then
-        q2 ${X[env]} PHP_INI_SCAN_DIR=/dev/null LC_MESSAGES=C ${X[php-fpm$pv]##* } -c "$ext_file" -d "error_reporting='~E_ALL'" -i | \
+        q2 ${X[env]} PHP_INI_SCAN_DIR=$NUL LC_MESSAGES=C ${X[php-fpm$pv]##* } -c "$ext_file" -d "error_reporting='~E_ALL'" -i | \
         ${X[grep]} -E '^[^A-Z].*=>.*=>' | ${X[sort]} | \
         ${X[php$pv]} -r '
             $lines = file("php://stdin", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
@@ -503,7 +501,7 @@ php_default_vals(){
             }
         '
     else
-        q2 ${X[env]} PHP_INI_SCAN_DIR=/dev/null LC_MESSAGES=C ${X[php$pv]##* } \
+        q2 ${X[env]} PHP_INI_SCAN_DIR=$NUL LC_MESSAGES=C ${X[php$pv]##* } \
         -c "$ext_file" \
         -d "error_reporting='~E_ALL'" \
         -r 'foreach(ini_get_all('$section') as $k => $v) if (strlen($v["local_value"])) echo "$k=".$v["local_value"]."\n";'
@@ -525,7 +523,7 @@ php_local_vals(){
     [ -n "$section" ] && section="\"${section//\"/}\""
     local pv sapi
     pv="$1" sapi="$2"
-    >${err:=/dev/null}
+    >${err:=$NUL}
     if [ "$sapi" = 'apache2' ]; then
         php_apache2_vals $pv local 2>>$err
     elif [ "$sapi" = 'fpm' ]; then

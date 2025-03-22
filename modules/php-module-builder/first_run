@@ -12,7 +12,6 @@ FIRST_RUN_BASHLIB=:
 
 . <(lrequire php-module-builder/disclaimer)
 
-# First run wizzard runs allways and only if occ could not be found in NC_DIR #
 first_run(){
     disclaimer
     register_project_dir(){
@@ -25,7 +24,7 @@ first_run(){
         f
         ${B[force]} && flags="--force"
         ${B[remove]} && flags="$flags --remove"
-        $ME "json=${J[json]}" $php_version $module $flags
+        $ME "json=${J[o]}" $php_version $module $flags
         exit 0
     }
     local yn q p dir

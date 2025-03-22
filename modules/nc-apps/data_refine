@@ -16,9 +16,9 @@ DATA_REFINE_BASHLIB=:
 # TODO <-- 0
 create_json_objects(){
     local query_version platform parts major minor item
-    query_version=${V[nc_version]}
-    if (( $(v2i ${V[nc_version]}) > $(v2i ${V[nc_master]}) )); then
-        query_version="${V[nc_master]}"
+    query_version=${NC[version]}
+    if (( $(v2i ${NC[version]}) > $(v2i ${NC[master]}) )); then
+        query_version="${NC[master]}"
     fi
     if ${B[bgjobs]}; then
         GRAY; echo ". . . . . . . . . . .  create  and  update  json  objects  . . . . . . . . . . ."; N
@@ -55,7 +55,7 @@ create_json_objects(){
 query_apps(){
     local -A bool
     while (( $# )); do bool[${1%=*}]="${1#*=}"; shift; done
-    local local_applist appstore_ids local_ids app_id appstore_json global_applist platform="${V[nc_version]}"
+    local local_applist appstore_ids local_ids app_id appstore_json global_applist platform="${NC[version]}"
     local -a appstore_ids_not_installed
     local_applist="$(r_db "SELECT json_data FROM app_lists WHERE section == 'local';")"
 
@@ -83,7 +83,7 @@ stock_up_arrays(){
     local -A bool tf
     read_json_data_file(){ r_db "SELECT json_data_file FROM filtered_apps WHERE platform == '$1' AND lang == '$lang'"; }
     create_json_objects
-    V[nc_master]="$(r_db "SELECT platform FROM versions WHERE tag = 'master';")"
+    NC[master]="$(r_db "SELECT platform FROM versions WHERE tag = 'master';")"
     while (( $# )); do bool[${1%=*}]="${1#*=}"; shift; done
     tf[availupd]="$(tf)"
     ${B[bgjobs]} && {
@@ -122,7 +122,7 @@ apps_(){
 # $1=app, $2=-q  #### D O N 'T   T O U C H   T H I S
 is_shipped_(){
     local query_version shipped_json
-    (( $(v2i ${V[nc_version]}) > $(v2i ${V[nc_master]}) )) && query_version="${V[nc_master]}" || query_version=${V[nc_version]}
+    (( $(v2i ${NC[version]}) > $(v2i ${NC[master]}) )) && query_version="${NC[master]}" || query_version=${NC[version]}
     shipped_json="$(r_db "SELECT json_data FROM shipped WHERE platform == '$query_version';" | ${X[base64]} -d)"
     local -A bool
     [ "$2" = "-q" ] && bool[quiet]=: || bool[quiet]=_

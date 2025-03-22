@@ -27,7 +27,8 @@ brief_help(){
     fi
     os; pf; B; echo "$ME $(C)--help$(o 44; dY)Detailed explanation"; N
     os; pf; B; echo "$ME$(o 44; dY)Run in interactive mode"; N
-    os; pf; B; echo "$ME $(C)--list-installed$(o 44; dY)Detailed information about php on this machine."; N
+    os; pf; B; echo -n "$ME $(C)--list-installed"; N
+    echo "$(o 44; dY; format_string "Detailed information about php on this machine." 44; N)"
     f
     os; W; echo "Only if multiple PHP versions are installed:"; N
     f
@@ -48,21 +49,24 @@ brief_help(){
         o 6; GRAY; echo -n "\ Example: $(B)$ME${FLAG[forceflag]} $(C)$sugg_old $sugg_new"; N
 #        te
     fi
-    te; o 43; echo "$(dY;format_string "Migrate all settings from $(B)php$(GRAY)\$$(C)old$(dY) to $(B)php$(GRAY)\$$(C)new$(dY). $(B)php$(GRAY)\$$(C)new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44; N)"
-    o 43; echo "$(dY;format_string "Important: $(B)php$(GRAY)\$$(C)old$(dY) should be the best-configured PHP version on your system. $(B)php$(GRAY)\$$(C)new$(dY) will be configured based on $(B)php$(GRAY)\$$(C)old$(dY)’s setup, so $(B)php$(GRAY)\$$(C)old$(dY) doesn’t have to be the active version!" 44; N)"
-    o 43; echo "$(O;format_string "Tip: $(W)If your active ($(GRAY)latest$(N)) PHP version has not been installed$(GRAY)/$(W)updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 49; N)"
-    f; os; pf; B; echo "$ME $(C)--switch-version$(o 44;dY)switch default php version interactively"; N
+    te
+    echo "$(o 44; dY; format_string "Migrate all settings from $(B)php$(GRAY)\$$(C)old$(dY) to $(B)php$(GRAY)\$$(C)new$(dY). $(B)php$(GRAY)\$$(C)new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44; N)"
+    echo "$(o 44; dY; format_string "Important: $(B)php$(GRAY)\$$(C)old$(dY) should be the best-configured PHP version on your system. $(B)php$(GRAY)\$$(C)new$(dY) will be configured based on $(B)php$(GRAY)\$$(C)old$(dY)’s setup, so $(B)php$(GRAY)\$$(C)old$(dY) doesn’t have to be the active version!" 44; N)"
+    echo "$(o 44; O; format_string "Tip: $(W)If your active ($(GRAY)latest$(N)) PHP version has not been installed$(GRAY)/$(W)updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 49; N)"
+    f
+    os; pf; B; echo -n "$ME $(C)--switch-version"; N
+    echo "$(o 44; dY; format_string "switch default php version interactively" 44; N)"
 }
 
 first_brief_help(){
-    echo " -$(Pbg; format_string "Important:$(P) The first run of this script must be done in interactive mode (without any arguments), some important checks are performed to ensure that the system get prepared for an update." 3; N)"
+    echo "$(pf; Pbg; format_string "Important:$(P) The first run of this script must be done in interactive mode (without any arguments), some important checks are performed to ensure that the system get prepared for an update." 3; N)"
     brief_help "$*"
 }
 
 sudo_message(){
     ${X[cat]} <<SUDO_MESSAGE
   $(W)You accessed this page as user $(B)root.
- $(format_string "$(W)All examples provided here are presented as if you were always running as root. However, if you're running as an unprivileged user, you'll need to specify sudo here and there. That's why sudo is still displayed here in gray color: ($(GRAY)sudo$(W)) where needed if you're not root." 2 W)
+  $(W; format_string "All examples provided here are presented as if you were always running as root. However, if you're running as an unprivileged user, you'll need to specify sudo here and there. That's why sudo is still displayed here in gray color: ($(GRAY)sudo$(W)) where needed if you're not root." 2)
 
 $(separator dP)
 
@@ -108,15 +112,15 @@ $(separator dP)
 $(q1 prompt || sudo_message)
   $(Y)This script can only work if the following requirements are met:
 
- $(format_string "$(W)1. At least one installed php version $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W), ideally fully configured and optimized, otherwise this script doesn't make much sense. The aim is to integrate the well-coordinated configuration - which you know works and has cost you much time to fine tune - into $(GRAY)*\`$(B)php$(C)<NEW>$(GRAY)\`*$(W) without much effort." 5 W)
+  $(W; format_string "1. At least one installed php version $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W), ideally fully configured and optimized, otherwise this script doesn't make much sense. The aim is to integrate the well-coordinated configuration - which you know works and has cost you much time to fine tune - into $(GRAY)*\`$(B)php$(C)<NEW>$(GRAY)\`*$(W) without much effort." 5)
 
- $(format_string "$(W)2. $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) must still be fully installed, since the settings to be migrated must be read from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W). This condition is met if you have not yet explicitly uninstalled (--purge) any $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) packages." 5 W)
+  $(W; format_string "2. $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) must still be fully installed, since the settings to be migrated must be read from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W). This condition is met if you have not yet explicitly uninstalled (--purge) any $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) packages." 5)
 
 $(separator dP)
 
   $(Y)You should know, which php-SAPI is used.
 
- $(format_string "$(GRAY)SAPI stands for \"Server API\" (API stands for \"Application Programming Interface\"). It is the mechanism that controls the interaction between the \"outside world\" and the PHP/Zend engine." 2 GRAY)
+      $(GRAY; format_string "SAPI stands for \"Server API\" (API stands for \"Application Programming Interface\"). It is the mechanism that controls the interaction between the \"outside world\" and the PHP/Zend engine." 6)
 
   $(W)These are the most important SAPIs:
 
@@ -125,67 +129,67 @@ $(separator dP)
    $(W)- term    - $(GRAY)**$(B)cli$(GRAY)**
    $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-cli$(GRAY)\`*
    $(W)- description:
-      $(format_string "$(GRAY)cli is used by PHP scripts that are called from the command line. i.e. all processes that were explicitly NOT called by the web server (cron jobs, occ commands, etc.)" 6 GRAY)
+      $(GRAY; format_string "cli is used by PHP scripts that are called from the command line. i.e. all processes that were explicitly NOT called by the web server (cron jobs, occ commands, etc.)" 6)
 
   $(dYul)${SAPIDESCR[apache2]}$(N)
 
    $(W)- term    - $(GRAY)**$(B)apache2$(GRAY)**
    $(W)- package - $(GRAY)*\`$(B)libapache2-mod-php$(C)<VER>$(GRAY)\`*
    $(W)- description:
-      $(format_string "$(GRAY)the apache2 module is the default SAPI for apache2. The downside is that it's not particularly scalable and doesn't support http2." 6 GRAY)
-      $(format_string "$(GRAY)libapache2-mod-php relies on the old but stable Multi-Processing Module (MPM) \"mpm-prefork\"." 6 GRAY)
+      $(GRAY; format_string "the apache2 module is the default SAPI for apache2. The downside is that it's not particularly scalable and doesn't support http2." 6)
+      $(GRAY; format_string "ibapache2-mod-php relies on the old but stable Multi-Processing Module (MPM) \"mpm-prefork\"." 6)
 
   $(dYul)${SAPIDESCR[fpm]}$(N)
 
    $(W)- term    - $(GRAY)**$(B)fpm$(GRAY)**
    $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-fpm$(GRAY)\`*
    $(W)- description:
-       $(GRAY)this is the default SAPI used by nginx.
-      $(format_string "$(GRAY)On apache2 php-fpm relies on the more scalable threaded MPM \"mpm-event\". Additionally it needs the apache2-modules \"proxy_fcgi\" and \"setenvif\"." 6 GRAY)
+      $(GRAY)this is the default SAPI used by nginx.
+      $(GRAY; format_string "On apache2 php-fpm relies on the more scalable threaded MPM \"mpm-event\". Additionally it needs the apache2-modules \"proxy_fcgi\" and \"setenvif\"." 6)
 
   $(W)Every SAPI has its own php.ini file:
 
       $(B)/etc/php/$(C)<VER>$(B)/$(C)<SAPI>$(B)/php.ini
 
 
- $(format_string "$(W)If your webserver is apache2, you can find out the active mpm ($(GRAY)Multi $(GRAY)Processing $(GRAY)Module$(W)) with this command call:" 2 W)
+  $(W; format_string "If your webserver is apache2, you can find out the active mpm ($(GRAY)Multi $(GRAY)Processing $(GRAY)Module$(W)) with this command call:" 2)
 
 $(G;prompt -su;B) $sudo apache2ctl -M 2>/dev/null | grep mpm
 
- $(format_string "$(W)as explained above, the \"mpm_event_module\" means that apache2 speaks via fpm, while the \"mpm_prefork_module\" indicates that the apache2 module is used for the comunication between webserver and php." 2 W)
- $(format_string "$(W)Since $(GRAY)*\`$(B)libapache2-mod-php$(C)<VER>$(GRAY)\`*$(W) and $(GRAY)*\`$(B)php$(C)<VER>$(B)-fpm$(GRAY)\`*$(W) are mutually exclusive, you should know which of both is used to uninstall the unused one." 2 W)
+  $(W; format_string "as explained above, the \"mpm_event_module\" means that apache2 speaks via fpm, while the \"mpm_prefork_module\" indicates that the apache2 module is used for the comunication between webserver and php." 2)
+  $(W; format_string "Since $(GRAY)*\`$(B)libapache2-mod-php$(C)<VER>$(GRAY)\`*$(W) and $(GRAY)*\`$(B)php$(C)<VER>$(B)-fpm$(GRAY)\`*$(W) are mutually exclusive, you should know which of both is used to uninstall the unused one." 2)
 
   $(W)this call:
 
 $(G;prompt -su;B) $ME --list-installed
 
- $(format_string "$(W)… provides a list of all installed php related packages where the active SAPI is marked if detected by this script." 2 W)
+  $(W; format_string "… provides a list of all installed php related packages where the active SAPI is marked if detected by this script." 2)
 
 $(separator dP)
 
   $(Y)You should uninstall all meta- and dependecy packages.
 
- $(format_string "$(W)Metapackages, when installed, guarantee that at least one of the four server-side versions of the PHP interpreter is installed." 2 W)
+  $(format_string "Metapackages, when installed, guarantee that at least one of the four server-side versions of the PHP interpreter is installed." 2 W)
   $(W)Removing such a package won't remove PHP from your system.
 
   $(W)Dependency packages are dependent on the latest stable PHP version.
 
- $(format_string "$(W)You will not gain complete control over the installed PHP packages and versions as long as such packages remain installed." 2 W)
+  $(W; format_string "You will not gain complete control over the installed PHP packages and versions as long as such packages remain installed." 2)
 
   $(W)this call:
 
 $(G;prompt -su;B) $ME --list-installed
 
- $(format_string "$(W)… provides a list of all installed php related packages where all SAPI, meta- and depenency packages are marked." 2 W)
+  $(W; format_string "… provides a list of all installed php related packages where all SAPI, meta- and depenency packages are marked." 2)
 
 $(separator dP)
-  $(B)Steps to be completed before running this script
+  $(B)Steps performed by the script before running an update
 $(separator dP)
 
   $(Y)Apt sources from deb.sury.org
 
- $(format_string "$(W)In order to be able to install new PHP versions, the APT sources must be expanded to include the PPA ($(GRAY)for $(GRAY)Ubuntu$(W)) or DPA ($(GRAY)for $(GRAY)Debian$(W)) from \"Debian PHP Maintainers\"." 2 W)
- $(format_string "$(W)Ondřej Surý is the maintainer of the Debian/Ubuntu packages for php, so \"Debian PHP Maintainers\" and Ondřej Surý are identical in that sense. So Ondřej Surý is not just some admin who built a few packages for some obscure period of time (as is unfortunately so often the case with ppa repositories) but rather THE source for php packages on Debian and Ubuntu Server." 2 W)
+  $(W; format_string "In order to be able to install new PHP versions, the APT sources must be expanded to include the PPA ($(GRAY)for $(GRAY)Ubuntu$(W)) or DPA ($(GRAY)for $(GRAY)Debian$(W)) from \"Debian PHP Maintainers\"." 2)
+  $(W; format_string "Ondřej Surý is the maintainer of the Debian/Ubuntu packages for php, so \"Debian PHP Maintainers\" and Ondřej Surý are identical in that sense. So Ondřej Surý is not just some admin who built a few packages for some obscure period of time (as is unfortunately so often the case with ppa repositories) but rather THE source for php packages on Debian and Ubuntu Server." 2)
 
   $(W)this call:
 
@@ -206,8 +210,8 @@ $(separator dP)
 
 $(G;prompt -su;B) $ME
 
- $(format_string "$(W)it looks for installed php-versions and installation candidates from the Apt sources. If only one php Version is installed, it will offer you to install a new version of your choice." 2 W)
-  $(W)After installation, it migrates all settings from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W):
+  $(W; format_string "it looks for installed php-versions and installation candidates from the Apt sources. If only one php Version is installed, it will offer you to install a new version of your choice." 2)
+  $(W)After installation, it migrates all settings one by one from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W):
 
     $(W)- php.ini for each SAPI
 
@@ -221,15 +225,15 @@ $(G;prompt -su;B) $ME
 
 $(G;prompt -su;B) $ME $(C)<OLD> <NEW>
 
- $(format_string "$(W)in this case it will assume $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) as refference, which does not have to be the $(C)running$(W) version. If required, it installs missing packages which are installed in $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) but not in $(GRAY)*\`$(C)<NEW>$(GRAY)\`*$(W). Then it will do the migration of all settings." 2 W)
+  $(W; format_string "in this case it will assume $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) as refference, which does not have to be the $(C)running$(W) version. If required, it installs missing packages which are installed in $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) but not in $(GRAY)*\`$(C)<NEW>$(GRAY)\`*$(W). Then it will do the migration of all settings." 2)
 
 $(separator dP)
-  $(B)Steps to be completed after running this script
+  $(B)Steps performed by the script after running an update
 $(separator dP)
 
   $(Y)'alternatives' mechanism
 
- $(format_string "$(W)after you have updated/migrated php from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) to $(GRAY)*\`$(B)php$(C)<NEW>$(GRAY)\`*$(W), you may switch $(GRAY)*\`$(B)php$(C)<NEW>$(GRAY)\`*$(W) to be the default $(GRAY)*\`$(B)php$(C)<VER>$(GRAY)\`*$(W)." 2 W)
+  $(W; format_string "after you have updated/migrated php from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) to $(GRAY)*\`$(B)php$(C)<NEW>$(GRAY)\`*$(W), you may switch $(GRAY)*\`$(B)php$(C)<NEW>$(GRAY)\`*$(W) to be the default $(GRAY)*\`$(B)php$(C)<VER>$(GRAY)\`*$(W)." 2)
 
   $(P)You can call:
 
@@ -249,7 +253,7 @@ $(G;prompt -su;B) $sudo a2disconf php$(C)<OLD>$(B)-fpm
 $(G;prompt -su;B) $sudo a2enconf php$(C)<NEW>$(B)-fpm
 $(G;prompt -su;B) $sudo systemctl restart apache2 php$(C)<NEW>$(B)-fpm
 
- $(format_string "$(W)In case you are using fpm on nginx or with a custom fpm pool, you will have to adapt the webserver config file accordingly." 2 W)
+  $(W; format_string "In case you are using fpm on nginx or with a custom fpm pool, you will have to adapt the webserver config file accordingly." 2)
 
   $(P)You can call:
 

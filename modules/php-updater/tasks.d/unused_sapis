@@ -30,15 +30,15 @@ remove_unused_sapis(){
         modstring="$(listify B ${unused_sapis[@]})"
         modstringdescr="$(listify B "${unused_sapis_descr[@]}")"
         pkgstring="$(listify B ${packages_2_purge[@]})"
-        question="Q:$(format_string "Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} package${plu#*:} $pkgstring now" 3)"
+        question="$(qpf; format_string "Do you want to remove (purge) th${plu%:*} unnecessary SAPI${plu#*:} package${plu#*:} $pkgstring now" 3)"
         kill_spinner
         separator R
         bundle echo "$(xpf; format_string "There $be $modstringdescr installed on this machine." 3;N)"
         echo "$(ipf; format_string "In most cases, th${plu%:*} SAPI${plu#*:} get installed because of a dependency package. There is not a single use case that requires th${plu%:*} SAPI${plu#*:} to operate an application like Nextcloud. $(Y)Consider removing th${plu%:*} unnecessary SAPI${plu#*:} before updating." 3;N)"
-        echo " -$(format_string "This script can remove the $modstring package${plu#*:} in a safe way." 3)"
+        echo "$(pf; format_string "This script can remove the $modstring package${plu#*:} in a safe way." 3)"
         if ask "$question" "$YES"; then
             apt_purge --yes ${packages_2_purge[@]}
-            "$ME${FLAG[forceflag]}" "json=${J[json]}" --list-installed-only
+            "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
             anykey
             return 0
         else

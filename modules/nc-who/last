@@ -17,20 +17,20 @@ nc_last(){
     local query
 
     group_query(){
-        case $DB_TYPE in
+        case ${DB[type]} in
          my) echo "
             SELECT $1.uid,
-                COALESCE($DB_U2T(CAST(p.configvalue AS integer)), 'never') AS last_login
-            FROM $DB_PREF$1 $1
-            LEFT JOIN ${DB_PREF}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
+                COALESCE(${DB[u2t]}(CAST(p.configvalue AS integer)), 'never') AS last_login
+            FROM ${DB[pref]}$1 $1
+            LEFT JOIN ${DB[pref]}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
             ;;
          pg) echo "
             SELECT $1.uid,
                 CASE WHEN p.configvalue = 'never' THEN NULL
-                ELSE $DB_U2T(CAST(p.configvalue AS integer))
+                ELSE ${DB[u2t]}(CAST(p.configvalue AS integer))
                 END AS last_login
-            FROM $DB_PREF$1 $1
-            LEFT JOIN ${DB_PREF}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
+            FROM ${DB[pref]}$1 $1
+            LEFT JOIN ${DB[pref]}preferences p ON $1.uid = p.userid AND p.appid = 'login'"
         esac
     }
 
@@ -48,18 +48,18 @@ nc_last(){
             CASE WHEN p.configvalue IS NULL THEN 1 ELSE 0 END, p.configvalue DESC"
     fi
     if ${B[trace]:-_}; then
-        echo "==TRACE=start=" >/dev/tty
-        print_funcname >/dev/tty
-        echo -n "global bool values  -" >/dev/tty
+        echo "==TRACE=start=" >$TTY
+        print_funcname >$TTY
+        echo -n "global bool values  -" >$TTY
         local iter
-        for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >/dev/tty; done; echo >/dev/tty
+        for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >$TTY; done; echo >$TTY
         unset -v iter
-        echo "Database Backend: ${DB_TYPE}sql" >/dev/tty
-        echo "==TRACE=end===" >/dev/tty
-        echo "----------" >/dev/tty
-        echo "SQL QUERY:" >/dev/tty
-        echo "----------$query;" >/dev/tty
-        echo "----------" >/dev/tty
+        echo "Database Backend: ${DB[type]}sql" >$TTY
+        echo "==TRACE=end===" >$TTY
+        echo "----------" >$TTY
+        echo "SQL QUERY:" >$TTY
+        echo "----------$query;" >$TTY
+        echo "----------" >$TTY
     else
         db_exec_ "$query"
     fi

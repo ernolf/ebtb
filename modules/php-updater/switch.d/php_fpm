@@ -88,7 +88,7 @@ switch_fpm_version(){
             ;;
         *)  bundle echo "$(ipf; format_string "$infostring" 3; N)"
             bundle echo "$(es3; Pbg; pf)This script can not (yet) switch the php version for this httpd. $(N)"
-            bundle echo "$(es3; P; format_string "- Please give me feedback on the way php is integrated into this httpd so that I can add support for ${httpd:-this webserver} in future versions of this script." 6; N)"
+            bundle echo "$(es3; P; pf; format_string "Please give me feedback on the way php is integrated into this httpd so that I can add support for ${httpd:-this webserver} in future versions of this script." 6; N)"
             exit0
     esac
     unset httpd active_httpd infostring modstring modsubstring
@@ -111,7 +111,7 @@ switch_fpm_version(){
             f
             bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} $ver_o $ver_n"; N
             f
-            bundle echo "$(es5; R; format_string ".. to ensure that all required packages for a php-fpm version switch are installed." 6; N)"
+            bundle echo "$(es6; R; format_string ".. to ensure that all required packages for a php-fpm version switch are installed." 6; N)"
             f
             bundle echo "$(es3; O)or run it now:"; N
             if ask "$(qpf)Do you want to run '$ME${FLAG[forceflag]} $ver_o $ver_n' now" "$YES"; then
@@ -127,7 +127,7 @@ switch_fpm_version(){
                 bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} $ver_o $ver_n"; N
             done
             f
-            bundle echo "$(es5; R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
+            bundle echo "$(es6; R; format_string ".. to ensure that all required packages for a version switch are installed." 6; N)"
             f
             bundle echo "$(es3; O)or run it now:"; N
 
@@ -285,7 +285,7 @@ switch_fpm_version(){
             ${X[systemctl]} restart $httpd php$ver_n-fpm
         elif [[ ! " ${fpm_switch[$httpd]} " =~ " set " ]] && [[ "${fpm_switch[$httpd]} " =~ " nok " || "${fpm_switch[$httpd]} " =~ " err " ]]; then
             [ "${fpm_switch[$httpd]}" = 'nok' ] && bundle echo "$(xpf; R; format_string "Could not find a $httpd config file containing the information for the PHP-Fast Process Manager configuration." 3; N)"
-            bundle echo "$(format_string "  I am very sory, but you will have to edit your $httpd configuration by hand this time. Please give me feedback about how you configured it." 3; N)"
+            bundle echo "$(es3; format_string "I am very sory, but you will have to edit your $httpd configuration by hand this time. Please give me feedback about how you configured it." 3; N)"
             f
             anykey
         fi

@@ -7,11 +7,11 @@ __copyright__
 __license__
 #
 
-declare -f _ &>/dev/null || _(){ false; }
+declare -f _ &>$NUL || _(){ false; }
 if (( epoch < 1737773190 )); then
-    q0(){ "$@" &>/dev/null; }
-    q1(){ "$@" >/dev/null; }
-    q2(){ "$@" 2>/dev/null; }
+    q0(){ "$@" &>$NUL; }
+    q1(){ "$@" >$NUL; }
+    q2(){ "$@" 2>$NUL; }
 fi
 
 ${BASICS_BASHLIB:-_} && return
@@ -23,8 +23,9 @@ declare invi="Invalid input."
 
 # Empty spaces
 es(){
+    (( "$1" == 0 )) && return
     printf "%*s" $1 ' '
-}; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}
+}; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}; es6(){ es 6;}
 
 # remove square brackets:
 desquare(){

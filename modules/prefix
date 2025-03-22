@@ -18,18 +18,38 @@ pf(){
     printf ' - '
 }
 
+# star (asterisk) prefix
+spf(){
+    printf ' * '
+}
+
 # Warning / Exclamation
 # ⚠️ = either '\u26A0' or '\xE2\x9A\xA0'
 xpf(){
-    R; printf '\u26A0'$(N):
+    R; printf "\u26A0$(N): "
 }
 
 # Information
 ipf(){
-    printf "I:"
+    printf 'I: '
+}
+
+# Information long
+ipfl(){
+    C; printf "info$(W): "
 }
 
 # Question
 qpf(){
     printf 'Q: '
+}
+
+# Answer
+apf(){
+    printf 'A: '
+}
+
+# Result
+rpf(){
+    printf 'R: '
 }

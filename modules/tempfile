@@ -11,54 +11,30 @@ ${TEMPFILE_BASHLIB:-_} && return
 TEMPFILE_BASHLIB=:
 
 # TODO 0 -->
-. <(lrequire binaries)
+#    . <(lrequire binaries)
 # TODO <-- 0
-# standard for root:
-: "${TD:=/tmp}"
-[[ "$TD" == '/' || ! -d "$TD" ]] && TD='/tmp'
-[ -d "$TD" ] || TD='/temp'
+. <(lrequire exit)
 
-# unprivileged users need their own writable tmp dir:
-if ! ${B[rt]}; then
-    # remove trailing slash from TD
-    TD="${TD%/}"
-    if (( $(${X[gawk]} -F/ '{print NF-1}' <<< "$TD") == 1 )) && [ -w "$TD" ]; then
-        # if TD has only one directory level and is writable, append a user-specific subdirectory
-        TD="$TD/user-${I[u]}"
-    elif [ ! -w "$TD" ]; then
-        # if TD is not writable, derive a base directory from TD and append a user-specific subdirectory
-        TD="$(${X[gawk]} -F/ '{print "/"$2}' <<< "$TD")/user-${I[u]}"
-    fi
-    # create the directory if it does not exist, with permissions 755
-    [ -d "$TD" ] || q0 ${X[mkdir]} -m 755 "$TD"
-fi
-declare ttf
-# create a temporary file in the directory TD and store its name in the variable ttf
-ttf="$(${X[mktemp]} -p "$TD")"
-if [[ -n "$ttf" && -f "$ttf" ]]; then
-    # if the temporary file exists, remove it
-    ${X[rm]} -f -- "$ttf"
-else
-    # if the temporary file was not created, print an error message
-    echo -e "\e[31mERROR: TD '$TD' is not writable by user '${I[un]}'\e[0m" >&2
-    # exit with error if not running interactively
-    [ -t 0 ] || exit 1
-fi
-unset ttf  # unset the temporary file variable
+chrf(){
+    ${X[find]} $1 -type d -exec ${X[chmod]} -f 777 {} +
+    ${X[find]} $1 -type f -exec ${X[chmod]} -f 666 {} +
+    ${B[rt]} && [[ $2 ]] && ${X[chown]} -R $2:$2 $1
+}
 
 # tempfile creation $1=u (--dry-run)
 tf(){
-    local arg t u='' mode=''
+    local arg t u='' mode='' dir=td
     for arg in $@; do
         case $arg in
             u)  u=u ;;
-      666|777)  mode=$arg
+      666|777)  mode=$arg ;;
+          shm)  dir=$arg
         esac
     done
-    t="$(${X[mktemp]} -p $TD -${u}t ${M[b]}${M[pid]}_XXXXXXXXXXXX)"
-# TODO 0 -->
+    t="$(${X[mktemp]} -p ${D[$dir]} -${u}t ${M[b]}${M[pid]}_XXXXXXXXXXXX)"
+# TODO 1 -->
 #    t="$(${X[mktemp]} -p $TD -${u}t ${M[b]:-$$}_XXXXXXXXXXXX)"
-# TODO <-- 0
+# TODO <-- 1
     if [ -z "$u" ]; then
         if [ -n "$mode" ]; then
             ${X[chmod]} $mode "$t"
@@ -66,3 +42,56 @@ tf(){
     fi
     echo "$t"
 }
+
+${FP_BASHLIB:-_} || {
+    : "${TD:=/tmp}" # if TD is empty, prefill it with /tmp
+    [[ "$TD" == '/' || ! -d "$TD" ]] && TD='/tmp' # if TD is / or not a directory we use /tmp
+    [ -d "$TD" ] || { # if after these tests, $TD is still not a directory, try the candidates
+        for x in /run/user/${I[u]} /var/tmp ~/tmp; do
+            [ -d "$x" ] && { TD="$x"; break; }
+        done
+    }
+    # remove trailing slash
+    TD="${TD%/}"
+    [ -d "$TD" ] && {
+        V[tsa]=$(${X[stat]} -c %A $TD)
+        while :; do
+            [[ $TD == */user/${I[u]} && $(${X[stat]} -c %u%g $TD) == ${I[u]}${I[g]} ]] && break  # directory is owned by the user and can be used
+            [[ $TD == */user && ${V[tsa]} == ${V[w]} ]] && { TD="$TD/${I[u]}"; break; }  # user subdirectory exists, directory can be created
+            [[ ${V[tsa]} == ${V[w]} ]] && { ${X[mkdir]} -pm 1777 $TD/user; TD=$TD/user/${I[u]}; } # user subdirectory does not exist, can be created
+            break
+        done
+    }
+    D[t]="${TD%/user*}"       # basic temp dir    /tmp                  1777 root root  exists
+    D[tu]="${D[t]}/user"      # user temp dir     /tmp/user             1777 root root  created in tempdir
+    D[tp]="${D[t]}/${M[p]}"   # project temp dir  /tmp/ebtb -           1777 root root  created in tempdir
+    D[log]="${D[tp]}/log"     # project log dir   /tmp/ebtb/log         1777 root root  created in tempdir
+    D[lu]="/run/lock/user"    # lock dir for user /run/lock/user        1777 root root  created in tempdir
+    D[vt]="/var/tmp/${M[p]}"  # /var/tmp dir      /var/tmp/ebtb         0777 root root  created in general
+    D[vtm]="${D[vt]}/modules" # /var/tmp dir      /var/tmp/ebtb/modules 1777 root root  created in general
+    D[shm]="/dev/shm/${M[p]}" # shm dir           /dev/shm/ebtb         1777 root root  created in fp
+    for x in tu:1 tp:1 log:1 lu:1 vt:0 vtm:1 shm:1; do
+        if [ -d "${D[${x%:*}]}" ]; then
+            ${X[chmod]} -f ${x#*:}777 ${D[${x%:*}]}
+            ${B[rt]} && ${X[chown]} -f 0:0 ${D[${x%:*}]}
+        else
+            q2 ${X[mkdir]} -pm ${x#*:}777 ${D[${x%:*}]}
+        fi
+    done
+}
+
+# create the directory if it does not exist, with permissions 700
+[ -d "${D[t]}/user-${I[u]}" ] && q0 ${X[mv]} "${D[t]}/user-${I[u]}" $TD
+[ -d "$TD" ] || ${X[mkdir]} -pm 700 "$TD"
+${X[chmod]} 0700 "$TD"
+# create a temporary file in the directory TD and store its name in the variable ttf
+declare ttf="$(${X[mktemp]} -p "$TD")"
+# if the temporary file exists, remove it
+[[ -n "$ttf" && -f "$ttf" ]] && cleanup "$ttf" || {
+    # if the temporary file was not created, print an error message
+    echo -e "\e[31mERROR: TMPDIR '$TD' is not writable by user '${I[un]}'\e[0m" >&2
+    exit 1
+}
+# unset the temporary file variable
+unset ttf
+D[td]=$TD

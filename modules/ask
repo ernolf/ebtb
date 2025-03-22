@@ -63,7 +63,7 @@ ask(){
     lda=${#noansi_d_answer}
     ly=${#noansi_yes}
     ln=${#noansi_no}
-    if grep -qsw 'hide' "$CURSOR"; then
+    if grep -qsw 'hide' "${F[cursor]}"; then
         cursor='hide'
     else
         cursor='show'
@@ -82,7 +82,7 @@ ask(){
     while :; do
         printf "$question?$newline($yes or $no) [$d_answer]: "
         read -r answer
-        mh "A: ${answer:="$noansi_d_answer"}"
+        mh "$(apf)${answer:="$noansi_d_answer"}"
         if [ "$answer" = "$(desquare "${noansi_yes,,}")" ] || [ "$answer" = "$(insquare "${noansi_yes,,}")" ]; then
             r=0
             break

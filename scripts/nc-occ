@@ -32,55 +32,50 @@ contribute_(){
 }; donate_(){ contribute_;}
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
-declare JSON_FILE arg
-declare -i JSON_TTL
+# Directory containing the JSON output from 'occ list --format=json'
+[[ -d ${D[occ]:=${D[vt]}/nc-occ-data} ]] || ${C[mw]} "${D[occ]}"
+q0 ${X[chown]} -R "${NC[u]}":"${NC[u]}" "${D[occ]}"
 
-# File containing the JSON output from 'occ list --format=json'
-JSON_FILE="$TD/$MS-tmp/occ_commands.json"
 # time in seconds during which the JSON object file is not updated
-JSON_TTL=300 # <- do not move this
+T[jttl]=300 # <- do not move this
+
 # Bools to include all options and help option
 B[include_all_options]=_
 B[include_help]=_
 B[help]=_
 
 # Check for the arguments to include all options or just the help option
-for arg in "$@"; do
-    case "$arg" in
-        -u|--update)      JSON_TTL=0               ;;
-        -a|--all_options) B[include_all_options]=: ;;
-        --show_help)      B[include_help]=:        ;;
-        -h|--help)        B[help]=: JSON_TTL=$(${X[grep]} -oP '^JSON_TTL=\K\d+' $MP)
-                          break
+for x in "$@"; do
+    case "$x" in
+        -u|--update) T[jttl]=0                ;;
+   -a|--all_options) B[include_all_options]=: ;;
+        --show_help) B[include_help]=:        ;;
+          -h|--help) B[help]=: T[jttl]=$(${X[grep]} -oP '^T\[jttl\]=\K\d+' $MP)
+                     break
     esac
 done
 
 help_(){
     cat << HELP
 
-    Simply run
+    $(C)Simply run$(N)
 
-        $ME
+        $(O)$ME$(N)
 
-    to create your occ commands interactively.
+    $(G)to create your occ commands interactively.$(N)
 
-    Possible options:
+    $(C)Possible options:$(N)
 
-        -h | --help
-                show this help message and exit
-        -a | --all_options
-                include the unimportant options
-                help, quiet, verbose, version, ansi, no-ansi, no-interaction,
-                no-warnings
-        -u | --update
-                force an immediate update of the JSON object file
-              Note: That file's TTL is $JSON_TTL seconds.
-                    If any apps have been installed, removed, or changed within
-                    this period, this option must be used to ensure that these
-                    changes are taken into account.
-        --show_help
-                show the help output from the commands instead of brief usage
-                message
+        $(O)-h $(GRAY)| $(O)--help$(N)
+                $(o 17; GRAY; format_string "show this help message and exit" 17; N)
+        $(O)-a $(GRAY)| $(O)--all_options$(N)
+                $(o 17; GRAY; format_string "include the unimportant options $(W)help$(GRAY), $(W)quiet$(GRAY), $(W)verbose$(GRAY), $(W)version$(GRAY), $(W)ansi$(GRAY), $(W)no-ansi$(GRAY), $(W)no-interaction$(GRAY) and $(W)no-warnings" 17; N)
+        $(O)-u $(GRAY)| $(O)--update$(N)
+                $(o 17; GRAY; format_string "force an immediate update of the JSON object file" 17; N)
+              $(Yi)Note: $(o 20; Y; format_string "The TTL of the JSON object file is $(C)${T[jttl]}$(Y) seconds. It contains the output of $(GRAY)\`$(C)occ list --format=json$(GRAY)\`$(Y), which in turn is used as the basis for the command-line structure of the occ commands created by this script." 20; N)
+                    $(o 20; Y; format_string "If apps were installed, removed, or modified or the debug level in the config.php was changed within this time period, this option must be used to ensure that these changes are taken into account." 20; N)
+        $(O)--show_help$(N)
+                $(o 17; GRAY; format_string "show the help output from the commands instead of brief usage message" 17; N)
 
 HELP
 exit0
@@ -89,15 +84,16 @@ ${B[help]} && help_
 
 create_json_object(){
     local -i joe
-    [ -d "${JSON_FILE%/*}" ] || ${X[mkdir]} -p "${JSON_FILE%/*}"
-    [ -f "$JSON_FILE" ] && joe=$(${X[stat]} -c %Z $JSON_FILE)
-    if (( T[rte] - joe > JSON_TTL)); then
-        occ list --format=json > "$JSON_FILE"
+    [[ -f "${F[occj]:=${D[occ]}/occ_commands.json}" ]] && joe=$(${X[stat]} -c %Z ${F[occj]})
+    if (( T[rte] - joe > T[jttl] )); then
+        occ list --format=json > "${F[occj]}"
     fi
+    ${X[chown]} "${NC[u]}":"${NC[u]}" "${F[occj]}"
+    ${X[chmod]} -f 666 "${F[occj]}"
 }
 
 # Function to display a menu and select an option
-show_menu() {
+show_menu(){
     local -i i number_of_options level=$1
     shift
     local -a options=("$@")
@@ -106,9 +102,9 @@ show_menu() {
     echo "Please choose an option:"
     f
     for i in "${!options[@]}"; do
-        pf; printf "%2d. %s\n" $((i + 1)) "${options[i]}"
+        pf; printf "%2d. %s\n" $(( i + 1 )) "${options[i]}"
     done
-    if ((level > 1)); then
+    if (( level > 1 )); then
         prompt="Your choice ($(r2r), $(q2q))"
     else
         prompt="Your choice ($(q2q))"
@@ -118,6 +114,7 @@ show_menu() {
     case "$choice" in
         r)  if (( level > 1 )); then
                 $CMA
+                exit 0
             fi
             ;;
         q)  exit0
@@ -128,7 +125,7 @@ show_menu() {
 }
 
 # Function to parse the JSON file and create the menu
-parse_json() {
+parse_json(){
     local -i level
     local special_commands selected_command choice description usage
     local -a special_options general_options options
@@ -136,13 +133,13 @@ parse_json() {
 
     if (( level == 1 )); then
         # List main categories, including special commands first
-        mapfile -t special_options< <(${X[jq]} -r '.commands[].name' "$JSON_FILE" | ${X[grep]} -E "^($special_commands)$" | ${X[sort]})
-        mapfile -t general_options< <(${X[jq]} -r '.commands[].name | split(":")[0]' "$JSON_FILE" | ${X[grep]} -Ev "^($special_commands)$" | ${X[grep]} -v '^_' | ${X[sort]} -u)
+        mapfile -t special_options< <(${X[jq]} -r '.commands[].name' "${F[occj]}" | ${X[grep]} -E "^($special_commands)$" | ${X[sort]})
+        mapfile -t general_options< <(${X[jq]} -r '.commands[].name | split(":")[0]' "${F[occj]}" | ${X[grep]} -Ev "^($special_commands)$" | ${X[grep]} -v '^_' | ${X[sort]} -u)
         options=("${special_options[@]}" "${general_options[@]}")
     else
         # List commands of the selected category
         local category="$2"
-        mapfile -t options< <(${X[jq]} -r --arg category "$category" '.commands[] | select(.name | startswith($category + ":")) | .name' "$JSON_FILE" | ${X[grep]} -v '^_' | ${X[sort]} -u)
+        mapfile -t options< <(${X[jq]} -r --arg category "$category" '.commands[] | select(.name | startswith($category + ":")) | .name' "${F[occj]}" | ${X[grep]} -v '^_' | ${X[sort]} -u)
     fi
 
     show_menu $level "${options[@]}"
@@ -168,10 +165,10 @@ parse_json() {
             occ "$selected_command" --help | ${X[gawk]} '{print "   " $0}'
         else
             # brief usage message
-            description="$(${X[jq]} -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .description' "$JSON_FILE")"
-            usage="$(${X[jq]} -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .usage[]' "$JSON_FILE")"
-            o3; GRAY; echo "Description$(N; o 14; format_string "$description" 15)"
-            o3; GRAY; echo "Usage$(N; o 14; format_string "$usage" 15)"
+            description="$(${X[jq]} -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .description' "${F[occj]}")"
+            usage="$(${X[jq]} -r --arg command "$selected_command" '.commands[] | select(.name == $command) | .usage[]' "${F[occj]}")"
+            o3; GRAY; echo "Description$(N; o 15; format_string "$description" 15)"
+            o3; GRAY; echo "Usage$(N; o 15; format_string "$usage" 15)"
         fi
 #        parse_arguments "$selected_command"
         parse_options "$selected_command"
@@ -179,18 +176,18 @@ parse_json() {
 }
 
 # Function to parse and select arguments
-parse_arguments() {
+parse_arguments(){
     local command arguments description is_required
     local -a selected_options selected_arguments
     command=$1
     shift
     selected_options=("$@")
 
-    mapfile -t arguments < <(${X[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.arguments | to_entries[] | .key' "$JSON_FILE")
+    mapfile -t arguments < <(${X[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.arguments | to_entries[] | .key' "${F[occj]}")
 
     for argument in "${arguments[@]}"; do
-        description=$(${X[jq]} -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].description' "$JSON_FILE")
-        is_required=$(${X[jq]} -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].is_required' "$JSON_FILE")
+        description=$(${X[jq]} -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].description' "${F[occj]}")
+        is_required=$(${X[jq]} -r --arg command "$command" --arg argument "$argument" '.commands[] | select(.name == $command) | .definition.arguments[$argument].is_required' "${F[occj]}")
 
         separator
         pf; echo "Argument$(o 15)$argument"
@@ -215,7 +212,7 @@ parse_arguments() {
 }
 
 # Function to display and select options
-parse_options() {
+parse_options(){
     local command unimportant_options option description accept_value default
     local -a options selected_options
     command=$1
@@ -223,16 +220,16 @@ parse_options() {
 
     if "${B[include_all_options]}"; then
         # Include all options
-        mapfile -t options < <(${X[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "$JSON_FILE")
+        mapfile -t options < <(${X[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "${F[occj]}")
     else
         # Exclude common options
-        mapfile -t options < <(${X[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "$JSON_FILE" | ${X[grep]} -Ev "^($unimportant_options)$")
+        mapfile -t options < <(${X[jq]} -r --arg command "$command" '.commands[] | select(.name == $command) | .definition.options | to_entries[] | .key' "${F[occj]}" | ${X[grep]} -Ev "^($unimportant_options)$")
     fi
 
     for option in "${options[@]}"; do
-        accept_value=$(${X[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].accept_value' "$JSON_FILE")
-        description=$(${X[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].description' "$JSON_FILE")
-        default=$(${X[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].default' "$JSON_FILE")
+        accept_value=$(${X[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].accept_value' "${F[occj]}")
+        description=$(${X[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].description' "${F[occj]}")
+        default=$(${X[jq]} -r --arg command "$command" --arg option "$option" '.commands[] | select(.name == $command) | .definition.options[$option].default' "${F[occj]}")
 
         separator
         pf; echo "Option$(o 15)--$option"
@@ -262,7 +259,7 @@ parse_options() {
 }
 
 # Function to execute the full command
-execute_command() {
+execute_command(){
     local command options
     command="$1"
     shift

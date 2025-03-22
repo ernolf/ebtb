@@ -74,10 +74,10 @@ minify() {
         # replace triple semicolons with a double semicolon
         ${X[sed]} 's/;;;/;;/g' |\
         # replace the @HEREDOC@ placeholder with an actual HEREDOC block
-        ${X[sed]} 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/'
+        ${X[sed]} 's/@HEREDOC@/{ ${C[c]} <<MC\n$mc\nMC\n}/'
     else
 #        ${X[cat]} "$1"
-        ${X[sed]} 's/@HEREDOC@/{ cat <<MC\n$mc\nMC\n}/' "$script"
+        ${X[sed]} 's/@HEREDOC@/{ ${C[c]} <<MC\n$mc\nMC\n}/' "$script"
     fi
 }
 
