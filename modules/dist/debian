@@ -31,6 +31,7 @@ DEBIAN_VERSIONS=(
     [sid]="sid"
     [forky]="14"
     [trixie]="13" # https://www.debian.org/releases/trixie/
+    [lory]="12" # Parrot Security 6.[23] (lorikeet) is based on debian stable
     [bookworm]="12" # https://www.debian.org/releases/bookworm/
     [bullseye]="11" # https://www.debian.org/releases/bullseye/
     [buster]="10" # https://www.debian.org/releases/buster/

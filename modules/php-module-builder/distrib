@@ -25,7 +25,12 @@ check_debian(){
     local -l vercode chan
     local -A bool
     case "$OS_ID" in
-        debian|raspbian) ver="${DEBIAN_VERSIONS[$OS_VERSION_CODENAME]}"
+        debian|raspbian)
+            ver="${DEBIAN_VERSIONS[$OS_VERSION_CODENAME]}"
+            if [ "$OS_VERSION_CODENAME" = 'lory' ]; then
+                echo ", which is"
+                o3; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver (${DEBIAN_VERSIONS_DATA[$ver]%%:*})$(lB)"
+            fi
         ;;
         *)  [ -n "$OS_DEBIAN_CODENAME" ] && ver="${DEBIAN_VERSIONS[$OS_DEBIAN_CODENAME]}" || ver="$OS_VERSION_ID"
             echo ", which is"

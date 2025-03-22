@@ -338,6 +338,19 @@ mark_checked(){
 #    UBUNTU_CODENAME=noble
 #    LOGO=start-here-kde-neon
 
+#    ## Parrot
+#    PRETTY_NAME="Parrot Security 6.3 (lorikeet)"
+#    NAME="Parrot Security"
+#    VERSION_ID="6.3"
+#    VERSION="6.3 (lorikeet)"
+#    VERSION_CODENAME=lory
+#    ID=debian
+#    HOME_URL="https://www.parrotsec.org/"
+#    SUPPORT_URL="https://www.parrotsec.org/community/"
+#    BUG_REPORT_URL="https://gitlab.com/parrotsec/"
+
+
+
 #    ### Alpine Linux
 #    ## common:
 #    NAME="Alpine Linux"
