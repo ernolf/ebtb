@@ -29,10 +29,10 @@ cleanup_nc_monitor(){
     ) &
 
     kill -TERM $1 &>$NUL
+    killall watch &>$NUL
     wait -f $1 &>$NUL
     if [ "$2" = "cls" ]; then
         ${X[reset]} -IQ
-#        ${X[clear]}
     fi
     if [ "$3" = exit ]; then
         f
@@ -142,7 +142,7 @@ nc_monitor(){
 #            watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
 # TODO <-- 1
             ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > "$watch_command_tempfile"
-. ${D[li]}/binaries
+. "${F[binary]}"
 declare -A B DB
 B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB[strg]="$(${X[sed]} 's/\$/\\$/' <<< "${DB[strg]}")" DB[exec]="${DB[exec]}"
 # TODO 2 -->

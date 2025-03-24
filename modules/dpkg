@@ -171,8 +171,8 @@ apt_remove(){
         yes=' -y'
         shift
     fi
-    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
     ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@ || { something_went_wrong "apt-get remove returned an error"; exit1; }
 }
 
@@ -184,8 +184,8 @@ apt_purge(){
         yes=' -y'
         shift
     fi
-    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
     ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@ || { something_went_wrong "apt-get purge returned an error"; exit1; }
 }
 

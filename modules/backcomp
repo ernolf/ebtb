@@ -21,6 +21,12 @@ fi
 [[ "$(type -t q2)" == function ]] || q2(){ "$@" 2>/dev/null; }
 [ "$(q2 declare -p TD)" = 'declare -n TD="TMPDIR"' ] || declare -n TD=TMPDIR
 
+for x in jq xmlstarlet ansifilter; do
+    if ! [[ "${X[$x]}" =~ /$x ]]; then
+        q0 command -v $x && X[$x]="${X[env]} LC_MESSAGES=C $(command -v $x)" &>$NUL
+    fi
+done
+
 # Migrate legacy variables into new variable names
 
 declare -A D F J M T V
@@ -59,7 +65,6 @@ declare -A D F J M T V
 : "${T[rte]:=$rte}"
 : "${T[mje]:=$mje}"
 : "${T[mjne]:=$mjne}"
-
 
 [ -z "$HOME" ] && eval HOME=~
 [[ "${D[li]}" = "${D[vt]}/modules/${M[c]}" && -d "$HOME/.${M[p]}" ]] && ${X[rm]} -fr -- "$HOME/.${M[p]}"
@@ -154,6 +159,10 @@ if ${B[rt]}; then
     if [[ "${D[li]}" =~ ebtb ]] && ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ernolf' /usr/local/bin/; then
         [ -d "/usr/local/include/ernolf" ] && ${X[rm]} -r "/usr/local/include/ernolf"
     fi
+fi
+
+if (( M[e] < 1742900000 )); then
+    PHP_VERSION=${PHP[v]}}
 fi
 
 q0 declare -f lrequire || lrequire(){ req $@;}

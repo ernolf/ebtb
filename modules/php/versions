@@ -13,16 +13,9 @@ VERSIONS_BASHLIB=:
 . <(lrequire interval)
 . <(lrequire php/sury)
 
-# globals
-globalvars="PHP_VERSION PHPVREGEX"
-for var in $globalvars; do q2 declare -g "$var" || declare "$var"; done
-unset -v var globalvars
-
 globalarrays="EXISTING CAN"
 for array in $globalarrays; do q2 declare -ga "$array" || declare -a "$array"; done
 unset -v array globalarrays
-
-PHPVREGEX='php(5\.6|[78]\.[01234])'
 
 no_php(){
     f; R
@@ -39,8 +32,8 @@ no_php(){
     fi
 }
 
-[ -n "${X[php]}" ] && PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
-mh "PHP_VERSION: $PHP_VERSION" &
+[ -n "${X[php]}" ] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
+mh "PHP[v]: ${PHP[v]}" &
 
 existing_php_versions(){
     ${X[cat]} <<PHP_VERSIONS
@@ -71,9 +64,6 @@ PHP_VERSIONS
 }
 mapfile -t EXISTING< <(existing_php_versions | ${X[sed]} 's/^\s*//')
 
-readonly PHPVREGEX PHP_VERSION
-readonly -a EXISTING
-
 versions_iterate(){
     local job php_version
     job="$1"
@@ -83,7 +73,7 @@ versions_iterate(){
 }
 
 populate_can_array(){
-    mapfile -t CAN< <(${X[apt-cache]} search "^$PHPVREGEX$"|${X[gawk]} '{print substr($1,4,3)}'|${X[sort]} -ru)
+    mapfile -t CAN< <(${X[apt-cache]} search "^php${PHP[vregex]}$"|${X[gawk]} '{print substr($1,4,3)}'|${X[sort]} -ru)
 }
 populate_can_array
 
@@ -159,7 +149,7 @@ list_candidates() {
         if does_exist_ "${CAN[i]}" 0; then
             (( i )) && line '-' GRAY 2/78
             eol="$(end_of_ life ${CAN[i]})"
-            if [ "$PHP_VERSION" = "${CAN[i]}" ];then
+            if [ "${PHP[v]}" = "${CAN[i]}" ];then
                 line ' ' bGbg 1/80 a0
                 o2; bGbg; echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
             elif [[ "$(${X[phpquery]} -V)" =~ ${CAN[i]} ]];then

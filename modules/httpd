@@ -11,8 +11,8 @@ ${HTTPD_BASHLIB:-_} && return
 HTTPD_BASHLIB=:
 
 # TODO 0 -->
-. <(lrequire binaries)
-. <(lrequire basics)
+#. <(lrequire binaries)
+#. <(lrequire basics)
 # TODO <-- 0
 # TODO 1 -->
 #        apache2     /etc/apache2            /lib/systemd/system/apache2.service
@@ -206,7 +206,7 @@ readlink_if_(){
 
 a2serverroot(){
     [ -n "${X[apache2ctl]}" ] || return
-    unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[awk]} '/ServerRoot/{print $NF}')
+    unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[gawk]} '/ServerRoot/{print $NF}')
 }
 
 load_server_status

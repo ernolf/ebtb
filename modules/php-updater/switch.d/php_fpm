@@ -99,7 +99,7 @@ switch_fpm_version(){
     local v ver_o key
     local -i i
     local -a fpm_installed fpm_alternatives
-    mapfile -t fpm_installed< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
+    mapfile -t fpm_installed< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/ {gsub(/^php|-.*$/, "", $2); print $2}')
     mapfile -t fpm_alternatives< <(for v in ${fpm_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
     # return with signal 2 if no fpm installed at all
     (( ${#fpm_installed[@]} )) || return 2
@@ -187,7 +187,7 @@ switch_fpm_version(){
     # nginx
     if (( "${HTTPD[nginx]}" > 2 )); then
         for socket in $(fpm_sockets); do
-            pv="$(echo $socket | ${X[grep]} -Eo "${PHPVREGEX#php}")"
+            pv="$(echo $socket | ${X[grep]} -Eo "${PHP[vregex]}")"
             [ "$pv" != "$ver_n" ] && continue
             mapfile -t conffiles< <(iterate_conf_files_ ngx detect_matching_nginx_php_fpm_ configfiles "$socket" | ${X[sort]} -u)
             if (( ${#conffiles[@]} )); then
@@ -212,12 +212,12 @@ switch_fpm_version(){
 
     ## if still not set sockets
     for socket in $(fpm_sockets); do
-        pv="$(echo $socket | ${X[grep]} -Eo "${PHPVREGEX#php}")"
+        pv="$(echo $socket | ${X[grep]} -Eo "${PHP[vregex]}")"
         [ "$pv" = "$ver_n" ] && continue
         if (( ${HTTPD[apache2]} > 2 )); then
             if q0 ${X[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
                 if ${X[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
-                    if [ "$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/'$PHPVREGEX'-fpm/ { if (match($NF, /php([0-9]+\.[0-9]+)-fpm/, arr)) { print arr[1] } }')" = "$pv" ]; then
+                    if [ "$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/ { if (match($NF, /php([0-9]+\.[0-9]+)-fpm/, arr)) { print arr[1] } }')" = "$pv" ]; then
                         if php_fpm_conf_ switch2 $ver_n; then
                             bundle echo "$(ipf; G; format_string "Successfully switched the SetHandler FastCGI configuration in apache2 from PHP-FPM version $(Y)$pv$(G) to $(Y)$ver_n$(G)" 3; N)"
                             ${X[systemctl]} restart apache2 php$ver_n-fpm

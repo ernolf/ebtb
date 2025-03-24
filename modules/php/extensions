@@ -145,7 +145,7 @@ detect_and_assign_extensions(){
     assign(){
         local dpkg_package phpregex
         if [ "${search:-}" = 'apache2' ]; then
-            phpregex="libapache2-mod-$PHPVREGEX"
+            phpregex="libapache2-mod-php${PHP[vregex]}"
         else
             phpregex="php"
         fi
@@ -227,7 +227,7 @@ extension_is_(){
         dependency)
             q2 ${X[dpkg-query]} -f'${Description}' -W $pkg | ${X[grep]} -iqsw "this package is a dependency package" && return $?
             if [[ "$pkg" =~ php- ]]; then
-                q2 ${X[dpkg-query]} -f'${Depends}' -W $pkg | ${X[grep]} -Eiqsw "$PHPVREGEX-${pkg#php-}$" && return $?
+                q2 ${X[dpkg-query]} -f'${Depends}' -W $pkg | ${X[grep]} -Eiqsw "php${PHP[vregex]}-${pkg#php-}$" && return $?
             fi
             return 1
             ;;
@@ -250,7 +250,7 @@ extension_is_(){
 
 is_sapi_true_(){
     local pkg sapi
-    for pkg in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$PHPVREGEX'/{print $2}'); do
+    for pkg in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'/{print $2}'); do
         sapi=''
         if sapi=$(extension_is_ sapi "$pkg"); then
             if [ "${sapi%:*}" = "$1" ];then
@@ -274,7 +274,7 @@ ext_state(){
             return
             ;;
         fix)
-            for mod in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*'$PHPVREGEX'/{print $2}'); do
+            for mod in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*php'${PHP[vregex]}'/{print $2}'); do
                 for pv in $(${X[phpquery]} -V); do
                     [ "${mod%-*}" = "php$pv" ] && mod="${mod#*-}" || continue
                     registry_dir="$vlpm/$pv/registry"

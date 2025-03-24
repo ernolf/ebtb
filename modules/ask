@@ -128,7 +128,7 @@ confirm_choice() {
 #                ;;
 #            1)  cursor_ show
 #                f
-#                php_a2module_2_fpm "$PHP_VERSION"
+#                php_a2module_2_fpm "${PHP[v]}"
 #                apt_remove 'libapache2-mod-php*'
 #                "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
 #                anykey
@@ -136,7 +136,7 @@ confirm_choice() {
 #                ;;
 #            2)  cursor_ show
 #                f
-#                php_fpm_2_a2module $PHP_VERSION
+#                php_fpm_2_a2module ${PHP[v]}
 #                apt_remove 'php*-fpm'
 #                "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
 #                anykey

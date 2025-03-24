@@ -17,7 +17,7 @@ switch_a2module_version(){
 
     if (( ${HTTPD[apache2]} > 2 )); then
         apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
-        mapfile -t a2_installed< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
+        mapfile -t a2_installed< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')
         mapfile -t a2_alternatives< <(for v in ${a2_installed[@]}; do [ "$v" != "$ver_n" ] && echo "$v"; done)
 
         (( ${#a2_installed[@]} )) || return 2
@@ -81,7 +81,7 @@ switch_a2module_version(){
             fi
         else
             for cf in "${A2CONFFILES[@]##*/}"; do 
-                if [[ "$cf" =~ $PHPVREGEX\.load ]]; then 
+                if [[ "$cf" =~ php${PHP[vregex]}\.load ]]; then 
                     v="${cf#php}"
                     v="${v%.load}"
                     if [[ "${A2CONFFILES[@]}" =~ php$v\.conf && "${A2CONFFILES[@]}" =~ php$v\.load ]]; then

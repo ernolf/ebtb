@@ -24,11 +24,11 @@ replace_aim(){ # replace admin installed modules
                 done
             fi
         else
-            ini_dir="/etc/php/$PHP_VERSION/mods-available"
+            ini_dir="/etc/php/${PHP[v]}/mods-available"
             ${X[pecl]} uninstall ${mods[@]%(*}
             for mod in ${mods[@]%(*}; do
                 ${X[pecl]} uninstall $mod # for the sake of stability, if something went wrong 2 lines before
-                ${X[phpdismod]} -p -v $PHP_VERSION -s ALL $mod
+                ${X[phpdismod]} -p -v ${PHP[v]} -s ALL $mod
                 ext_state purge $mod $ver
                 rm -f "$ini_dir/$mod.ini"
             done
@@ -69,13 +69,13 @@ replace_aim(){ # replace admin installed modules
                 fi
                 kill_spinner
             else
-                local -n C4EIBY4_pv=C4EIBY4_${PHP_VERSION//./}
+                local -n C4EIBY4_pv=C4EIBY4_${PHP[v]//./}
                 for i in ${!C4EIBY4_pv[@]}; do
                     pkgmod="${C4EIBY4_pv[i]}"
                     if (( $(${X[pecl]} list | ${X[grep]} -wc "${pkgmod#*:}") )); then
                         (( pecli++ ))
                         pkgs+=("${pkgmod%:*}")
-                        mods+=("${pkgmod#*:}(php$PHP_VERSION)")
+                        mods+=("${pkgmod#*:}(php${PHP[v]})")
                     fi
                 done
                 unset -n C4EIBY4_pv

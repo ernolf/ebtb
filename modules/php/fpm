@@ -18,8 +18,8 @@ fi
 
 fpm_conf_regex(){
     [ -n "${X[apache2ctl]}" ] || return
-    fpm_conf="$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/'$PHPVREGEX'-fpm/{print $NF}' | ${X[sed]} -E "s/$PHPVREGEX/$PHPVREGEX/")"
-    [ -n "$fpm_conf" ] || fpm_conf="$(unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[awk]} '/ServerRoot/{print $NF}'))/conf-enabled/$PHPVREGEX-fpm\.conf"
+    fpm_conf="$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/{print $NF}' | ${X[sed]} -E "s/${PHP[vregex]}/${PHP[vregex]}/")"
+    [ -n "$fpm_conf" ] || fpm_conf="$(unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[gawk]} '/ServerRoot/{print $NF}'))/conf-enabled/php${PHP[vregex]}-fpm\.conf"
     printf %s "$fpm_conf"
 }
 
@@ -147,7 +147,7 @@ fpm_listen(){
 
 fpm_sockets(){
     if [ "$1" = 'versions' ]; then
-        ${X[ss]} -lx | ${X[gawk]} '/fpm/{print $5}' | ${X[grep]} -Eo "${PHPVREGEX#php}"
+        ${X[ss]} -lx | ${X[gawk]} '/fpm/{print $5}' | ${X[grep]} -Eo "${PHP[vregex]}"
     else
         ${X[ss]} -lx | ${X[gawk]} '/fpm/{print $5}'
     fi

@@ -138,7 +138,7 @@ no_candidate(){
 }
 no_higher_candidate(){
     f
-    bundle echo "$(pf)The installed PHP version ($PHP_VERSION) is the highest available from your configured apt sources."
+    bundle echo "$(pf)The installed PHP version (${PHP[v]}) is the highest available from your configured apt sources."
     list_candidates
     call_me candidates
     anykey_noquit
@@ -287,7 +287,7 @@ fi
 
 if ${B[supported]}; then
     if [ 0$(${X[phpquery]} -V | ${X[wc]} -w) -eq 1 ]; then
-        [ "$(${X[phpquery]} -V)" = "$PHP_VERSION" ] || version_mismatch
+        [ "$(${X[phpquery]} -V)" = "${PHP[v]}" ] || version_mismatch
         OLD="$(${X[phpquery]} -V)"
         separator
         f

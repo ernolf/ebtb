@@ -9,6 +9,7 @@ placeholders=(
     copyright
     license
     scriptname
+    libname
     debug
     when
     whoami_whereami
@@ -19,12 +20,13 @@ placeholders=(
     module_loader
     module_integrity
     nextcloud_updater
+    used_binaries
 )
 
 # binaries for build process
 declare binary
 declare -a build_binaries
-build_binaries=(basename cat chown cp diff dirname find gawk grep gpg head jq mkdir php rm sed seq sha256sum shfmt stat sudo tail)
+build_binaries=(basename cat chown cp diff dirname find gawk grep gpg head jq mkdir php rm sed seq sha256sum shfmt sort stat sudo tail)
 unset BINARIES
 declare -gA BINARIES 2>/dev/null || declare -A BINARIES
 BINARIES[env]="$(command -v env) LC_MESSAGES=C"
@@ -42,4 +44,5 @@ _(){ false; }
 q0(){ "$@" &>/dev/null; }
 q1(){ "$@" >/dev/null; }
 q2(){ "$@" 2>/dev/null; }
-
+# printf not sorted line by line
+p_nosort(){ printf '%s\n' "$@"; }

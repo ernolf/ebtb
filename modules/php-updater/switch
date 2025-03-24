@@ -85,7 +85,7 @@ switch_default_version(){
 #                            anykey_noquit
                             separator
                             q0 apt-mark manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
-                            set_selections 'ph(ar|p)' 'manual' "${PHPVREGEX#php}" "${php_versions[$key-1]}"
+                            set_selections 'ph(ar|p)' 'manual' "${PHP[vregex]}" "${php_versions[$key-1]}"
                             cleanup_and_fix_alternatives # afterwards  # repair broken alternatives, remove not existing alternatives
                             mapfile -t selections < <(list_alternatives)
                             bundle echo "$(es3; dY)alternatives system is now switched to:"; N

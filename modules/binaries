@@ -10,60 +10,106 @@ __license__
 ${BINARIES_BASHLIB:-false} && return
 BINARIES_BASHLIB=:
 
+__libname__
+
 [[ "$-" =~ x ]] && { set +x; B[binaries_debugx]=:; }
+: ${NUL:=/dev/null}
 
-declare binary
-declare -a binaries
-
-declare -gA BINARY 2>${NUL:=/dev/null} || declare -A BINARY
-
-BINARY[env]="$(command -v env)"
-
-for binary in gawk sed; do
-    if [ -x "$(command -v $binary)" ]; then
-        BINARY[$binary]="${BINARY[env]} LC_MESSAGES=C $(command -v $binary)" &>$NUL
-    else
-        echo -e "\e[31mERROR: no '$binary' binary or '$binary' not executable\e[0m" > ${TTY:=/dev/tty}
-        [ -t 0 ] || exit 1
-    fi
-done
+declare -a paths used_binaries binaries
+declare -gA BINARY 2>$NUL || declare -A BINARY
+declare -gA PHP 2>$NUL || declare -A PHP
+PHP[vregex]='(5\.6|[78]\.[01234])'
+PHP[vextglob]='*@(*5\.6*|*[78]\.[01234]*)*'
 
 reload_binaries(){
+    [ -f "${F[binary]:=${D[vt]}/binary}" ] && ${BINARY[rm]} -f -- "${F[binary]}"
     FILTER_BASHLIB=_ BINARIES_BASHLIB=_
     . <(lrequire filter)
 }
 
-glob_path(){
-    local path binary
-    local -a paths results
+map_paths(){
     # standard paths take precedence
     PATH=$(printf "%s" "/usr/sbin:/usr/bin:/sbin:/bin:$PATH" | ${BINARY[gawk]} -v RS=: -v ORS=: '!seen[$0]++' | ${BINARY[sed]} 's/::/:/g;s/:$//')
     mapfile -t paths< <(printf "%s\n" ${PATH//:/ })
-    shopt -s nullglob
+}
+
+shopt -s nullglob
+nullglob_path(){
+    local path binary
+    local -a results
+    map_paths
     for path in "${paths[@]}"; do
         for binary in "$path"/*; do
             results+=("$binary")
         done
     done
-    shopt -u nullglob
     printf '%s\n' "${results[@]}"
 }
+shopt -u nullglob
 
-mapfile -t binaries < <(glob_path)
-for binary in "${binaries[@]}"; do
-    [ -z "${BINARY[${binary##*/}]}" ] || continue
-    [ -x "$binary" ] || continue
-    BINARY[${binary##*/}]="${BINARY[env]} LC_MESSAGES=C $binary" &>$NUL
+shopt -s extglob
+extglob_path(){
+    local path binary
+    local -a results
+    map_paths
+    for path in "${paths[@]}"; do
+        for binary in "$path"/${PHP[vextglob]}; do
+            [[ -e "$binary" ]] && results+=("$binary")
+        done
+    done
+    printf '%s\n' "${results[@]}"
+}
+shopt -u extglob
+
+: "${F[binary]:=${D[vt]}/binary}"
+[ -f "${F[binary]}" ] && . "${F[binary]}"
+
+if [[ -z "${BINARY[stat]}" || $(${BINARY[stat]} -c %Y "${F[binary]}" 2>$NUL) -lt ${M[binaries_e]} ]]; then
+    BINARY[env]="$(command -v env)"
+    for x in gawk sed; do
+        if [ -x "$(command -v $x)" ]; then
+            BINARY[$x]="${BINARY[env]} LC_MESSAGES=C $(command -v $x)" &>$NUL
+        else
+            echo -e "\e[31mERROR: no '$x' binary or '$x' not executable\e[0m" > ${TTY:=/dev/tty}
+            [ -t 0 ] || exit 1
+        fi
+    done
+
+__used_binaries__
+
+    shopt -s nullglob
+    mapfile -t binaries < <(nullglob_path)
+    shopt -u nullglob
+
+    for x in "${binaries[@]}"; do
+        [ -z "${BINARY[${x##*/}]}" ] || continue
+        [ -x "$x" ] || continue
+#        [[ " ${used_binaries[@]} " =~ " ${x##*/} " || "${x##*/}" =~ ^php(-config|-fpm|ize)?${PHP[vregex]}$ ]] || continue
+        [[ " ${used_binaries[@]} " =~ " ${x##*/} " ]] || continue
+        BINARY[${x##*/}]="${BINARY[env]} LC_MESSAGES=C $x" &>$NUL
+    done
+    # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
+    [ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
+fi
+
+# allways load actual php versions because they may have been newly installed
+shopt -s extglob
+mapfile -t binaries < <(extglob_path)
+shopt -u extglob
+
+for x in "${binaries[@]}"; do
+    [ -z "${BINARY[${x##*/}]}" ] || continue
+    [ -x "$x" ] || continue
+    [[ "${x##*/}" =~ ^php(-config|-fpm|ize)?${PHP[vregex]}$ ]] || continue
+    BINARY[${x##*/}]="${BINARY[env]} LC_MESSAGES=C $x" &>$NUL
 done
-unset -v binary binaries
-
-# xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
-[ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
-
+unset -v used_binaries binaries
+declare -p BINARY > "${F[binary]}"
+${BINARY[chmod]} 666 "${F[binary]}"
 
 # Create a nameref for BINARY named X
 declare -n X=BINARY
-# readonly -A X # this is declared as readonly after the depency_check passed
+declare -p X >>  "${F[binary]}"
 
 [[ "$(type -t req)" == function ]] && . <(req backcomp 2>$NUL)
 

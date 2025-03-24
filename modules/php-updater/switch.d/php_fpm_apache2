@@ -44,7 +44,7 @@ php_fpm_sites_available_conf_apache2(){
         bundle echo "$(es3)Processing pool: [$pool]..."
 
         sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
-        sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${X[sed]} -E "s/${PHPVREGEX#php}/${PHPVREGEX#php}/g; s/\./\\\\./g")"
+        sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${X[sed]} -E "s/${PHP[vregex]}/${PHP[vregex]}/g; s/\./\\\\./g")"
         mapfile -t sock_o< <(
             q2 ${X[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${X[grep]} -Ehos "^[^#]*${sock_regex[$pool]}" {} + | \
             ${X[grep]} -Eos "${sock_regex[$pool]}" | \

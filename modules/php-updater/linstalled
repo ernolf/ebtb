@@ -35,10 +35,10 @@ list_installed_sapi(){
     $q0 detect_and_assign_extensions assign apache2
     populate_httpd_ active
     ${bool[quiet]} || for i in "${!HTTPD_ACTIVE[@]}"; do mh "active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
-    for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=${PHPVREGEX//\./\\.} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
+    for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=php${PHP[vregex]//\./\\.} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
         SAPI_A2[$pv]='installed'
     done
-    for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=${PHPVREGEX//\./\\.} '/^[hiu]i.*'$PHPVREGEX'-fpm/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
+    for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=php${PHP[vregex]//\./\\.} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
         SAPI_FPM[$pv]='installed'
     done
     if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && (( ${#SAPI_A2[@]} )); then
@@ -166,7 +166,7 @@ list_installed(){
         elif sapi=$(extension_is_ sapi "$pkg"); then
             sockets=($(${X[ss]} -lx | ${X[gawk]} '/'$pkg'/{print $5}'))
             O; printf "SAPI "; N
-        elif [[ "$pkg" =~ $PHPVREGEX- ]]; then
+        elif [[ "$pkg" =~ php${PHP[vregex]}- ]]; then
             o2; pf
         elif extension_is_ dependency "$pkg"; then
             if rdepends -q "$pkg"; then
@@ -305,7 +305,7 @@ list_installed(){
                 o5; B; echo "for this $(Y)php$pv$(B) module${plu#*:} installed by admin there exist${plu%:*} packaged version${plu#*:}:$(N)"
                 line '-' P 5/75
                 for i in ${!C4EIBY4_pv[@]}; do
-#                    [ "$pv" = "$PHP_VERSION" ] && (( aimct++ ))
+#                    [ "$pv" = "${PHP[v]}" ] && (( aimct++ ))
                     (( aimct++ ))
                     pkgmod="${C4EIBY4_pv[i]}"
                     pkg=${pkgmod%:*} mod=${pkgmod#*:}

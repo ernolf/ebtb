@@ -62,6 +62,9 @@ placeholder_replace(){
         scriptname)
             echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
+        libname)
+            echo "M[${name}_e]=$epoch"
+            ;;
         debug)
             if [ "${channel:-prod}" = "test" ]; then
                 ${X[cat]} "blocks/debug"
@@ -105,8 +108,13 @@ placeholder_replace(){
             echo "## nextcloud updater$minified ->"
             tools/minify "blocks/nextcloud_updater"
             echo '## <- nextcloud updater end #'
+            ;;
+        used_binaries)
+            local -a ub
+            source <(${X[tail]} -n +14 modules/httpd)
+            mapfile -t ub< <((${X[grep]} -Roh 'X\[[^]]\+\]' | ${X[sed]} 's/X\[//;s/\]//;s/^xmls$/xmlstarlet/;s/^\(env\|gawk\|sed\)$//' | ${X[grep]} -v '\$'; p_nosort "${!HTTPD[@]}") | ${X[sort]} -u)
+            echo "    used_binaries=(${ub[@]})" | ${X[sed]} 's/( /(/'
     esac
 }
 
 placeholder_replace $placeholder
-

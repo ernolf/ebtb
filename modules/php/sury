@@ -176,8 +176,8 @@ need_sury_repo(){
                 os; echo "This script can add the right repo to your apt sources."
                 fix_yourself_if_fails
                 if ask "$(qpf)Do you want to add sury repo now" "$YES"; then
-                    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-                    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+                    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+                    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                     if dpkg_min_version apt 2.4; then
                         add_repository_deb822 "$id" "$codename"
                     else
@@ -210,8 +210,8 @@ need_sury_repo(){
                     os; echo "This script can replace the http URIs with the new https URIs for you."
                     fix_yourself_if_fails
                     if ask "$(qpf)Do you want to replace http URIs with https URIs now" "$YES"; then
-                        [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-                        [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+                        [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+                        [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                         if (nonullglob "/etc/apt/sources.list.d/*\.list" || nonullglob "/etc/apt/sources.list.d/*\.sources"); then
                             for aptsource_file in /etc/apt/sources.list.d/*\.{list,sources}; do
                                 if [ -f "$aptsource_file" ]; then
@@ -277,8 +277,8 @@ need_sury_repo(){
                 fix_yourself_if_fails
                 if ask "$(qpf)Do you want to replace $wrong_codename with $codename in sury apt-source file now" "$YES"; then
                     bool[success]=_
-                    [[ -n "${X[php]}" && -z "$PHP_VERSION" ]] && declare -g PHP_VERSION="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-                    [ -z "$PHP_VERSION" ] || switch_php_to_ "$PHP_VERSION"
+                    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+                    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                     if nonullglob "/etc/apt/sources.list.d/*\.list"; then
                         for aptsource_file in /etc/apt/sources.list.d/*\.list; do
                             if [ -f "$aptsource_file" ]; then

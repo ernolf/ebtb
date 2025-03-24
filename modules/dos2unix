@@ -40,11 +40,11 @@ dos2unix_recursive(){
     dir="${1%/}"
     [ -d "$dir" ] || return 1
     if [ -n "${X[dos2unix]}" ]; then
-#        mapfile -t files< <(${X[find]} "$dir/" -type f -exec ${X[dos2unix]} -id {} \; | ${X[awk]} '$1 != 0 { print $2 }')
+#        mapfile -t files< <(${X[find]} "$dir/" -type f -exec ${X[dos2unix]} -id {} \; | ${X[gawk]} '$1 != 0 { print $2 }')
         mapfile -d $'\0' -t files< <(
             ${X[find]} "$dir/" -type f -print0 | \
             ${X[xargs]} -0 ${X[dos2unix]} -id | \
-            ${X[awk]} '$1 != 0 { printf "%s\0", $2 }'
+            ${X[gawk]} '$1 != 0 { printf "%s\0", $2 }'
         )
     else
         mapfile -d $'\0' -t files< <(${X[find]} "$dir/" -type f -print0)

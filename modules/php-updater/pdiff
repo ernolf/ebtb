@@ -48,7 +48,7 @@ packages_diff(){
         done
     fi
     for pkg in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${X[sed]} "s/php/php$2/"); do
-        if echo "$pkg" | ${X[grep]} -Eqsvw "^$PHPVREGEX$"; then
+        if echo "$pkg" | ${X[grep]} -Eqsvw "^php${PHP[vregex]}$"; then
             q0 apt_exist "$pkg" && echo $pkg
         fi
     done

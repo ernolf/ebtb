@@ -69,38 +69,49 @@ dependency_check(){
                 "apt-rdepends#apt-rdepends#Recursively lists package dependencies"
                 "sponge#moreutils#additional Unix utilities"
                 "dos2unix#dos2unix#Convert text file line endings between CRLF and LF"
+                "update-ca-certificates#ca-certificates#Common CA certificates"
+                "ccdiff#ccdiff#Colored Character Diff"
 # TODO <-- 2
                 "less#less#A terminal pager similar to more"
                 "ss#iproute2#Networking and traffic control tools"
                 "phpquery#php-common#Common files for PHP packages"
                 "lsb_release#lsb-release#Tool to detect the Linux standard base version"
-                "update-ca-certificates#ca-certificates#Common CA certificates"
-                "ccdiff#ccdiff#Colored Character Diff"
                 "ss#iproute2#Networking and traffic control tools"
                 "file#file#Detecting the file type using magic numbers"
+                "diff#diffutils#File comparison utilities"
             )
     esac
     c2=18 c3=34
     mapfile -t dependencies< <(p_sort "${dependencies[@]}")
     for dependency in ${dependencies[@]%%#*}; do
 #        if [ -z "${X[$dependency]}" ]; then
-        if ! [[ "${X[$dependency]}" =~ $dependency ]]; then
-            case "$dependency" in
-                ansifilter)
-                    if [[ "$(type -t apt_exist)" == function ]]; then
-                        apt_exist "$dependency" && mis+=("$dependency")
-                    fi
-                    ;;
-                *)  if ${X[dpkg]} -l | ${X[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
-                        if (( M[e] > 1737549000 )); then
-                            R; bundle echo "  The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found in the path"
-                            R; bundle echo "  You should fix that first!"; N
-                            anykey
+        if ! [[ "${X[$dependency]}" =~ /$dependency ]]; then
+            if q0 command -v $dependency; then
+                X[$dependency]="${X[env]} LC_MESSAGES=C $(command -v $dependency)" &>$NUL
+            else
+                case "$dependency" in
+                    ansifilter)
+                        if [[ "$(type -t apt_exist)" == function ]]; then
+                            apt_exist "$dependency" && mis+=("$dependency")
                         fi
-                    else
-                        mis+=("$dependency")
-                    fi
-            esac
+                        ;;
+                    *)  if ${X[dpkg]} -l | ${X[grep]} -qs "^[hiu]i.*\s$(a_fld dependencies '#' "$dependency" 2)\s"; then
+                            if (( M[e] > 1737549000 )); then
+                                f 2
+                                bundle echo "$(es2; R; format_string "The '$(a_fld dependencies '#' "$dependency" 2)' package seams to be installed but the '$dependency' binary could not be found by the script, that should be fixed first!" 2; N)"
+                                f
+                                es2; W; bundle echo "Try:"; N
+                                f
+                                es4; GRAY; bundle echo "sudo$(Yi) apt-get install --reinstall $(a_fld dependencies '#' "$dependency" 2)"; N
+                                f
+                                bundle echo "$(es2; W; format_string ".. and if that does not succeed, it could be a bug, which will be fixed as soon as possible. Try to run the script later again or open an issue on https://github.com/ernolf/ebtb/issues" 2; N)"
+                                exit1
+                            fi
+                        else
+                            mis+=("$dependency")
+                        fi
+                esac
+            fi
         fi
     done
     if (( ${#mis[@]} )); then
@@ -155,7 +166,5 @@ dependency_check(){
             exit1
         fi
     fi
-    # declare the binaries array as readonly.
-    readonly -A X
 }
 dependency_check

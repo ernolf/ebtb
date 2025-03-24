@@ -59,7 +59,7 @@ change_sapi(){
                 kill_spinner
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "The '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)php-fpm$(N) seems not to be connected." 3)"
-                ${bool[alt]} || { bundle echo "$(ipf; B; format_string "php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$PHPVREGEX'-fpm/{print $2}')"), $(message_ no_switch) '$(dY)${SAPIDESCR[fpm]}$(N)'." 3)"; }
+                ${bool[alt]} || { bundle echo "$(ipf; B; format_string "php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/{print $2}')"), $(message_ no_switch) '$(dY)${SAPIDESCR[fpm]}$(N)'." 3)"; }
                 pf; Y; echo "Since php-fpm still consumes resources despite not being connected, you should either:"; N
                 f
                 bundle echo "$(es 10; button 1; pf)completely remove php*-fpm"
@@ -201,7 +201,7 @@ change_sapi(){
                 kill_spinner
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "The '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)libapache2-mod-php$(N) seems to be inactive." 3)"
-                ${bool[alt]} || { bundle echo "$(ipf; B; format_string "libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-'$PHPVREGEX'/{print $2}' | ${X[sort]})"), $(message_ no_switch) '$(dY)${SAPIDESCR[apache2]}$(N)'." 3)"
+                ${bool[alt]} || { bundle echo "$(ipf; B; format_string "libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/{print $2}' | ${X[sort]})"), $(message_ no_switch) '$(dY)${SAPIDESCR[apache2]}$(N)'." 3)"
                 }
                 message_ yse
                 bundle echo "$(es 10; button 1; pf)completely remove libapache2-mod-php* (recommended)"
@@ -505,7 +505,7 @@ change_sapi(){
                                     ;;
                                 1)  cursor_ show
                                     f
-                                    php_a2module_2_fpm "$PHP_VERSION"
+                                    php_a2module_2_fpm "${PHP[v]}"
                                     apt_remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
@@ -513,7 +513,7 @@ change_sapi(){
                                     ;;
                                 2)  cursor_ show
                                     f
-                                    php_fpm_2_a2module $PHP_VERSION
+                                    php_fpm_2_a2module ${PHP[v]}
                                     apt_remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
