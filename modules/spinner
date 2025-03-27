@@ -19,15 +19,45 @@ SPINNER_BASHLIB=:
 F[spinner_pid]="${D[shm]}/spinner.pid"
 F[spinner_state]="$(tf 666 shm)"
 
+
 # Function to display the spinning animation
 spinner(){
+    # If in verbose/trace/debug mode, print message and return immediately
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
-    [ -f "${F[spinner_pid]}" ] && return 0
+
+    # Check if spinner is already running by verifying the PID file
+#    [ -f "${F[spinner_pid]}" ] && return 0
+    if [[ -f "${F[spinner_pid]}" ]]; then
+        local existing_pid
+        read -r existing_pid < "${F[spinner_pid]}"
+        if kill -0 "$existing_pid" &>$NUL; then
+            # Spinner already running, do not start another instance
+            return 0
+        fi
+    fi
+    echo $BASHPID > "${F[spinner_pid]}"
+
     local cursor_status color spinr spinl
-    local -i L R prog dir pos marg max_cols
-    max_cols=$(max_cols)
-    (( max_cols > 80 )) && max_cols=80
-    echo $BASHPID > ${F[spinner_pid]}
+    local -i L R pos dir prog
+
+    color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
+    shift
+
+    L=0 R=$(max_cols)
+
+    # Load spinner state if available; else initialize
+    if [[ -f ${F[spinner_state]} ]] && (( $(( $(now) - $(stat -c %Y ${F[spinner_state]}) )) < 2 )); then
+        read pos dir prog < "${F[spinner_state]}"
+        (( dir )) || dir=1  # Ensure dir is NOT 0, must be either 1 or -1
+    else
+        pos=$L
+        dir=1
+        prog=0
+    fi
+
+    # re create the PID file after the spiner state is loaded, to not kill the process before, to prevent steping up multiple lines
+    echo $BASHPID > "${F[spinner_pid]}"
+
     cursor_status=''
     if [ -f "${F[cursor]}" ]; then
         if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
@@ -35,36 +65,16 @@ spinner(){
         fi
     fi
     cursor_ hide # hide cursor
+    echo -n "$cursor_status" > "${F[cursor]}"
+
     tput rmam   # Disable automatic line wrapping
 
-    color="${1:-GRAY}" spinr='-\|/' spinl='/|\-'
-    shift
-
-    if (( $(${X[tput]} cols) > 90 )); then
-        marg=10
-    elif (( 80 > $(${X[tput]} cols) && $(${X[tput]} cols) > max_cols )); then
-        marg=$(( $(${X[tput]} cols) - max_cols ))
-    else
-        marg=0
-    fi
-
-    L=0
-    R=max_cols
-
-    # Load spinner state if available; else initialize
-    if [[ -f ${F[spinner_state]} ]] && (( $(( $(now) - $(stat -c %Y ${F[spinner_state]}) )) < 2 )); then
-        read pos dir prog < "${F[spinner_state]}"
-    else
-        pos=$L
-        dir=1
-        prog=0
-    fi
-
-    (( dir )) || dir=1 # dir must be either 1 or -1 and never 0
-
-    echo "$cursor_status" > "${F[cursor]}"
     $color
     (( $# )) && echo "$@"
+
+    # re create the PID file after the message is echoed, to not kill the process before, to prevent steping up multiple lines
+    echo $BASHPID > "${F[spinner_pid]}"
+
     while :; do
         (( pos += dir ))
         (( prog++ ))
@@ -83,37 +93,65 @@ spinner(){
             printf "\r%-${pos}s%s %s" "" "${spinr:$prog:1}" ""
         fi
 
-        # Clear current line and print spinner at current position
+        # Save spinner state to file
         echo "$pos $dir $prog" > "${F[spinner_state]}"
         ${X[sleep]} .04
+        # exit if pid file is missing
+        [ -f "${F[spinner_pid]}" ] || kill -TERM $BASHPID ${M[pid]}
     done
     N
 }
 
 # kill and clean up  spinner:
 kill_spinner(){
+    # there is nothing to kill while in verbose/trace/debug mode
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 0
-    local -i ct=0
+
+    local cursor_status
+    local -i ct pid
+
+    cursor_status='show'
+
+    # Wait until the spinner PID file exists (max. ~500ms wait)
+    ct=0
     until [[ -f "${F[spinner_pid]}" ]]; do
-        (( ct > 20 )) && return 0
+        (( ct > 200 )) && return 0
         (( ct++ ))
         ${X[sleep]} 0.001
     done
-    [[ -f "${F[spinner_pid]}" ]] || return 0
-    local cursor
-    local -i pid
-    pid="$(${X[cat]} "${F[spinner_pid]}")"
-    cursor='show'
+
+#    pid="$(${X[cat]} "${F[spinner_pid]}")"
+    read -r pid < "${F[spinner_pid]}"
+    (( pid )) || return 1
     if [[ -f "${F[cursor]}" ]]; then
         if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
-            cursor='hide'
+            cursor_status='hide'
         fi
     fi
-    if kill $pid &>$NUL; then
-        N
-        tput smam   # Re-enable automatic line wrapping
-        te0
-        cursor_ "$cursor"
+
+    # Attempt graceful termination: send SIGTERM to the spinner process.
+    kill "$pid" &>$NUL
+
+    # Wait until the process terminates (max ~5 seconds)
+    local wait_timeout=50
+    while kill -0 "$pid" &>$NUL && (( wait_timeout > 0 )); do
+        ${X[sleep]} 0.1
+        (( wait_timeout-- ))
+    done
+
+    # If process is still alive, force kill it with SIGKILL.
+    if kill -0 "$pid" &>$NUL; then
+        kill -9 "$pid" &>$NUL
+        ${X[sleep]} 0.1
     fi
+
+    # Final reset actions:
+    N                        # Reset any ansi color code
+    tput smam                # Re-enable automatic line wrapping
+    te0                      # Move one line up, deleting each line
+    cursor_ "$cursor_status" # Restore original cursor state
+
+    # Remove the PID file
     cleanup "${F[spinner_pid]}"
+    return 0
 }
