@@ -13,46 +13,27 @@ NEXTCLOUD_BASHLIB=:
 . <(lrequire php/version)
 . <(require nc/nextcloud_aio)
 
-declare -A NC
-NC[d]=$NC_DIR
+# array with latest versions from end of life platforms
+q2 declare -ga LATEST_EOL || declare -a LATEST_EOL
+LATEST_EOL=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 28.0.14)
 
-if ${B[aio]}; then
-    N[d]="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
-    NC[cd]="${NC[d]}/config" # NC_CDIR
-else
-    # detect location of config.php
-    if [ -d "${NC[d]}" ]; then
-        NC[du]=$(${X[stat]} -c %U ${NC[d]})
-        NC[dg]=$(${X[stat]} -c %G ${NC[d]})
-        if q2 cd ${NC[d]}; then
-            NC[cd]=$(q2 ${X[php]} -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");')
-            cd
-            # pick out NC[u]
-            if (( $(q2 ${X[stat]} -c %u ${NC[cd]}/config.php) )); then
-                NC[u]="$(${X[stat]} -c %U ${NC[cd]}/config.php)"
-            fi
-        elif [[ "${NC[du]}" = root && "${NC[dg]}" != root ]]; then
-            NC[u]=${NC[dg]}
-        fi
-    fi
-    # if NC[u] still unknown, try these fallbacks:
-    [ -n "${NC[u]}" ] || NC[u]="$(${X[ps]} -o user $(${X[pgrep]} -f "php|apache2|httpd|nginx") | ${X[gawk]} 'NR>1' | ${X[sort]} -u | ${X[grep]} -v root)"
-    [ -n "${NC[u]}" ] || NC[u]="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/User:/ { print $3 }')"
-
-    # only load firstrun module if needed
-    if [ ! -d "${NC[d]}" ]; then
-        . <(req nc/first_run)
-        first_run
-    elif [[ "${I[un]}" != "${NC[u]}" && ! -r "${NC[d]}" ]]; then
-        su_do "u=NC[u]"
-    elif [ ! -r "${NC[d]}/lib/base.php" ]; then
-        . <(req nc/first_run)
-        first_run
-    fi
-fi
+nc_version_(){
+    local version_php
+    version_php="$2"
+    case "$1" in
+      long) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php"
+            ;;
+     short) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php"
+            ;;
+       key) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php"
+            ;;
+    string) ${X[gawk]} -F\' '/\$OC_VersionString =/{print $2}' "$version_php"
+            ;;
+       tag) ${X[gawk]} -F\' '/\$OC_VersionString/{gsub(/ /,"");$2=tolower($2);print $2}' "$version_php"
+    esac
+}
 
 config2json(){
-
     jq_filter(){
 # TODO 1 -->
 # as oneliner:
@@ -100,6 +81,66 @@ nc_configkey_exist_(){
 #    return $?
 }
 
+[ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
+q2 declare -p NC | ${X[grep]} -qs 'declare -A' || declare -A NC
+
+if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z "${NC[dg]}" || -z "${NC[u]}" || -z "${NC[vphp]}" ]]; then
+    if ${B[aio]}; then
+        N[d]="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
+        NC[cd]="${NC[d]}/config" # NC_CDIR
+        NC[dd]="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
+    else
+        [ -d "${NC[d]}" ] || NC[d]=$NC_DIR
+
+        # detect location of config.php
+        if [ -d "${NC[d]}" ]; then
+            NC[du]=$(${X[stat]} -c %U ${NC[d]})
+            NC[dg]=$(${X[stat]} -c %G ${NC[d]})
+            if q2 cd ${NC[d]}; then
+                NC[cd]=$(q2 ${X[php]} -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");')
+                cd
+                # pick out NC[u]
+                if (( $(q2 ${X[stat]} -c %u ${NC[cd]}/config.php) )); then
+                    NC[u]="$(${X[stat]} -c %U ${NC[cd]}/config.php)"
+                fi
+            elif [[ "${NC[du]}" = root && "${NC[dg]}" != root ]]; then
+                NC[u]=${NC[dg]}
+            fi
+        fi
+
+        # if NC[u] still unknown, try these fallbacks:
+        [ -n "${NC[u]}" ] || NC[u]="$(${X[ps]} -o user $(${X[pgrep]} -f "php|apache2|httpd|nginx") | ${X[gawk]} 'NR>1' | ${X[sort]} -u | ${X[grep]} -v root)"
+        [ -n "${NC[u]}" ] || NC[u]="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/User:/ { print $3 }')"
+
+        # only load firstrun module if needed
+        if [ ! -d "${NC[d]}" ]; then
+            . <(req nc/first_run)
+            first_run
+        elif [[ "${I[un]}" != "${NC[u]}" && ! -r "${NC[d]}" ]]; then
+            su_do "u=NC[u]"
+        elif [ ! -r "${NC[d]}/lib/base.php" ]; then
+            . <(req nc/first_run)
+            first_run
+        fi
+
+        if [ -z "${NC[dd]}" ]; then
+            if nc_configkey_exist_ datadirectory; then
+                NC[dd]="$(nc_configkey datadirectory)"
+            elif [ -d "${NC[d]}/data" ]; then
+                NC[dd]="${NC[d]}/data"
+            else
+                NC[dd]=""
+            fi
+        fi
+    fi
+    NC[vphp]="${NC[d]}/version.php"
+fi
+
+[ "$NC_DIR" = "${NC[d]}" ] || setvdir v "${NC[d]}"
+
+[ -n "${NC[github_raw]}" ] || NC[github_raw]='https://raw.githubusercontent.com/nextcloud'
+
+# occ
 if ${B[aio]}; then
     occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@; }
 else
@@ -120,40 +161,6 @@ else
     fi
 fi
 
-#q2 declare -g NC_DATADIR || declare NC_DATADIR = NC[dd]
-if ${B[aio]}; then
-    NC[dd]="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
-elif nc_configkey_exist_ datadirectory; then
-    NC[dd]="$(nc_configkey datadirectory)"
-elif [ -d "${NC[d]}/data" ]; then
-    NC[dd]="${NC[d]}/data"
-else
-    NC[dd]=""
-fi
-
-NC[github_raw]='https://raw.githubusercontent.com/nextcloud'
-
-# array with latest versions from end of life platforms
-q2 declare -ga LATEST_EOL || declare -a LATEST_EOL
-LATEST_EOL=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 28.0.14)
-
-nc_version_(){
-    local version_php
-    version_php="$2"
-    case "$1" in
-      long) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php"
-            ;;
-     short) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php"
-            ;;
-       key) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php"
-            ;;
-    string) ${X[gawk]} -F\' '/\$OC_VersionString =/{print $2}' "$version_php"
-            ;;
-       tag) ${X[gawk]} -F\' '/\$OC_VersionString/{gsub(/ /,"");$2=tolower($2);print $2}' "$version_php"
-    esac
-}
-
-NC[vphp]="${NC[d]}/version.php"
 NC[version_long]="$(nc_version_ long "${NC[vphp]}")"
 NC[version]="$(nc_version_ short "${NC[vphp]}")"
 NC[key]="$(nc_version_ key "${NC[vphp]}")"
@@ -161,3 +168,8 @@ NC[version_string]="$(nc_version_ string "${NC[vphp]}")"
 #NC[version_tag]="$(tolower "${NC[version_string]// /}")"
 NC[version_tag]="$(nc_version_ tag "${NC[vphp]}")"
 NC[min_version]="${LATEST_EOL[0]}"
+
+declare -p NC > "${F[nc]}"
+${X[chown]} "${NC[u]}":"${NC[u]}" "${F[nc]}"
+${X[chmod]} 666 "${F[nc]}"
+
