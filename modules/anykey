@@ -16,15 +16,16 @@ anykey(){
     aim="$1"
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
+        cursor_status='show'
         if [ -f "${F[cursor]}" ]; then
-            cursor_status="$(< "${F[cursor]}")"
-        else
-            cursor_status=''
+            if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
+                cursor_status='hide'
+            fi
         fi
         p="Press $(lG)any key$(N) to ${aim:-continue}$(GRAY) or $(q2q;N)"
         cursor_ hide
         read -rsn 1 -p "$p"  choice
-        cursor_ ${cursor_status:-show}
+        cursor_ $cursor_status
         if [ "$choice" = "q" ]; then
             f
             exit0
@@ -49,15 +50,16 @@ anykey_noquit(){
     aim="$1"
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
+        cursor_status='show'
         if [ -f "${F[cursor]}" ]; then
-            cursor_status="$(< "${F[cursor]}")"
-        else
-            cursor_status=''
+            if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
+                cursor_status='hide'
+            fi
         fi
         p="Press $(lG)any key$(N) to ${aim:-continue} "
         cursor_ hide
         read -rsn 1 -p "$p"  dummy
-        cursor_ ${cursor_status:-show}
+        cursor_ $cursor_status
         te1
     else
         unset ANYKEY_BASHLIB

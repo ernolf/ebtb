@@ -42,8 +42,8 @@ summary(){
     else
         echo "no matching apps"
     fi
-    line '-' GRAY 80
-    line '=' N 80
+    line '-' GRAY a
+    line '=' N a
 }
 
 all_apps(){

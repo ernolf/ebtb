@@ -1,3 +1,5 @@
+# hide the cursor
+printf '%b' '\e[?25l'
 declare A CMA MD ME MP MS NUL=/dev/null REQ TTY=/dev/tty x
 declare -a modules tdc bools args tntd jnr
 # asociative arrays: B = bools, C = commands, D = dirs, F = files, I = user/group, J = json, M = me, T = time, V = vars

@@ -43,8 +43,8 @@ switch_default_version(){
     # update-alternatives
 #    cleanup_and_fix_alternatives # before  # repair broken alternatives, remove not existing alternatives
     mapfile -t selections < <(list_alternatives)
-    echo "$(pf; P; format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the $(W)Debian alternatives system$(P). All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision. Therefore you can select the actually active version as well here. In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$ME${FLAG[forceflag]} \$old \$new$(P), where $(C)\$old$(P) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(P) should be the version that you want to switch to here and now." 3)"
-    echo "$(o3; format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3; N)"
+    line '=' P 2/a b1
+    echo -e "\n$(pf; P; format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the $(W)Debian alternatives system$(P)." 3; N)\n$(o3; dP; format_string "All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision." 3; N)\n$(o3; dP; format_string "In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$ME${FLAG[forceflag]} \$old \$new$(dP), where $(C)\$old$(dP) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(dP) should be the version that you want to switch to here and now." 3; N)"
     f
     bundle echo "$(es3; dY)this is how the alternatives system is configured at present:"; N
     ${X[sleep]} .1
@@ -53,16 +53,20 @@ switch_default_version(){
     for i in ${!selections[@]}; do
         o3; pf; lG; echo "${selections[i]}"; N
     done
+    line '=' P 2/a b1
+    anykey_noquit
+    echo -e "\n$(pf; P; format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. $(dP)However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3; N)"
     f
-    bundle echo "$(es3; dY)and this is how php is connected to the httpd:"; N
+    bundle echo "$(es3; dY)this is how php is connected to the httpd at present:"; N
     ${X[sleep]} .1
     haul printf list_installed_sapi quiet
     f
     list_installed_sapi
     N
-    line '=' P 2/78 b1
+    line '=' P 2/a b1
+    anykey_noquit
     f
-    bundle echo "$(pf; Y)Switch default php version to:"
+    bundle echo "$(pf; Y)Switch the default alternatives version for php to:"
     for i in ${!php_versions[@]}; do
         f
         bundle echo "$(es 10; button $((i + 1)); Y) - php${php_versions[i]} $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${php_versions[i]} 5); Y)"
@@ -149,7 +153,7 @@ switch_default_version(){
                             f
                             list_installed_sapi
                             N
-                            line '=' P 2/78 b1
+                            line '=' P 2/a b1
                             f
                             anykey_noquit
                             N

@@ -13,11 +13,6 @@ DIFF_BASHLIB=:
 . <(lrequire fstring)
 
 diff_other_files(){
-    f; os; echo "Based on this diff, this script would suggest this:"
-    line '=' P 2/78 b1  # old config:
-    line '-' GRAY 2/78
-    os; GRAY; echo "old:$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
-    line '-' GRAY 2/78
     local opath npath plu be
     local -i count c2 c3
     opath="$FILE" npath="${FILE//$OLD/$NEW}" c2=20 c3=25
@@ -36,37 +31,43 @@ diff_other_files(){
     echo "$(o3; W; format_string "This is the detected diff $(GRAY)(the $(dY)@VERSION@$(GRAY) string here is just used as neutral placeholder in order to only filter out the differences that matter)$(W). The line$plu preceded with '$(R)<$(W)' (red) $be from $(R)$opath$(W), while the coresponding line$plu from $(G)$npath$(W) $be preceded with '$(G)>$(W)' (green) :" 3; N)"
     f
     ${X[diff]} --color <(${X[sed]} "s/$OLD/@VERSION@/" "$opath") <(${X[sed]} "s/$NEW/@VERSION@/" "$npath")
+    f
+    o3; echo "Based on this diff, this script would suggest this:"
+    line '=' P 2/a b1  # old config:
+    line '-' GRAY 2/a
+    o3; GRAY; echo "old:$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
+    line '-' GRAY 2/a
     GRAY; echo -n "-->  begin"
     line "  -->" GRAY 14
     cat $npath
     GRAY; echo -n "<--   end "
     line "  <--" GRAY 14
-    line '=' P 2/78  # new config draft:
-    line '-' GRAY 2/78
-    os; GRAY; echo "draft: (not yet written to file)$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
-    line '-' GRAY 2/78
+    line '=' P 2/a  # new config draft:
+    line '-' GRAY 2/a
+    o3; GRAY; echo "draft: (not yet written to file)$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
+    line '-' GRAY 2/a
     GRAY; echo -n "-->  begin"
     line "  -->" GRAY 14
     ${X[sed]} "s/$OLD/$NEW/g" $opath
     GRAY; echo -n "<--   end "
     line "  <--" GRAY 14
-    line '=' P 2/78 a2
-    echo "$(pf; format_string "Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter [yes]." 3)"
-    line '=' P 2/78 b1
+    line '=' P 2/a a2
+    echo "$(pf; W; format_string "Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter $(Gbg) yes $(W)." 3; N)"
+    line '=' P 2/a b1
     if ask "$(qpf)Apply changes to $npath as suggested" "$YES"; then
         ${X[sed]} "s/$OLD/$NEW/g" $opath > $npath
-        line '-' GRAY 2/78
-        os; GRAY; echo "new:$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
-        line '-' GRAY 2/78
+        line '-' GRAY 2/a
+        o3; GRAY; echo "new:$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
+        line '-' GRAY 2/a
         GRAY; echo -n "-->  begin"
         line "  -->" GRAY 14
         cat $npath
         GRAY; echo -n "<--   end "
         line "  <--" GRAY 14
-        line '=' P 2/78
-        os; echo "Changes written to disk"
+        line '=' P 2/a
+        o3; echo "Changes written to disk"
     else
-        os; C; echo "$npath$(N) not changed.$(f; os)You can call this script again or edit $(C)$FILE$(N; f; os)with an editor of your choice."
+        o3; C; echo "$npath$(N) not changed.$(f; os)You can call this script again or edit $(C)$FILE$(N; f; os)with an editor of your choice."
     fi
-    line '=' P 2/78
+    line '=' P 2/a
 }

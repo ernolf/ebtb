@@ -179,7 +179,7 @@ if ${B[remove]}; then
     fi
 else
     if ! echo "${supported_php_versions[@]}" | ${X[grep]} -wqs "$php_version"; then
-        R; echo "- \"$php_version\" is not a supported PHP vesion. Supported versions are ${supported_php_versions[@]}"
+        R; echo "- \"$php_version\" is not a supported PHP version. Supported versions are ${supported_php_versions[@]}"
         exit 1
     fi
     if ${B[module_is_built]}; then

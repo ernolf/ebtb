@@ -118,7 +118,7 @@ list(){
             if [ ! -f "$info_xml" ]; then
                 if [ "$command" = "ids" -o "$command" = "name" ]; then
 # TODO 1 -->
-            ${B[debug]} &&  #  echo "Unsupported App: $id";line '-' GRAY 80
+            ${B[debug]} &&  #  echo "Unsupported App: $id";line '-' GRAY a
 # TODO <-- 1
                    return
                 else
@@ -388,6 +388,6 @@ list(){
         echo "${in}Last modified$(W)$mid$(${bool[md]} || es 3)$lastModified"
     fi
 
-    line '-' GRAY 80
+    line '-' GRAY a
     return 0
 }

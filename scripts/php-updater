@@ -373,15 +373,15 @@ if ${B[supported]}; then
         fi
 
         declare -a c_f_a # changed files array
-        spinner C " . searching changed ini- and conf-files for php$OLD to be adapted into php$NEW ." &
+        spinner O " . searching changed ini- and conf-files for php$OLD to be adapted into php$NEW ." &
         mapfile -t c_f_a< <(p_nosort $(changed_files_ ini "$OLD" "$NEW") $(changed_files_ conf "$OLD" "$NEW"))
         kill_spinner
         if (( ${#c_f_a[@]} )); then
             for FILE in ${c_f_a[@]}; do
-                separator O
+                f
+                separator2 O
                 PKG=${FILE%:*} FILE=${FILE#*:}
                 [ -f "$FILE" ] || continue
-                f
                 if [ "$PKG" = "libapache2-mod-php$OLD" ]; then
                     PKGOLD="$PKG" SAPI="apache2"
                 elif [ "$PKG" = "libphp$OLD-embed" ]; then
@@ -399,6 +399,7 @@ if ${B[supported]}; then
                 preq="$(qpf; P; format_string "Do you want to migrate the values for the $(B)${SAPIDESCR[$SAPI]}$(P) from the$(C) $(${X[basename]} $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(${X[basename]} $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
 
                 if ask "$preq" "$YES"; then
+                    separator O
                     merge_settings "$OLD" "$NEW" "$PKGOLD" "$FILE" "$SAPI"
                 fi
             done

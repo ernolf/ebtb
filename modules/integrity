@@ -69,15 +69,15 @@ integrity_check(){
     fi
     shash="$(${X[sha256sum]} "${tf[i]}" | ${X[gawk]} '{print $1}')"
     ehash="$(${X[tail]} -n1 "$MP" | ${X[gawk]} '{print $NF}')"
-    line '=' P 5/75
+    line '=' P 5/a
     if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
         . <(lrequire ask)
         bool[signed]=_
         o5; R; echo "- No sha256sum hash, looks like script has not been signed!"
-        line '-' P 5/75
+        line '-' P 5/a
     elif [ "$shash" != "$ehash" ]; then
         o5; R; echo "- Wrong hash, looks like script has been tampered with!"
-        line '-' P 5/75
+        line '-' P 5/a
     fi
     ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 ${X[gpg]} --keyserver hkps://keyserver.ubuntu.com:443 --recv-keys "$key"
     ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 ${X[gpg]} --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
@@ -95,7 +95,7 @@ integrity_check(){
     r=$?
     ${X[grep]} "$key" "${tf[v]}"
     ${X[grep]} "$aut (codesigning) <${mail//<at>/@}>" "${tf[v]}"
-    line '-' P 5/75
+    line '-' P 5/a
     if (( r )); then
         o5; R; echo -n "- Integrity check $(blinkR)failed$(R). "
         if ${bool[signed]}; then
@@ -103,7 +103,7 @@ integrity_check(){
         else
             echo "This script does not appear to be signed!"
         fi
-        line '-' P 5/75
+        line '-' P 5/a
         o5; B; echo "You should run:"
         o5; GRAY; echo "sudo wget -O $MP $my_url"
         if ${bool[signed]}; then
@@ -120,14 +120,15 @@ integrity_check(){
         o5; lG; echo "Integrity check passed. The script is authentic."; N
         ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
     fi
-    line '=' P 5/75
+    line '=' P 5/a
     cleanup "${tf[i]}" "${tf[v]}"
     return $r
 }
 
 run_integrity_check(){
     if integrity_check; then
-        f; pf; G; echo "Integrity check passed. Please start script again"
+        f
+        pf; G; echo "Integrity check passed. Please start script again"
         exit 0
     else
         exit1

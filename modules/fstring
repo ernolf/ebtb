@@ -26,7 +26,7 @@ format_string() {
     indent_type='es' # default to "empty spaces"
     [[ "$2" =~ o ]] && indent_type='o' # offset to not overwrite indent space
     if [[ "$3" =~ ^[0-9]+$ ]]; then
-        max_cols=$3
+        (( $3 > max_cols )) || max_cols=$3
     else
         basic_color="$($3)" # TODO: is this used?
     fi
@@ -52,7 +52,7 @@ format_string() {
             current_length=${#noansi_word}
         elif ${bool[firstword]:-:}; then
             output+="$word"
-            current_length=$(( current_length + ${#noansi_word} ))
+            current_length=${#noansi_word}
             bool[firstword]=_
         else
             output+=" $word"

@@ -11,26 +11,23 @@ ${DISCLAIMER_BASHLIB:-_} && return
 DISCLAIMER_BASHLIB=:
 
 disclaimer(){
+    local -i max_cols=90
     ${X[cat]} <<DISCLAIMER
-                            Privacy Notice
-                            ==============
+$(o 30)Privacy Notice
+$(o 30)==============
 
-    Please note that use of this script is subject to the following terms and
-    conditions. By using this script, you agree to these terms.
+$(o4; format_string "Please note that use of this script is subject to the following terms and conditions. By using this script, you agree to these terms." 4 $max_cols)
 
     Contribution Requirement:
     -------------------------
-    I expect all users to contribute in some way, especially if the script is
-    used for commercial or professional purposes.
-    Information on how to contribute is provided at the end of this script or
-    can be accessed by running:
+$(o4; format_string "I expect all users to contribute in some way, especially if the script is used for commercial or professional purposes." 4 $max_cols)
+$(o4; format_string "Information on how to contribute is provided at the end of this script or can be accessed by running:" 4 $max_cols)
 
         - $ME --contribute
 
     Data Collection and Use:
     ------------------------
-    During execution, non-sensitive system data may be transferred. This data
-    includes, but is not limited to:
+$(o4; format_string "During execution, non-sensitive system data may be transferred. This data includes, but is not limited to:" 4 $max_cols)
 
         - Distribution information
         - Versions of various software components (especially PHP packages)
@@ -39,27 +36,19 @@ disclaimer(){
         - User queries and responses
         - Error stack traces
 
-    The script’s activity is logged for reference. You can view this log under:
+$(o4; format_string "The script’s activity is logged for reference. You can view this log under:" 4 $max_cols)
 
         $(C)${F[log]}$(N)
 
-    All collected data is used solely to optimize and improve the script. No
-    additional information beyond what is contained in the logfiles will be
-    analyzed.
+$(o4; format_string "All collected data is used solely to optimize and improve the script. No additional information beyond what is contained in the logfiles will be analyzed." 4 $max_cols)
 
     Anonymization:
     --------------
-    Usernames recorded in logfiles are standardized to “root”, “sudo_user”,
-    “www-data”, or “unprivileged_user” to ensure anonymity. Additionally, an
-    anonymized fingerprint is generated for each computer using the machine ID.
-    This fingerprint associates the data with a computer rather than with any
-    individual. No statistical analysis or comparisons with previous data are
-    performed.
+$(o4; format_string "Usernames recorded in logfiles are standardized to “root”, “sudo_user”, “www-data”, or “unprivileged_user” to ensure anonymity. Additionally, an anonymized fingerprint is generated for each computer using the machine ID. This fingerprint associates the data with a computer rather than with any individual. No statistical analysis or comparisons with previous data are performed." 4 $max_cols)
 
     Disclaimer:
     -----------
-    If you do not agree with these terms, please terminate the script
-    immediately by pressing $(box q).
+$(o4; format_string "If you do not agree with these terms, please terminate the script immediately by pressing $(box q)." 4 $max_cols)
     Use of this script implies acceptance of these terms.
 
 $(GRAY)    Note:

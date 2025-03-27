@@ -57,6 +57,7 @@ change_sapi(){
                     read_prompt="$(os; C)press $(button 1) or $(button q) to leave it unchanged$(N)"
                 fi
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "The '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)php-fpm$(N) seems not to be connected." 3)"
                 ${bool[alt]} || { bundle echo "$(ipf; B; format_string "php$(dY)$active_a2_version$(B)-fpm$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/{print $2}')"), $(message_ no_switch) '$(dY)${SAPIDESCR[fpm]}$(N)'." 3)"; }
@@ -71,34 +72,30 @@ change_sapi(){
                 }
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged (if you know what you are doing)"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     apt_remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                3)  cursor_ show
-                                    f
+                                3)  f
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
@@ -120,6 +117,7 @@ change_sapi(){
                 allowed_keys='q1234'
                 read_prompt="$(os; C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "It looks like the '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)$active_a2_pkg$(N) is connected while the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)php-fpm$(N) seems not to be connected." 3)"
                 bundle echo "$(xpf; R; format_string "$(message_ wrong_mpm) ('$(dY)prefork$(R)') required by the $(dY)${SAPIDESCR[apache2]}$(R), but the '$(dY)event$(R)' module which is required for operation with $(B)php-fpm$(R)." 3; N)"
@@ -134,34 +132,30 @@ change_sapi(){
                 bundle echo "$(es 10; button 4; pf)unload mpm_event_module and load mpm_prefork_module for libapache2-mod-php and completely remove php*-fpm"
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged (if you know what you are doing)"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     php_a2module_2_fpm "$active_a2_version"
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_fpm_2_a2module "$active_a2_version"
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                3)  cursor_ show
-                                    f
+                                3)  f
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
@@ -169,8 +163,7 @@ change_sapi(){
                                     anykey
                                     return 0
                                     ;;
-                                4)  cursor_ show
-                                    f
+                                4)  f
                                     php_fpm_2_a2module "$active_a2_version"
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
@@ -199,6 +192,7 @@ change_sapi(){
                     read_prompt="$(os; C)press $(button 1) or $(button q) to leave it unchanged$(N)"
                 fi
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "The '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)libapache2-mod-php$(N) seems to be inactive." 3)"
                 ${bool[alt]} || { bundle echo "$(ipf; B; format_string "libapache2-mod-php$(dY)$active_fpm_version$(N) is not installed, only $(listify B "$(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/{print $2}' | ${X[sort]})"), $(message_ no_switch) '$(dY)${SAPIDESCR[apache2]}$(N)'." 3)"
@@ -213,34 +207,30 @@ change_sapi(){
                 }
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged (if you know what you are doing)"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     apt_remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_fpm_2_a2module $active_fpm_version
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                3)  cursor_ show
-                                    f
+                                3)  f
                                     php_fpm_2_a2module $active_fpm_version
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
@@ -262,6 +252,7 @@ change_sapi(){
                 allowed_keys='q1234'
                 read_prompt="$(os; C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "It looks like the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)$active_fpm_pkg$(N) is connected while the '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)libapache2-mod-php$(N) seems not to be connected." 3)"
                 bundle echo "$(xpf; R; format_string "$(message_ wrong_mpm) ('$(dY)event$(R)') required by the $(dY)fpm SAPI$(R), but the '$(dY)prefork$(R)' module which is required for operation with $(B)libapache2-mod-php$(R)." 3; N)"
@@ -276,35 +267,31 @@ change_sapi(){
                 bundle echo "$(es 10; button 4; pf)unload mpm_prefork_module and load mpm_event_module for php-fpm and completely remove libapache2-mod-php*"
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged (if you know what you are doing)"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     php_fpm_2_a2module "$active_fpm_version"
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_a2module_2_fpm "$active_fpm_version"
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                3)  cursor_ show
-                                    f
+                                3)  f
                                     php_fpm_2_a2module "$active_fpm_version"
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
@@ -312,8 +299,7 @@ change_sapi(){
                                     anykey
                                     return 0
                                     ;;
-                                4)  cursor_ show
-                                    f
+                                4)  f
                                     php_a2module_2_fpm "$active_fpm_version"
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
@@ -337,6 +323,7 @@ change_sapi(){
                 allowed_keys='q1234'
                 read_prompt="$(os; C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(xpf; format_string "It looks like both, the '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)$active_fpm_pkg$(N) are connected to it." 3)"
                 message_ misconfiguration
@@ -351,35 +338,31 @@ change_sapi(){
                 bundle echo "$(es 10; button 4; pf)disconnect apache2 from libapache2-mod-php* and completely remove libapache2-mod-php*"
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged (if you realy know what you are doing)"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt " key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                3)  cursor_ show
-                                    f
+                                3)  f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
@@ -387,8 +370,7 @@ change_sapi(){
                                     anykey
                                     return 0
                                     ;;
-                                4)  cursor_ show
-                                    f
+                                4)  f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
@@ -412,6 +394,7 @@ change_sapi(){
                 allowed_keys='q1234'
                 read_prompt="$(os; C)press $(button 1), $(button 2), $(button 3), $(button 4) or $(button q) to leave it unchanged$(N)"
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(xpf; format_string "It looks like both, the '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)$active_a2_pkg$(N) and the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)$active_fpm_pkg$(N) are connected to it." 3)"
                 message_ misconfiguration
@@ -426,35 +409,31 @@ change_sapi(){
                 bundle echo "$(es 10; button 4; pf)disconnect apache2 from php*-fpm and completely remove php*-fpm"
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged (if you realy know what you are doing)"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt " key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                3)  cursor_ show
-                                    f
+                                3)  f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
                                     apt_remove 'libapache2-mod-php*'
@@ -462,8 +441,7 @@ change_sapi(){
                                     anykey
                                     return 0
                                     ;;
-                                4)  cursor_ show
-                                    f
+                                4)  f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
                                     apt_remove 'php*-fpm'
@@ -484,6 +462,7 @@ change_sapi(){
                 allowed_keys='q12'
                 read_prompt="$(os; C)press $(button 1), $(button 2) or $(button q) to leave it unchanged$(N)"
                 kill_spinner
+                cursor_ hide
                 message_ explain_the_diference
                 bundle echo "$(ipf; format_string "The apache2 webserver is installed but inactive. The '$(dY)${SAPIDESCR[apache2]}$(N)' $(B)$active_a2_pkg$(N) is configured to be connected while the '$(dY)${SAPIDESCR[fpm]}$(N)' $(B)php-fpm$(N) is listening as well." 3)"
                 message_ yse
@@ -492,27 +471,24 @@ change_sapi(){
                 bundle echo "$(es 10; button 2; pf)completely remove php*-fpm"
                 f
                 bundle echo "$(es 10; button q; pf)do nothing, leave this unchanged"
-                cursor_ hide
-                N; f
+                N
+                f
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
                             mh "key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
-                                q)  cursor_ show
-                                    break
+                                q)  break
                                     ;;
-                                1)  cursor_ show
-                                    f
+                                1)  f
                                     php_a2module_2_fpm "${PHP[v]}"
                                     apt_remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
-                                2)  cursor_ show
-                                    f
+                                2)  f
                                     php_fpm_2_a2module ${PHP[v]}
                                     apt_remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
@@ -531,6 +507,7 @@ change_sapi(){
     }
 
     local active_sapi a2mpm infostring modstring modsubstring webserver active_webserver
+    cursor_ hide
     spinner C " . searching misconfigurations: change SAPI ." &
 
     if $(is_sapi_true_ apache2) && $(is_sapi_true_ fpm); then
@@ -631,9 +608,11 @@ change_sapi(){
                 ;;
             nginx)
                 pf; N; echo "Consider removing the apache2-mod-php SAPI (recommended)"; N
+                cursor_ show
                 if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
                     apt_purge 'libapache2-mod-php*'
                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
+                    cursor_ hide
                     anykey
                     return 0
                 fi

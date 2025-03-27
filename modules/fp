@@ -126,7 +126,7 @@ create_hashed_file(){
 max_cols(){
     local mc # max cols
     local -i dmc tmc
-    dmc=100 # default and minimal value for max cols
+    dmc=120 # default and minimal value for max cols
     tmc=$(${X[tput]} cols) # available cols on terminal
     [ -f "${F[mc]:=${D[vt]}/cols}" ] || echo "$dmc" > "${F[mc]}"
     ${X[chmod]} -f 666 "${F[mc]}"

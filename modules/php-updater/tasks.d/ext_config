@@ -93,6 +93,8 @@ detect_(){
 
 check_invalid_sections(){
     require_arg "$@"
+    cursor_ hide
+    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
     local pv xtmp itmp infstr errstr sapi ini_file plu invalid_section content
     local -i line
     local -a invalid_sections failed_ini_files
@@ -152,11 +154,15 @@ check_invalid_sections(){
             bundle echo "$(rpf; lG)All invalid section titles successfully corrected."; N
         fi
         anykey
+    else
+        kill_spinner
     fi
 }
 
 ext_missing_equalsigns(){
     require_arg "$@"
+    cursor_ hide
+    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
     local pv xtmp itmp infstr errstr sapi ini_file plu ext
     local -i i
     local -a missing_equalsigns failed_ini_files
@@ -221,11 +227,15 @@ You can either fix it manually and restart this script, or let the script commen
             bundle echo "$(rpf; lG)All invalid definitions successfully commented out."; N
         fi
         anykey
+    else
+        kill_spinner
     fi
 }
 
 ext_double_definitions(){
     require_arg "$@"
+    cursor_ hide
+    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
     local pv xtmp itmp infstr sapi ini_file plu be ext
     local -i i rep
     local -a double_definitions failed_ini_files
@@ -284,12 +294,16 @@ ext_double_definitions(){
             bundle echo "$(rpf; lG)All double definitions successfully commented out."; N
         fi
         anykey
+    else
+        kill_spinner
     fi
 }
 
 ext_double_loaders(){
     required_args 2 "$@"
     # get rid of double extension loaders
+    cursor_ hide
+    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
     local pv ext ext_ini xtmp itmp pattern sapi line plu be a ini_string ini_string_ ini_lnk_string infstr symlinkstring
     local -a php_inis inifiles sapis
     local -A ext_ini_lnk ext_ini_islnk

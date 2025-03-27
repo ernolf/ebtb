@@ -14,18 +14,20 @@ LINE_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire ansi)
 # TODO <-- 0
-# $1=pattern $2=color $3=(empty spaces/)repetition of pattern((int/)int)
+# $1=pattern $2=color $3=(empty spaces/)repetition of pattern((int/)int or 'a' for auto)
 # $4 and $5 either a$i or b$i where a is after and b is before
 # and $i the amount of empty lines
 line(){
     required_args 3 "$@"
     [[ "$-" =~ x ]] && { set +x; local debugx=true; } || local debugx=_
-    pl(){ printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"; }
+    pl(){
+        printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"
+    }
     local p c
     local -i e r a b
     p="$1" c="$2" e=0 a=1 b=0
     (( $(${X[expr]} $3 : '.*/.*') )) && e=${3%/*}
-    r=${3#*/}
+    [ "${3#*/}" = 'a' ] && r=$(( ( $(max_cols) - e ) / ${#p} )) || r=${3#*/}
     shift 3
     while (( $# )); do
         case "${1:0:1}" in
@@ -36,7 +38,7 @@ line(){
         esac
     done
     f $b
-    ((e)) && o $e
+    (( e )) && o $e
     pl "$($c)$p$(N)" $r
     f $a
     $debugx && set -x
@@ -45,11 +47,11 @@ line(){
 separator(){
     local color
     color="$1"
-    line ' -' ${color:-GRAY} $((($(${X[tput]} cols)-8)/2))
+    line ' -' ${color:-GRAY} a
 }
 
 separator2(){
     local color
     color="$1"
-    line ' =' ${color:-GRAY} $((($(${X[tput]} cols)-8)/2))
+    line ' =' ${color:-GRAY} a
 }

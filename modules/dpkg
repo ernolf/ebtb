@@ -166,14 +166,21 @@ apt_install_prechecked(){
 apt_remove(){
     check_lockfiles || exit1
     (( $# )) && mh "apt_remove $@"
-    local yes=''
+    local yes='' cursor_status='show'
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
         shift
     fi
     [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
     [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
+    if [ -f "${F[cursor]}" ]; then
+        if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
+            cursor_status='hide'
+        fi
+    fi
+    cursor_ show
     ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@ || { something_went_wrong "apt-get remove returned an error"; exit1; }
+    cursor_ $cursor_status
 }
 
 apt_purge(){
@@ -209,7 +216,7 @@ rdepends(){
 apt_rdepends(){
     local glob package
     glob="$1"
-    for package in $(${X[dpkg]} -l|${X[gawk]} '/^[hiu]i\s+[^\s]*'$glob'/{print $2}'); do
+    for package in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*'$glob'/{print $2}'); do
         q2 ${X[apt-rdepends]} -r --follow=Depends --show=Depends --state-follow=Installed --state-show=Installed $package | ${X[gawk]} '/Reverse/ {print $3}'
     done | ${X[sort]} -u
 }

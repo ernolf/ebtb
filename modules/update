@@ -60,9 +60,9 @@ my_update(){
         shash="$(${X[sha256sum]} "$my_tmp" | ${X[gawk]} '{print $1}')"
         if [ "$shash" = "${J[h]}" ]; then
             echo
-            line '=' P 5/75
+            line '=' P 5/a
             o5; lG; echo "Hash OK, download verified!"
-            line '-' P 5/75
+            line '-' P 5/a
             break
         else
             f

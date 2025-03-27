@@ -202,7 +202,7 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     echo ", lang = $lang"
     echo "Versions: assumed = ${NC[version]}, is = ${NC[version_long]}, min = ${NC[min_version]}, php = $(php_ver)"
     line '-' GRAY 80
-    line '=' N 80
+    line '=' N a
     ${B[markdown]} && V[command]="${V[command]} md=:"
 # TODO 5 -->
     ${V[command]} ${V[suppunsupp]} use_json_all=${B[use_json_all]}
