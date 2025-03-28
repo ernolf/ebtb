@@ -19,6 +19,15 @@ SPINNER_BASHLIB=:
 F[spinner_pid]="${D[shm]}/spinner.pid"
 F[spinner_state]="$(tf 666 shm)"
 
+hup_spinner(){
+    te1 # delete and stay in actual line
+    local -i pid
+    local color
+    pid=$1 color="$2"
+    shift 2
+    kill -TERM $pid
+    spinner "$color" "$@" &
+}
 
 # Function to display the spinning animation
 spinner(){
@@ -96,8 +105,10 @@ spinner(){
         # Save spinner state to file
         echo "$pos $dir $prog" > "${F[spinner_state]}"
         ${X[sleep]} .04
-        # exit if pid file is missing
-        [ -f "${F[spinner_pid]}" ] || kill -TERM $BASHPID ${M[pid]}
+        # hup if pid file is missing
+        [ -f "${F[spinner_pid]}" ] || hup_spinner $BASHPID "$color" "$@"
+        # exit if pid file is used by an other spinner due to race conditions
+        (( $(q2 ${X[cat]} ${F[spinner_pid]}) == BASHPID )) || kill -TERM $BASHPID
     done
     N
 }
@@ -129,8 +140,8 @@ kill_spinner(){
         fi
     fi
 
-    # Attempt graceful termination: send SIGTERM to the spinner process.
-    kill "$pid" &>$NUL
+    # Attempt graceful termination: send 15 - SIGTERM to the spinner process.
+    kill -TERM "$pid" &>$NUL
 
     # Wait until the process terminates (max ~5 seconds)
     local wait_timeout=50
