@@ -62,8 +62,14 @@ for placeholder in "${placeholders[@]}"; do
 done
 ${X[rm]} -f "$tempfile"
 # minify modules array
-# ${X[sed]} -n '/^modules=(/ { :a; N; /)/!ba; s/\n[[:space:]]*/ /g; p }' datei
-$MINIFY && ${X[sed]} -i '/^modules=(/ { :a; N; /)/!ba; s/\n[[:space:]]*/ /g; s/( */(/; s/ *)/)/; }' "$output_script"
+$MINIFY && ${X[sed]} -i '/^modules=(/ {
+        :a; N; /)/!ba;
+        s/\n[[:space:]]*/ /g;
+        s/( */(/;
+        s/ *)/)/;
+        s/[[:space:]]*#/\n#/
+    }' "$output_script"
+
 
 # disable integrity check for local server
 $LOCAL_SERVER && echo -e "v=true\nnohash" >> "$output_script"

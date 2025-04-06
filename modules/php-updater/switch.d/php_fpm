@@ -61,7 +61,11 @@ switch_fpm_version(){
         fi
     else
         bundle echo "$(es3; xpf; R) No active httpd detected!"; N
-        bundle echo "$(es3; ipf; Yi; format_string "If you want this script to change your web server's PHP configuration to connect to the new PHP version, you will need to enable, activate and start (with systemd) the web server you want to use with the new PHP and repeat this step." 7; N)"
+        bundle echo "$(es3; ipf; Yi; format_string "You should first enable, activate and start $(GRAY)(with systemd)$(Yi) the web server you want to use with the new PHP and run" 6; N)"
+        f
+        bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} --switch-version"; N
+        f
+        bundle echo "$(es 6; Yi; format_string ".. again if you want this script to change your web server's PHP configuration to connect to the new PHP version" 6; N)"
         exit0
     fi
     # preselection case
@@ -141,8 +145,8 @@ switch_fpm_version(){
             bundle echo "$(o 10; button q; pf)do nothing, quit"
             N; f
             while :; do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
-                if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
-                    mh "key: [$key]" &
+                if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
+                    mh "$(funcname_and_lineno) key: [$key]" &
                     echo "Confirmed choice $(button $key)"
                     case $key in
                             q)  f 2; break
@@ -213,11 +217,11 @@ switch_fpm_version(){
     ## if still not set sockets
     for socket in $(fpm_sockets); do
         pv="$(echo $socket | ${X[grep]} -Eo "${PHP[vregex]}")"
-        [ "$pv" = "$ver_n" ] && continue
+        [[ "$pv" == "$ver_n" ]] && continue
         if (( ${HTTPD[apache2]} > 2 )); then
             if q0 ${X[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
                 if ${X[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
-                    if [ "$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/ { if (match($NF, /php([0-9]+\.[0-9]+)-fpm/, arr)) { print arr[1] } }')" = "$pv" ]; then
+                    if [ "$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/ { if (match($NF, /php'${PHP[vregex]}'-fpm/, arr)) { print arr[1] } }')" = "$pv" ]; then
                         if php_fpm_conf_ switch2 $ver_n; then
                             bundle echo "$(ipf; G; format_string "Successfully switched the SetHandler FastCGI configuration in apache2 from PHP-FPM version $(Y)$pv$(G) to $(Y)$ver_n$(G)" 3; N)"
                             ${X[systemctl]} restart apache2 php$ver_n-fpm
@@ -228,7 +232,7 @@ switch_fpm_version(){
                     fi
                     if ${X[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                         f
-                        bundle echo "$(es 7; GRAY).. searching for other configuration files that may have to be switched..";N
+                        spinner GRAY " . . .  searching for other configuration files that may have to be switched . . ."
                         fpm_switch[apache2]+=' ok'
                     fi
                 fi

@@ -13,23 +13,30 @@ MH_BASHLIB=:
 
 . <(lrequire binaries)
 . <(lrequire filter)
+. <(lrequire tempfile)
+
+# Create the FIFO pipes
+${X[mkfifo]} -m 666 "${F[mhlog]:=$(tf u)}" "${F[mhcio]:=$(tf u)}"
+
+cio(){
+    c -Io NULL -A "$(fp)$*" ${V[cargs]}/${D[ri]}/mh.json
+}
+
+tofifo(){
+#    [[ -p "${F[mhcio]}" ]] && ${X[timeout]} 2 ${X[bash]} -c "echo '$*' > ${F[mhcio]}" 2>$NUL # this cannot handle special chars.
+    [[ -p "${F[mhcio]}" ]] && ${X[timeout]} 2 ${X[bash]} -c 'echo "$1" > "$2"' @_@ "$*" "${F[mhcio]}" 2>$NUL # @_@ is a placeholder for the intern $0
+    [[ -p "${F[mhlog]}" ]] && ${X[timeout]} 2 ${X[bash]} -c 'echo "$1" > "$2"' @_@ "$*" "${F[mhlog]}" 2>$NUL # @_@ is a placeholder for the intern $0
+}
 
 mh(){
     local -A bool
-    [ "$1" = -L ] && bool[l]=_ || bool[l]=:
-    [[ "${M[n]}" =~ test ]] && bool[l]=:
     [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
-#    [[ "$MS" =~ php ]] &&  q0 c -Io NULL -A "$(fp)$(utf_filter <<< "${@//'\n'/ }")" ${V[cargs]}/${D[ri]}/mh.json &
-    [[ "$MS" =~ php || "$1" = -L ]] &&  q0 c -Io NULL -A "$(fp)$(utf_filter <<< "$*")" ${V[cargs]}/${D[ri]}/mh.json
-#    ${bool[l]} && log "$(utf_filter <<< "${@//'\n'/ }")" &
-    ${bool[l]} && log "$(utf_filter <<< "$*")" &
+    tofifo "$*"
     ${bool[debugx]:-_} && set -x
     return 0
 }
 
 haul(){
-#    mkld
-#    (   ${X[flock]} -x 200
         local hauler padding
         local -a pl
         local -i i i_max
@@ -42,25 +49,24 @@ haul(){
              cat) mapfile -t pl < <(${X[grep]} -v '^[[:space:]]*$' "$@" 2>&1)
         esac
         if (( ${#pl[@]} == 1 )); then
-            mh "${hauler::1}: ${pl[0]}"
+            tofifo "${hauler::1}: ${pl[0]}"
         elif (( ${#pl[@]} > 1 )); then
             i_max=${#pl[@]}
             (( ${#i_max} > 1 )) && padding="%0${#i_max}d" || padding='%d'
             for i in ${!pl[@]}; do
-                mh "${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
-                ${X[sleep]} .1
+                tofifo "${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
             done
         fi
-#    ) 200> "${D[l]}/haul"
 }
 
 bundle(){
+    kill_spinner
     local hauler
     local -a pl
     local -i i
     hauler="$1"
     shift
-    haul "$hauler" "$@" &
+    haul "$hauler" "$@"
     case "$hauler" in
       echo) echo -e "$@"; return ;;
     printf) mapfile -t pl < <($@) ;;
@@ -68,3 +74,7 @@ bundle(){
     esac
     (( ${#pl[@]} )) && for i in ${!pl[@]}; do echo -e "${pl[i]}"; done
 }
+
+# Background processes that reads lines from FIFO and processes them
+( set +ex; while [[ -p "${F[mhlog]}" ]]; do while IFS= read -r line; do [[ "$line" == 'EOF' ]] && ${X[rm]} -f -- "${F[mhlog]}" || log "$(filter_ <<< "$line")"; done < "${F[mhlog]}"; done ) &
+( set +ex; while [[ -p "${F[mhcio]}" ]]; do while IFS= read -r line; do [[ "$line" == 'EOF' ]] && ${X[rm]} -f -- "${F[mhcio]}" || cio "$(filter_ <<< "$line")"; done < "${F[mhcio]}"; done ) &

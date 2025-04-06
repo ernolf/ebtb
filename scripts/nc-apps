@@ -210,15 +210,15 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     ${V[command]} ${V[suppunsupp]}
 else
     if ${B[supported]}; then
-        $ME secondrun lang=$lang --supported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun lang=$lang --supported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     elif ${B[unsupported]}; then
-        $ME secondrun lang=$lang --unsupported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun lang=$lang --unsupported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
 # TODO 6 -->
     elif ${B[use_json_all]}; then
-        $ME secondrun lang=$lang --alt --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun lang=$lang --alt --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
 # TODO <-- 6
     else
-        $ME secondrun lang=$lang --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun lang=$lang --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     fi
     exit 0
 fi

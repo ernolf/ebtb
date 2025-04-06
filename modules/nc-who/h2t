@@ -1,0 +1,22 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${H2T_BASHLIB:-_} && return
+H2T_BASHLIB=:
+
+h2t_command(){
+    local i tputcols width
+    tputcols=$(${X[tput]} cols | ${X[tr]} -d '\n')
+    width=$(( tputcols - 8 ))
+    if [[ -t 0 ]]; then # if no STDIN;
+        ${X[html2text]} -utf8 -width $width <<< "$@"
+    else
+        ${X[cat]} | ${X[html2text]} -utf8 -width $width
+    fi
+}

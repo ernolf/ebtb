@@ -27,11 +27,7 @@ ${X[mkdir]} -p ${D[li]}/nc-apps/commands.d
 . <(lrequire nc-apps/commands.d/filters)
 
 search_matching_spinner(){
-    ${X[sleep]} .1
-    ${B[bgjobs]} && ! ${B[pager]} && {
-        [ -f "${F[spinner_pid]}" ] || echo "$(GRAY) . . . . . . . . . .   searching  for  matching  apps   . . . . . . . . . . .$(N)"
-        spinner &
-    }
+    ${B[pager]} || spinner GRAY " . . . . . . . . . .   searching  for  matching  apps   . . . . . . . . . . ." &
 }
 
 summary(){
@@ -157,10 +153,7 @@ name(){
         done
     }
     local n_tmp=$(tf)
-    ${B[bgjobs]} && {
-        echo "$(GRAY) . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . .$(N)"
-        ${B[pager]} || spinner &
-    }
+    spinner GRAY " . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . ." &
     build_id_name_array $n_tmp "${V[app_name]}" & job_id=$!
     wait $job_id
     mapfile -t id_name_array < "$n_tmp"

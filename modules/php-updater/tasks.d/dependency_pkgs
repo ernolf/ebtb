@@ -27,7 +27,6 @@ remove_dependency_packages(){
             plu='ese:s' be='are' modstring="$(listify B ${dependency_pkgs[@]})"
         fi
         question="$(qpf; format_string "Do you want to remove the dependency package${plu#*:} $modstring now" 3)"
-        kill_spinner
         bundle echo "$(xpf; format_string "There $be unnecessary $(O)dependency package${plu#*:}$(N) ($modstring) installed on this machine." 3; N)"
         echo "$(ipf; Y; format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove th${plu%:*} package${plu#*:} before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3; N)"
         echo "$(pf; format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
@@ -46,7 +45,6 @@ remove_dependency_packages(){
             return 1
         fi
     else
-        kill_spinner
         return 1
     fi
 }

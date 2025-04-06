@@ -16,7 +16,7 @@ __scriptname__
 #    $MS/last $MS/monitor
 #)
 # TODO <-- 0
-modules=(nc/nextcloud nc/nextcloud_db nc/logo $MS/help $MS/last $MS/monitor)
+modules=(nc/nextcloud nc/nextcloud_db nc/logo $MS/help $MS/last $MS/h2t $MS/monitor $MS/god)
 __debug__
 __when__
 __vdirname__
@@ -49,7 +49,7 @@ set -- "${args[@]}" && unset -v arg args
 command=print_help
 while (($#));do
     case "$1" in
-        monitor|last)
+        monitor|last|god)
             command="nc_$1"
             break 2
             ;;

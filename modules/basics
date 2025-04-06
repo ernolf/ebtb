@@ -23,9 +23,23 @@ declare invi="Invalid input."
 
 # Empty spaces
 es(){
-    (( "$1" == 0 )) && return
-    printf "%*s" $1 ' '
+    (( ${1:-1} )) || return
+    printf "%*s" ${1:-1} ' '
 }; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}; es6(){ es 6;}
+
+# Empty lines
+el(){
+    for ((i=0; i<${1:-1}; i++)); do
+        printf "\n"
+    done
+}; el2(){ el 2;}; el3(){ el 3;}; el4(){ el 4;}; el5(){ el 5;}; el6(){ el 6;}
+
+ell(){
+    for (( i=0; i<${1:-1}; i++ )); do
+        # Print literal "\n" (with two backslashes, because printf needs them escaped)
+        printf "\\\\n"
+    done
+}; ell2(){ ell 2;}; ell3(){ ell 3;}; ell4(){ ell 4;}; ell5(){ ell 5;}; ell6(){ ell 6;}
 
 # remove square brackets:
 desquare(){
@@ -122,6 +136,10 @@ boolean(){
         return 0
     fi
     return 1
+}
+
+out_of_scope(){
+    ( "$@" )
 }
 
 # escape $, [, ], ( and ) for grep -E

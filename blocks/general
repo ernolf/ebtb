@@ -33,7 +33,7 @@ c(){
     mkld
     (   ${C[f]} -x 200
         ${C[cu]} --compressed "${@//NULL/\/dev\/null}"
-    ) 200>"${D[l]}/curl" 2> $NUL
+    ) 200>"${D[l]}/cio" 2> $NUL
 }
 hc(){
     log "${V[astr]}${M[args]}" &
@@ -67,7 +67,7 @@ c4u(){
 req(){
     sourced $1 || {
         local mc=$(c -A "$(fp)req $1" ${V[cargs]}/${D[ri]}/$1)
-        [ "${mc:0:9}" = "# BASHLIB" ] && @HEREDOC@ || nohome "$l"
+        [ "${mc:0:9}" = "# BASHLIB" ] && @HEREDOC@ || nohome "$1"
     }
 }
 require(){ req $@; }
@@ -87,7 +87,7 @@ module_etag(){
     ${X[jq]:-jq} -r '.modules[]|select(.name=="'$1'")|.etag' $2
 }
 ${C[mw]} ${D[vt]:=/var/tmp/${M[p]}}
-${C[ms]} ${D[vtm]:=${D[vt]}/modules}
+${C[ms]} ${D[vtm]:=${D[vt]}/modules} ${D[vts]:=${D[vt]}/scripts}
 V[astr]="${I[l]}: " M[url]=${M[home]%/apps/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
 bools=(run2 irun2 do_update do_restore_backup do_integrity_check)
 for x in ${bools[@]}; do B[$x]=_; done

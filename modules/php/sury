@@ -149,6 +149,8 @@ need_sury_repo(){
     local -i sury_r i
     local -a aptsource_files successes
     local -A bool
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+    mh "$(funcname_and_lineno) start: $(declare -p CAN)"
     asu='https://ppa.launchpadcontent.net/ondrej/php/ubuntu'
     asd='https://packages.sury.org/php'
     sury_return="$(sury)"
@@ -176,7 +178,6 @@ need_sury_repo(){
                 os; echo "This script can add the right repo to your apt sources."
                 fix_yourself_if_fails
                 if ask "$(qpf)Do you want to add sury repo now" "$YES"; then
-                    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
                     [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                     if dpkg_min_version apt 2.4; then
                         add_repository_deb822 "$id" "$codename"
@@ -186,12 +187,14 @@ need_sury_repo(){
                     sury_return="$(sury)"
                     sury_r=$?
                     if ((sury_r == 32)); then # still no sury repo
-                        mh "adding apt source failed"
+                        mh "$(funcname_and_lineno) adding apt source failed"
                         f
                         os; R; echo "Unfortunately this step was not successfull. Please add the apt source yourself."; N
                         anykey
                     else
-                        mh "adding apt source succeeded"
+                        . "${F[php]}"
+                        mh "$(funcname_and_lineno) adding apt source succeeded"
+                        mh "$(funcname_and_lineno) after apt source added: $(declare -p CAN)"
                         f
                         os; G; echo "This step was successfull"; N
                         anykey
@@ -210,7 +213,6 @@ need_sury_repo(){
                     os; echo "This script can replace the http URIs with the new https URIs for you."
                     fix_yourself_if_fails
                     if ask "$(qpf)Do you want to replace http URIs with https URIs now" "$YES"; then
-                        [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
                         [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                         if (nonullglob "/etc/apt/sources.list.d/*\.list" || nonullglob "/etc/apt/sources.list.d/*\.sources"); then
                             for aptsource_file in /etc/apt/sources.list.d/*\.{list,sources}; do
@@ -230,9 +232,9 @@ need_sury_repo(){
                                     ${X[sed]} -i "/^URIs:.*launchpad\.net/ { h; s/^/# /; p; g; s/http:/https:/; s/launchpad.net/launchpadcontent.net/; }" "${aptsource_files[i]}"
                                 fi
                                 if ${X[grep]} -Eiqs "^(deb|uris).*$http_token" "${aptsource_files[i]}"; then
-                                    mh "replacing $http_token with $https_token in ${aptsource_files[i]} failed"
+                                    mh "$(funcname_and_lineno) replacing $http_token with $https_token in ${aptsource_files[i]} failed"
                                 else
-                                    mh "replacing $http_token with $https_token in ${aptsource_files[i]} succeeded"
+                                    mh "$(funcname_and_lineno) replacing $http_token with $https_token in ${aptsource_files[i]} succeeded"
                                     successes[i]=:
                                 fi
                             done
@@ -277,7 +279,6 @@ need_sury_repo(){
                 fix_yourself_if_fails
                 if ask "$(qpf)Do you want to replace $wrong_codename with $codename in sury apt-source file now" "$YES"; then
                     bool[success]=_
-                    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
                     [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                     if nonullglob "/etc/apt/sources.list.d/*\.list"; then
                         for aptsource_file in /etc/apt/sources.list.d/*\.list; do
@@ -285,9 +286,9 @@ need_sury_repo(){
                                 if ${X[grep]} -Eq "^[^#]*$aptsource/?\s*$wrong_codename" "$aptsource_file"; then
                                     ${X[sed]} -i "/^[^#]*${aptsource//\//\\/}[\/]\{0,1\}\s*$wrong_codename/ { h; s/^/# /; p; g; s/$wrong_codename/$codename/; }" "$aptsource_file"
                                     if ${X[grep]} -Eq "^[^#]*$aptsource/?\s*$wrong_codename" "$aptsource_file"; then
-                                        mh "replacing $wrong_codename with $codename in $aptsource_file failed"
+                                        mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsource_file failed"
                                     else
-                                        mh "replacing $wrong_codename with $codename in $aptsource_file succeeded"
+                                        mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsource_file succeeded"
                                         bool[success]=:
                                     fi
                                 fi
@@ -301,9 +302,9 @@ need_sury_repo(){
                                     if ${X[grep]} -Eixq "^uris: $aptsource/?$" "$aptsource_file" && ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsource_file"; then
                                         ${X[sed]} -i "s/$wrong_codename/$codename/g" "$aptsource_file"
                                         if ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsource_file"; then
-                                            mh "replacing $wrong_codename with $codename in $aptsource_file failed"
+                                            mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsource_file failed"
                                         else
-                                            mh "replacing $wrong_codename with $codename in $aptsource_file succeeded"
+                                            mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsource_file succeeded"
                                             bool[success]=:
                                         fi
                                     fi
@@ -313,6 +314,8 @@ need_sury_repo(){
                     fi
                     if ${bool[success]}; then
                         apt_update
+                        . "${F[php]}"
+                        mh "$($(funcname_and_lineno) after fix: declare -p CAN)"
                         os; G; echo "This step was successfull"; N
                         anykey
                         "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates

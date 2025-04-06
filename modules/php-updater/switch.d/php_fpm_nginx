@@ -96,12 +96,10 @@ php_fpm_sites_available_conf_nginx(){
                 bundle echo "$(detect_nginx_php_fpm all verbose "${conffiles[i]}")"
             done
 
-#debug=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
             local line conf sock question xtemp=$(tf)
             bool[changed]=_
             for i in ${!conffiles[@]}; do
                 bool[do_change]=_
-#                conf="$(${X[realpath]} "${conffiles[i]}")"
                 conf="$(${X[realpath]} "$(detect_nginx_php_fpm fileonly quiet "${conffiles[i]}")")"
                 echo "${X[sed]} -E --in-place=.backup '" > "$xtemp"
                 for sock in ${sock_o[@]}; do
@@ -135,7 +133,6 @@ php_fpm_sites_available_conf_nginx(){
             rm -f "$xtemp"
             unset line conf sock question xtemp
             f
-#            anykey_noquit
         else
             no_conf_in_pool
         fi

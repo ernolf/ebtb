@@ -73,5 +73,10 @@ install_new_php(){
     o3; P; echo "to finalize or redo the migration."; N
     f
     echo "$(pf; format_string "$(P)Please be aware that a malicious configuration under $(B)php-$(C)$old$(P) will also be migrated. This script does not yet check for all thinkable wrong configurations. This will change step by step in future." 3; N)"
-    ask "$(qpf)Proceed with next step" "$YES" && { separator; "$ME${FLAG[forceflag]}" "json=${J[o]}" $old $new; exit; } || exit0
+    if ask "$(qpf)Proceed with next step" "$YES"; then
+        separator
+        exec "$ME${FLAG[forceflag]}" "json=${J[o]}" $old $new
+    else
+        exit0
+    fi
 }

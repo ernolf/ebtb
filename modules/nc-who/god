@@ -1,0 +1,206 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${GOD_BASHLIB:-_} && return
+GOD_BASHLIB=:
+
+. <(lrequire nc/nextcloud_db)
+. <(lrequire nc-who/h2t)
+
+delete_authtoken_row(){
+    DELETE FROM ${DB[pref]}authtoken WHERE id = $id;
+}
+
+nc_god(){
+    q0 database_call --html
+    local query
+    local -i columns
+    local -l choice key pos_choice option=2
+    cursor_ hide
+    f
+    separator2 R
+    f
+    o3; R; echo "This is the GOD MODE of nc-who."; N
+    f
+    separator R
+    f
+    echo "$(ipf; Yi; format_string "Here you can invalidate cookies before they expire by deleting the corresponding authtoken from the database." 3)"
+    echo "$(xpf; R; format_string "The user whose authtoken is deleted, thereby invalidating their cookie, must log in again using their credentials and, if configured, a second factor. An ongoing session will also be closed. Error messages may occur if the user continues to attempt to retrieve new data, so use this feature only after careful consideration." 3)"
+    echo "$(o3; P; format_string "If you enter the full word $(Rbg) panic $(P), all cookies will be invalidated and all users will have to log in again." 3)"
+    echo "$(o3; W; format_string "This applies only to cookie-based browser connections; connections using app tokens are not affected." 3)"
+
+    case "$option" in
+  # authtoken.type constants from lib/private/Authentication/Token/IToken.php line 31
+    1)
+    query="SELECT ${DB[u2t]}(at.last_activity) AS last_activity, us.status, at.uid, at.name AS client
+           FROM ${DB[pref]}authtoken at
+           LEFT JOIN ${DB[pref]}user_status us ON us.user_id = at.uid
+           WHERE at.type = '0' AND at.remember = '1'
+           ORDER BY at.last_activity DESC"
+    columns=4
+    ;;
+    2)
+    query="SELECT 
+                ROW_NUMBER() OVER (ORDER BY at.last_activity DESC) AS pos,
+                ${DB[u2t]}(at.last_activity) AS last_activity, 
+                us.status, 
+                at.uid, 
+                at.name AS client
+            FROM ${DB[pref]}authtoken at
+            LEFT JOIN ${DB[pref]}user_status us ON us.user_id = at.uid
+            WHERE at.type = '0' AND at.remember = '1'
+            ORDER BY at.last_activity DESC"
+    columns=5
+    ;;
+    3)
+    query="SELECT 
+                ROW_NUMBER() OVER (ORDER BY at.last_activity DESC) AS pos,
+                at.id,
+                ${DB[u2t]}(at.last_activity) AS last_activity, 
+                us.status, 
+                at.uid, 
+                at.name AS client
+            FROM ${DB[pref]}authtoken at
+            LEFT JOIN ${DB[pref]}user_status us ON us.user_id = at.uid
+            WHERE at.type = '0' AND at.remember = '1'
+            ORDER BY at.last_activity DESC"
+    columns=6
+    ;;
+    4)
+    query="WITH ordered_tokens AS (
+              SELECT
+                ROW_NUMBER() OVER (ORDER BY at.last_activity DESC) AS pos,
+                at.id,
+                ${DB[u2t]}(at.last_activity) AS last_activity,
+                us.status,
+                at.uid,
+                at.name AS client
+              FROM ${DB[pref]}authtoken at
+              LEFT JOIN ${DB[pref]}user_status us ON us.user_id = at.uid
+              WHERE at.type = '0' AND at.remember = '1'
+            )
+            SELECT * FROM ordered_tokens"
+    columns=6
+    ;;
+    esac
+
+    pos2id="WITH ordered_tokens AS (
+                SELECT
+                    ROW_NUMBER() OVER (ORDER BY at.last_activity DESC) AS pos,
+                    at.id
+                FROM ${DB[pref]}authtoken at
+                WHERE at.type = '0' AND at.remember = '1'
+            )
+            SELECT pos, id FROM ordered_tokens"
+
+
+#    db_raw_exec_ "$pos2id" | h2t_command
+    # Declare associative array
+    declare -A ROW
+
+    # Read the output line-by-line using process substitution.
+    # Each line is expected to be of the form: |pos|id|
+    while IFS="|" read -r _ pos id _; do
+        # Only process lines with valid pos value
+        if [[ -n "$pos" ]]; then
+            ROW["$pos"]="$id"
+        fi
+    done < <(db_raw_exec_ "$pos2id" | h2t_command)
+
+    # Example: print the array
+#    for key in $(p_sort "${!ROW[@]}"); do
+#        echo "Pos: $key, ID: ${ROW[$key]}"
+#    done
+
+    # the formation of the tables made by mysql client can not handle narrow screen sizes.
+    # therefore we build it from html output.
+    db_exec_ "$query"  |
+        ${X[tr]} -d '\n' |
+        ${X[sed]} 's/>\s*</></g; s|<p>.*</p>||' |
+        ${X[sed]} "s|</TH></TR>|</TH></TR><TR><TD>-</TD>$(line '<td></td>' N $((columns - 1)) a0)</TR>|Ig
+                   s/<th align=\"center\">/<th>/g
+                   s/<td align=\"left\">/<td>/g
+                   s/<tr valign=\"top\">/<tr>/g
+                   s/…/.../g
+                   s/_/~/g
+                   s/ /=/g
+                   s/<TABLE=BORDER=/<TABLE BORDER=/Ig" |
+    h2t_command |
+        ${X[sed]} -E "
+                   /^\s/! { :a s/([^-|_]|\s)_(_|\|)/\1 \2/g; ta }
+                   /_{20,}/ s/_/-/g     # replace _ with - on line 1 and 3 or 2 and 4
+                   1,2 s/^ -/+-/1       # replace space at begin of line 1 or 2 with +
+                 # replace end of line 1 or 2:
+                   1,2 s/-$/$(line -- N $columns a0 | ${X[ansifilter]})-+/1
+                   3,4 s/^\|-/+--/1     # replace begin of line 3 or 4
+                   3,4 s/-\|-/--\+--/g  # build line 3 or 4 crossings
+                   3,4 s/-\|$/--+/1     # replace end of line 3 or 4
+                   s/\|/ | /g           # add spaces suround |
+#                   s/_ \| /__|_/g       # either this two for small screens
+#                   s/^ \| _/|__/1       # if client needs two lines
+                   s/_/ /g              # or this one (my choice)
+                   s/^ \|/|/1           # remove empty space from begin of lines
+                   s/\| $/|/1           # remove empty space at end of line
+                   s/~/_/g              # change ~ back to underscore
+                   s/=/ /g"             # change = back to spaces
+
+    echo
+
+    choice_cancelled(){
+        echo -e "\n\tChoice $(button $pos_choice) cancelled\n"
+        sleep 2
+        te0 8
+    }
+
+    cursor_ show
+    # Loop until a valid pos is entered
+    f
+    echo "Please select:"
+    f
+    echo "$(o 13; button 'pos'; o 20)- pos number from the authtoken you want to invalidate"
+    f
+    echo "$(o 13; Rbg)panic$(N; o 20)- invalidate all cookie based tokens"
+    f
+    echo "$(o 13; box b; o 20)- go back to selection"
+    f
+    echo "$(o 13; box q; o 20)- quit"
+    f
+    while true; do
+        read -rp "Enter $(button 'pos'), $(Rbg) panic $(B), $(box b) or $(box q): " pos_choice
+        [ "${pos_choice,,}" = b ] && return 0
+        [ "${pos_choice,,}" = q ] && exit0
+        # Check if the entered pos exists in the array
+        if [[ -z "${ROW[$pos_choice]}" && "${pos_choice,,}" != panic ]]; then
+            echo -e "\n\tWrong entry, $(button '$pos_choice') does not exist. Please enter a $(button 'pos nr') from the list: "
+            sleep 3
+            te0 3
+        else
+            if [ "${pos_choice,,}" = 'panic' ]; then
+                if confirm_choice 1 "$pos_choice" "You entered $(Rbg) panic $(R): all users will have to log in again!"; then
+                    echo "$(B)Confirmed choice $(Rbg) panic $(N)"
+                    anykey
+                    db_raw_exec_ "DELETE FROM ${DB[pref]}authtoken WHERE remember = '1'"
+                    break
+                else
+                    choice_cancelled
+                fi
+            else
+                if confirm_choice 1 "$pos_choice" "You selected pos $(button $pos_choice) Is this correct?"; then
+                    echo "$(B)Confirmed choice $(button $pos_choice)"
+                    anykey
+                    db_raw_exec_ "DELETE FROM ${DB[pref]}authtoken WHERE id = ${ROW[$pos_choice]}"
+                    break
+                else
+                    choice_cancelled
+                fi
+            fi
+        fi
+    done
+
+}

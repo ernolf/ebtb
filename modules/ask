@@ -46,13 +46,13 @@ first_idx(){
 # $1 Question, $2 Default Answer, $3 Answer that returns 0 (true), $4 Answer that returns 1 (false)
 ask(){
     required_args 2 "$@"
+    kill_spinner
     local question d_answer yes no noansi_question_lastline noansi_d_answer noansi_yes noansi_no newline cursor
     local -l answer
     local -i lll lda ly ln ml fidx r
     question="$1" d_answer="$2"
     fidx=$(first_idx "$question")
-    mh "$(${X[ansifilter]} <<< "$question")" &
-    ${X[sleep]} .1
+    mh "$(funcname_and_lineno 1) $(echo $question | ${X[sed]} 's/  / /g')"
     [ -z "$3" ] && yes="$Yes" || yes="$3"
     [ -z "$4" ] && no="$No" || no="$4"
     noansi_question_lastline="$(${X[ansifilter]} <<< "${question##*\\n}")"
@@ -74,7 +74,7 @@ ask(){
         ml=$(( $(tput cols) - 23 ))
     fi
     if (( $(( lll + lda + ly + ln )) > ml )); then
-        newline="$(f; o $fidx; N)Make your choice: "
+        newline="$(\n; o $fidx; N)Make your choice: "
     else
         newline="$(N) "
     fi
@@ -82,7 +82,7 @@ ask(){
     while :; do
         printf "$question?$newline($yes or $no) [$d_answer]: "
         read -r answer
-        mh "$(apf)${answer:="$noansi_d_answer"}"
+        mh "$(funcname_and_lineno 1; es; apf)${answer:="$noansi_d_answer"}"
         if [ "$answer" = "$(desquare "${noansi_yes,,}")" ] || [ "$answer" = "$(insquare "${noansi_yes,,}")" ]; then
             r=0
             break
@@ -98,49 +98,49 @@ ask(){
     return $r
 }
 
-# Function for confirmation prompt
-confirm_choice() {
+# Functions for confirmation prompt
+confirm_choice(){
 #    required_args 2 "$@" # 1st argument can be empty!
     local choice message key
-    choice="$1" # User's initial choice (e.g., 1, 2, 3, etc.)
-    message="$2" # Custom message for confirmation
+    local -i newlines
+    newlines="$1"
+    choice="$2" # user's initial choice (e.g., 1, 2, 3, etc.)
+    message="$(ell $newlines)\t$3" # custom message for confirmation
     while :; do
-        echo -e "\n\n\t$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
+        echo -e "$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
         read -rsn 1 key
         case $key in
-            y)  return 0 # User confirms
-                ;;
-            n)  return 1 # User cancels
-                ;;
-            q)  exit 0   # Quit
-                ;;
+            y)  return 0 ;; # user confirms
+            n)  return 1 ;; # user refuses
+            q)  exit0    ;; # quit script
+            *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
+        esac
+    done
+}
+
+# Function for confirmation prompt for questions without option -s, which needs only one empty line
+confirm_choice1(){
+#    required_args 2 "$@" # 1st argument can be empty!
+    local choice message key
+    choice="$1" # user's initial choice (e.g., 1, 2, 3, etc.)
+    message="$2" # custom message for confirmation
+    while :; do
+        echo -e "\n\t$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
+        read -rsn 1 key
+        case $key in
+            y)  return 0 ;; # user confirms
+            n)  return 1 ;; # user refuses
+            q)  exit0    ;; # quit script
             *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
         esac
     done
 }
 # COMMENT -->
 #    # Example integration
-#    if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+#    if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
 #        echo "Confirmed choice $(button $key)"
 #        case $key in
-#            q)  cursor_ show
-#                f 2;break
-#                ;;
-#            1)  cursor_ show
-#                f
-#                php_a2module_2_fpm "${PHP[v]}"
-#                apt_remove 'libapache2-mod-php*'
-#                "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
-#                anykey
-#                return 0
-#                ;;
-#            2)  cursor_ show
-#                f
-#                php_fpm_2_a2module ${PHP[v]}
-#                apt_remove 'php*-fpm'
-#                "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
-#                anykey
-#                return 0
+#           / .. /
 #        esac
 #    else
 #        echo -e "\n\tChoice $(button $key) cancelled\n"

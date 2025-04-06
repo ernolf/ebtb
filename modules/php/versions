@@ -13,10 +13,6 @@ VERSIONS_BASHLIB=:
 . <(lrequire interval)
 . <(lrequire php/sury)
 
-globalarrays="EXISTING CAN"
-for array in $globalarrays; do q2 declare -ga "$array" || declare -a "$array"; done
-unset -v array globalarrays
-
 no_php(){
     f; R
     pf; echo "php (PHP: Hypertext Preprocessor) is not (yet) installed on this system."
@@ -32,55 +28,66 @@ no_php(){
     fi
 }
 
-[ -n "${X[php]}" ] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
-mh "PHP[v]: ${PHP[v]}" &
-
-existing_php_versions(){
-    ${X[cat]} <<PHP_VERSIONS
-    8.4;20240924;1861833600;1830211200;31
-    8.3;20230831;1830211200;1767139200;28 29 30 31
-    8.2;20220829;1798675200;1735603200;26 27 28 29 30 31
-    8.1;20210902;1767139200;1700870400;24 25 26 27 28 29 30 31
-    8.0;20200930;1669420800;1700956800;21 22 23 24 25 26 27 28 29
-    7.4;20190902;1638054000;1669590000;18 19 20 21 22 23 24 25
-    7.3;20180731;1607209200;1638745200;15 16 17 18 19 20 21 22 23
-    7.2;20170718;1575068400;1606690800;13 14 15 16 17 18 19 20
-    7.1;20160303;1543618800;1575154800;11 12 13 14 15 16 17
-    7.0;20151012;1512255600;1543791600;10 11 12 13 14 15
-    5.6;20131226;1484780400;1546210800;9 10 11 12 13
-    5.5;20121212;1436479200;1468101600;9 10
-    5.4;20100525;1410645600;1442181600;9 10
-    5.3;20090626;1407967200
-    5.2;20041225_20060613;1294268400
-    5.1;20041225_20050922;1156370400
-    5.0;20031224_20040412;1125871200
-    4.4;20020918;1218060000
-    4.3;20020918;1112220000
-    4.2;20010901;1031263200
-    4.1;20010901;1015887600
-    4.0;19990421;993247200
-    3.0;0;971992800
-PHP_VERSIONS
-}
-mapfile -t EXISTING< <(existing_php_versions | ${X[sed]} 's/^\s*//')
-
 versions_iterate(){
     local job php_version
     job="$1"
     for php_version in $(${X[phpquery]} -V | ${X[sort]}); do
         $job $php_version
     done
+    kill_spinner
 }
 
+declare -gA EXG &>$NUL || declare -A EXG
+declare -ga CAN &>$NUL || declare -a CAN
+
+[ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+[ -n "${X[php]}" ] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
+declare -p PHP > "${F[php]}"
+mh "$(funcname_and_lineno) PHP[v]: ${PHP[v]}"
+
+EXG=(
+    [8.4]="20240924;1861833600;1830211200;31"
+    [8.3]="20230831;1830211200;1767139200;28 29 30 31"
+    [8.2]="0220829;1798675200;1735603200;26 27 28 29 30 31"
+    [8.1]="0210902;1767139200;1700870400;24 25 26 27 28 29 30 31"
+    [8.0]="0200930;1669420800;1700956800;21 22 23 24 25 26 27 28 29"
+    [7.4]="0190902;1638054000;1669590000;18 19 20 21 22 23 24 25"
+    [7.3]="0180731;1607209200;1638745200;15 16 17 18 19 20 21 22 23"
+    [7.2]="0170718;1575068400;1606690800;13 14 15 16 17 18 19 20"
+    [7.1]="0160303;1543618800;1575154800;11 12 13 14 15 16 17"
+    [7.0]="0151012;1512255600;1543791600;10 11 12 13 14 15"
+    [5.6]="0131226;1484780400;1546210800;9 10 11 12 13"
+    [5.5]="0121212;1436479200;1468101600;9 10"
+    [5.4]="0100525;1410645600;1442181600;9 10"
+    [5.3]="0090626;1407967200"
+    [5.2]="0041225_20060613;1294268400"
+    [5.1]="0041225_20050922;1156370400"
+    [5.0]="0031224_20040412;1125871200"
+    [4.4]="0020918;1218060000"
+    [4.3]="0020918;1112220000"
+    [4.2]="0010901;1031263200"
+    [4.1]="0010901;1015887600"
+    [4.0]="19990421;993247200"
+    [3.0]="0;971992800"
+)
+declare -p EXG >> "${F[php]}"
+declare -n EXISTING=EXG
+
 populate_can_array(){
-    mapfile -t CAN< <(${X[apt-cache]} search "^php${PHP[vregex]}$"|${X[gawk]} '{print substr($1,4,3)}'|${X[sort]} -ru)
+    . "${F[php]}" &>$NUL
+    mapfile -t CAN< <(${X[apt-cache]} search "^php${PHP[vregex]}$" | ${X[gawk]} '{print substr($1,4,3)}' | ${X[sort]} -ru)
+    declare -p PHP > "${F[php]}"
+    declare -p EXG >> "${F[php]}"
+    declare -p CAN >> "${F[php]}"
 }
 populate_can_array
 
 # increment & decrement version, echoes next higher or lower candidate if exist
 i_ver(){
+    require_arg $@
     local -i i r=1
     populate_can_array
+    . "${F[php]}" &>$NUL
     for i in ${!CAN[@]}; do
         if [ "${CAN[i]}" = "$1" ] && ((i)); then
             echo "${CAN[i-1]}"
@@ -91,8 +98,10 @@ i_ver(){
 }
 
 d_ver(){
+    require_arg $@
     local -i i r=1
     populate_can_array
+    . "${F[php]}" &>$NUL
     for i in ${!CAN[@]}; do
         if [ "${CAN[i]}" = "$1" ] && (( i < $(( ${#CAN[@]} - 1 )) )); then
             echo "${CAN[i+1]}"
@@ -104,11 +113,13 @@ d_ver(){
 
 # end_of_ life & end_of_ support
 end_of_(){
+    required_args 2 $@
     local -i ut
+    . "${F[php]}" &>$NUL
     case $1 in
-          life) ut=$(a_fld EXISTING ';' "$2" 3)
+          life) ut=$(A_fld EXG ';' "$2" 2)
                 ;;
-       support) ut=$(a_fld EXISTING ';' "$2" 4)
+       support) ut=$(A_fld EXG ';' "$2" 3)
     esac
     echo "$(ut2udF $ut) ($(interval $ut))"
 }
@@ -116,13 +127,14 @@ end_of_(){
 list_existing(){
     local -i i eol eos c2 c3
     local ver supported_nextcloud_versions
+    . "${F[php]}" &>$NUL
     c2=10 c3=49
     line '=' P 2/78 b1
     o2; B; echo "This is a list of existing php versions for your information."; N
     o2; Y; echo "Version$(o $c2)End of life$(o $c3)End of active support"; N
     line '-' dP 2/78
-    for i in ${!EXISTING[@]}; do
-        read -r ver ext eol eos supported_nextcloud_versions<<<${EXISTING[i]//;/ }
+    for ver in $(p_rsort ${!EXG[@]}); do
+        read -r ext eol eos supported_nextcloud_versions<<<${EXG[$ver]//;/ }
         if [ $today -le $eos ];then
             o2; pf; lG
             echo "$ver$(o $c2)$(ut2udF $eol) ($(interval $eol))$(o $c3)$(ut2udF $eos) ($(interval $eos))"; N
@@ -139,35 +151,39 @@ list_existing(){
 }
 
 list_candidates() {
-    local eol
+    local can eol
     local -i i c2=11 c3=50
+    . "${F[php]}" &>$NUL
     line '=' P 2/78 b1
     o2; B; echo "This is a list of php versions offered by the actual apt sources"; N
     o2; Y; echo "Version$(o $c2)End of life$(o $c3)Description"; N
     line '-' dP 2/78
     for i in "${!CAN[@]}";do
-        if does_exist_ "${CAN[i]}" 0; then
+        can="${CAN[i]}"
+        if does_exist_ "$can" 0; then
             (( i )) && line '-' GRAY 2/78
-            eol="$(end_of_ life ${CAN[i]})"
-            if [ "${PHP[v]}" = "${CAN[i]}" ];then
+            eol="$(end_of_ life $can)"
+            if [ "${PHP[v]}" = "$can" ];then
                 line ' ' bGbg 1/80 a0
-                o2; bGbg; echo "-> ${CAN[i]}$(o $c2)$eol$(o $c3)<-actually running version$(N)"
-            elif [[ "$(${X[phpquery]} -V)" =~ ${CAN[i]} ]];then
-                o2; lG; echo "$(pf)${CAN[i]}$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
+                o2; bGbg; echo "-> $can$(o $c2)$eol$(o $c3)<-actually running version$(N)"
+            elif [[ "$(${X[phpquery]} -V)" =~ $can ]];then
+                o2; lG; echo "$(pf)$can$(o $c2)$eol$(o $c3;GRAY)installed (at least partially)$(N)"
             else
-                o2; pf; GRAY; echo "${CAN[i]}$(o $c2)$eol$(N)"
+                o2; pf; GRAY; echo "$can$(o $c2)$eol$(N)"
             fi
-            o 7; GRAY; echo "\\$(o c2;dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${CAN[i]} 5))"; N
+            o 7; GRAY; echo "\\$(o c2;dY)supported by Nextcloud version $(listify_ C dY $(A_fld EXG ';' $can 4))"; N
         else version_mismatch; fi
     done
     line '-' dP 2/78
 }
 
 does_exist_(){
+    require_arg $@
     local -i r a
     r=0 a=${2:-0}
+    . "${F[php]}" &>$NUL
     if ((a)); then
-        if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
+        if [[ " ${!EXG[@]} " =~ " $1 " ]]; then
             if ! [[ "$(${X[phpquery]} -V)" =~ $1 ]]; then
                 wrong_first_argument "$1" 1
             fi
@@ -175,7 +191,7 @@ does_exist_(){
             wrong_first_argument "$1" 0
         fi
     else
-        if [[ " ${EXISTING[@]%%;*} " =~ " $1 " ]]; then
+        if [[ " ${!EXG[@]} " =~ " $1 " ]]; then
             if ! [[ " ${CAN[@]%%;*} " =~ " $1 " ]]; then
                 r=1
                 no_candidate "$1"

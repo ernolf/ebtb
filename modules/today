@@ -7,7 +7,8 @@ __copyright__
 __license__
 #
 
-declare -f _ &>$NUL || _(){ false; }
+declare -f _ &>${NUL:=/dev/null} || _(){ false; }
+
 if (( epoch < 1737773190 )); then
     q0(){ "$@" &>$NUL; }
     q1(){ "$@" >$NUL; }

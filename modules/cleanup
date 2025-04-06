@@ -1,0 +1,83 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${CLEANUP_BASHLIB:-_} && return
+CLEANUP_BASHLIB=:
+
+cleanup() {
+    local x
+    for x in "$@"; do
+        if [[ -d "$x" && "$x" != / && "$x" =~ ^(/tmp|/var/tmp|/dev/shm|/run/lock)(/|$) ]]; then
+            ${X[rm]} -fr -- "$x"
+        elif [[ -f "$x" ]]; then
+            ${X[rm]} -f -- "$x"
+        elif [[ -p "$x" ]]; then
+#            G; echo "sending EOF to $x."; N
+            echo EOF > "$x"
+        fi
+    done
+}
+
+cleanup_dangling_links(){
+    # usage: cleanup_dangling_links <directory>
+    [[ -d $1 ]] || return 1
+    # ${X[find]} "$1" -xtype l -print -delete | while read -r link; do # <- this is insecure
+    # Only find truly dangling symlinks (not symlinks to other symlinks):
+    # "find -xtype l" also matches links pointing to other links (e.g. Debian alternatives),
+    # so we use "! -exec test -e {} ;" to only select realy dangling symlinks.
+    ${X[find]} "$1" -xtype l ! -exec ${X[test]} -e {} \; -print -delete | while read -r link; do
+        mh "$(funcname_and_lineno) removed: $link -> $(${X[realpath]} "$link")"
+    done
+}
+
+cleanup_dangling_links_match(){
+    # usage: cleanup_dangling_links_match <directory> "<allowed_link_names>" "<allowed_target_dirs>"
+    # Example:
+    # cleanup_dangling_links_match "$dir" "linkname1 linkname2 linkname3" "/target/dir/1 /target/dir/2"
+    [[ -d "$1" ]] || return 1 # return if "$1" is not a directory
+    local link link_name allowed_link_name target allowed_target_dir
+    local -a allowed_link_names allowed_target_dirs
+    local -i should_delete allowed
+    # OPTIONALY: only delete dangling link if its name matches one of these paterns:
+    allowed_link_names=($2)  # space-separated list of names to match
+    # OPTIONALY: and / or only delete dangling link if theire target is located in one of these directories
+    allowed_target_dirs=($3)  # space-separated list of directories to match
+    # ${X[find]} "$1" -xtype l -print | while IFS= read -r link; do # <- this is insecure
+    # Only find truly dangling symlinks (not symlinks to other symlinks):
+    # "find -xtype l" also matches links pointing to other links (e.g. Debian alternatives),
+    # so we use "! -exec test -e {} ;" to only select dangling symlinks.
+    ${X[find]} "$1" -xtype l ! -exec ${X[test]} -e {} \; -print | while IFS= read -r link; do
+        target="$(${X[realpath]} "$link")"
+        should_delete=1  # default: delete
+        # If names array is set, only delete if the symlink's basename is in that array.
+        if (( ${#allowed_link_names[@]} )); then
+            link_name="$(${X[basename]} "$link")"
+            allowed=0
+            for allowed_link_name in "${allowed_link_names[@]}"; do
+                if [[ "$link_name" == *"$allowed_link_name"* ]]; then
+                    allowed=1
+                    break
+                fi
+            done
+            (( allowed )) || should_delete=0
+        fi
+        # If target_dirs is set, only delete if the symlink's target begins with that directory.
+        if (( ${#allowed_target_dirs[@]} )); then
+            allowed=0
+            for allowed_target_dir in "${allowed_target_dirs[@]}"; do
+                if [[ "$target" = "$allowed_target_dir"* ]]; then
+                    allowed=1
+                    break
+                fi
+            done
+            (( allowed )) || should_delete=0
+        fi
+        (( should_delete )) && ${X[rm]} -f -- "$link" && mh "$(funcname_and_lineno) removed: $link -> $target"
+    done
+}

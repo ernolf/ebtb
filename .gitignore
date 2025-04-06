@@ -2,6 +2,7 @@
 /config/secrets
 /modules/contribute
 /modules/di
+/modules/ebtb
 /TODO.txt
 *.new
 *.~

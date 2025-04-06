@@ -120,7 +120,7 @@ apt_file_search(){
     fi
     package=$(q2 apt-file -l search "$fullpath") || return $?
     printf "$package"
-    mh "apt-file -l search $fullpath -> $package"
+    mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $fullpath -> $package"
     return 0
 }
 
@@ -140,11 +140,11 @@ apt_install(){
     check_lockfiles || exit1
     local p ps yes=" -y"
     ${B[step]:-_} && yes=""
-    mh "${X[apt-get]}$yes install $@"
+    mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[apt-get]}$yes install $@"
     for p in $@; do
         ${X[dpkg]} -l | ${X[grep]} -wqs "$p" || ps="$ps $p"
         if (( $(echo "$ps" | ${X[wc]} -w) )); then
-            mh "${X[apt-get]}$yes install $ps"
+            mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[apt-get]}$yes install $ps"
             ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $ps
             (( $? )) && exit1
         fi
@@ -154,7 +154,7 @@ apt_install(){
 
 apt_install_prechecked(){
     check_lockfiles || exit1
-    (( $# )) && mh "apt_install_prechecked $@"
+    (( $# )) && mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $@"
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
@@ -165,7 +165,8 @@ apt_install_prechecked(){
 
 apt_remove(){
     check_lockfiles || exit1
-    (( $# )) && mh "apt_remove $@"
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+    (( $# )) && mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $@"
     local yes='' cursor_status='show'
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'
@@ -185,7 +186,8 @@ apt_remove(){
 
 apt_purge(){
     check_lockfiles || exit1
-    (( $# )) && mh "apt_purge $@"
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+    (( $# )) && mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $@"
     local yes=''
     if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
         yes=' -y'

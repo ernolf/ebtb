@@ -124,8 +124,7 @@ list(){
                 else
                     echo "$(Pbg)  Database too old.  $(N)"
                     delete_db
-                    $CMA
-                    exit 0
+                    exec $CMA
                 fi
             fi
             name=$(${X[xmls]} -v "(//info/name)" "$info_xml" | ${X[sed]} '2,$d')
@@ -218,6 +217,8 @@ list(){
     fi
 
     known_issues
+    ((V[appcount]++))
+    kill_spinner
 
     if ${bool[md]}; then
         echo -e "| | |\n| - | - |"
@@ -236,9 +237,6 @@ list(){
 # TODO <-- 3
         mid="  "
     fi
-
-    ((V[appcount]++))
-    kill_spinner
 
     # App-ID
 # TODO 4 -->

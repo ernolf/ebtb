@@ -55,8 +55,7 @@ install_overwrite(){
     fi
     unset -v file
 
-    GRAY; echo ". . . . . . . .  building  new  'app_install_overwrite'  array  . . . . . . . .";N
-    spinner &
+    spinner GRAY ". . . . . . . .  building  new  'app_install_overwrite'  array  . . . . . . . ." &
     apps_in_array_tf="$(tf)"
     list_apps_4_array "$apps_in_array_tf" & job_id=$!
     wait $job_id

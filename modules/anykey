@@ -9,6 +9,7 @@ __license__
 
 ${ANYKEY_BASHLIB:-_} && return
 ANYKEY_BASHLIB=:
+: ${NUL:=/dev/null}
 
 anykey(){
     local p aim
@@ -23,6 +24,7 @@ anykey(){
             fi
         fi
         p="Press $(lG)any key$(N) to ${aim:-continue}$(GRAY) or $(q2q;N)"
+        kill_spinner &>$NUL
         cursor_ hide
         read -rsn 1 -p "$p"  choice
         cursor_ $cursor_status
@@ -35,6 +37,7 @@ anykey(){
     else
         unset ANYKEY_BASHLIB
         p="Press any key to continue or 'q' to quit "
+        kill_spinner &>$NUL
         read -rsn 1 -p "$p" choice
         if [ "$choice" = "q" ]; then
             echo
@@ -58,11 +61,13 @@ anykey_noquit(){
         fi
         p="Press $(lG)any key$(N) to ${aim:-continue} "
         cursor_ hide
+        kill_spinner &>$NUL
         read -rsn 1 -p "$p"  dummy
         cursor_ $cursor_status
         te1
     else
         unset ANYKEY_BASHLIB
+        kill_spinner &>$NUL
         p="Press any key to continue "
         read -rsn 1 -p "$p" dummy
         echo

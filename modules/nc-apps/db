@@ -23,7 +23,7 @@ runtime_etag="${T[rte]}.000000"
 D[apps]="${D[vt]}/nc-apps-data"
 db="${D[apps]}/apps.db"
 
-[ -d "${D[apps]}" ] && chrf "${D[apps]}" "${NC[u]}"
+[ -d "${D[apps]}" ] && q0 chrf "${D[apps]}" "${NC[u]}"
 
 q0 declare -p db_sleep || declare -r db_sleep=0.1
 q0 declare -p db_max_attempts || declare -ri db_max_attempts=10
@@ -49,9 +49,9 @@ rebuild_db(){
 
 # initialise the SQLite-database-file, in case it does not exist
 init_db(){
-    [ -d "${D[apps]}" ] && chrf "${D[apps]}" "${NC[u]}" || {
-        ${X[mkdir]} -m 777 "${D[apps]}"
-        ${X[chown]} "${NC[u]}":"${NC[u]}" "${D[apps]}"
+    [ -d "${D[apps]}" ] && q0 chrf "${D[apps]}" "${NC[u]}" || {
+        q0 ${X[mkdir]} -m 777 "${D[apps]}"
+        q0 ${X[chown]} "${NC[u]}":"${NC[u]}" "${D[apps]}"
     }
     ${X[sqlite3]} "$db" <<SQL && { ${X[chown]} "${NC[u]}":"${NC[u]}" "$db"; ${X[chmod]} 666 "$db"; }
     CREATE TABLE IF NOT EXISTS versions (platform TEXT PRIMARY KEY, major INTEGER, minor INTEGER, version TEXT, versionstring TEXT, tag TEXT, meta TEXT);
@@ -145,10 +145,7 @@ create_database(){
 #TODO: create tests if up to date
 #    [ -f "$db" ] && return 0
 # TODO <-- 1
-    if ${B[bgjobs]}; then
-        GRAY;echo " . . . . . . . . . . . . . . .  create  database  . . . . . . . . . . . . . . .";N
-        ${B[pager]} || spinner &
-    fi
+    spinner GRAY " . . . . . . . . . . . . . . .  create  database  . . . . . . . . . . . . . . ." &
     init_db
 
     if ${B[bgjobs]}; then
@@ -215,11 +212,10 @@ create_database(){
     database_created && w_db database_created $runtime_etag && B[database_created]=:
     if ${B[bgjobs]}; then
         wait $job_ids
+        kill_spinner
         if ${B[pager]}; then
             echo "  database   created"
             line '=' N 80
-        else
-            kill_spinner
         fi
     fi
 }

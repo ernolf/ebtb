@@ -11,6 +11,8 @@ ${MONITOR_BASHLIB:-_} && return
 MONITOR_BASHLIB=:
 
 . <(lrequire nc/nextcloud_db)
+. <(lrequire nc-who/h2t)
+. <(lrequire nc-who/god)
 
 # $1=pid $2=cls (clear screen)
 cleanup_nc_monitor(){
@@ -43,13 +45,12 @@ cleanup_nc_monitor(){
 }
 
 nc_monitor(){
-#trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
     q0 database_call --html
-    local watch_command_tempfile prompt proviso list query db_query
-    local -l choice key
-    local -i watch_pid
+    local watch_command_tempfile prompt proviso list query db_query sed_empty_row sed_pre_html2text first_line sed_post_html2text
+    local -l choice key query_version
+    local -i watch_pid columns rr new_rr empty_spaces
     watch_command_tempfile="$(tf)" watch_pid=0
-    prompt="$(C)press $(button 1) for cookie based logins, $(button 2) for all, $(button q) to quit$(N)"
+    prompt="$(C)press $(button 1) for cookie based logins, $(button 2) for all, $(Rbg) g $(C) for god-mode, $(button q) to quit$(N)"
     f
     o2; B; echo "This script looks up for logged in users on your Nextcloud in$(N) \"$(Y)${NC[d]}$(N)\""
     o2; B; echo "it updates at an adjustable refresh rate and lists ordered by last activity"; N
@@ -76,10 +77,12 @@ nc_monitor(){
         while :; do
             read -rsn 1 -p "  $prompt " choice
             ${B[trace]:-_} && haul echo "TRACE: choice: '$choice'" &
-            if [ "$choice" = "q" ]; then
+            if [ "$choice" = 'q' ]; then
                 break 2
+            elif [ "$choice" = 'g' ]; then
+                nc_god
             elif (( choice < 1 || choice >= 3 )); then
-                echo "$(Pbg)  $invi Please choose [1], [2] or [q]  $(N)"
+                echo "$(Pbg)  $invi Please choose [1], [2], [g] or [q]  $(N)"
                 continue
             else
                 break
@@ -92,74 +95,79 @@ nc_monitor(){
             2)  proviso=""
                 list="all logins"
         esac
-
       # authtoken.type constants from lib/private/Authentication/Token/IToken.php line 31
-        query="SELECT ${DB[u2t]}(at.last_activity) AS last_activity,
-            CASE
-                WHEN at.type = '0' AND at.remember = '1' THEN (SELECT us.status FROM ${DB[pref]}user_status us WHERE us.user_id = at.uid)
-                ELSE 'n.a.'
-            END AS status,
-            at.uid, at.name AS client
-        FROM ${DB[pref]}authtoken at $proviso
-        ORDER BY at.last_activity DESC"
-      # watch breaks the formating of the tables made by  mysql client.
+        query_version=1
+        case $query_version in
+            1)  query="SELECT ${DB[u2t]}(at.last_activity) AS last_activity,
+                        CASE
+                            WHEN at.type = '0' AND at.remember = '1' THEN (SELECT us.status FROM ${DB[pref]}user_status us WHERE us.user_id = at.uid)
+                            ELSE 'n.a.'
+                        END AS status,
+                        at.uid, at.name AS client
+                        FROM ${DB[pref]}authtoken at $proviso
+                        ORDER BY at.last_activity DESC"
+                columns=4
+                ;;
+            2)  query="SELECT
+                            ROW_NUMBER() OVER (ORDER BY at.last_activity DESC) AS pos,
+                            ${DB[u2t]}(at.last_activity) AS last_activity,
+                            CASE
+                                WHEN at.type = '0' AND at.remember = '1' THEN (SELECT us.status FROM ${DB[pref]}user_status us WHERE us.user_id = at.uid)
+                                ELSE 'n.a.'
+                            END AS status,
+                            at.uid, at.name AS client
+                        FROM ${DB[pref]}authtoken at $proviso
+                        ORDER BY at.last_activity DESC"
+                columns=5
+        esac
+      # watch breaks the formating of the tables made by mysql client.
       # therefore we must build it again from html output.
         db_query="db_exec_ \"$query\" |
             ${X[tr]} -d '\n' |
             ${X[sed]} 's/>\s*</></g; s|<p>.*</p>||'"
       # Empty row with one single dash, since completely empty is supressed
-        local -i rr new_rr
-        local sed_empty_row sed_pre_html2text html2text_command first_line sed_post_html2text watch_command key
-        rr=5
-        sed_empty_row="s|</TH></TR>|</TH></TR><TR><TD>-</TD>$(line '<td></td>' N 3 a0)</TR>|Ig"
+        sed_empty_row="s|</TH></TR>|</TH></TR><TR><TD>-</TD>$(line '<td></td>' N $((columns - 1)) a0)</TR>|Ig"
         sed_pre_html2text="${X[sed]} '$sed_empty_row
                                 s/<th align=\"center\">/<th>/g; s/<td align=\"left\">/<td>/g; s/<tr valign=\"top\">/<tr>/g
-                                s/_/~/g; s/ /=/g; s/<TABLE=BORDER=/<TABLE BORDER=/Ig'"
-# TODO 0 -->
-#                                s/…/.../g'" # replace ellipsis (…) from apple user agent strings with three dots
-# TODO <-- 0
-        while :; do
-            html2text_command="html2text -utf8 -width $(($(tput cols)-8))"
-            first_line="| $list, refresh rate = $rr s. - [s] change refresh rate - [r] reload - [b] back - [q] quit"
-            sed_post_html2text="${X[sed]} -E '1 { /^\$/ { s/.*/$first_line/; b }; i$first_line
-                                }; /^\s/! { :a s/([^-|_]|\s)_(_|\|)/\1 \2/g; ta }
-                                /_{20,}/ s/_/-/g      # replace _ with - on line 1 and 3 or 2 and 4
-                                1,2 s/^ -/+-/1        # replace space at begin of line 1 or 2 with +
-                                1,2 s/-$/---------+/1 # replace end of line 1 or 2
-                                3,4 s/^\|-/+--/1      # replace begin of line 3 or 4
-                                3,4 s/-\|-/--\+--/g   # build line 3 or 4 crossings
-                                3,4 s/-\|$/--+/1      # replace end of line 3 or 4
-                                s/\|/ | /g            # add spaces suround |
-        #                        s/_ \| /__|_/g        # either this two for small screens
-        #                        s/^ \| _/|__/1        # if client needs two lines
-                                s/_/ /g               # or this one (my choice)
-                                s/^ \|/|/1            # remove empty space from begin of lines
-                                s/\| $/|/1            # remove empty space at end of line
-                                s/~/_/g               # change ~ back to underscore
-                                s/=/ /g'              # change = back to spaces
-            "
-# TODO 1 -->
-#            watch_command="$db_query | $sed_pre_html2text | $html2text_command | $sed_post_html2text"
-# TODO <-- 1
-            ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > "$watch_command_tempfile"
+                                s/…/.../g; s/_/~/g; s/ /=/g; s/<TABLE=BORDER=/<TABLE BORDER=/Ig'" # replace ellipsis (…) from apple user agent strings with three dots
+        sed_post_html2text="${X[sed]} -E '/^\s/! { :a s/([^-|_]|\s)_(_|\|)/\1 \2/g; ta }
+                            /_{20,}/ s/_/-/g      # replace _ with - on line 1 and 3 or 2 and 4
+                            1,2 s/^ -/+-/1        # replace space at begin of line 1 or 2 with +
+                                                  # replace end of line 1 or 2:
+                            1,2 s/-$/$(line -- N $columns a0)-+/1
+                            3,4 s/^\|-/+--/1      # replace begin of line 3 or 4
+                            3,4 s/-\|-/--\+--/g   # build line 3 or 4 crossings
+                            3,4 s/-\|$/--+/1      # replace end of line 3 or 4
+                            s/\|/ | /g            # add spaces suround |
+    #                        s/_ \| /__|_/g        # either this two for small screens
+    #                        s/^ \| _/|__/1        # if client needs two lines
+                            s/_/ /g               # or this one (my choice)
+                            s/^ \|/|/1            # remove empty space from begin of lines
+                            s/\| $/|/1            # remove empty space at end of line
+                            s/~/_/g               # change ~ back to underscore
+                            s/=/ /g'              # change = back to spaces
+        "
+        ${X[cat]} <<-WATCH_COMMAND_TEMPFILE > "$watch_command_tempfile"
 . "${F[binary]}"
+: \${NUL:=/dev/null}
 declare -A B DB
 B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB[strg]="$(${X[sed]} 's/\$/\\$/' <<< "${DB[strg]}")" DB[exec]="${DB[exec]}"
-# TODO 2 -->
-#\$(declare -f cleanup_nc_monitor)
-#trap 'cleanup_nc_monitor \$$ cls; interrupted INT' INT
-#trap 'cleanup_nc_monitor \$$ cls; interrupted TERM' TERM
-# TODO <-- 2
 $(declare -f _)
 $(declare -f q0)
 $(declare -f aio_wrapper)
 $(declare -f db_exec_)
-$db_query | \
-$sed_pre_html2text | \
-$html2text_command | \
+$(declare -f h2t_command)
+printf "\$*"
+$db_query |
+$sed_pre_html2text |
+h2t_command |
 $sed_post_html2text
 WATCH_COMMAND_TEMPFILE
-            ${X[watch]} -tn $rr "bash $watch_command_tempfile" & watch_pid=$!
+        rr=5
+        while :; do
+            empty_spaces=$(( 41 - ${#list} - ${#rr} ))
+            title="$(GRAY)+$(line - GRAY 76 a0; GRAY)+\n| $(lG)$list$(N) - refresh rate = $(Gbg) every $rr seconds $(GRAY; es $empty_spaces)|\n+$(line - GRAY 76 a0; GRAY)+\n| $(button s) change refresh rate | $(button r) reload | $(button b) go back to selection | $(button q) quit |$(N)"
+            ${X[watch]} -ctn $rr "${X[bash]} '$watch_command_tempfile' '$title'" & watch_pid=$!
             trap "cleanup_nc_monitor $watch_pid cls; f; separator; interrupted INT" INT
             trap "cleanup_nc_monitor $watch_pid cls; f; separator; interrupted TERM" TERM
             (

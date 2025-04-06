@@ -115,7 +115,7 @@ dependency_check(){
         fi
     done
     if (( ${#mis[@]} )); then
-        (( ${#mis[@]}==1 )) && plu="y:" pkg="package" || plu="ies:" pkg="packages"
+        (( ${#mis[@]}==1 )) && plu="y:" pkg="this package" || plu="ies:" pkg="these packages"
         f
         o2; R; echo "Dependency not met!"
         f
@@ -129,8 +129,8 @@ dependency_check(){
         line '-' dP 2/78 a2
         if [ -n "${X[apt-get]}" ]; then
             local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
-            mh "$install" &
-            if ask "$(qpf)Do you want to install this $pkg now" "$YES"; then
+            mh "$(funcname_and_lineno) $install" &
+            if ask "$(qpf)Do you want to install $pkg now" "$YES"; then
                 if ${B[rt]}; then
                     if ${X[apt-get]} -y $install; then
                         reload_binaries
@@ -142,7 +142,7 @@ dependency_check(){
                         exit1
                     fi
                 else
-                    if su_do "u=root" "r=true" "p=to install this $pkg" "run=apt-get" "arg=-y $install"; then
+                    if su_do "u=root" "r=true" "p=to install $pkg" "run=${X[apt-get]}" "arg=-y $install"; then
                         if [[ "$install" =~ apt-file ]]; then
                             apt-file update
                         fi

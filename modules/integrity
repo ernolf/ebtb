@@ -18,6 +18,40 @@ INTEGRITY_BASHLIB=:
 . <(lrequire sudo)
 . <(lrequire vdir)
 # TODO <-- 0
+. <(lrequire cleanup)
+
+: ${D[ulb]:=/usr/local/bin}
+: ${D[vts]:=${D[vt]}/scripts}
+
+convene(){
+    local script link
+    ${C[ms]} ${D[vts]}
+    # return if ${D[vts]} already is equal to the cannonical dir of runing script or if one of the commands is not yet in X array:
+    [[ ${D[vts]} == $MD || -z ${X[cmp]} || -z ${X[ln]} ]] && return 0
+    # copy from old to new path, remove old path and replace it with a symlink pointing to new path:
+    ${X[cp]} --preserve=all "$MP" "${D[vts]}/${M[n]}" &&
+        ${X[cmp]} -s "$MP" "${D[vts]}/${M[n]}" &&
+        ${X[rm]} -f -- "$MP" &&
+        mh "$(funcname_and_lineno) moved $MP to ${D[vts]}/${M[n]}"
+    [[ ${M[b]} != ${M[n]} ]] &&
+        ${X[ln]} -sfT "${D[vts]}/${M[n]}" "$MP" &&
+        mh "$(funcname_and_lineno) created symlink: $MD -> ${D[vts]}/${M[n]}"
+    for script in "${D[vts]}"/*; do
+        [[ -x "$script" && -f "$script" ]] || continue
+        link="${D[ulb]}/$(${X[basename]} "$script")"
+        if [[ ! -L "$link" || "$(${X[realpath]} "$link")" != "$script" ]]; then
+            ${X[ln]} -sfT "$script" "$link"
+            mh "$(funcname_and_lineno) created symlink: $link -> $script"
+        fi
+    done
+    if [ "$(${X[realpath]} "$MP")" = "${D[vts]}/${M[n]}" ]; then
+        return 0
+    else
+        something_went_wrong "Simlink creation with “${X[ln]} -sfT ${D[vts]}/${M[n]} $MP” failed"
+        return 1
+    fi
+}
+
 public_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 -----BEGIN PGP PUBLIC KEY BLOCK-----
@@ -71,11 +105,12 @@ integrity_check(){
     ehash="$(${X[tail]} -n1 "$MP" | ${X[gawk]} '{print $NF}')"
     line '=' P 5/a
     if ! [[ $ehash =~ ^[a-fA-F0-9]{64}$ ]]; then
-        . <(lrequire ask)
+        mh "$(funcname_and_lineno) no sha256sum hash!"
         bool[signed]=_
         o5; R; echo "- No sha256sum hash, looks like script has not been signed!"
         line '-' P 5/a
     elif [ "$shash" != "$ehash" ]; then
+        mh "$(funcname_and_lineno) wrong sha256sum hash!"
         o5; R; echo "- Wrong hash, looks like script has been tampered with!"
         line '-' P 5/a
     fi
@@ -83,10 +118,14 @@ integrity_check(){
     ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 ${X[gpg]} --keyserver hkp://keyserver.ubuntu.com:80 --recv-keys "$key"
     ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || q2 public_key|${X[gpg]} --import
     ${X[gpg]} --list-keys | ${X[grep]} -qs "$key" || {
-        . <(lrequire ask)
+        mh "$(funcname_and_lineno) import of public key failed"
         o5; R; echo "- import of public key failed."
         qpf; ask "Continue at own risk without check?" "$NO" && {
-            ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
+            ${X[sed]} -i 's/^v=false$/v=true/' "$MP" # this step must be done before convene, to not write back over the created symlink
+            convene
+            cleanup_dangling_links ${D[ulb]}
+            ${X[sleep]} .1
+            line '=' P 5/a
             cleanup "${tf[i]}" "${tf[v]}"
             return 0
         }
@@ -99,26 +138,36 @@ integrity_check(){
     if (( r )); then
         o5; R; echo -n "- Integrity check $(blinkR)failed$(R). "
         if ${bool[signed]}; then
+            mh "$(funcname_and_lineno) failed! modified"
             echo "The script may have been modified or tampered with!"
         else
+            mh "$(funcname_and_lineno) failed! not signed"
             echo "This script does not appear to be signed!"
         fi
         line '-' P 5/a
-        o5; B; echo "You should run:"
+        o5; B; echo "You should try this:"
         o5; GRAY; echo "sudo wget -O $MP $my_url"
         if ${bool[signed]}; then
-            o5; B; echo "to fix this."; N
+            o5; B; echo ".. to fix this."; N
         else
-            o5; B; echo "to get a signed version of this script or disable the integrity check."; N
+            o5; B; echo ".. to get a signed version of this script or disable the integrity check."; N
             qpf; ask "Do you want to disable the integrity check at own risk" "$NO" && {
-                echo -e "v=true\nnohash" >> "$MP"
+                echo -e "v=true\nnohash" >> "$MP" # this step must be done before convene, to not write back over the created symlink
+                convene
+                cleanup_dangling_links ${D[ulb]}
+                ${X[sleep]} .1
+                line '=' P 5/a
                 cleanup "${tf[i]}" "${tf[v]}"
                 return 0
             }
         fi
     else
+        ${X[sed]} -i 's/^v=false$/v=true/' "$MP" # this step must be done before convene, to not write back over the created symlink
+        convene
+        cleanup_dangling_links ${D[ulb]}
+        mh "$(funcname_and_lineno) passed"
+        ${X[sleep]} .1
         o5; lG; echo "Integrity check passed. The script is authentic."; N
-        ${X[sed]} -i 's/^v=false$/v=true/' "$MP"
     fi
     line '=' P 5/a
     cleanup "${tf[i]}" "${tf[v]}"
@@ -126,6 +175,7 @@ integrity_check(){
 }
 
 run_integrity_check(){
+    mh "$(funcname_and_lineno) checking integrity"
     if integrity_check; then
         f
         pf; G; echo "Integrity check passed. Please start script again"
@@ -141,6 +191,7 @@ fi
 
 declare $(tnh1 2)
 if ! "${v:-_}"; then
+    mh "$(funcname_and_lineno) first run"
     f
     o5; B; echo "First run, checking integrity:"
     run_integrity_check

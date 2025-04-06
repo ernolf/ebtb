@@ -46,16 +46,16 @@ php_fpm_sites_available_conf_apache2(){
         sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
         sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${X[sed]} -E "s/${PHP[vregex]}/${PHP[vregex]}/g; s/\./\\\\./g")"
         mapfile -t sock_o< <(
-            q2 ${X[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${X[grep]} -Ehos "^[^#]*${sock_regex[$pool]}" {} + | \
-            ${X[grep]} -Eos "${sock_regex[$pool]}" | \
+            q2 ${X[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${X[grep]} -Ehos "^[^#]*${sock_regex[$pool]}" {} + |
+            ${X[grep]} -Eos "${sock_regex[$pool]}" |
 #            ${X[grep]} -Ev "${ver_n//\./\\.}" | \ # this breaks check if installed
             ${X[sort]} -u
         )
         mapfile -t canonicalized_sock_o< <(canonicalize_array "${sock_o[@]}")
         mapfile -t conffiles< <(
-            ${X[grep]} -Els "^[^#]*${sock_regex[$pool]}" ${A2CONFFILES[@]} | \
-            ${X[grep]} -E '\.conf$' | \
-            ${X[grep]} -Ev "$(fpm_conf_regex)" | \
+            ${X[grep]} -Els "^[^#]*${sock_regex[$pool]}" ${A2CONFFILES[@]} |
+            ${X[grep]} -E '\.conf$' |
+            ${X[grep]} -Ev "$(fpm_conf_regex)" |
             ${X[sort]} -u
         )
 
@@ -113,24 +113,20 @@ php_fpm_sites_available_conf_apache2(){
             for i in ${!conffiles[@]}; do
                 f
                 bundle printf detect_apache2_php_fpm_ tag "${conffiles[i]}"
-                ${X[sleep]} .5
             done
             f
             bundle echo "$(pf; format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
             f
             anykey
-            ${X[sleep]} .5
             local line conf
             for i in ${!conffiles[@]}; do
                 line="$(fpm_connections_socket "${conffiles[i]}")"
                 conf="$(${X[realpath]} "${conffiles[i]}")"
                 ${X[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
                 bundle echo "$(es3; Pbg) IMPORTANT: $(P; format_string " A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 16; N)"
-                ${X[sleep]} 1
             done
             unset line conf
             f
-#            anykey_noquit
         else
             no_conf_in_pool
         fi

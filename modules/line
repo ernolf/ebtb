@@ -21,7 +21,8 @@ line(){
     required_args 3 "$@"
     [[ "$-" =~ x ]] && { set +x; local debugx=true; } || local debugx=_
     pl(){
-        printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"
+#        printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"
+        for ((i=0; i<$2; i++)); do printf "$1"; done # no eval required here
     }
     local p c
     local -i e r a b
@@ -47,11 +48,23 @@ line(){
 separator(){
     local color
     color="$1"
-    line ' -' ${color:-GRAY} a
+    kill_spinner && te1 && line ' -' ${color:-GRAY} a
 }
 
 separator2(){
     local color
     color="$1"
-    line ' =' ${color:-GRAY} a
+    kill_spinner && te1 && line ' =' ${color:-GRAY} a
+}
+
+separator3(){
+    local color
+    color="$1"
+    kill_spinner && te1 && line - ${color:-GRAY} a
+}
+
+separator4(){
+    local color
+    color="$1"
+    kill_spinner && te1 && line = ${color:-GRAY} a
 }

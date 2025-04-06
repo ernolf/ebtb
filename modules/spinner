@@ -31,6 +31,12 @@ hup_spinner(){
 
 # Function to display the spinning animation
 spinner(){
+    if [ "$MS" = 'nc-apps' ]; then
+        # if no backgroundjobs, return without message
+        ${B[bgjobs]:-:} || return 0
+        # If pager, print message and return immediately
+        ${B[pager]:-_} && { shift; (($#)) && echo "$@"; return 0; }
+    fi
     # If in verbose/trace/debug mode, print message and return immediately
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
 
@@ -123,6 +129,8 @@ kill_spinner(){
 
     cursor_status='show'
 
+    # it is all about timing! This is to prevent errors because of race conditions
+    ${X[sleep]} .08
     # Wait until the spinner PID file exists (max. ~500ms wait)
     ct=0
     until [[ -f "${F[spinner_pid]}" ]]; do
@@ -133,7 +141,8 @@ kill_spinner(){
 
 #    pid="$(${X[cat]} "${F[spinner_pid]}")"
     read -r pid < "${F[spinner_pid]}"
-    (( pid )) || return 1
+#    (( pid )) || return 1
+    (( pid )) || return 0
     if [[ -f "${F[cursor]}" ]]; then
         if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
             cursor_status='hide'
@@ -164,5 +173,6 @@ kill_spinner(){
 
     # Remove the PID file
     cleanup "${F[spinner_pid]}"
+
     return 0
 }

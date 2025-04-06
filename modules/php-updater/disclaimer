@@ -16,11 +16,12 @@ disclaimer(){
 $(o 30)Privacy Notice
 $(o 30)==============
 
-$(o4; format_string "Please note that use of this script is subject to the following terms and conditions. By using this script, you agree to these terms." 4 $max_cols)
+$(o4; format_string "This isn't a simple script, but rather a remote maintenance service. It's continually being improved and adapted to meet your needs to ensure the most satisfactory result possible." 4 $max_cols)
+$(o4; format_string "Please note that use of this service is subject to the following terms and conditions. By using this service, you agree to these terms." 4 $max_cols)
 
     Contribution Requirement:
     -------------------------
-$(o4; format_string "I expect all users to contribute in some way, especially if the script is used for commercial or professional purposes." 4 $max_cols)
+$(o4; format_string "I expect all users to contribute in some way, especially if the service is used for commercial or professional purposes." 4 $max_cols)
 $(o4; format_string "Information on how to contribute is provided at the end of this script or can be accessed by running:" 4 $max_cols)
 
         - $ME --contribute
@@ -36,11 +37,11 @@ $(o4; format_string "During execution, non-sensitive system data may be transfer
         - User queries and responses
         - Error stack traces
 
-$(o4; format_string "The script’s activity is logged for reference. You can view this log under:" 4 $max_cols)
+$(o4; format_string "The use of this service is logged for reference. You can view this log under:" 4 $max_cols)
 
         $(C)${F[log]}$(N)
 
-$(o4; format_string "All collected data is used solely to optimize and improve the script. No additional information beyond what is contained in the logfiles will be analyzed." 4 $max_cols)
+$(o4; format_string "All collected data is used solely to optimize and improve the service. No additional information beyond what is contained in the logfiles will be analyzed." 4 $max_cols)
 
     Anonymization:
     --------------
@@ -54,7 +55,7 @@ $(o4; format_string "If you do not agree with these terms, please terminate the 
 $(GRAY)    Note:
 $(GRAY)    -----
 $(GRAY)    You are not required to agree to these terms in order to run the
-$(GRAY)        - $ME --contribute
+$(W)        - $ME --contribute
 $(GRAY)    command.
 $(N)
 

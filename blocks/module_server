@@ -1,3 +1,4 @@
+[ -x $(command -v lsof) ] && C[l]="${C[e]} LC_MESSAGES=C $(command -v lsof)" || __ "'lsof' binary not found."
 ls_(){
     case "$1" in
         pidstatus)

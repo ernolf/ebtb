@@ -20,9 +20,8 @@ create_json_objects(){
     if (( $(v2i ${NC[version]}) > $(v2i ${NC[master]}) )); then
         query_version="${NC[master]}"
     fi
+    spinner GRAY ". . . . . . . . . . .  create  and  update  json  objects  . . . . . . . . . . ." &
     if ${B[bgjobs]}; then
-        GRAY; echo ". . . . . . . . . . .  create  and  update  json  objects  . . . . . . . . . . ."; N
-        ${B[pager]} || spinner &
         appstore 'platform=all' 'new' & local job_ids="$!"
     else
         appstore 'platform=all' 'new'
@@ -43,11 +42,10 @@ create_json_objects(){
     done
     if ${B[bgjobs]}; then
         wait $job_ids
+        kill_spinner
         if ${B[pager]}; then
             echo "  json  objects  created"
             line '=' N 80
-        else
-            kill_spinner
         fi
     fi
 }
@@ -86,10 +84,7 @@ stock_up_arrays(){
     NC[master]="$(r_db "SELECT platform FROM versions WHERE tag = 'master';")"
     while (( $# )); do bool[${1%=*}]="${1#*=}"; shift; done
     tf[availupd]="$(tf)"
-    ${B[bgjobs]} && {
-        echo "$(GRAY) . . . . . . . . . . .  stocking  up  arrays  with  data  . . . . . . . . . . .$(N)"
-        ${B[pager]} || spinner &
-    }
+    spinner GRAY " . . . . . . . . . . .  stocking  up  arrays  with  data  . . . . . . . . . . ." &
     ${B[bgjobs]} && {
         query_apps all="${bool[all]:-_}" & local job_ids="$!"
     } || query_apps all="${bool[all]:-_}"
@@ -105,9 +100,8 @@ stock_up_arrays(){
     ${B[bgjobs]} && wait $job_ids
     applist_json="$(r_db "SELECT json_data FROM app_lists WHERE section == 'global';")"
     ${bool[filtered_appstore]:-_} && mapfile -t availupd < "${tf[availupd]}"
-    ${B[bgjobs]} && {
-        ${B[pager]} && { echo "  all arrays stocked up"; line '=' N 80; } || kill_spinner
-    }
+    kill_spinner
+    ${B[bgjobs]} && ${B[pager]} && { echo "  all arrays stocked up"; line '=' N 80; }
 }
 
 # Get different lists of apps from JSON format

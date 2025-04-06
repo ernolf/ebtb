@@ -14,9 +14,10 @@ declare IFS_="$IFS"
 
 # get array_fld: $1=name_of_array $2=FS $3=key $4=field_nr:
 a_fld(){
-    required_args 4 "$@"
+    required_args 4 $@
     local -n a=$1
     local -i ai=$4
+    local -a f
     for o in "${a[@]}"; do
         IFS=$2
         read -ra f<<<"$o"
@@ -24,3 +25,50 @@ a_fld(){
     done
     IFS="$IFS_"
 }
+
+# get Associative array_fld: $1=name_of_array $2=FS $3=key $4=field_nr:
+A_fld(){
+    required_args 4 $@
+    local -n a=$1
+    local -i ai=$4
+    local -a f
+    IFS=$2
+    read -ra f<<<"${a["$3"]}"
+    echo "${f[ai-1]}"
+    IFS="$IFS_"
+}
+# COMMENT -->
+
+## get array_fld: $1=name_of_array $2=FS $3=key $4=field_nr:
+#a_fld(){
+#    local an=$1
+#    if q0 declare -p $an; then
+#        [[ ${!1} ]] && an="${!1}" || an="$1"
+#        if [[ "$(declare -p $an)" =~ 'declare -A' || "$(declare -p $an)" =~ 'local -A' ]]; then
+#            A_fld "$an" "$2" "$3" "$(($4 - 1))"
+#        elif [[ "$(declare -p $an)" =~ 'declare -a' || "$(declare -p $an)" =~ 'local -a' ]]; then
+#            a_fld "$an" "$2" "$3" "$4"
+#        else
+#            something_went_wrong "$1 is not an array"
+#        fi
+#    else
+#        a_fld "$an" "$2" "$3" "$4"
+#    fi
+#}
+
+## get Associative array_fld: $1=name_of_array $2=FS $3=key $4=field_nr:
+#A_fld(){
+#    local an=$1
+#    if q0 declare -p $an; then
+#        [[ ${!1} ]] && an="${!1}" || an="$1"
+#        if [[ "$(declare -p $an)" =~ 'declare -a' || "$(declare -p $an)" =~ 'local -a' ]]; then
+#            a_fld "$an" "$2" "$3" "$(($4 + 1))"
+#        elif [[ "$(declare -p $an)" =~ 'declare -A' || "$(declare -p $an)" =~ 'local -A' ]]; then
+#            A_fld "$an" "$2" "$3" "$4"
+#        else
+#            something_went_wrong "$1 is not an array"
+#        fi
+#    else
+#        A_fld "$an" "$2" "$3" "$4"
+#    fi
+#}

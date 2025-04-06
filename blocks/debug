@@ -1,6 +1,60 @@
-# declare debug variable to enable to switch off spinner:
-# B[debug]=false
-# begin of debug:
-# B[debug]=:; trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
-# end of debug:
-# set +x; B[debug]=false; trap - DEBUG; set +x; read -rsn 1 -p "Press any key to continue " dummy; echo
+# debugging tools only on test channel
+# usage: add 'dbg' at the place in the code where you want to start debugging
+# now you will get the dbg prompt and can execute commands
+# dbg_help gives some examples.
+
+dbg_help(){
+    [[ "${FUNCNAME[1]}" = dbg || "${FUNCNAME[1]}" = debug_trap ]] || return 0
+    ${C[c]} <<DBG
+Helpful example commands:
+  debug on        - enable single-step mode
+  inherit on      - inherits single-step mode to shell functions, command
+                    substitutions, and subshell environments
+  inherit off     - single-step mode is not inherited
+  debug off       - finish debugging, continue script
+  declare -p \$var - display the attributes and values of each \$var
+                    aditionaly this re declares \$var in current scope
+  echo \$var       - inspect variable
+  kill \$pid       - terminate process
+  exit            - exit script
+  (empty line)    - resume script / go to next (single) step
+DBG
+}
+debug_toggle() {
+    [[ ${B[debug]} == : ]] && debug off || debug on
+}
+debug(){
+    [[ "${FUNCNAME[1]}" = dbg || "${FUNCNAME[1]}" = debug_trap ]] || return 0
+    eval declare -p B \&\>$NUL
+    case "$1" in
+    toggle) debug_toggle ;;
+        on) B[debug]=: ;;
+       off) B[debug]=_; set +x ;;
+         *) echo "Usage: debug {on|off}"
+    esac
+}
+inherit(){
+    [[ "${FUNCNAME[1]}" = dbg || "${FUNCNAME[1]}" = debug_trap ]] || return 0
+    case "$1" in
+        on) set -T ;;
+       off) set +T ;;
+         *) echo "Usage: inherit {on|off}"
+    esac
+}
+dbg(){
+    printf '%b' '\e[?25h\e[0;m'
+    while read -rp "${FUNCNAME[1]}:${BASH_LINENO[0]} dbg> (dbg_help for help) " cmd; do
+        [[ "$cmd" ]] || break
+        eval $cmd
+    done
+}
+debug_trap(){
+    printf '%b' '\e[?25h\e[0;m'
+    while read -rp "$(printf "\e[0;31m")[${FUNCNAME[1]}:${BASH_LINENO[0]} DEBUG:]$(printf "\e[0;33m") dbg_help$(printf "\e[0;m") for help,$(printf "\e[0;32m") ENTER$(printf "\e[0;m") to proceed .. " cmd; do
+        [[ "$cmd" ]] || break
+        eval $cmd
+    done
+}
+set -T
+trap '"${B[debug]:=_}" && { set +x; debug_trap; set -x; } || set +x' DEBUG
+# end of debug

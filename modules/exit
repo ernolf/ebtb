@@ -16,41 +16,31 @@ EXIT_BASHLIB=:
 . <(lrequire ansi)
 . <(lrequire debug)
 # TODO <-- 0
+. <(lrequire cleanup)
 
 exit0(){
-    mh "exit: 0"
+    mh "exit 0"
     G; echo "exiting script."; N
     echo "generous? feedback? questions? run: '$ME --contribute'"; N
     exit 0
 }
 
 exit1(){
-    mh "exit: 1"
+    mh "exit 1"
     R; echo "exiting…"; N
     echo "generous? feedback? questions? run: '$ME --contribute'"; N
     exit 1
 }
 
-cleanup() {
-    local x
-    for x in "$@"; do
-        if [[ -d "$x" && "$x" != / && "$x" =~ ^(/tmp|/var/tmp|/dev/shm|/run/lock)(/|$) ]]; then
-            ${X[rm]} -fr -- "$x"
-        elif [[ -f "$x" ]]; then
-            ${X[rm]} -f -- "$x"
-        fi
-    done
-}
-
 # define a trap to clean up the lock- and temporary files
 exit_trap(){
     local x
-    [ -f "${F[spinner_pid]}" ] && kill_spinner
+    [ -f "${F[spinner_pid]}" ] && kill_spinner || ${X[sleep]} .1
     ${local_server:-_} && ls_ stop
-    cleanup "${D[l]}"
+#    cleanup "${D[l]}" # this must not be cleaned up, it would produce error messages due to race conditions
     for x in td shm; do
-        nonullglob "${D[$x]}/${M[b]}${M[pid]}_*" && ${X[rm]} -f ${D[$x]}/${M[b]}${M[pid]}_*
-        nonullglob "${D[$x]}/${M[b]:-$$}_*" && ${X[rm]} -f ${D[$x]}/${M[b]:-$$}_*
+        nonullglob "${D[$x]}/${M[b]}${M[pid]}_*" && cleanup ${D[$x]}/${M[b]}${M[pid]}_*
+        nonullglob "${D[$x]}/${M[b]:-$$}_*" && cleanup ${D[$x]}/${M[b]:-$$}_*
     done
     ${X[reset]} -IQ
     ansi_reset
@@ -63,12 +53,15 @@ interrupted(){
     if [ -z "${M[b]}" ]; then
         return 0
     else
-        te1; echo "$t $(C)interrupted by$(o $os; Yi)- $(R)sig$sig"
+        te1
+        f
+        separator R
+        echo "$t $(C)interrupted by$(o $os; Yi)- $(R)sig$sig"
         if [ -f "${F[spinner_pid]}" ]; then
-            te1; echo "$t $(C)spinner$(o $os; Yi)- $(G)killed"
+            echo "$t $(C)spinner$(o $os; Yi)- $(G)killed"
         fi
         if nonullglob "$TD/${M[b]}${M[pid]}_*" || nonullglob "$TD/${M[b]:-$$}_*"; then
-            te1; echo "$t $(C)temporary files$(o $os; Yi)- $(G)removed"
+            echo "$t $(C)temporary files$(o $os; Yi)- $(G)removed"
         fi
         exit1
     fi

@@ -14,6 +14,8 @@ EXTENSIONS_BASHLIB=:
 . <(lrequire php/versions)
 [ "$MS" = 'php-updater' ] && . <(require php/sury)
 
+[ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+
 # globals
 q2 declare -ag EXTS_ADMIN || declare -a EXTS_ADMIN
 q2 declare -Ag APIS || declare -A APIS
@@ -55,6 +57,7 @@ SAPIDESCR=(
     [gmp]="GMP module for PHP"
     [igbinary]="igbinary PHP serializer"
     [imagick]="PHP wrapper for the ImageMagick library"
+    [imap]="IMAP module for PHP"
     [inotify]="Inotify bindings for PHP"
     [intl]="Internationalisation module for PHP"
     [ldap]="LDAP module for PHP"
@@ -145,6 +148,7 @@ detect_and_assign_extensions(){
     assign(){
         local dpkg_package phpregex
         if [ "${search:-}" = 'apache2' ]; then
+            . "${F[php]}" &>$NUL
             phpregex="libapache2-mod-php${PHP[vregex]}"
         else
             phpregex="php"
@@ -227,6 +231,7 @@ extension_is_(){
         dependency)
             q2 ${X[dpkg-query]} -f'${Description}' -W $pkg | ${X[grep]} -iqsw "this package is a dependency package" && return $?
             if [[ "$pkg" =~ php- ]]; then
+                . "${F[php]}" &>$NUL
                 q2 ${X[dpkg-query]} -f'${Depends}' -W $pkg | ${X[grep]} -Eiqsw "php${PHP[vregex]}-${pkg#php-}$" && return $?
             fi
             return 1
@@ -250,6 +255,7 @@ extension_is_(){
 
 is_sapi_true_(){
     local pkg sapi
+    . "${F[php]}" &>$NUL
     for pkg in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'/{print $2}'); do
         sapi=''
         if sapi=$(extension_is_ sapi "$pkg"); then
@@ -274,6 +280,7 @@ ext_state(){
             return
             ;;
         fix)
+            . "${F[php]}" &>$NUL
             for mod in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*php'${PHP[vregex]}'/{print $2}'); do
                 for pv in $(${X[phpquery]} -V); do
                     [ "${mod%-*}" = "php$pv" ] && mod="${mod#*-}" || continue

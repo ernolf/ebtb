@@ -11,6 +11,7 @@ ${TASKS_REPLACE_AIM_BASHLIB:-_} && return
 TASKS_REPLACE_AIM_BASHLIB=:
 
 replace_aim(){ # replace admin installed modules
+    . "${F[php]}" &>$NUL
     replace_(){
         local ini_dir mod
         if [ "$(${X[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ] && (( imb )); then
@@ -33,7 +34,6 @@ replace_aim(){ # replace admin installed modules
                 rm -f "$ini_dir/$mod.ini"
             done
         fi
-#            anykey
         ext_state cleanup
         ext_state fix
         apt_install_prechecked --yes ${pkgs[@]}

@@ -29,8 +29,8 @@ ${X[mkdir]} -p ${D[li]}/php-updater/switch.d
 no_conf_in_pool(){
     local -i
     f
-    bundle echo "$(es3; ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected. If, in the further course, below of this message, it is shown that the server is connected to the new socket, then everything worked and this message does not indicate an error." 6; N)"
-    bundle echo "$(es3; Y; pf; format_string "If the server does not connect to the new socket and this message does not match your expectations, the fpm pool for the selected version you want to switch to may not have been created. This script normaly creates the necessary pools for the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
+    bundle echo "$(es3; ipf; O; format_string "There is no socket connection configured in this pool that could be switched to the version you selected. For the default [www] pool, this is the expected normal case. If, in the further course, below of this message, it is shown that the server is connected to the new socket, then everything worked and this message does not indicate an error." 6; N)"
+    bundle echo "$(es3; Y; pf; format_string "If the server does not connect to the new socket and this message does not match your expectations, the fpm pool for the selected version you want to switch to may not have been created or has been deactivated. This script normaly creates the necessary pools for the new version. However, if steps outside of this script have already been performed, this may have been skipped." 6; N)"
     f
     anykey_noquit
 }
@@ -40,14 +40,11 @@ switch_default_version(){
     local -a selections php_versions sapis
     local -i i ret
     mapfile -t php_versions < <(${X[phpquery]} -V | ${X[sort]})
-    # update-alternatives
-#    cleanup_and_fix_alternatives # before  # repair broken alternatives, remove not existing alternatives
     mapfile -t selections < <(list_alternatives)
     line '=' P 2/a b1
     echo -e "\n$(pf; P; format_string "Here you can switch the default php version linked to the generic $(C)/usr/bin/php$(P) with the means of the $(W)Debian alternatives system$(P)." 3; N)\n$(o3; dP; format_string "All php related packages maintained by the alternatives system will get switched to manual mode instead of automatic. That will prevent php from changing its version without your dessision." 3; N)\n$(o3; dP; format_string "In this step there is no test, if all required php packages to run a server like Nextcloud are present in the version you choose. So it is recommended to first run $(C)$ME${FLAG[forceflag]} \$old \$new$(dP), where $(C)\$old$(dP) should be the version that you know exactly that everything has been installed correctly and $(C)\$new$(dP) should be the version that you want to switch to here and now." 3; N)"
     f
     bundle echo "$(es3; dY)this is how the alternatives system is configured at present:"; N
-    ${X[sleep]} .1
     haul printf list_alternatives
     f
     for i in ${!selections[@]}; do
@@ -58,7 +55,6 @@ switch_default_version(){
     echo -e "\n$(pf; P; format_string "In the subsequent next step it will switch your webserver to connect to the new php version as well. $(dP)However, in some rare special cases, this step may fail though. In such a case you will have to edit the web server's configuration files yourself to connect it to the PHP socket of your choice." 3; N)"
     f
     bundle echo "$(es3; dY)this is how php is connected to the httpd at present:"; N
-    ${X[sleep]} .1
     haul printf list_installed_sapi quiet
     f
     list_installed_sapi
@@ -69,15 +65,15 @@ switch_default_version(){
     bundle echo "$(pf; Y)Switch the default alternatives version for php to:"
     for i in ${!php_versions[@]}; do
         f
-        bundle echo "$(es 10; button $((i + 1)); Y) - php${php_versions[i]} $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' ${php_versions[i]} 5); Y)"
+        bundle echo "$(es 10; button $((i + 1)); Y) - php${php_versions[i]} $(dY)supported by Nextcloud version $(listify_ C dY $(A_fld EXG ';' ${php_versions[i]} 4); Y)"
     done
     f
     bundle echo "$(es 10; button q; Y) - do nothing, quit"
     N; f
     while :;do read -rsn 1 -p "$(pf; Y)Please make your choice: $(N)" key
-        if confirm_choice "$key" "You selected option $(button $key) Is this correct?"; then
+        if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
             f
-            mh "key: [$key]" &
+            mh "$(funcname_and_lineno) key: [$key]"
             echo -n "$(P; pf)Confirmed choice $(button $key)"; N
             case $key in
                     q)  P; echo ":$(Yi) quit, nothing changed"; N
@@ -86,14 +82,12 @@ switch_default_version(){
                         ;;
                 [1-9])  if [[ ${php_versions[$key-1]} ]]; then
                             P; echo ":$(Yi) php${php_versions[$key-1]}"; N
-#                            anykey_noquit
                             separator
                             q0 apt-mark manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
                             set_selections 'ph(ar|p)' 'manual' "${PHP[vregex]}" "${php_versions[$key-1]}"
                             cleanup_and_fix_alternatives # afterwards  # repair broken alternatives, remove not existing alternatives
                             mapfile -t selections < <(list_alternatives)
                             bundle echo "$(es3; dY)alternatives system is now switched to:"; N
-                            ${X[sleep]} .1
                             haul printf list_alternatives
                             f
                             for i in ${!selections[@]}; do
@@ -148,7 +142,6 @@ switch_default_version(){
                             separator
                             f
                             bundle echo "$(es3; dY)This is how php is connected to the httpd now:"; N
-                            ${X[sleep]} .1
                             haul printf list_installed_sapi quiet
                             f
                             list_installed_sapi
@@ -157,9 +150,7 @@ switch_default_version(){
                             f
                             anykey_noquit
                             N
-                            echo "$(o3; O; format_string "If everything has gone as expected so far, I would like to urge you to make a contribution that is crucial to maintaining this service!" 3; N)"
-                            f
-                            echo "$(o3; W; format_string "After you have done that, you can allways run" 3; N)"
+                            echo "$(o3; W; format_string "You can allways run" 3; N)"
                             f
                             echo "$(G; prompt; lB) $ME${FLAG[forceflag]}$(C) --list-installed"; N
                             f
@@ -169,9 +160,15 @@ switch_default_version(){
                             f
                             echo "$(G; prompt; GRAY) sudo$(lB) apt-get purge '*php8.0*'"; N
                             f
-                            echo "$(o3; format_string ".. $(GRAY)(where, as said, the $(lB)8.0$(GRAY) is just an example placeholder)" 3; N)"
+                            echo "$(o3; format_string ".. $(GRAY)(where, as said, the $(lB)8.0$(GRAY) here is just as an example placeholder)" 3; N)"
                             f
-                            echo "$(o3; Yi; format_string "NOTE:$(N) The single quotes are crucial here, to prevent globing." 3)"
+                            echo "$(o3; Yi; format_string "NOTE:$(N) The single quotes are important here, to prevent globing." 3)"
+                            f
+                            anykey_noquit
+                            separator O
+                            f
+                            echo "$(o3; P; format_string "Now, if everything has gone as expected so far – which I sincerely hope – it is probably the right moment to remind you to make a contribution to the project." 3; N)"
+                            echo "$(o3; dP; format_string "The subsequent screen contains the information about how you can contribute. Your contribution can be in many forms, and every little bit helps to keep this service running and affordable for everyone." 3; N)"
                             f
                             anykey_noquit
                             break
@@ -183,6 +180,6 @@ switch_default_version(){
             te0 8
         fi
     done
-    q0 di ff &
+    (q0 di ff) &
     contribute_
 }

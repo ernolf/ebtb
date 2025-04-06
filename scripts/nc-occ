@@ -113,8 +113,7 @@ show_menu(){
     read -p "$prompt: " choice
     case "$choice" in
         r)  if (( level > 1 )); then
-                $CMA
-                exit 0
+                exec $CMA
             fi
             ;;
         q)  exit0

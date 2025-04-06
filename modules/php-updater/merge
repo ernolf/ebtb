@@ -140,8 +140,8 @@ merge_settings(){
                         defaults_and_changelog "$key"
                         if [[ "${keep[@]}" =~ $key ]]; then
                             bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set this directive to a specific value for the $(B)${SAPIDESCR[$sapi]}$(N), you will have to edit the file $(C)$npath$(N) with an editor of your choice." 3; N)"
-                            bundle echo "$(o3; format_string "Refer to $(GRAY)https://www.php.net/manual/errorfunc.configuration.php#ini.$key$(N) for further information" 3; N)"
-                            ${X[sleep]} .5
+                            bundle echo "$(es3; format_string "Refer to $(GRAY)https://www.php.net/manual/errorfunc.configuration.php#ini.$key$(N) for further information" 3; N)"
+#                            ${X[sleep]} .5
                             anykey
                         else
                             question="$(qpf; format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"

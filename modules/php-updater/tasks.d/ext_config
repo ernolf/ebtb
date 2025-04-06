@@ -93,8 +93,9 @@ detect_(){
 
 check_invalid_sections(){
     require_arg "$@"
+    kill_spinner
     cursor_ hide
-    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
+    spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
     local pv xtmp itmp infstr errstr sapi ini_file plu invalid_section content
     local -i line
     local -a invalid_sections failed_ini_files
@@ -112,7 +113,6 @@ check_invalid_sections(){
                 content="${invalid_section#*:}"
                 echo -e "$(C)Line $(printf "%5d" $line):$(N) $(R)$content$(N)" >>"$itmp"
                 echo "${X[sed]} -i '${line}{s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/; s/\[\[*/[/g; s/\]*\]/]/g;}' $ini_file" >>"$xtmp"
-#                echo "${X[sed]} -i '${line}{/^[[].*[]]$/! {s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/;}}' $ini_file" >>"$xtmp"
             done
             echo >>"$itmp"
         fi
@@ -120,12 +120,10 @@ check_invalid_sections(){
     uniq_lines "$xtmp"
     if (( $(${X[wc]} -c <"$xtmp") )); then
         echo "$(ipfl; format_string "$infstr" 6; N)" >>"$itmp"
-        kill_spinner
         separator
-        bundle cat "$itmp" &
-        ${X[sleep]} .5
+        bundle cat "$itmp"
         f
-        haul cat "$xtmp" &
+        haul cat "$xtmp"
         anykey
         . "$xtmp"
         # recheck the result and provide the unfixed line numbers
@@ -147,22 +145,23 @@ check_invalid_sections(){
         done
         if (( ${#failed_ini_files[@]} )); then
             something_went_wrong "$errstr"
-            bundle cat "$itmp" &
+            bundle cat "$itmp"
             anykey_noquit
             exit1
         else
             bundle echo "$(rpf; lG)All invalid section titles successfully corrected."; N
         fi
         anykey
-    else
-        kill_spinner
+        cursor_ hide
+        spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
     fi
 }
 
 ext_missing_equalsigns(){
     require_arg "$@"
+    kill_spinner
     cursor_ hide
-    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
+    spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
     local pv xtmp itmp infstr errstr sapi ini_file plu ext
     local -i i
     local -a missing_equalsigns failed_ini_files
@@ -191,14 +190,12 @@ You can either fix it manually and restart this script, or let the script commen
         fi
     done
     uniq_lines "$xtmp"
-    if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
+    if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
         echo "$(ipfl; format_string "$infstr" 6; N)" >> $itmp
-        kill_spinner
         separator
-        bundle cat "$itmp" &
-        ${X[sleep]} .5
+        bundle cat "$itmp"
         f
-        haul cat "$xtmp" &
+        haul cat "$xtmp"
         anykey
         . $xtmp
         # recheck the result and provide the unfixed line numbers
@@ -220,22 +217,23 @@ You can either fix it manually and restart this script, or let the script commen
         done
         if (( ${#failed_ini_files[@]} )); then
             something_went_wrong "$errstr"
-            bundle cat "$itmp" &
+            bundle cat "$itmp"
             anykey_noquit
             exit1
         else
             bundle echo "$(rpf; lG)All invalid definitions successfully commented out."; N
         fi
         anykey
-    else
-        kill_spinner
+        cursor_ hide
+        spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
     fi
 }
 
 ext_double_definitions(){
     require_arg "$@"
+    kill_spinner
     cursor_ hide
-    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
+    spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
     local pv xtmp itmp infstr sapi ini_file plu be ext
     local -i i rep
     local -a double_definitions failed_ini_files
@@ -275,12 +273,10 @@ ext_double_definitions(){
     done
     uniq_lines "$xtmp"
     if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
-        kill_spinner
         separator
-        bundle cat "$itmp" &
-        ${X[sleep]} .5
+        bundle cat "$itmp"
         f
-        haul cat "$xtmp" &
+        haul cat "$xtmp"
         anykey
         . $xtmp
         for sapi in $(${X[phpquery]} -v $pv -S); do
@@ -294,16 +290,14 @@ ext_double_definitions(){
             bundle echo "$(rpf; lG)All double definitions successfully commented out."; N
         fi
         anykey
-    else
-        kill_spinner
+        cursor_ hide
+        spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
     fi
 }
 
 ext_double_loaders(){
     required_args 2 "$@"
     # get rid of double extension loaders
-    cursor_ hide
-    spinner C " . check_config() searching known configuration errors ${FUNCNAME[0]} ." &
     local pv ext ext_ini xtmp itmp pattern sapi line plu be a ini_string ini_string_ ini_lnk_string infstr symlinkstring
     local -a php_inis inifiles sapis
     local -A ext_ini_lnk ext_ini_islnk
@@ -359,11 +353,9 @@ ext_double_loaders(){
             line=$(${X[grep]} -Eix "$pattern" ${inifiles[i]})
             echo "${X[sed]} -i '/^$line$/d' '${inifiles[i]}'" >> $xtmp
         done
-        if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-            kill_spinner
+        if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
             separator
-            bundle cat "$itmp" &
-            ${X[sleep]} .5
+            bundle cat "$itmp"
             f
             if ask "$(qpf)Do you want to apply this fix$plu" "$YES"; then
                 . $xtmp
@@ -413,8 +405,8 @@ core_config_fix(){
         echo -e "\n$(R)$line$(N)" >> $itmp
         echo "$(ipfl; format_string "$infstr1" 6; N)" >> $itmp
         echo "$(R; format_string "$infstr2" 4; N)" >> $itmp
-        echo "$(o6; W; format_string "$infstr3" 6; N)" >> $itmp
-        echo "$(o6; W; format_string "$infstr4" 6; N)" >> $itmp
+        echo "$(es6; W; format_string "$infstr3" 6; N)" >> $itmp
+        echo "$(es6; GRAY; format_string "$infstr4" 6; N)" >> $itmp
         for i in ${!php_inis[@]}; do
             line=$(${X[grep]} -ix "$pattern" ${php_inis[i]})
             if [[ -n "$line" && "$line" =~ $pattern ]]; then
@@ -423,14 +415,11 @@ core_config_fix(){
         done
     fi
     uniq_lines "$xtmp"
-    if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-        kill_spinner
+    if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
         separator
-        bundle cat "$itmp" &
-        ${X[sleep]} .5
+        bundle cat "$itmp"
         f
-        haul cat "$xtmp" &
-        ${X[sleep]} .5
+        haul cat "$xtmp"
         if ask "$(qpf)Do you want to apply this fix" "$YES"; then
             . $xtmp
             if ${X[grep]} -Eqsiw "$pattern" ${php_inis[@]}; then
@@ -492,8 +481,8 @@ ext_config_fix(){
                 echo -e "\n$(R)$line$(N)" >> $itmp
                 echo "$(ipfl; format_string "$infstr1" 6; N)" >> $itmp
                 echo "$(R; format_string "$infstr2" 4; N)" >> $itmp
-                echo "$(o6; W; format_string "$infstr3" 6; N)" >> $itmp
-                echo "$(o6; W; format_string "$infstr4" 6; N)" >> $itmp
+                echo "$(es6; W; format_string "$infstr3" 6; N)" >> $itmp
+                echo "$(es6; W; format_string "$infstr4" 6; N)" >> $itmp
                 for i in ${!php_inis[@]}; do
                     line=$(${X[grep]} -ix "$pattern" ${php_inis[i]})
                     if [[ -n "$line" && "$line" =~ $pattern ]]; then
@@ -502,14 +491,11 @@ ext_config_fix(){
                 done
             fi
             uniq_lines "$xtmp"
-            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-                kill_spinner
+            if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
                 separator
-                bundle cat "$itmp" &
-                ${X[sleep]} .5
+                bundle cat "$itmp"
                 f
-                haul cat "$xtmp" &
-                ${X[sleep]} .5
+                haul cat "$xtmp"
                 if ask "$(qpf)Do you want to apply this fix" "$YES"; then
                     . $xtmp
                     if ${X[grep]} -Eqsiw "$pattern" ${php_inis[@]}; then
@@ -531,6 +517,8 @@ ext_config_fix(){
                     bundle echo "$(rpf; R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
+                cursor_ hide
+                spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
             fi
             ;;
 #TODO <--0
@@ -548,17 +536,17 @@ ext_config_fix(){
                         optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
                         optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
                         pattern='redis\.session\.lock'
-                        if ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock" &&
-                           ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_r" &&
-                           ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_sorted" &&
-                           ! p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                        if ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" &&
+                           ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" &&
+                           ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" &&
+                           ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
                             for sapi in $(${X[phpquery]} -v $pv -S); do
                                 php_ini="/etc/php/$pv/$sapi/php.ini"
                                 if [ -f "$php_ini" ]; then
-                                    if p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock" ||
-                                       p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_r" ||
-                                       p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_sorted" ||
-                                       p_sort "$(stripconf "$php_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                                    if p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" ||
+                                       p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" ||
+                                       p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" ||
+                                       p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
                                         inifiles1_+=("$php_ini")
                                     else
                                         inifiles2_+=("$php_ini")
@@ -589,21 +577,19 @@ ext_config_fix(){
                                 echo "echo -e '$optionblock' >> $ext_ini" >> $xtmp
                             fi
                         fi
-                        if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-                            kill_spinner
+                        if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
                             separator
-                            bundle cat "$itmp" &
-                            ${X[sleep]} .5
+                            bundle cat "$itmp"
                             f
                             if ask "$(qpf)Do you want to apply this directives as suggested" "$YES"; then
                                 . $xtmp
-                                if p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock" ||
-                                   p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_r" ||
-                                   p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_sorted" ||
-                                   p_sort "$(stripconf "$ext_ini"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                                if p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" ||
+                                   p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" ||
+                                   p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" ||
+                                   p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
                                     bundle echo "$(rpf; lG)Directives successfully written in $ext_ini."; N
                                     for i in ${!inifiles1_[@]}; do
-                                        if p_sort "$(stripconf "${inifiles1_[i]}"|${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")"|${X[grep]} -qsPzw "$optionblock"; then
+                                        if p_sort "$(stripconf "${inifiles1_[i]}" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock"; then
                                             something_went_wrong "removal from ${inifiles1_[i]} failed."
                                         else
                                             bundle echo "$(rpf; lG)removal from ${inifiles1_[i]} was successfull."; N
@@ -616,6 +602,8 @@ ext_config_fix(){
                                 bundle echo "$(rpf; R)you answered $(box no), nothing changed."; N
                             fi
                             anykey
+                            cursor_ hide
+                            spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
                         fi
                         break
                     fi
@@ -641,7 +629,7 @@ ext_config_fix(){
                     plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
                 fi
                 echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                if (( $(${X[grep]} -Eix "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini"|${X[wc]} -l) == 0 )); then
+                if (( $(${X[grep]} -Eix "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini" | ${X[wc]} -l) == 0 )); then
                     infstr="This directive has absolutely no effect in $ini_string. It is meant to enable the APCu (Alternative PHP user Cache) for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the APCu is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$pv/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$pv/cli/php.ini$(W)."
                     echo -e "\n$(R)$line$(N)" >> $itmp
                     echo "$(ipfl; format_string "$infstr" 6; N)" >> $itmp
@@ -653,14 +641,11 @@ ext_config_fix(){
                 fi
             fi
             uniq_lines "$xtmp"
-            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-                kill_spinner
+            if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
                 separator
-                bundle cat "$itmp" &
-                ${X[sleep]} .5
+                bundle cat "$itmp"
                 f
-                haul cat "$xtmp" &
-                ${X[sleep]} .5
+                haul cat "$xtmp"
                 if ask "$(qpf)Do you want to apply this fixes" "$YES"; then
                     . $xtmp
                     if ${X[grep]} -Eqsiw "$pattern" /etc/php/$pv/cli/php.ini; then
@@ -678,6 +663,8 @@ ext_config_fix(){
                     bundle echo "$(rpf; R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
+                cursor_ hide
+                spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
             fi
             ;;
         opcache)
@@ -699,7 +686,7 @@ ext_config_fix(){
                     plu='s' be=are ini_string_="$(listify_ C O ${inifiles1_[@]})" ini_string="$(listify_ C W ${inifiles1_[@]})"
                 fi
                 echo -e "\n   - $(O)Malicious configuration line in $ini_string_:" >> $itmp
-                if (( $(${X[grep]} -Exi "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini"|${X[wc]} -l) == 0 )); then
+                if (( $(${X[grep]} -Exi "$pattern" "$ext_ini" "/etc/php/$pv/cli/php.ini" | ${X[wc]} -l) == 0 )); then
                     infstr="This directive has absolutely no effect in $ini_string. It is meant to enable the opcode cache for the CLI version of PHP (which is used on the commandline and for cron jobs). For all other SAPIs the opcode cache is enabled by default. Although it cannot cause any damage at this location$plu, this file$plu $be not sourced by the CLI version of PHP and in $(C)$ext_ini$(W) or $(C)/etc/php/$pv/cli/php.ini$(W) from where the CLI SAPI obtains its directives, this directive is missing. So this line will be removed from here and inserted into $(C)/etc/php/$pv/cli/php.ini$(W)."
                     echo -e "\n$(R)$line$(N)" >> $itmp
                     echo "$(ipfl; format_string "$infstr" 6; N)" >> $itmp
@@ -723,14 +710,11 @@ ext_config_fix(){
                 fi
             fi
             uniq_lines "$xtmp"
-            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-                kill_spinner
+            if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
                 separator
-                bundle cat "$itmp" &
-                ${X[sleep]} .5
+                bundle cat "$itmp"
                 f
-                haul cat "$xtmp" &
-                ${X[sleep]} .5
+                haul cat "$xtmp"
                 if ask "$(qpf)Do you want to apply this fixes" "$YES"; then
                     . $xtmp
                     if ${X[grep]} -Eqsiw "$pattern" /etc/php/$pv/cli/php.ini; then
@@ -748,6 +732,8 @@ ext_config_fix(){
                     bundle echo "$(rpf; R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
+                cursor_ hide
+                spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
             fi
             ;;
         igbinary)
@@ -802,14 +788,11 @@ ext_config_fix(){
                 fi
             done
             uniq_lines "$xtmp"
-            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-                kill_spinner
+            if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
                 separator
-                bundle cat "$itmp" &
-                ${X[sleep]} .5
+                bundle cat "$itmp"
                 f
-                haul cat "$xtmp" &
-                ${X[sleep]} .5
+                haul cat "$xtmp"
                 if ask "$(qpf)Do you want to apply this fixes" "$YES"; then
                     . $xtmp \
                     && for inifile in $ext_ini ${php_inis[@]}; do uniq_empty_lines $inifile; done; unset inifile
@@ -827,6 +810,8 @@ ext_config_fix(){
                     fi
                 fi
                 anykey
+                cursor_ hide
+                spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
             fi
             ;;
         pdo_pgsql)
@@ -841,11 +826,9 @@ ext_config_fix(){
                 echo "$(ipfl; format_string "$infstr" 6; N)" >> $itmp
                 echo "delafter 'extension=pdo_pgsql.so' '$ext_ini'" >> $xtmp
             fi
-            if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-                kill_spinner
+            if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
                 separator
-                bundle cat "$itmp" &
-                ${X[sleep]} .5
+                bundle cat "$itmp"
                 f
                 if ask "$(qpf)Do you want to remove these lines" "$YES"; then
                     . $xtmp
@@ -858,6 +841,8 @@ ext_config_fix(){
                     bundle echo "$(rpf; R)you answered $(box no), nothing changed."; N
                 fi
                 anykey
+                cursor_ hide
+                spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
             fi
             ;;
         *)  :
@@ -871,6 +856,7 @@ check_config(){
     (( $# )) && pv="$1" || pv="$OLD"
     amdir="/etc/php/$pv/mods-available"
     [ -d "$amdir" ] || return 1
+#    spinner C " . check_config() searching known configuration errors in php$pv: ${FUNCNAME[0]} ." &
 
     # get rid of invalid secions
     check_invalid_sections "$pv"
@@ -881,6 +867,9 @@ check_config(){
     # get rid of double definitions
     ext_double_definitions "$pv"
 
+    kill_spinner
+    cursor_ hide
+    spinner C " . check_config() searching known configuration errors in php$pv: uncommented priority definitions ." &
     # get rid of uncommented priority definitions
     pattern='^\s*priority\s*=\s*[1-9][0-9]?\s*$'
     mapfile -t ext_inis< <(${X[grep]} -El $pattern $amdir/*.ini)
@@ -898,20 +887,18 @@ check_config(){
         infstr2="This script will fix this issue by commenting out all occurrences of 'priority=\$nr' without further prompt, as it constitutes a critical configuration error."
         echo -e "\n$(R)${line##\s}$(N)" >> $itmp
         echo "$(ipfl; format_string "$infstr1" 6; N)" >> $itmp
-        echo "$(o6; W; format_string "$infstr2" 6; N)" >> $itmp
+        echo "$(es6; W; format_string "$infstr2" 6; N)" >> $itmp
         for i in ${!ext_inis[@]}; do
             line=$(${X[grep]} -Eix "$pattern" ${ext_inis[i]})
             echo "${X[sed]} -i 's|^$line$|; ${line// /}|g' '${ext_inis[i]}'" >> $xtmp
         done
     fi
     uniq_lines "$xtmp"
-    if (( $(${X[wc]} -c "$xtmp"|${X[gawk]} '{print$1}') )); then
-        kill_spinner
+    if (( $(${X[wc]} -c "$xtmp" | ${X[gawk]} '{print$1}') )); then
         separator
-        bundle cat "$itmp" &
-        ${X[sleep]} .5
+        bundle cat "$itmp"
         f
-        haul cat "$xtmp" &
+        haul cat "$xtmp"
         anykey
         . $xtmp
         if ${X[grep]} -Eqsiw "$pattern" ${ext_inis[@]}; then
@@ -932,12 +919,12 @@ check_config(){
         anykey
     fi
 
-    mapfile -t am_ini_files< <(${X[ls]} "$amdir"|${X[gawk]} -F. '/\.ini$/{print$1}')
+    mapfile -t am_ini_files< <(${X[ls]} "$amdir" | ${X[gawk]} -F. '/\.ini$/{print$1}')
     for am in core ${am_ini_files[@]}; do
         kill_spinner
+        cursor_ hide
         spinner C " . check_config() searching known configuration errors in php$pv: checking $am ." &
         ext_double_loaders $pv $am
         ext_config_fix $pv $am
     done
-    kill_spinner
 }

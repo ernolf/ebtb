@@ -19,10 +19,10 @@ su_do(){
     nosudo(){
         o2; R; echo "you have no sudo rights."; N
     }
-    local prompt var
+    local prompt
     local -a bools args
     local -A arga
-    for var in "$@"; do arga[${var%=*}]="${var#*=}"; done #; unset -v var
+    for x in "$@"; do arga[${x%%=*}]="${x#*=}"; done
     case "${arga[u]}" in
         root)
             ${B[rt]} && return 0
@@ -36,8 +36,8 @@ su_do(){
                 args=("${arga[arg]}")
             fi
             prompt="$(Pbg)[sudo]$(N) - $(P)You have to be '$(C)root$(P)' ${arga[p]}. Password of user$(C) %p$(P):$(N) "
-            if q0 ${X[sudo]} -lp "$prompt" "${arga[run]}"; then
-                mh "${X[sudo]} ${arga[run]} ${args[@]}"
+            if q0 ${X[sudo]} -lp "$prompt" ${arga[run]}; then # ${arga[run]} must be kept unquoted here!
+                mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[sudo]} ${arga[run]} ${args[@]}"
                 ${X[sudo]} ${arga[run]} ${args[@]}
                 ${arga[r]} && return 0 || exit 0
             else
@@ -46,13 +46,13 @@ su_do(){
             fi
             ;;
         # su_do "u=NC_USER" or su_do "u=NC[u]"
-        NC_USER|NC[u])
+        NC_USER)
             f 2
             o2; B; echo "This script has to be run as user$(N) '$(C)${NC[u]}$(N)' $(B)or as$(N) '$(C)root$(N)'$(B)!$(N)"
             o4; GRAY; echo "sudo -u ${NC[u]} $ME ${args[@]}$(N)"
             prompt="$(Pbg)[sudo]$(N; pf; P)Enter password of user$(C) %p $(P)to substitute user to$(C) ${NC[u]}$(P):$(N) "
             o2; if q0 ${X[sudo]} -lu ${NC[u]} -p "$prompt" $ME; then
-                mh "${X[sudo]} -u ${NC[u]} $CMA"
+                mh "$(funcname_and_lineno 1)$(funcname_and_lineno) exec ${X[sudo]} -u ${NC[u]} $CMA"
                 ${X[sudo]} -u ${NC[u]} $CMA
                 exit 0
             else

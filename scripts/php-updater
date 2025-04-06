@@ -46,16 +46,16 @@ declare flag bool
 declare -a flags bools args
 declare -A FLAG
 flags=(forceflag)
-bools=(help pager force needforce supported unsupported nolts distrib_to_old distrib_to_new distrib_unknown)
+bools=(help nopager force needforce supported unsupported nolts distrib_to_old distrib_to_new distrib_unknown)
 for flag in ${flags[@]}; do FLAG[$flag]=_; done; unset -v flag flags
 for bool in ${bools[@]}; do B[$bool]=_; done; unset -v bool bools
-FLAG[forceflag]='' B[pager]=:
+FLAG[forceflag]=''
 shopt -s extglob
 for arg in "$@"; do
     case "$arg" in
         --help|-h)        B[help]=: ;;
         --force)          B[force]=: FLAG[forceflag]=' --force' ;;
-        --no?([_-])pager) B[pager]=_ ;;
+        --no?([_-])pager) B[nopager]=: ;;
         *)                args+=("$arg")
     esac
 done
@@ -218,6 +218,7 @@ tasks(){
 ## void ##
 declare lang=$(echo "$LANG" | ${X[cut]} -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW SAPI DEFAULT_ANSWER FILE
+[ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
 
 ${B[supported]} && apt_need_update
 
@@ -291,7 +292,7 @@ if ${B[supported]}; then
         OLD="$(${X[phpquery]} -V)"
         separator
         f
-        mh "I: Only one php version ($OLD) found." &
+        mh "$(funcname_and_lineno) only one php version ($OLD) found."
         echo "$(ipf; W; format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3; N)"
         f
         anykey
@@ -302,6 +303,7 @@ if ${B[supported]}; then
         call_me candidates
         anykey_noquit
         need_sury_repo
+        . "${F[php]}"
         anykey
         separator
         if ask "$(qpf)Do you want to install a new php-version now" "$YES"; then
@@ -324,7 +326,8 @@ if ${B[supported]}; then
                 cursor_ hide
                 sbnc=''
                 if does_exist_ "$NEW" 0; then
-                    [[ " ${CAN[@]} " =~ " $NEW " ]] && sbnc=" $(dY)supported by Nextcloud version $(listify_ C dY $(a_fld EXISTING ';' $NEW 5))"
+                    . "${F[php]}"
+                    [[ " ${CAN[@]} " =~ " $NEW " ]] && sbnc=" $(dY)supported by Nextcloud version $(listify_ C dY $(A_fld EXG ';' $NEW 4))"
                     bundle echo "$(es3)You entered: $NEW$sbnc"
                     if [[ " ${CAN[@]} " =~ " $NEW " ]]; then
                         ask "$(qpf)Are you ready to install php$NEW" "$YES" && break || exit1
@@ -345,7 +348,10 @@ if ${B[supported]}; then
             remove_dependency_packages
             remove_meta_packages
             kill_spinner
+            cursor_ hide
+            spinner C " . check_config() searching known configuration errors ." &
             check_config "$OLD"
+            kill_spinner
             if [[ "$(${X[phpquery]} -V)" =~ $NEW ]]; then
                 declare -a missing_new_packages
                 spinner C " . searching for php$NEW packages yet to be installed ." &
@@ -364,6 +370,7 @@ if ${B[supported]}; then
                     ask "$(qpf)Do you want to install th${plu%:*} package${plu#*:}" "$YES" && install_new_php "$OLD" "$NEW"
                 fi
             else
+                separator O
                 bundle echo "$(pf; format_string "You entered \"$(Y)$OLD$(N)\" as old and \"$(Y)$NEW$(N)\" as new version. Since php$NEW is not yet installed at all, it will be installed from scratch." 3)"
                 ask "$(qpf)Are you ready to install php$NEW" "$YES" && install_new_php "$OLD" "$NEW" || exit1
             fi
@@ -428,7 +435,7 @@ if ${B[supported]}; then
         f
         O; echo "  or run it now:"; N
         if ask "$(qpf)Do you want to switch the php version now" "$YES"; then
-            $ME${FLAG[forceflag]} --switch-version
+            exec $ME${FLAG[forceflag]} json=${J[o]} --switch-version
         else
             contribute_
         fi

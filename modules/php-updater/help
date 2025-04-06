@@ -76,7 +76,7 @@ SUDO_MESSAGE
 explain(){
     local cat_or_pager sudo
     q1 prompt && sudo='sudo'|| sudo="$(GRAY)sudo$(B)"
-    ${B[pager]} && { cat_or_pager="${X[less]} -R";q2 phplogo;} || cat_or_pager="${X[cat]}"
+    ${B[nopager]:-:} && cat_or_pager="${X[cat]}" || { cat_or_pager="${X[less]} -R"; q2 phplogo; }
     $cat_or_pager<<EOF
 $(q2 phplogo)
 
@@ -275,5 +275,5 @@ $(G;prompt -su;B) $ME $(C)--switch-version
 
 EOF
     anykey
-    ${B[pager]} || q2 phplogo
+    ${B[nopager]} && q2 phplogo
 }
