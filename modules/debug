@@ -146,17 +146,17 @@ something_went_wrong(){
     cleanup "$outfile1" "$outfile2"
 }
 
-funcname_and_lineno() {
+funcname_and_lineno(){
     local lineno funcname file target
     read -r lineno funcname file <<< "$(caller ${1:-0})"
     target="$(${X[realpath]} $file)"
     [ "$target" = "$MP" ] && file="${M[n]}" target="${M[n]}"
     [ "$funcname" = 'main' ] && funcname='' || funcname="$funcname():"
     if [[ "$target" =~ /fd/ ]]; then
-        echo -n " $funcname$lineno -"
+        echo -n "$funcname$lineno:"
     elif [ "$target" = "$file" ]; then
-        echo -n " $file:$funcname$lineno -"
+        echo -n "$file:$funcname$lineno:"
     else
-        echo -n " $file->$target:$funcname$lineno -"
+        echo -n "$file->$target:$funcname$lineno:"
     fi
 }

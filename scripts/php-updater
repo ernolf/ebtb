@@ -93,19 +93,20 @@ version_mismatch(){
 }
 wrong_first_argument(){
     required_args 2 $@
+    local first
     local -i a
     a=$2
     f
-    bundle echo -n " $(Pbg; pf)First argument must be the version of an installed php but "
-    if ((a)); then
-        bundle echo "php$1 is not installed$(pf; N)"
+    first=" $(Pbg; pf)First argument must be the version of an installed php but"
+    if (( a )); then
+        bundle echo "$first php$1 is not installed$(pf; N)"
         f
         list_candidates
         call_me candidates
         call_help
         f
     else
-        bundle echo "\"$1\" is not an existing php version$(pf; N)"
+        bundle echo "$first \"$1\" is not an existing php version$(pf; N)"
         list_existing
         call_me existing
         call_help
@@ -312,13 +313,14 @@ if ${B[supported]}; then
             list_candidates
             while :; do
                 cursor_ show
-                read -rp "E: Please enter the version string you want to install (e.g. '$SUGGESTION'): " NEW
+                read -rp "$(bundle echo "E: Please enter the version string you want to install (e.g. '$SUGGESTION')"): " NEW
+                mh "$(funcname_and_lineno) input: $NEW"
                 if [ -z "$NEW" ]; then
                     echo "$rs1"
                     anykey
                     continue
                 elif [ "$NEW" = "$OLD" ]; then
-                    bundle echo "$(pf)From the point of view of this script, php$NEW is already installed"
+                    bundle echo "$(es3; format_string "You entered: $NEW $(dY)from the point of view of this script, php$NEW is already installed" 3; N)"
                     echo "$rs1"
                     anykey
                     continue

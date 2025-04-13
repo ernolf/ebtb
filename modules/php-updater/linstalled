@@ -34,12 +34,13 @@ list_installed_sapi(){
     c2=28 c3=74 SAPI_A2=() SAPI_FPM=()
     $q0 detect_and_assign_extensions assign apache2
     populate_httpd_ active
-    . "${F[php]}" &>$NUL
+    fpm_reload
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     ${bool[quiet]} || for i in "${!HTTPD_ACTIVE[@]}"; do mh "$(funcname_and_lineno) active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
     for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=php${PHP[vregex]//\./\\.} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
         SAPI_A2[$pv]='installed'
     done
-    for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=php${PHP[vregex]//\./\\.} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
+    for pv in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/ { match($2, /php'${PHP[vregex]}'/, m); split(m[0], a, "php"); print a[2] }'); do
         SAPI_FPM[$pv]='installed'
     done
     if [[ "${HTTPD_ACTIVE[@]}" =~ apache2 ]] && (( ${#SAPI_A2[@]} )); then
@@ -151,8 +152,9 @@ list_installed(){
     spinner C " . detect packages installed by dpkg ." &
     mapfile -t pkgs_by_dpkg< <(detect_installed_by_dpkg)
     kill_spinner
+    fpm_reload
     detect_and_assign_extensions
-    . "${F[php]}" &>$NUL
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     iam=${#EXTS_ADMIN[@]}
     ((iam)) && versions_iterate search_candidates_4_extensions_installed_by_admin
 #    for arg in "$@"; do bool[${arg%=*}]=${arg#*=}; done

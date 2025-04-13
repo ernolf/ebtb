@@ -10,28 +10,30 @@ __license__
 ${OS_RELEASE_BASHLIB:-_} && return
 OS_RELEASE_BASHLIB=:
 
-declare -g OS_NAME OS_PRETTY_NAME OS_VERSION OS_VERSION_ID
-declare -gl OS_ID OS_ID_LIKE OS_VERSION_CODENAME OS_UBUNTU_CODENAME OS_DEBIAN_CODENAME
+declare -A OS
 
-source_os_release(){
-    if [[ -f /etc/os-release || -f /usr/lib/os-release ]]; then
-        local os_release
-        [ -f /etc/os-release ] && os_release="/etc/os-release" || os_release="/usr/lib/os-release"
-        . <(${X[sed]} 's/^/OS_/g' $os_release)
-    elif [ -n "${X[lsb_release]}" ]; then
-        OS_NAME="$(${X[lsb_release]} -si)"
-        OS_ID="${OS_NAME%% *}"
-        OS_PRETTY_NAME="$(${X[lsb_release]} -sd)"
-        OS_VERSION_ID="$(${X[lsb_release]} -sr)"
-        OS_VERSION_CODENAME="$(${X[lsb_release]} -sc)"
-        OS_VERSION="${OS_PRETTY_NAME/$NAME //} ($OS_VERSION_CODENAME)"
-    fi
-}
-source_os_release
+if [[ -f /etc/os-release || -f /usr/lib/os-release ]]; then
+    [ -f /etc/os-release ] && F[os_release]="/etc/os-release" || F[os_release]="/usr/lib/os-release"
+    for x in $(${X[gawk]} -F= '{ print $1 }' ${F[os_release]}); do
+        OS[${x,,}]="$(${X[gawk]} -F= "/^$x=/ { print \$2 }" ${F[os_release]} | ${X[tr]} -d '"')"
+    done
+elif [ -n "${X[lsb_release]}" ]; then
+    OS[name]="$(${X[lsb_release]} -si)"
+    OS[id]="${OS[name]%% *}"
+    OS[pretty_name]="$(${X[lsb_release]} -sd)"
+    OS[version_id]="$(${X[lsb_release]} -sr)"
+    OS[version_codename]="$(${X[lsb_release]} -sc)"
+    OS[version]="${OS[pretty_name]//${OS[name]} /} (${OS[version_codename]})"
+fi
+for x in id id_like version_codename ubuntu_codename debian_codename; do
+    OS[$x]="${OS[$x],,}"
+done
+declare -p OS > "${F[os]:="${D[vt]}/os"}"
 
 os_not_supported(){
-    os; lB; echo "$OS_PRETTY_NAME $OS_VERSION_CODENAME detected.."
-    os; xpf; R; echo "$OS_PRETTY_NAME is not supported by this script .."
+    . ${F[os]}
+    os; lB; echo "${OS[pretty_name]} ${OS[version_codename]} detected.."
+    os; xpf; R; echo "${OS[pretty_name]} is not supported by this script .."
     exit1
 }
 
@@ -41,28 +43,29 @@ check_raspbian(){
 }
 
 check_linuxmint(){
+    . ${F[os]}
     os; lB; echo "Linux Mint OS detected.."
-    if [ "$OS_DEBIAN_CODENAME" != '' ]; then
+    if [ "${OS[debian_codename]}" != '' ]; then
         check_debian
-    elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
+    elif [ "${OS[ubuntu_codename]}" != '' ]; then
         check_ubuntu
     fi
 }
 
 check_os_release(){
-#    distinf &
+    . ${F[os]}
     echo "$(GRAYbg)   Distribution check..   $(N)"
-    case $OS_ID in
+    case ${OS[id]} in
         astra) os_not_supported
         ;;
-        ubuntu|debian|raspbian|linuxmint) check_$OS_ID
+        ubuntu|debian|raspbian|linuxmint) check_${OS[id]}
         ;;
-        *)  if [ -n "$OS_ID_LIKE" ]; then
-                case ${OS_ID_LIKE%% *} in
+        *)  if [ -n "${OS[id_like]}" ]; then
+                case ${OS[id_like]%% *} in
                     debian|ubuntu)
-                        if [ "$OS_DEBIAN_CODENAME" != '' ]; then
+                        if [ "${OS[debian_codename]}" != '' ]; then
                             check_debian
-                        elif [ "$OS_UBUNTU_CODENAME" != '' ]; then
+                        elif [ "${OS[ubuntu_codename]}" != '' ]; then
                             check_ubuntu
                         fi
                         ;;
@@ -349,6 +352,19 @@ mark_checked(){
 #    SUPPORT_URL="https://www.parrotsec.org/community/"
 #    BUG_REPORT_URL="https://gitlab.com/parrotsec/"
 
+
+#    PRETTY_NAME="Zorin OS 17.3"
+#    NAME="Zorin OS"
+#    VERSION_ID="17"
+#    VERSION="17.3"
+#    VERSION_CODENAME=jammy
+#    ID=zorin
+#    ID_LIKE="ubuntu debian"
+#    HOME_URL="https://zorin.com/os/"
+#    SUPPORT_URL="https://help.zorin.com/"
+#    BUG_REPORT_URL="https://zorin.com/os/feedback/"
+#    PRIVACY_POLICY_URL="https://zorin.com/legal/privacy/"
+#    UBUNTU_CODENAME=jammy
 
 
 #    ### Alpine Linux
@@ -752,20 +768,20 @@ mark_checked(){
 #    VERSION_CODENAME=current
 
 
-#    OS_NAME              Ubuntu                         "Debian GNU/Linux"               "Raspbian GNU/Linux"                LMDE                "Alpine Linux"
-#    OS_ID                ubuntu                          debian                           raspbian                           linuxmint            alpine
-#    OS_ID_LIKE           debian                                                           debian                             debian
-#    OS_PRETTY_NAME      "Ubuntu 22.04.4 LTS"            "Debian GNU/Linux 12 (bookworm)" "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"      "Alpine Linux v3.19"
-#    OS_VERSION          "22.04.4 LTS (Jammy Jellyfish)" "12 (bookworm)"                   11 (bullseye)                     "6 (faye)"
-#    OS_VERSION_ID        22.04                           12                               11                                 6                    3.19.1
-#    OS_VERSION_CODENAME  jammy                           bookworm                         bullseye                           faye
-#    OS_UBUNTU_CODENAME   jammy
-#    OS_DEBIAN_CODENAME                                                                                                       bookworm
+#    NAME              Ubuntu                         "Debian GNU/Linux"               "Raspbian GNU/Linux"                LMDE                "Alpine Linux"
+#    ID                ubuntu                          debian                           raspbian                           linuxmint            alpine
+#    ID_LIKE           debian                                                           debian                             debian
+#    PRETTY_NAME      "Ubuntu 22.04.4 LTS"            "Debian GNU/Linux 12 (bookworm)" "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"      "Alpine Linux v3.19"
+#    VERSION          "22.04.4 LTS (Jammy Jellyfish)" "12 (bookworm)"                   11 (bullseye)                     "6 (faye)"
+#    VERSION_ID        22.04                           12                               11                                 6                    3.19.1
+#    VERSION_CODENAME  jammy                           bookworm                         bullseye                           faye
+#    UBUNTU_CODENAME   jammy
+#    DEBIAN_CODENAME                                                                                                       bookworm
 
-#    OS_NAME              Ubuntu                         "Debian GNU/Linux"                Raspbian                           LMDE                "Alpine Linux"
-#    OS_ID                ubuntu                          debian                           raspbian                           lmde                 alpine
-#    OS_PRETTY_NAME      "Ubuntu 22.04.4 LTS"            "Debian GNU/Linux 12 (bookworm)" "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"      "Alpine Linux v3.19"
-#    OS_VERSION_ID        22.04                           12                               11                                 6                    3.19.1
-#    OS_VERSION_CODENAME  jammy                           bookworm                         bullseye                           faye
-#    OS_VERSION          "22.04.4 LTS (Jammy Jellyfish)" "12 (bookworm)"                  "GNU/Linux 11 (bullseye)"          "6 (faye)"
+#    NAME              Ubuntu                         "Debian GNU/Linux"                Raspbian                           LMDE                "Alpine Linux"
+#    ID                ubuntu                          debian                           raspbian                           lmde                 alpine
+#    PRETTY_NAME      "Ubuntu 22.04.4 LTS"            "Debian GNU/Linux 12 (bookworm)" "Raspbian GNU/Linux 11 (bullseye)" "LMDE 6 (faye)"      "Alpine Linux v3.19"
+#    VERSION_ID        22.04                           12                               11                                 6                    3.19.1
+#    VERSION_CODENAME  jammy                           bookworm                         bullseye                           faye
+#    VERSION          "22.04.4 LTS (Jammy Jellyfish)" "12 (bookworm)"                  "GNU/Linux 11 (bullseye)"          "6 (faye)"
 

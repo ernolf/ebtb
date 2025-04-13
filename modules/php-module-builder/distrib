@@ -13,33 +13,35 @@ DISTRIB_BASHLIB=:
 . <(lrequire dist/os_release)
 
 no_debianoid(){
-    pf; echo "$OS_NAME is not a debian derivative and normaly not (yet) supported by this script."
+    [ -f "${F[os]:="${D[vt]}/os"}" ] && . "${F[os]}"
+    pf; echo "${OS[name]} is not a debian derivative and normaly not (yet) supported by this script."
     ask "$(qpf)proceed at own risk" "$NO" && mark_checked unsupported || exit1
 }
 
 check_debian(){
+    [ -f "${F[os]:="${D[vt]}/os"}" ] && . "${F[os]}"
     . <(require dist/debian)
     list_supported_debian
-    o3; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename$(dY) $OS_VERSION_CODENAME"; lB
+    o3; lB; printf '%s' "This machine is running $(Y)${OS[pretty_name]}$(lB), Codename$(dY) ${OS[version_codename]}"; lB
     local ver releasedate eos eol
     local -l vercode chan
     local -A bool
-    case "$OS_ID" in
+    case "${OS[id]}" in
         debian|raspbian)
-            ver="${DEBIAN_VERSIONS[$OS_VERSION_CODENAME]}"
-            if [ "$OS_VERSION_CODENAME" = 'lory' ]; then
+            ver="${DEBIAN_VERSIONS[${OS[version_codename]}]}"
+            if [ "${OS[version_codename]}" = 'lory' ]; then
                 echo ", which is"
                 o3; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver (${DEBIAN_VERSIONS_DATA[$ver]%%:*})$(lB)"
             fi
         ;;
-        *)  [ -n "$OS_DEBIAN_CODENAME" ] && ver="${DEBIAN_VERSIONS[$OS_DEBIAN_CODENAME]}" || ver="$OS_VERSION_ID"
+        *)  [ -n "${OS[debian_codename]}" ] && ver="${DEBIAN_VERSIONS[${OS[debian_codename]}]}" || ver="${OS[version_id]}"
             echo ", which is"
-            case $OS_ID in
-            linuxmint)  o3; printf '%s' "a version of Linux Mint based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)" ;;
-                    *)  o3; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver ($OS_DEBIAN_CODENAME)$(lB)"
+            case ${OS[id]} in
+            linuxmint)  o3; printf '%s' "a version of Linux Mint based on $(Y)Debian GNU/Linux $ver (${OS[debian_codename]})$(lB)" ;;
+                    *)  o3; printf '%s' "a distribution based on $(Y)Debian GNU/Linux $ver (${OS[debian_codename]})$(lB)"
             esac
     esac
-    [ "${OS_VERSION_CODENAME,,}" = 'sid' ] && ver='sid' || ver="$(printf '%02d' "$ver")"
+    [ "${OS[version_codename]}" = 'sid' ] && ver='sid' || ver="$(printf '%02d' "$ver")"
     read -r vercode chan releasedate eos eol <<<${DEBIAN_VERSIONS_DATA["$ver"]//;/ }
     [[ "$(supported_suites_ debian)" =~ $vercode ]] && bool[ss]=: || bool[ss]=_
     if [[ "$releasedate" == "RR" || "$releasedate" == "TBA" ]]; then
@@ -72,25 +74,26 @@ check_debian(){
 }
 
 check_ubuntu(){
+    [ -f "${F[os]:="${D[vt]}/os"}" ] && . "${F[os]}"
     . <(require dist/ubuntu)
     list_supported_ubuntu
-    if [ "$OS_ID" = "neon" ]; then
-        o3; lB; printf '%s' "This machine is running $(Y)$OS_PRETTY_NAME$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
+    if [ "${OS[id]}" = "neon" ]; then
+        o3; lB; printf '%s' "This machine is running $(Y)${OS[pretty_name]}$(lB), Codename $(dY)${OS[version_codename]}$(GRAY)"
     else
-        o3; lB; printf '%s' "This machine is running $(Y)$OS_NAME $OS_VERSION$(lB), Codename $(dY)$OS_VERSION_CODENAME$(GRAY)"
+        o3; lB; printf '%s' "This machine is running $(Y)${OS[name]} ${OS[version]}$(lB), Codename $(dY)${OS[version_codename]}$(GRAY)"
     fi
     local ver vercode2 releasedate
     local -i eos
     local -l vercode1
     local -A bool
-    case "$OS_ID" in
-        ubuntu) ver="$OS_VERSION_ID"
+    case "${OS[id]}" in
+        ubuntu) ver="${OS[version_id]}"
         ;;
-        *)  [ -n "$OS_UBUNTU_CODENAME" ] && ver="${UBUNTU_VERSIONS[$OS_UBUNTU_CODENAME]}"
+        *)  [ -n "${OS[ubuntu_codename]}" ] && ver="${UBUNTU_VERSIONS[${OS[ubuntu_codename]}]}"
             echo ", which is"
-            case $OS_ID in
-            linuxmint)  o3; printf '%s' "a version of Linux Mint based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)" ;;
-                    *)  o3; printf '%s' "a distribution based on $(Y)Ubuntu $ver ($OS_UBUNTU_CODENAME)$(lB)"
+            case ${OS[id]} in
+            linuxmint)  o3; printf '%s' "a version of Linux Mint based on $(Y)Ubuntu $ver (${OS[ubuntu_codename]})$(lB)" ;;
+                    *)  o3; printf '%s' "a distribution based on $(Y)Ubuntu $ver (${OS[ubuntu_codename]})$(lB)"
             esac
     esac
     read -r vercode1  vercode2 releasedate eos <<<${UBUNTU_VERSIONS_DATA["$ver"]//;/ }

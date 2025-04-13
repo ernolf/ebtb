@@ -43,6 +43,8 @@ function print_help(){
          user                    nextcloud user
          all                     all nextcloud users
 
+         --firstrun              re-run the firstrun wizard
+
   examples:
   list all shares from all users shared with groups
          $ME -s 1 -- all

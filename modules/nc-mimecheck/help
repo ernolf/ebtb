@@ -84,6 +84,8 @@ Options:
 
   -vv, --debug               Provides debug output.
 
+  --firstrun                 re-run the firstrun wizard
+
   integrity_check            verify the integrity of this script with signature
 
 Examples:

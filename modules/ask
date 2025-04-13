@@ -52,7 +52,7 @@ ask(){
     local -i lll lda ly ln ml fidx r
     question="$1" d_answer="$2"
     fidx=$(first_idx "$question")
-    mh "$(funcname_and_lineno 1) $(echo $question | ${X[sed]} 's/  / /g')"
+    mh "$(funcname_and_lineno 1) $(echo $question | ${X[sed]} 's/  / /g')? [$d_answer]"
     [ -z "$3" ] && yes="$Yes" || yes="$3"
     [ -z "$4" ] && no="$No" || no="$4"
     noansi_question_lastline="$(${X[ansifilter]} <<< "${question##*\\n}")"
@@ -80,7 +80,7 @@ ask(){
     fi
     cursor_ show
     while :; do
-        printf "$question?$newline($yes or $no) [$d_answer]: "
+        printf "$(N)$question?$newline($yes or $no) [$d_answer]: "
         read -r answer
         mh "$(funcname_and_lineno 1; es; apf)${answer:="$noansi_d_answer"}"
         if [ "$answer" = "$(desquare "${noansi_yes,,}")" ] || [ "$answer" = "$(insquare "${noansi_yes,,}")" ]; then

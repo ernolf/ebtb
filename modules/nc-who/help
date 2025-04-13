@@ -72,6 +72,8 @@ $(nextcloud_logo)
                   - monitor: produce extensive log traces
                   - last:    print the sql query used for the output
 
+    --firstrun  re-run the firstrun wizard
+
     integrity_check
                 Verify the integrity of this script with signature
 

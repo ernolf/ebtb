@@ -199,7 +199,7 @@ ${B[debug]} && { echo "scan_result:"; ${X[cat]} $scan_result; anykey; }
                 pf; echo "$affected_file"
             done
 # TODO: add backup option
-            if ask "$(qpf)Do you want to remove t$this needless file" "$YES"; then
+            if ask "$(qpf)Do you want to remove t$this needless file$pl1" "$YES"; then
                 for affected_file in ${EXTRA_FILE[@]}; do
                     rm "$abspath/$affected_file"
                 done

@@ -50,12 +50,13 @@ brief_help(){
 #        te
     fi
     te
-    echo "$(o 44; dY; format_string "Migrate all settings from $(B)php$(GRAY)\$$(C)old$(dY) to $(B)php$(GRAY)\$$(C)new$(dY). $(B)php$(GRAY)\$$(C)new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44; N)"
-    echo "$(o 44; dY; format_string "Important: $(B)php$(GRAY)\$$(C)old$(dY) should be the best-configured PHP version on your system. $(B)php$(GRAY)\$$(C)new$(dY) will be configured based on $(B)php$(GRAY)\$$(C)old$(dY)’s setup, so $(B)php$(GRAY)\$$(C)old$(dY) doesn’t have to be the active version!" 44; N)"
+    echo "$(o 44; dY; format_string "Migrate all settings from $(B)php$(GRAY)\$$(C)old$(dY) to $(B)php$(GRAY)\$$(C)new$(dY). $(B)php$(GRAY)\$$(C)new$(dY) does not need to be an installed version. Missing packages will be detected and installed interactively." o44; N)" # The 'o' in 'o44' is to do offset instead of empty spaces which would overwrite evrything!
+    echo "$(o 44; Yi; format_string "Important: $(B)php$(GRAY)\$$(C)old$(dY) should be the best-configured PHP version on your system. $(B)php$(GRAY)\$$(C)new$(dY) will be configured based on $(B)php$(GRAY)\$$(C)old$(dY)’s setup, so $(B)php$(GRAY)\$$(C)old$(dY) doesn’t have to be the active version!" 44; N)"
     echo "$(o 44; O; format_string "Tip: $(W)If your active ($(GRAY)latest$(N)) PHP version has not been installed$(GRAY)/$(W)updated by this script and the previous version is still installed, you should run it this way to ensure that all required extensions once installed for the older version are also installed for the new version and configured the same." 49; N)"
     f
     os; pf; B; echo -n "$ME $(C)--switch-version"; N
-    echo "$(o 44; dY; format_string "switch default php version interactively" 44; N)"
+    echo "$(o 44; dY; format_string "switch default php version interactively." 44; N)"
+    echo "$(o 44; Yi; format_string "Important:$(dY) The version you want to switch to must be fully installed. To do this, you should have completed the previous step ($(B)$ME${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new$(dY)) At the end of that step, $(B)$ME $(C)--switch-version$(dY) is offered automatically. So you should only use this call if you want to switch back and forth between versions that were previously fully installed and configured by this script." 44; N)"
 }
 
 first_brief_help(){

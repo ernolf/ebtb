@@ -19,7 +19,7 @@ packages_diff(){
         local v x
         v="$1"
         shift
-        (   ${X[dpkg]} -l | awk '/^[hiu]i.*php'$v'/{print $2}' | ${X[sed]} "s/$v//"
+        (   ${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'$v'/{print $2}' | ${X[sed]} "s/$v//"
             for x in $@; do
                 case "$x" in
             libapache2-mod-php) echo $x        ;;
@@ -27,10 +27,11 @@ packages_diff(){
                              *) echo php-$x
                 esac
             done
-        ) | sort -u
+        ) | ${X[sort]} -u
     }
 
-    local pkg pvo pvn sapi pkgmod
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+    local pvo pvn sapi pkg pkgmod px
     local -a eia x1 x2
     local -i i
     pvo="$1" pvn="$2" sapi="$3"
@@ -47,9 +48,9 @@ packages_diff(){
             [[ " $pkg" =~ " php$pvo-" ]] && eia+=("${pkg#*-}")
         done
     fi
-    for pkg in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${X[sed]} "s/php/php$2/"); do
-        if echo "$pkg" | ${X[grep]} -Eqsvw "^php${PHP[vregex]}$"; then
-            q0 apt_exist "$pkg" && echo $pkg
+    for px in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${X[sed]} "s/php/php$2/"); do
+        if echo "$px" | ${X[grep]} -Eqsvw "^php${PHP[vregex]}$"; then
+            q0 apt_exist "$px" && echo "$px"
         fi
     done
 }

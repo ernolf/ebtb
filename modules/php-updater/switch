@@ -39,6 +39,7 @@ switch_default_version(){
     local key
     local -a selections php_versions sapis
     local -i i ret
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     mapfile -t php_versions < <(${X[phpquery]} -V | ${X[sort]})
     mapfile -t selections < <(list_alternatives)
     line '=' P 2/a b1
@@ -167,8 +168,9 @@ switch_default_version(){
                             anykey_noquit
                             separator O
                             f
-                            echo "$(o3; P; format_string "Now, if everything has gone as expected so far – which I sincerely hope – it is probably the right moment to remind you to make a contribution to the project." 3; N)"
-                            echo "$(o3; dP; format_string "The subsequent screen contains the information about how you can contribute. Your contribution can be in many forms, and every little bit helps to keep this service running and affordable for everyone." 3; N)"
+                            echo "$(o3; P; format_string "Now, if everything has gone as expected so far – which I sincerely hope – it is probably the right moment to remind you, that you committed yourself to make a contribution to the project by accepting the terms." 3; N)"
+                            echo "$(o3; P; format_string "This script is the result of more than 10.000 hours of developement. That – so far – is $(Pbg) my $(P) contribution to $(Pbg) your $(P) success. Unfortunately, for health reasons, I am no longer able to practice my profession as truck driver and am therefore particularly dependent on your support." 3; N)"
+                            echo "$(o3; dP; format_string "The subsequent screen contains information about how you can do that. Your contribution can be in many forms, and every little bit helps to keep this service running and affordable for everyone." 3; N)"
                             f
                             anykey_noquit
                             break

@@ -18,6 +18,7 @@ fi
 
 fpm_conf_regex(){
     [ -n "${X[apache2ctl]}" ] || return
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     fpm_conf="$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/{print $NF}' | ${X[sed]} -E "s/${PHP[vregex]}/${PHP[vregex]}/")"
     [ -n "$fpm_conf" ] || fpm_conf="$(unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[gawk]} '/ServerRoot/{print $NF}'))/conf-enabled/php${PHP[vregex]}-fpm\.conf"
     printf %s "$fpm_conf"
@@ -147,6 +148,7 @@ fpm_listen(){
 
 fpm_sockets(){
     if [ "$1" = 'versions' ]; then
+        [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
         ${X[ss]} -lx | ${X[gawk]} '/fpm/{print $5}' | ${X[grep]} -Eo "${PHP[vregex]}"
     else
         ${X[ss]} -lx | ${X[gawk]} '/fpm/{print $5}'
@@ -346,4 +348,12 @@ detect_matching_apache2_php_fpm_configfiles_(){
             done
         fi
     fi
+}
+
+fpm_reload(){
+    local installed_fpm
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+    for installed_fpm in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'${PHP[vregex]}'-fpm/  { print $2 }'); do
+        ${X[systemctl]} reload $installed_fpm
+    done
 }

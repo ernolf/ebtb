@@ -47,7 +47,8 @@ convene(){
     if [ "$(${X[realpath]} "$MP")" = "${D[vts]}/${M[n]}" ]; then
         return 0
     else
-        something_went_wrong "Simlink creation with “${X[ln]} -sfT ${D[vts]}/${M[n]} $MP” failed"
+        something_went_wrong "simlink creation with “${X[ln]} -sfT ${D[vts]}/${M[n]} $MP” failed"
+#        mh "$(funcname_and_lineno) simlink creation failed"
         return 1
     fi
 }

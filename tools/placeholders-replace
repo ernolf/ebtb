@@ -112,7 +112,7 @@ placeholder_replace(){
         used_binaries)
             local -a ub
             source <(${X[tail]} -n +14 modules/httpd)
-            mapfile -t ub< <((${X[grep]} -Roh 'X\[[^]]\+\]' | ${X[sed]} 's/X\[//;s/\]//;s/^xmls$/xmlstarlet/;s/^\(env\|gawk\|sed\)$//' | ${X[grep]} -v '\$'; p_nosort "${!HTTPD[@]}") | ${X[sort]} -u)
+            mapfile -t ub< <((${X[grep]} -Roh 'X\[[^]]\+\]' | ${X[sed]} 's/X\[//;s/\]//;s/^xmls$/xmlstarlet/;s/^\(env\|gawk\|sed\|add-apt-repository\)$//' | ${X[grep]} -v '\$'; p_nosort "${!HTTPD[@]}") | ${X[sort]} -u)
             echo "    used_binaries=(${ub[@]})" | ${X[sed]} 's/( /(/'
     esac
 }

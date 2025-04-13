@@ -130,72 +130,56 @@ apt_exist(){
     [[ " ${pkgnames[@]} " =~ " $1 " ]] || return 1
     ${X[apt-cache]} policy "$1" 2>&1 | ${X[grep]} -qs "Candidate: (none)" && return 1
 # TODO 2 -->
+# this is absolute overkill and slow:
 #    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -Eqs "(has no installation candidate|Unable to locate package)" && return 1
 # TODO <-- 2
     q0 ${X[apt-get]} -qqs install "$1"
 }
 
-apt_install(){
-    apt_need_update
-    check_lockfiles || exit1
-    local p ps yes=" -y"
-    ${B[step]:-_} && yes=""
-    mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[apt-get]}$yes install $@"
-    for p in $@; do
-        ${X[dpkg]} -l | ${X[grep]} -wqs "$p" || ps="$ps $p"
-        if (( $(echo "$ps" | ${X[wc]} -w) )); then
-            mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[apt-get]}$yes install $ps"
-            ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $ps
-            (( $? )) && exit1
-        fi
-    done
-    ${B[step]:-_} && anykey
-}
-
-apt_install_prechecked(){
-    check_lockfiles || exit1
-    (( $# )) && mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $@"
-    local yes=''
-    if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
-        yes=' -y'
-        shift
-    fi
-    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends install $@ || { something_went_wrong "apt-get install returned an error"; exit1; }
-}
-
-apt_remove(){
+# command: install remove or purge
+apt_(){
     check_lockfiles || exit1
     [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
-    (( $# )) && mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $@"
-    local yes='' cursor_status='show'
-    if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
+    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
+    [[ ${FUNCNAME[1]} == apt_install ]] && level=2 || level=1
+    mh "$(funcname_and_lineno $level)$(funcname_and_lineno) $@"
+    local command yes cursor_status
+    command="$1" yes='' cursor_status='show'
+    shift
+    if [[ "$1" =~ -y ]]; then
         yes=' -y'
         shift
     fi
-    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
     if [ -f "${F[cursor]}" ]; then
         if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
             cursor_status='hide'
         fi
     fi
     cursor_ show
-    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends remove $@ || { something_went_wrong "apt-get remove returned an error"; exit1; }
+    if ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends $command $@; then
+        mh "$(funcname_and_lineno $level)$(funcname_and_lineno) $command succeeded"
+    else
+        something_went_wrong "apt-get $command returned an error"
+        exit1
+    fi
     cursor_ $cursor_status
 }
 
-apt_purge(){
+# prechecking wrapper for php-module-builder
+apt_install(){
+    apt_need_update
     check_lockfiles || exit1
-    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
-    (( $# )) && mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $@"
-    local yes=''
-    if [ "$1" = '--yes' ] || [ "$1" = '-y' ]; then
-        yes=' -y'
-        shift
+    local p ps yes='-y'
+    ${B[step]:-_} && yes=''
+    for p in $@; do
+        if ! ${X[dpkg]} -l | ${X[grep]} -wqs "$p"; then
+            q0 apt_exist "$p" && ps="$ps $p"
+        fi
+    done
+    if (( $(echo "$ps" | ${X[wc]} -w) )); then
+        apt_ install $yes $ps
+        ${B[step]:-_} && anykey
     fi
-    [[ -n "${X[php]}" && -z "${PHP[v]}" ]] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
-    ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends purge $@ || { something_went_wrong "apt-get purge returned an error"; exit1; }
 }
 
 rdepends(){

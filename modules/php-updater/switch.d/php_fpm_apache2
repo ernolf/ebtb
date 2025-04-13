@@ -15,6 +15,9 @@ php_fpm_sites_available_conf_apache2(){
     local -a pools sock_o canonicalized_sock_o conffiles
     local -A sock_n sock_regex
     ver_n="$1"
+
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+
     mapfile -t pools< <(fpm_pools)
     if (( ${#pools[@]} == 1 )); then
         bundle echo "$(es3; ipf) This is systemwide the only fpm pool configured:"
@@ -123,7 +126,7 @@ php_fpm_sites_available_conf_apache2(){
                 line="$(fpm_connections_socket "${conffiles[i]}")"
                 conf="$(${X[realpath]} "${conffiles[i]}")"
                 ${X[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
-                bundle echo "$(es3; Pbg) IMPORTANT: $(P; format_string " A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 16; N)"
+                bundle echo "$(es3; Pbg) IMPORTANT: $(P; es; format_string "A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 16; N)"
             done
             unset line conf
             f

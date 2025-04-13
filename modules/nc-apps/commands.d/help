@@ -152,6 +152,8 @@ HELP
    rebuild_db               Delete database and create new from scratch.
                             Use this after updates, (de)installation of packages or simply when results start to get weird.
 
+   --firstrun               re-run the firstrun wizard
+
    integrity_check          Verify the integrity of this script with signature
 
 HELP

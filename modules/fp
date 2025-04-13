@@ -70,7 +70,7 @@ fp(){
         fingerprint=$(< "${F[fp]}")
     fi
     if (( ${#fingerprint} == 7 )); then
-        echo $fingerprint
+        echo -n "$fingerprint${M[pid]}:"
         return 0
     else
         local decimal_number
@@ -89,7 +89,8 @@ fp(){
             decimal_number=$checksum
         done
         fingerprint=":${MACHINE_ID:14:4}${checksum}:"
-        echo "$fingerprint" | ${X[tee]} "${F[fp]}"
+        echo -n "$fingerprint" | ${X[tee]} "${F[fp]}"
+        echo -n "${M[pid]}:"
         ${X[chmod]} -f 666 "${F[fp]}"
     fi
 }

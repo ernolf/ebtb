@@ -76,6 +76,12 @@ if [[ -z "${BINARY[env]}" || -z "${BINARY[stat]}" || $(${BINARY[stat]} -c %Y "${
             [ -t 0 ] || exit 1
         fi
     done
+    # binaries that need utf-8
+    for x in add-apt-repository; do
+        if [ -x "$(command -v $x)" ]; then
+            BINARY[$x]="${BINARY[env]} LC_ALL=C.UTF-8 $(command -v $x)" &>$NUL
+        fi
+    done
 
 __used_binaries__
 

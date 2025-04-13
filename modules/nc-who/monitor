@@ -76,7 +76,7 @@ nc_monitor(){
         cursor_ hide
         while :; do
             read -rsn 1 -p "  $prompt " choice
-            ${B[trace]:-_} && haul echo "TRACE: choice: '$choice'" &
+            ${B[trace]:-_} && mh "TRACE:$(funcname_and_lineno) choice: '$choice'"
             if [ "$choice" = 'q' ]; then
                 break 2
             elif [ "$choice" = 'g' ]; then
@@ -186,7 +186,7 @@ WATCH_COMMAND_TEMPFILE
                 fi
             ) &
             while :; do read -rsn 1 key
-                ${B[trace]:-_} && haul echo "TRACE: key '$key' pressed" &
+                ${B[trace]:-_} && mh "TRACE:$(funcname_and_lineno) key '$key' pressed"
                 case $key in
                     q)  break 3
                         ;;

@@ -172,7 +172,7 @@ merge_settings(){
             echo "$(pf; format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
             section="under the other environment variables" nl=''
         fi
-        defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
+        defaults_and_changelog "$key" && defaultanswer="$YES" || defaultanswer="$NO"
         question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) $section" 3)"
         if ask "$question" "$defaultanswer"; then
             ${X[sed]} -i "${last}a\\$nl$key = $val" "$path"

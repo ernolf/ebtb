@@ -19,12 +19,11 @@ ALTERNATIVES_BASHLIB=:
 . <(lrequire awksed)
 . <(lrequire ask)
 . <(lrequire dpkg)
-# TODO <-- 0
 . <(lrequire spinner)
 . <(lrequire fstring)
 . <(lrequire today)
 . <(lrequire php/versions)
-
+# TODO <-- 0
 ## PHP related:
 # $1=grep -E search string: "ph(ar|p)"
 # $2=modus manual/auto
@@ -52,8 +51,9 @@ switch_php(){
 # switch all findable php related packages to manual Version $1 if $1 exists
 switch_php_to_(){
     require_arg $@
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     q0 ${X[apt-mark]} manual $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
-    set_selections "ph(ar|p)" "manual" '\(5\.6\|7\.[01234]\|8\.[0123]\)' "$1"
+    set_selections "ph(ar|p)" "manual" "${PHP[vregex]/)/|\\.default)}" "$1"
 # TODO 2 -->
 #    q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
 # TODO <-- 2

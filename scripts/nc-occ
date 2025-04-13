@@ -77,6 +77,9 @@ help_(){
         $(O)--show_help$(N)
                 $(o 17; GRAY; format_string "show the help output from the commands instead of brief usage message" 17; N)
 
+        $(O)--firstrun$(N)
+                $(o 17; GRAY; format_string "re-run the first run wizard" 17; N)
+
 HELP
 exit0
 }

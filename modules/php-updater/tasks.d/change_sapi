@@ -43,7 +43,7 @@ change_sapi(){
     }
 
     sapi_check_apache2(){
-        . "${F[php]}" &>$NUL
+        [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
         local allowed_keys
         local -A bool
         case "$active_sapi" in
@@ -85,7 +85,7 @@ change_sapi(){
                                 q)  break
                                     ;;
                                 1)  f
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -100,7 +100,7 @@ change_sapi(){
                                 3)  f
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -159,7 +159,7 @@ change_sapi(){
                                 3)  f
                                     php_a2module_2_fpm "$active_a2_version"
     # TODO: migrate php.ini
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -167,7 +167,7 @@ change_sapi(){
                                 4)  f
                                     php_fpm_2_a2module "$active_a2_version"
     # TODO: migrate php.ini
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -218,7 +218,7 @@ change_sapi(){
                                 q)  break
                                     ;;
                                 1)  f
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -233,7 +233,7 @@ change_sapi(){
                                 3)  f
                                     php_fpm_2_a2module $active_fpm_version
     # TODO: migrate php.ini
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -293,7 +293,7 @@ change_sapi(){
                                 3)  f
                                     php_fpm_2_a2module "$active_fpm_version"
     # TODO: migrate php.ini
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -301,7 +301,7 @@ change_sapi(){
                                 4)  f
                                     php_a2module_2_fpm "$active_fpm_version"
     # TODO: migrate php.ini
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -363,7 +363,7 @@ change_sapi(){
                                 3)  f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -371,7 +371,7 @@ change_sapi(){
                                 4)  f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -433,7 +433,7 @@ change_sapi(){
                                 3)  f
                                     php_a2module_2_fpm $active_fpm_version
     # TODO: migrate php.ini
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -441,7 +441,7 @@ change_sapi(){
                                 4)  f
                                     php_fpm_2_a2module $active_a2_version
     # TODO: migrate php.ini
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -479,14 +479,14 @@ change_sapi(){
                                     ;;
                                 1)  f
                                     php_a2module_2_fpm "${PHP[v]}"
-                                    apt_remove 'libapache2-mod-php*'
+                                    apt_ remove 'libapache2-mod-php*'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
                                     ;;
                                 2)  f
                                     php_fpm_2_a2module ${PHP[v]}
-                                    apt_remove 'php*-fpm'
+                                    apt_ remove 'php*-fpm'
                                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                                     anykey
                                     return 0
@@ -605,7 +605,7 @@ change_sapi(){
                 pf; N; echo "Consider removing the apache2-mod-php SAPI (recommended)"; N
                 cursor_ show
                 if ask "$(qpf)Do you want to remove (purge) apache2-mod-php now" "$YES"; then
-                    apt_purge 'libapache2-mod-php*'
+                    apt_ purge 'libapache2-mod-php*'
                     "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
                     cursor_ hide
                     anykey

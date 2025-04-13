@@ -44,6 +44,7 @@ help(){
     --raw, -r   raw output
     --execute,-e "query;"
                 run a query and exit
+    --firstrun  re-run the first run wizard
 
 HELP
     exit 0
@@ -71,7 +72,7 @@ done
 set -- "${args[@]}"
 
 if ${B[aio]} && [ -n "${X[psql]}" ]; then
-        B[docker]=false
+    B[docker]=false
 fi
 
 if ${B[execute]}; then

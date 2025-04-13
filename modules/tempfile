@@ -91,6 +91,7 @@ declare ttf="$(${X[mktemp]} -p "$TD")"
     # if the temporary file was not created, print an error message
     echo -e "\e[31mERROR: TMPDIR '$TD' is not writable by user '${I[un]}'\e[0m" >&2
     exit 1
+#    [ -t 0 ] || exit 1 # no `exit 1` in terminal!
 }
 # unset the temporary file variable
 unset ttf

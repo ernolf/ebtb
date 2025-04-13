@@ -98,6 +98,8 @@ switch_fpm_version(){
     unset httpd active_httpd infostring modstring modsubstring
     # end of preselection <-
 
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+
     ## prechecks on installed fpm
     # vars only needed for prechecks
     local v ver_o key
@@ -232,7 +234,7 @@ switch_fpm_version(){
                     fi
                     if ${X[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                         f
-                        spinner GRAY " . . .  searching for other configuration files that may have to be switched . . ."
+                        spinner GRAY " . . .  searching for other configuration files that may have to be switched . . ." &
                         fpm_switch[apache2]+=' ok'
                     fi
                 fi
@@ -279,12 +281,14 @@ switch_fpm_version(){
     local httpd
     for httpd in apache2 nginx; do
         if (( ${HTTPD[$httpd]} > 2 )) && [ -z "${fpm_switch[$httpd]}" ]; then
+            kill_spinner
             php_fpm_sites_available_conf_$httpd $ver_n
         fi
     done
     # and if marked:
     for httpd in ${!fpm_switch[@]}; do
         if [[ "${fpm_switch[$httpd]} " =~ " ok " ]]; then
+            kill_spinner
             php_fpm_sites_available_conf_$httpd $ver_n
             ${X[systemctl]} restart $httpd php$ver_n-fpm
         elif [[ ! " ${fpm_switch[$httpd]} " =~ " set " ]] && [[ "${fpm_switch[$httpd]} " =~ " nok " || "${fpm_switch[$httpd]} " =~ " err " ]]; then

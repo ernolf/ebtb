@@ -52,11 +52,11 @@ install_new_php(){
         [ -z "${X[needrestart]}" ] || export NEEDRESTART_SUSPEND=1
         kill_spinner
         if ((${#sapi_packages[@]})) || ((${#packages[@]})); then
-            apt_install_prechecked --yes ${sapi_packages[@]} ${packages[@]}
+            apt_ install --yes ${sapi_packages[@]} ${packages[@]}
         fi
 # TODO 3 -->
         if ((${#sapi_not[@]})); then
-            apt_remove --yes ${sapi_not[@]}
+            apt_ remove --yes ${sapi_not[@]}
         fi
 # TODO <-- 3
         [ -z "${X[needrestart]}" ] || ${X[needrestart]} -r a

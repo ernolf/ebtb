@@ -15,6 +15,8 @@ switch_a2module_version(){
     local -a a2_installed a2_alternatives
     ver_n="$1"
 
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+
     if (( ${HTTPD[apache2]} > 2 )); then
         apache2_mpm prefork || return 0 # this is only for version switch, the modules must already be loaded
         mapfile -t a2_installed< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/ {gsub(/^libapache2-mod-php/, "", $2); print $2}')

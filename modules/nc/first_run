@@ -36,7 +36,11 @@ first_run(){
 
     if ! ${B[irun2]}; then
         f
-        o2; GRAY; echo "This step is required once after a new installation or sometimes after an update:"; N
+        o2; GRAY; echo "This step is required once after a new installation or if"
+        f
+        o 6; W; echo "--firstrun"
+        f
+        o2; GRAY; echo "was passed:"
     fi
 
     su_root "for the first run wizard" irun2
@@ -106,9 +110,11 @@ first_run(){
         done
     fi
     while :; do
+        cursor_ show
         o2; echo "enter the directory where your Nextcloud is installed ($(C)or $(q2q; N)):"; N
         read -rp "  --> " p
         te1
+        cursor_ hide
         [ "${p,}" = "q" ] && exit 0
         [ -f "$p/occ" ] && finish "$p" || echo "$(Pbg)  * I can not detect a Nextcloud installation in \"$p\" $(N)"
     done

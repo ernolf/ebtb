@@ -30,17 +30,14 @@ remove_dependency_packages(){
         bundle echo "$(xpf; format_string "There $be unnecessary $(O)dependency package${plu#*:}$(N) ($modstring) installed on this machine." 3; N)"
         echo "$(ipf; Y; format_string "Dependency packages have no other function than to install other packages with the final binaries. For example, php-apcu depends on the newest binary package, like php8.4-apcu. The downside is that this can lead to an unwanted update to a new version of that package, which can result in difficult-to-debug issues, such as internal server errors. It is strongly recommended to remove th${plu%:*} package${plu#*:} before updating, as the removal will make your system more resilient against unintended changes made without your decision." 3; N)"
         echo "$(pf; format_string "This script can remove th${plu%:*} package${plu#*:} in a safe way." 3)"
-        cursor_ show
         if ask "$question" "$YES"; then
-            apt_remove --yes ${dependency_pkgs[@]}
+            apt_ remove --yes ${dependency_pkgs[@]}
             "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-installed-only
-            cursor_ hide
             anykey
             return 0
         else
             echo "$(ipf; Y; format_string "You answered $(button no), nothing changed." 3; N)"
             echo "$(xpf; R; format_string "WARNING: You should absolutely know what you are doing if you do not follow the script's advice, as it may result in an unstable system and affect the script's execution down the line! I may not be able to help with subsequent errors." 3; N)"
-            cursor_ hide
             anykey
             return 1
         fi

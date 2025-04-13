@@ -40,6 +40,11 @@ spinner(){
     # If in verbose/trace/debug mode, print message and return immediately
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
 
+#    ONLY USE THIS FOR DEBUGING: THE AMOUNT OF OUTPUT IS HUGE!
+#    mh "$(funcname_and_lineno 1)$BASHPID:$(funcname_and_lineno) $@"
+    # if not started in background, return imediately, since otherwise the spinner would be eternal
+    (( BASHPID == M[pid] )) && return 0
+
     # Check if spinner is already running by verifying the PID file
 #    [ -f "${F[spinner_pid]}" ] && return 0
     if [[ -f "${F[spinner_pid]}" ]]; then

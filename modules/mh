@@ -39,22 +39,25 @@ mh(){
 haul(){
         local hauler padding
         local -a pl
-        local -i i i_max
+        local -i i i_max level
         hauler="$1"
         shift
+        [[ ${FUNCNAME[1]} == bundle ]] && level=2 || level=1
         case "$hauler" in
             echo) [ "$1" = '-n' ] && shift
-                  mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$@")" 2>&1)    ;;
+                  tofifo "$(funcname_and_lineno $level) e: $(echo $* | ${X[sed]} 's/  / /g')"
+#                  mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$@")" 2>&1)
+                  ;;
           printf) mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$($@)")" 2>&1) ;;
              cat) mapfile -t pl < <(${X[grep]} -v '^[[:space:]]*$' "$@" 2>&1)
         esac
         if (( ${#pl[@]} == 1 )); then
-            tofifo "${hauler::1}: ${pl[0]}"
+            tofifo "$(funcname_and_lineno $level) ${hauler::1}: ${pl[0]}"
         elif (( ${#pl[@]} > 1 )); then
             i_max=${#pl[@]}
             (( ${#i_max} > 1 )) && padding="%0${#i_max}d" || padding='%d'
             for i in ${!pl[@]}; do
-                tofifo "${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
+                tofifo "$(funcname_and_lineno $level) ${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
             done
         fi
 }

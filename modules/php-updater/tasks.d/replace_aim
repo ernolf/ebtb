@@ -11,7 +11,7 @@ ${TASKS_REPLACE_AIM_BASHLIB:-_} && return
 TASKS_REPLACE_AIM_BASHLIB=:
 
 replace_aim(){ # replace admin installed modules
-    . "${F[php]}" &>$NUL
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     replace_(){
         local ini_dir mod
         if [ "$(${X[pecl]} list)" = '(no packages installed from channel pecl.php.net)' ] && (( imb )); then
@@ -36,7 +36,7 @@ replace_aim(){ # replace admin installed modules
         fi
         ext_state cleanup
         ext_state fix
-        apt_install_prechecked --yes ${pkgs[@]}
+        apt_ install --yes ${pkgs[@]}
     }
     if [ -n "${X[pecl]}" ]; then
         local ver module pkg pkgmod modstring serializers compression

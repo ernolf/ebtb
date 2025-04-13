@@ -27,7 +27,8 @@ ts(){
     printf "%(%s-(%F_%R_%Z))T"
 }
 fp(){
-    q2 ${C[c]} "${F[fp]:=${D[vt]}/fp}"
+    [ -f "${F[fp]:=${D[vt]}/fp}" ] && printf "$(< ${F[fp]})"
+    printf "${M[pid]}:"
 }
 c(){
     mkld
@@ -89,7 +90,7 @@ module_etag(){
 ${C[mw]} ${D[vt]:=/var/tmp/${M[p]}}
 ${C[ms]} ${D[vtm]:=${D[vt]}/modules} ${D[vts]:=${D[vt]}/scripts}
 V[astr]="${I[l]}: " M[url]=${M[home]%/apps/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
-bools=(run2 irun2 do_update do_restore_backup do_integrity_check)
+bools=(run2 irun2 do_update do_restore_backup do_integrity_check firstrun)
 for x in ${bools[@]}; do B[$x]=_; done
 for x in "$@"; do
     case "$x" in
@@ -98,6 +99,7 @@ for x in "$@"; do
         my_update)      B[do_update]=: V[astr]="update ${V[astr]}"            ;;
         restore_backup) B[do_restore_backup]=: V[astr]="backup ${V[astr]}"    ;;
         integrity_check)B[do_integrity_check]=: V[astr]="integrity ${V[astr]}";;
+        --firstrun)     B[firstrun]=:                                         ;;
         *)              [ -z "${x// /}" ] || args+=("$x")
     esac
 done

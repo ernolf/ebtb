@@ -18,6 +18,13 @@ is_unix(){
 #    q2 ${X[od]} -c "$file" | ${X[grep]} -qs '\\r  \\n' && return 1 || return 0
 }
 
+dos_or_unix(){
+    local file
+    file="$1"
+    [ -f "$file" ] || return 1
+    is_unix "$file" && echo unix || echo dos
+}
+
 dos_2_unix(){
     local file
     file="$1"

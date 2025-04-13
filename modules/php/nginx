@@ -138,6 +138,7 @@ detect_matching_nginx_php_fpm_(){
         if (( ${#configured_sockets[@]} )); then
             case $task in
                 sockets|configfiles_regex)
+                    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
                     canonical_socket_regex="$(canonicalize "$socket" | ${X[sed]} -E "s/${PHP[vregex]}/${PHP[vregex]}/")"
                     ;;
                 configfiles)
