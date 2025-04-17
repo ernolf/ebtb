@@ -97,7 +97,7 @@ fi
 
 if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z "${NC[dg]}" || -z "${NC[u]}" || -z "${NC[vphp]}" ]]; then
     if ${B[aio]}; then
-        N[d]="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
+        NC[d]="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
         NC[cd]="${NC[d]}/config" # NC_CDIR
         NC[dd]="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
     else
