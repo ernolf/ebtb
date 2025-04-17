@@ -99,7 +99,7 @@ switch_a2module_version(){
             php_a2module_switch_2_ $ver_n
             populate_a2conffiles
             if [[ "${A2CONFFILES[@]}" =~ php$ver_n\.conf && "${A2CONFFILES[@]}" =~ php$ver_n\.load ]]; then
-                bundle echo "$(es3; G; format_string "Successfully switched the $(dY)${SAPIDESCR[apache2]} $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)" 3; N)"
+                bundle echo "$(es3; G; format_string "Successfully switched the $(dY)${DESCR[apache2]} $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)" 3; N)"
             else
                 return 1
             fi

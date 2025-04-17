@@ -125,14 +125,14 @@ $(separator dP)
 
   $(W)These are the most important SAPIs:
 
-  $(dYul)${SAPIDESCR[cli]}$(N)
+  $(dYul)${DESCR[cli]}$(N)
 
    $(W)- term    - $(GRAY)**$(B)cli$(GRAY)**
    $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-cli$(GRAY)\`*
    $(W)- description:
       $(GRAY; format_string "cli is used by PHP scripts that are called from the command line. i.e. all processes that were explicitly NOT called by the web server (cron jobs, occ commands, etc.)" 6)
 
-  $(dYul)${SAPIDESCR[apache2]}$(N)
+  $(dYul)${DESCR[apache2]}$(N)
 
    $(W)- term    - $(GRAY)**$(B)apache2$(GRAY)**
    $(W)- package - $(GRAY)*\`$(B)libapache2-mod-php$(C)<VER>$(GRAY)\`*
@@ -140,7 +140,7 @@ $(separator dP)
       $(GRAY; format_string "the apache2 module is the default SAPI for apache2. The downside is that it's not particularly scalable and doesn't support http2." 6)
       $(GRAY; format_string "ibapache2-mod-php relies on the old but stable Multi-Processing Module (MPM) \"mpm-prefork\"." 6)
 
-  $(dYul)${SAPIDESCR[fpm]}$(N)
+  $(dYul)${DESCR[fpm]}$(N)
 
    $(W)- term    - $(GRAY)**$(B)fpm$(GRAY)**
    $(W)- package - $(GRAY)*\`$(B)php$(C)<VER>$(B)-fpm$(GRAY)\`*

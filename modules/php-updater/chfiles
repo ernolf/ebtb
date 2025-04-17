@@ -14,6 +14,7 @@ CHFILES_BASHLIB=:
 
 changed_files_(){
     changed_mod_ini_files(){
+        [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
         local old new odir ndir ofile cfile ext_objfile ext_pkg omd5 nmd5
         local -a ofiles nfiles cfiles
         old="$1" new="$2"
@@ -23,7 +24,7 @@ changed_files_(){
         mapfile -t nfiles< <(${X[ls]} "$ndir")
         mapfile -t cfiles< <(${X[comm]} -12 <(p_sort ${ofiles[@]}) <(p_sort ${nfiles[@]}))
         for cfile in ${cfiles[@]}; do
-            ext_objfile="/usr/lib/php/${APIS[$old]}/$(${X[gawk]} -F= '/extension=/ {print $2}' "$odir/$cfile")"
+            ext_objfile="/usr/lib/php/${EXG[$old]%%;*}/$(${X[gawk]} -F= '/extension=/ {print $2}' "$odir/$cfile")"
             [ -f "$ext_objfile" ] || continue
             ext_pkg="$(q2 ${X[dpkg]} -S "$ext_objfile" | ${X[gawk]} '{print$1}')" || continue
             if [ "${ext_pkg%-*}" = "php$old" ]; then

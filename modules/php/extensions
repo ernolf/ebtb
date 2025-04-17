@@ -18,22 +18,9 @@ EXTENSIONS_BASHLIB=:
 
 # globals
 q2 declare -ag EXTS_ADMIN || declare -a EXTS_ADMIN
-q2 declare -Ag APIS || declare -A APIS
-APIS=(
-    [5.6]="20131226"
-    [7.0]="20151012"
-    [7.1]="20160303"
-    [7.2]="20170718"
-    [7.3]="20180731"
-    [7.4]="20190902"
-    [8.0]="20200930"
-    [8.1]="20210902"
-    [8.2]="20220829"
-    [8.3]="20230831"
-    [8.4]="20240924"
-)
-q2 declare -Ag SAPIS || declare -A SAPIS
-SAPIS=(
+
+q2 declare -Ag SAPI || declare -A SAPI
+SAPI=(
     [apache2]="libapache2-mod-php@VER@"
     [fpm]="php@VER@-fpm"
     [cli]="php@VER@-cli"
@@ -41,8 +28,8 @@ SAPIS=(
     [embed]="libphp@VER@-embed"
     [phpdbg]="php@VER@-phpdbg"
 )
-q2 declare -Ag SAPIDESCR || declare -A SAPIDESCR
-SAPIDESCR=(
+q2 declare -Ag DESCR || declare -A DESCR
+DESCR=(
     [apache2]="Apache 2.0 Handler SAPI"
     [fpm]="FastCGI Process Manager SAPI"
     [cli]="Command Line Interpreter SAPI"
@@ -80,7 +67,7 @@ SAPIDESCR=(
     [xml]="DOM, SimpleXML, XML, and XSL module for PHP"
     [zip]="Zip module for PHP"
 )
-readonly -A APIS SAPIS SAPIDESCR
+declare -n SAPIDESCR=DESCR &>$NUL
 
 detect_installed_by_dpkg(){
     local e
@@ -107,6 +94,7 @@ detect_extensions_in_(){
 }
 
 extension_dir_of_(){
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     local pv extension_dir
     pv="$1"
     if extension_dir="$(q2 ${X[php$pv]} -i | ${X[gawk]} '/^extension_dir/ {print $NF}')"; then
@@ -115,7 +103,7 @@ extension_dir_of_(){
             return
         fi
     fi
-    echo "/usr/lib/php/${APIS[$pv]}"
+    echo "/usr/lib/php/${EXG[$pv]%%;*}"
 }
 
 extension_ini_case(){
@@ -139,16 +127,16 @@ extension_ini_case(){
 }
 
 extension_include_dir_of_(){
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     local pv
     pv="$1"
-    echo "/usr/include/php/${APIS[$pv]}/ext"
+    echo "/usr/include/php/${EXG[$pv]%%;*}/ext"
 }
 
 detect_and_assign_extensions(){
     assign(){
         local dpkg_package phpregex
         if [ "${search:-}" = 'apache2' ]; then
-            [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
             phpregex="libapache2-mod-php${PHP[vregex]}"
         else
             phpregex="php"
@@ -161,6 +149,7 @@ detect_and_assign_extensions(){
         done
         kill_spinner
     }
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     local search pv
     local -a exts_all exts_dpkg
     [[ "$@" =~ apache2 ]] && search=apache2
@@ -169,7 +158,7 @@ detect_and_assign_extensions(){
     else
         spinner C " . detect actually installed extensions ." &
         for pv in $(${X[phpquery]} -V); do
-            mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${APIS[$pv]}")
+            mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${EXG[$pv]%%;*}")
         done
         kill_spinner
         assign
@@ -190,6 +179,7 @@ assign_extensions(){
 # C4EIBY4_=CANDIDATES_FOR_EXTENSIONS_INSTALLED_BY_ADMIN_FOR_
 # versions_iterate search_candidates_4_extensions_installed_by_admin
 search_candidates_4_extensions_installed_by_admin(){
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     local pv fullpath module package
     local -A bool
     pv="$1" bool[sort]=_
@@ -200,7 +190,7 @@ search_candidates_4_extensions_installed_by_admin(){
     local -n C4EIBY4_pv=C4EIBY4_${pv//./}
     for fullpath in ${EXTS_ADMIN[@]}; do
         module="${fullpath##*/}"
-       if [ "${fullpath%/*}" = "/usr/lib/php/${APIS[$pv]}" ];then
+       if [ "${fullpath%/*}" = "/usr/lib/php/${EXG[$pv]%%;*}" ];then
             bool[sort]=:
             EIBY4_pv+=("${module%%.*}")
             package="php$pv-${module%%.*}"
@@ -243,7 +233,7 @@ extension_is_(){
         sapi)
             for pv in $(${X[phpquery]} -V); do
                 for sapi in $(${X[phpquery]} -v $pv -S); do
-                    if [ "$pkg" = "${SAPIS[$sapi]/@VER@/$pv}" ]; then
+                    if [ "$pkg" = "${SAPI[$sapi]/@VER@/$pv}" ]; then
                         r=0
                         echo "$sapi:$pv"
                     fi
@@ -326,12 +316,12 @@ detect_wrong_extensions(){
 
 # create temporary ini file to load all existing extensions without any directives
 php_ext_file_create(){
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     local pv sapi ext_file ini_file ext ext_in_ext_file
     local -a exts_all exts_in_ext_file
     local -i line_number
     pv="$1" sapi="$2" ext_file="$(tf)"
-#    mapfile -t exts_all< <(detect_extensions_in_ "$(extension_dir_of_ $pv)")
-    mapfile -t exts_all< <(detect_extensions_in_ "/usr/lib/php/${APIS[$pv]}")
+    mapfile -t exts_all< <(detect_extensions_in_ "/usr/lib/php/${EXG[$pv]%%;*}")
     ${X[grep]} -E '^\s*(zend_)?extension\s*=\s*' /etc/php/$pv/$sapi/php.ini > "$ext_file"
     if nonullglob "/etc/php/$pv/$sapi/conf.d/*.ini"; then
         for ini_file in /etc/php/$pv/$sapi/conf.d/*.ini; do

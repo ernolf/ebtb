@@ -108,11 +108,11 @@ switch_default_version(){
                             switch_fpm_version ${php_versions[$key-1]}
                             ret=$?
                             if (( ret )); then
-                                bundle echo "$(es3; xpf; R; format_string "Something went wrong while switching the $(dY)${SAPIDESCR[fpm]}$(GRAY) (php-fpm)$(R) version." 6; N)"
+                                bundle echo "$(es3; xpf; R; format_string "Something went wrong while switching the $(dY)${DESCR[fpm]}$(GRAY) (php-fpm)$(R) version." 6; N)"
                                 case $ret in
-                                    2)  bundle echo "$(es3; xpf; R; format_string "From the point of view of this script, it looks like the $(dY)${SAPIDESCR[fpm]}$(GRAY) php-fpm$(R) is not installed in any version." 6; N)"
+                                    2)  bundle echo "$(es3; xpf; R; format_string "From the point of view of this script, it looks like the $(dY)${DESCR[fpm]}$(GRAY) php-fpm$(R) is not installed in any version." 6; N)"
                                         ;;
-                                    3)  bundle echo "$(es3; xpf; R; format_string "The $(dY)${SAPIDESCR[fpm]}$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(php${php_versions[$key-1]}-fpm)$(R) is not installed." 6; N)"
+                                    3)  bundle echo "$(es3; xpf; R; format_string "The $(dY)${DESCR[fpm]}$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(php${php_versions[$key-1]}-fpm)$(R) is not installed." 6; N)"
                                 esac
                                 f
                                 anykey
@@ -122,18 +122,18 @@ switch_default_version(){
                                 switch_a2module_version ${php_versions[$key-1]}
                                 ret=$?
                                 if (( ret )); then
-                                    bundle echo "$(es3; xpf; R; format_string "Something went wrong while switching the $(dY)${SAPIDESCR[apache2]}$(GRAY) (libapache2-mod-php)$(R) to version ${php_versions[$key-1]}." 6; N)"
+                                    bundle echo "$(es3; xpf; R; format_string "Something went wrong while switching the $(dY)${DESCR[apache2]}$(GRAY) (libapache2-mod-php)$(R) to version ${php_versions[$key-1]}." 6; N)"
                                     case $ret in
-                                        2)  bundle echo "$(es3; xpf; R; format_string "From the point of view of this script, it looks like the $(dY)${SAPIDESCR[apache2]}$(GRAY) libapache2-mod-php$(R) is not installed in any version." 6; N)"
+                                        2)  bundle echo "$(es3; xpf; R; format_string "From the point of view of this script, it looks like the $(dY)${DESCR[apache2]}$(GRAY) libapache2-mod-php$(R) is not installed in any version." 6; N)"
                                             ;;
-                                        3)  bundle echo "$(es3; xpf; R; format_string "The $(dY)${SAPIDESCR[apache2]}$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(libapache2-mod-php${php_versions[$key-1]})$(R) is not installed." 6; N)"
+                                        3)  bundle echo "$(es3; xpf; R; format_string "The $(dY)${DESCR[apache2]}$(R) for version $(Y)${php_versions[$key-1]} $(GRAY)(libapache2-mod-php${php_versions[$key-1]})$(R) is not installed." 6; N)"
                                             ;;
                                         4)  bundle echo "$(es3; O)Skipped the apache2 server due to its inactive state."; N
                                             bundle echo "$(es3; O)You should first start the apache2 server and run"; N
                                             f
                                             bundle echo "$(G; prompt; P) $ME${FLAG[forceflag]} --switch-version"; N
                                             f
-                                            bundle echo "$(es3; O).. again if you want to switch the $(dY)${SAPIDESCR[apache2]}$(O) to $(C)${php_versions[$key-1]}"; N
+                                            bundle echo "$(es3; O).. again if you want to switch the $(dY)${DESCR[apache2]}$(O) to $(C)${php_versions[$key-1]}"; N
                                     esac
                                     f
                                     anykey

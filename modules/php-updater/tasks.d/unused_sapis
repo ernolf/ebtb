@@ -19,10 +19,10 @@ remove_unused_sapis(){
         for unused_sapi in cgi embed phpdbg; do
             if $(is_sapi_true_ $unused_sapi); then
                 unused_sapis+=("$unused_sapi")
-                packages_2_purge+=(${SAPIS[$unused_sapi]/@VER@/*})
+                packages_2_purge+=(${SAPI[$unused_sapi]/@VER@/*})
             fi
         done
-        mapfile -t unused_sapis_descr < <(for unused_sapi in ${unused_sapis[@]}; do echo "${SAPIDESCR[$unused_sapi]}$(GRAY) ($unused_sapi)$(B)"; done)
+        mapfile -t unused_sapis_descr < <(for unused_sapi in ${unused_sapis[@]}; do echo "${DESCR[$unused_sapi]}$(GRAY) ($unused_sapi)$(B)"; done)
         if (( ${#unused_sapis[@]} == 1 )); then
             plu='is:' be='is a'
         else

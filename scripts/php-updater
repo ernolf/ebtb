@@ -405,7 +405,7 @@ if ${B[supported]}; then
                     PKGOLD="php$OLD-$PKG" SAPI="$PKG"
                 fi
                 PKGNEW="${PKGOLD/$OLD/$NEW}"
-                preq="$(qpf; P; format_string "Do you want to migrate the values for the $(B)${SAPIDESCR[$SAPI]}$(P) from the$(C) $(${X[basename]} $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(${X[basename]} $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
+                preq="$(qpf; P; format_string "Do you want to migrate the values for the $(B)${DESCR[$SAPI]}$(P) from the$(C) $(${X[basename]} $FILE)$(P) for $(Y)$PKGOLD$(P) into the corresponding$(C) $(${X[basename]} $FILE)$(P) for$(Y) $PKGNEW" 3; N)"
 
                 if ask "$preq" "$YES"; then
                     separator O
