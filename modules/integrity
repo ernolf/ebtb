@@ -35,7 +35,7 @@ convene(){
         mh "$(funcname_and_lineno) moved $MP to ${D[vts]}/${M[n]}"
     [[ ${M[b]} != ${M[n]} ]] &&
         ${X[ln]} -sfT "${D[vts]}/${M[n]}" "$MP" &&
-        mh "$(funcname_and_lineno) created symlink: $MD -> ${D[vts]}/${M[n]}"
+        mh "$(funcname_and_lineno) created symlink: $MP -> ${D[vts]}/${M[n]}"
     for script in "${D[vts]}"/*; do
         [[ -x "$script" && -f "$script" ]] || continue
         link="${D[ulb]}/$(${X[basename]} "$script")"
