@@ -26,8 +26,11 @@ declare -i today=$(${X[date]} -ud 'today 00:00' +%s)
 
 # from unix to utc day
 ut2udF(){
-    require_arg $@
-    ${X[date]} -ud @$1 +%F
+    if [[ -t 0 ]]; then # no STDIN
+        ${X[date]} -ud @$1 +%F
+    else
+        ${X[date]} -ud @$(${X[cat]}) +%F
+    fi
 }
 
 date2unix0hr(){
