@@ -12,6 +12,8 @@ VDIR_BASHLIB=:
 
 # uses indirect parameter expansion ("${!var}", BASH > 4) to eliminate the need for `eval`
 setvdir(){
+    q0 declare -p vdirname || return 0 # return if vdirname is not declared
+    [[ $vdirname ]] || return 0 # return if vdirname is empty
     local dv d v v1 v2 v3
     dv="dflt_$vdirname"
     d="${!dv}"

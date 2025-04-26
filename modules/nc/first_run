@@ -16,8 +16,11 @@ first_run(){
     te1
 
     finish(){
-        mh "vdir: $1" &
+        mh "vdir: $1"
         setvdir v "$1"
+        NC[d]="$1"
+        declare -p NC > "${F[nc]}"
+        ${X[chmod]} 666 "${F[nc]}"
         f
         o2; echo "- $(lG)first run wizard completed successfully. Please start script again"; N
         o2; echo "- $(lG)No further root rights are required to use the script except for updating."; N
@@ -30,7 +33,7 @@ first_run(){
     local -i c2 i
     h="$(box h) to enter path by hand or $(q2q)" c2=9
 
-    if ! ${B[rt]} && [[ -d "${NC[d]}" ]]; then
+    if ! ${B[rt]} && [[ -d ${NC[d]} || -d $NC_DIR ]]; then
         su_root "to run this script"
     fi
 
