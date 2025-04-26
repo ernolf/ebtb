@@ -11,8 +11,10 @@ ${BINARIES_BASHLIB:-false} && return
 BINARIES_BASHLIB=:
 
 for x in B BINARY D F J M PHP T V; do declare -gA $x 2>${NUL:=/dev/null} || declare -A $x; done
+declare -i BINARIES_LIB_VERSION BINARY_ARRAY_VERSION
 
-__libname__
+__libversion__
+BINARY_ARRAY_VERSION=0
 
 [[ "$-" =~ x ]] && { set +x; B[binaries_debugx]=:; }
 
@@ -26,6 +28,8 @@ declare -p PHP > "${F[php]:="${D[vt]}/php"}"
 F[binary]="${D[vt]}/binary"
 [ -f "${F[binary]}" ] && . "${F[binary]}"
 
+(( BINARIES_LIB_VERSION == BINARY_ARRAY_VERSION )) || BINARY=()
+
 reload_binaries(){
     [ -f "${F[binary]:=${D[vt]}/binary}" ] && ${BINARY[rm]} -f -- "${F[binary]}"
     FILTER_BASHLIB=_ BINARIES_BASHLIB=_
@@ -38,21 +42,21 @@ map_paths(){
     mapfile -t paths< <(printf "%s\n" ${PATH//:/ })
 }
 
-shopt -s nullglob
 nullglob_path(){
-    local path binary
+    local old_nullglob path binary
     local -a results
     map_paths
+    old_nullglob=$(shopt -p nullglob || :)
+    shopt -s nullglob
     for path in "${paths[@]}"; do
         for binary in "$path"/*; do
             results+=("$binary")
         done
     done
+    [[ -n $old_nullglob ]] && $old_nullglob || shopt -u nullglob
     printf '%s\n' "${results[@]}"
 }
-shopt -u nullglob
 
-shopt -s extglob
 extglob_path(){
     local path binary
     local -a results
@@ -64,9 +68,8 @@ extglob_path(){
     done
     printf '%s\n' "${results[@]}"
 }
-shopt -u extglob
 
-if [[ -z "${BINARY[env]}" || -z "${BINARY[stat]}" || $(${BINARY[stat]} -c %Y "${F[binary]}" 2>$NUL) -lt ${M[binaries_e]} || $(${BINARY[stat]} -c %Y "${F[binary]}" 2>$NUL) -lt ${M[e]} ]]; then
+if [[ -z ${BINARY[env]} ]]; then
     BINARY[env]="$(command -v env)"
     for x in gawk sed; do
         if [ -x "$(command -v $x)" ]; then
@@ -76,8 +79,14 @@ if [[ -z "${BINARY[env]}" || -z "${BINARY[stat]}" || $(${BINARY[stat]} -c %Y "${
             [ -t 0 ] || exit 1
         fi
     done
-    # binaries that need utf-8
-    for x in add-apt-repository; do
+    # binaries that need LC_ALL=C
+    for x in lastlog; do
+        if [ -x "$(command -v $x)" ]; then
+            BINARY[$x]="${BINARY[env]} LC_ALL=C $(command -v $x)" &>$NUL
+        fi
+    done
+    # binaries that need LC_ALL=C.UTF-8
+    for x in add-apt-repository gpg; do
         if [ -x "$(command -v $x)" ]; then
             BINARY[$x]="${BINARY[env]} LC_ALL=C.UTF-8 $(command -v $x)" &>$NUL
         fi
@@ -85,9 +94,7 @@ if [[ -z "${BINARY[env]}" || -z "${BINARY[stat]}" || $(${BINARY[stat]} -c %Y "${
 
 __used_binaries__
 
-    shopt -s nullglob
     mapfile -t binaries < <(nullglob_path)
-    shopt -u nullglob
 
     for x in "${binaries[@]}"; do
         [ -z "${BINARY[${x##*/}]}" ] || continue
@@ -111,7 +118,8 @@ for x in "${binaries[@]}"; do
     BINARY[${x##*/}]="${BINARY[env]} LC_MESSAGES=C $x" &>$NUL
 done
 unset -v used_binaries binaries
-declare -p BINARY > "${F[binary]}"
+echo "BINARY_ARRAY_VERSION=$BINARIES_LIB_VERSION" > "${F[binary]}"
+declare -p BINARY >> "${F[binary]}"
 q0 ${BINARY[chmod]} 666 "${F[binary]}" "${F[php]}"
 
 # Create a nameref for BINARY named X

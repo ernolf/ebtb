@@ -9,7 +9,7 @@ placeholders=(
     copyright
     license
     scriptname
-    libname
+    libversion
     debug
     when
     whoami_whereami

@@ -62,8 +62,8 @@ placeholder_replace(){
         scriptname)
             echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
-        libname)
-            echo "M[${name}_e]=$epoch"
+        libversion)
+            echo "${name^^}_LIB_VERSION=$epoch"
             ;;
         debug)
             if [ "${channel:-prod}" = "test" ]; then
