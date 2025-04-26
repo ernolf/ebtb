@@ -1,0 +1,433 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${GPG_BASHLIB:-_} && return
+GPG_BASHLIB=:
+
+# https://www.rfc-editor.org/rfc/rfc4880
+
+ernolf_pubkey(){
+    ${X[cat]} << PUBLIC_KEY_ASC
+mQINBGSXjUIBEADbt4/706Fw6YNHMPwHT+qtq4ZxJCdUclzovEnCvECtylYCK1M5
+TNpM4CQH9eNVhpyav8Wfi0aZZFwoTX+z7+xCfYcPAGZ1N7rBBIYDxwu59S65zWz6
+04Lm/P0E3FQ9RM80x8HelA9QYA+Y2hBvPjySrK2w2dQRm+L3K114Phg2j2UQKxxh
+2mwEOg/FP35YIMJYiS2QIsOKvfVi7df6UqOMy0aSsgD38NwV+aok9Of3cvKqKsBr
+mQseIFewLd9W7qjGvtHFZfncPDak49zdnOLBNGutj2McknVevAK9AznQ+q3hqBbo
+8tJT8O8XfjSeqf1dYj31H0Q5jY54kJN9NyP57MGLDtfEmKcwEwEYVkY/xt1Uq64K
+9Dj+WxJAczWs/6jZN9bou32/2StIF/wvkvw2GxF8H6kWue1zD9sa7A/xv9WHLy8M
+tHjz9Klcjz2OcsGL6JXk0ro6ySsE7EjTm3LyGdBQsRqe/JHjvmUgUREJxuXW7B3e
+NVdz/OyHX0P2+6hmcsy9CVdxocI6ntUo0/KdoSxdWSIn4k50ywHiqsVYo4QwDzR+
+4yBtcZz+Lp8C9Fs1GWMJ5FlGGfOlLhl3Z7lPO/7j5Tlys/6ZzREBByMNX2lNX6QY
+SN8P+vGbjvGiNEp7ATtkkMv9Zc6KfZtaGv6FUutBziLlCPvMxXCPaL8lBQARAQAB
+tE1bZXJub2xmXSBSYXBoYWVsIEdyYWRlbndpdHogKGNvZGVzaWduaW5nKSA8cmFw
+aGFlbC5ncmFkZW53aXR6QGdvb2dsZW1haWwuY29tPokCVAQTAQoAPhYhBD7kOoTS
+umNalOEDOwsUUTmhcHFcBQJkl41CAhsDBQkFo5qABQsJCAcCBhUKCQgLAgQWAgMB
+Ah4BAheAAAoJEAsUUTmhcHFcjfUP/igMNwF8jd97Uslvz4U/2msaUdEEKinOzejZ
+LN6PrZOcsjGijAs+4UfepPxTShqW3gBIhUNK3Ox4D8WBs36l1H86fbHnXAOHyS7S
+qPOaqpUsSMW3cxt17k7FtXMCROvQWXfOu/vIJ2Nfz8yXyyGxoDLxwRLy3sVsf634
++D2F4Dg4rNs6S44yjPWIWmabXDAgqrD7pCRSw+H3tIXCf8fAgx619DioCv8HDKAZ
+tC0FzOA9rB9OGrXG2DZAOlocIxAvzuEOr3zN33i41j7Vk1Nsbd1mMkJJmSy6AdqD
+RKwLBI/iC8aK4BHBI7O8xXQNT/9BcrSUux1Q751cS61utQVqBVtGFkewRsNvWptP
+qBhNWRftkbev14K0hTGNGC9dK/qKxk+Bkl2GmmYbNnrdFtt0uSZZxAnd/5B4u8X4
+DyUzoCq5SrGJ5LCoGjlUd5TmPUGCZR8gBl+S27URWXSf8ULmBAILcQudm0Eg+l6m
+wt/fw/zM12qd2q8K9JutMw5wDZAYsXen5qb6LljA0F9mhVvrEsrf1ll2X9XbZvXe
+wMVBD9xFEjIAVYCph4A1mkunkyBHVF4CwICxxehecRGrT73xyTVa0+7XDM9C+xWn
+Le6J7RWkwvTfGz3AByNLB1OY3fcpO3z0NNAW/S5fVFFoOHyxityOhDruMCU42Qr4
+YP2ebH/z
+=PJji
+PUBLIC_KEY_ASC
+}
+
+declare -A PGP
+PGP=(
+    [header_mes]='-----BEGIN PGP MESSAGE-----'
+    [footer_mes]='-----END PGP MESSAGE-----'
+    [header_pub]='-----BEGIN PGP PUBLIC KEY BLOCK-----'
+    [footer_pub]='-----END PGP PUBLIC KEY BLOCK-----'
+    [header_priv]='-----BEGIN PGP PRIVATE KEY BLOCK-----'
+    [footer_priv]='-----END PGP PRIVATE KEY BLOCK-----'
+    [header_sig]='-----BEGIN PGP SIGNATURE-----'
+    [footer_sig]='-----END PGP SIGNATURE-----'
+)
+
+# Helper: map algorithm ID to name
+gpg_algo_name() {
+    case "$1" in
+        1)  echo "RSA" ;;
+        22) echo "Ed25519" ;;
+        18) echo "ECDSA" ;;
+        19) echo "ECDH" ;;
+        17) echo "DSA" ;;
+        16) echo "ElGamal" ;;
+        *)  echo "Unknown ($1)" ;;
+    esac
+}
+
+# Helper: map trust code to name
+gpg_trust_name() {
+    case "$1" in
+        o) echo "Unknown" ;;
+        i) echo "Invalid" ;;
+        d) echo "Disabled" ;;
+        r) echo "Revoked" ;;
+        e) echo "Expired" ;;
+        -) echo "Unknown/Unset" ;;
+        n) echo "None" ;;
+        m) echo "Marginal" ;;
+        f) echo "Full" ;;
+        u) echo "Ultimate" ;;
+        *) echo "Unknown ($1)" ;;
+    esac
+}
+
+# Validates a stripped ASCII-armored public key block
+# Returns 0 if valid, 1 if invalid
+gpg_is_valid_pubkey() {
+    local data
+    # read from $1 if given, otherwise slurp stdin
+    if [[ -n "$1" ]]; then
+        data="$1"
+    else
+        data="$(cat)"
+    fi
+    [[ -n "$data" ]] || return 1
+    # try dry-run import to see if it's a valid key
+    echo "$data" | ${X[gpg]} --batch --import-options show-only --dry-run --import &> >(while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg validation: $line"; done)
+}
+
+gpg_import_pubkey() {
+    local data
+    # read from $1 if given, otherwise slurp stdin
+    if [[ -n "$1" ]]; then
+        data="$1"
+    else
+        data="$(cat)"
+    fi
+    [[ -n "$data" ]] || return 1
+    # try dry-run import to see if it's a valid key
+    echo "$data" | ${X[gpg]} --batch --import &> >(while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg import: $line"; done)
+}
+
+# Convert binary .gpg to ASCII-armored .asc without touching system keyrings
+gpg_2_asc() {
+    local input TMPHOME keyids keyid
+    input="$1"
+    # ensure input file exists
+    [[ -f "$input" ]] || return 1
+    # create a temporary GPG home, so we don't touch any real keyrings
+    TMPHOME="$(${X[mktemp]} -d)"
+    ${X[chmod]} 700 "$TMPHOME"
+    # import the binary .gpg file into the isolated GPG home
+    q0 ${X[gpg]} --homedir "$TMPHOME" --batch --quiet --import "$input"
+    # list all public key IDs in that temp home
+    keyids="$(${X[gpg]} --homedir "$TMPHOME" --with-colons --list-keys | ${X[gawk]} -F: '$1 == "pub" { print $5 }')"
+    # export each key in ASCII (armor) format
+    for keyid in $keyids; do
+        ${X[gpg]} --homedir "$TMPHOME" --batch --yes --armor --export "$keyid"
+        printf '\n'
+    done
+    # clean up temporary GPG home
+    cleanup "$TMPHOME"
+}
+
+gpg_map_headers(){
+    local type
+    type="$1"
+    shift
+    ${X[gawk]} "
+        /^${PGP[header_$type]}$/ { in_headers=1; next }
+        /^[A-Za-z0-9-]+: / && in_headers { print; next }
+        /^$/ && in_headers { exit }
+    " <<< $*
+}
+
+# Strips armor headers/footers and optional meta headers if present
+gpg_strip_armor_body() {
+    local -i hdrs
+    local type raw
+    hdrs=$1 type="$2"
+    shift 2
+    raw="$*"
+    if (( hdrs )); then
+        printf '%s\n' "$raw" | ${X[sed]} "1{/^${PGP[header_$type]}\$/d}; 2,/^$/d; /^${PGP[footer_$type]}\$/d"
+    else
+        printf '%s\n' "$raw" | ${X[sed]} "/^${PGP[header_$type]}\$/d; /^${PGP[footer_$type]}\$/d; /^\$/d"
+    fi
+}
+
+# Dispatcher for assembling or importing a PGP public key from various inputs
+# strips any existing armor headers/footers/blanks, then re-wraps or imports
+# Function: gpg_assemble_key_
+# Signature:
+#   gpg_assemble_key_ <mode> <input>
+#   <input> can be:
+#     - path to .asc file (ASCII-armored public key)
+#     - path to .gpg file (binary public key)
+#     - name of a shell function that writes asc body or full armor to stdout
+#     - raw Base64/Radix-64 block string (no header/footer)
+# Modes:
+#   armor   – output a fully assembled ASCII-armored key (RFC 4880) to stdout
+#   import  – assemble and pipe into gpg --batch --import, logging stderr via mh()
+#   deb822  – output a deb822 "Signed-By:" block with leading spaces and dot-line
+# Returns 1 on failure (empty input or unknown mode)
+gpg_assemble_key_() {
+    local mode source stripped
+    local -a headers
+    mode="$1" source="$2" headers=()
+    if [[ -f "$source" ]]; then
+        # If it's a file, read its contents
+        if [[ "$source" == *.gpg ]]; then
+            # Convert binary .gpg file to armored ASCII format and strip header/footer
+            stripped=$(gpg_2_asc "$source" | ${X[sed]} "/^${PGP[header_pub]}\$/d; /^${PGP[footer_pub]}\$/d; /^\$/d")
+        else
+            # Read the contents of a file containing (already armored)) asc data and strip from begin to  header and from footer to end
+            stripped=$(print_from_x_to_y_including "${PGP[header_pub]}" "${PGP[footer_pub]}" "$source" | ${X[sed]} 's/^[[:space:]]*\.\?//g')
+            mapfile -t headers < <(gpg_map_headers pub "$stripped")
+            stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$stripped")
+        fi
+    elif declare -f "$source" &>$NUL; then # '$source' is a function that outputs the asc data to stdout
+        mapfile -t headers < <(gpg_map_headers pub "$($source)")
+        stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$($source)")
+    else
+        # raw string input: strip any armor if present
+        stripped="$(printf '%s\n' "$source" | ${X[sed]} 's/^[[:space:]]*\.\?//g')"
+        mapfile -t headers < <(gpg_map_headers pub "$stripped")
+        stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$source")
+    fi
+    [[ -n "$stripped" ]] || return 1
+    gpg_is_valid_pubkey "$(printf '%s\n\n%s\n%s\n' "${PGP[header_pub]}" "$stripped" "${PGP[footer_pub]}")" || {
+        echo "'$source' does not provide valid PGP data"
+        mh "$(funcname_and_lineno 1)gpg_assemble_key_(): $source does not provide valid PGP data"
+        return 1
+    }
+    case "$mode" in
+         armor_full)
+            # output (re)assembled ASCII-armored key
+            {
+                printf '%s\n' "${PGP[header_pub]}"
+                if (( ${#headers[@]} )); then
+                    printf '%s\n' "${headers[@]}"
+                fi
+                printf '\n%s\n%s\n' "$stripped" "${PGP[footer_pub]}"
+            }
+            ;;
+        armor)
+            # output (re)assembled ASCII-armored key
+            printf '%s\n\n%s\n%s\n' "${PGP[header_pub]}" "$stripped" "${PGP[footer_pub]}"
+            ;;
+        import)
+            # (re)assemble and import in one go using '--batch' to ensure no interactive prompts, script‑safe
+            gpg_import_pubkey "$(printf '%s\n\n%s\n%s\n' "${PGP[header_pub]}" "$stripped" "${PGP[footer_pub]}")"
+            ;;
+        deb822)
+            # deb822 sources 'Signed-By'-block
+            printf '%s\n %s\n .\n' "Signed-By:" "${PGP[header_pub]}"
+            printf '%s\n' "$stripped" | ${X[sed]} 's/^/ /'
+            printf ' %s\n' "${PGP[footer_pub]}"
+            ;;
+        *)  # unsupported mode ⇒ failure exit
+            mh "$(funcname_and_lineno 1)gpg_assemble_key_(): unknown mode '$mode'"
+            return 1
+            ;;
+    esac
+}
+
+# Core extraction function serving as dispatcher
+# Cases: raw, fpr, expire, expire_hr, issue, issue_hr,
+#        keyid, algo, algo_hr, bits,
+#        uid, uid_all, trust, trust_hr,
+#        caps, sub_fpr_all, sub_expire_all, sub_expire_hr_all, sub_all,
+#        all, json
+gpg_extract_() {
+    local what source armor
+    what="$1" source="$2"
+    if [[ -f "$source" ]]; then
+        # If it's a file, read its contents
+        if [[ "$source" == *.gpg ]]; then
+            # Convert binary .gpg file to armored ASCII format
+            armor=$(gpg_2_asc "$source")
+        else
+            # Read the contents of a .asc file (already armored)
+            armor=$(< "$source")
+        fi
+    elif declare -f "$source" &>$NUL; then
+        # If it's a shell function, call it and wrap with armor headers
+        armor="$(gpg_assemble_key_ armor $source)"
+    else
+        armor="$source"
+    fi
+    [[ -z "$armor" ]] && return 1
+    # Parse armored input and store GPG colon output
+    # 1) Strip leading whitespace and optional dot per line
+    # 2) Feed to GPG via stdin, get machine-readable output
+    output="$(
+        printf '%s\n' "$armor" |
+            ${X[sed]} 's/^[[:space:]]*\.\?//g' |
+            q2 ${X[gpg]} --batch --with-colons --import-options show-only --import -
+    )"
+    case "$what" in
+        raw)
+            # Print output as is
+            printf '%s\n' "$output"
+            ;;
+        fpr)
+            # Print only the first (primary) fingerprint and exit
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '/^fpr:/ { print $10; exit }'
+            ;;
+        expire)
+            # Print expiry in unix time format
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $7; exit }'
+            ;;
+        expire_hr)
+            # Print human readabale expiry
+            local -i expire
+            expire=$(gpg_extract_ expire "$source")
+            (( expire )) && ut2udF $expire || echo '∞'
+            ;;
+        issue)
+            # Print issue date in unix time format
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $6; exit }'
+            ;;
+        issue_hr)
+            # Print human readbale issue date
+            local -i issue
+            issue=$(gpg_extract_ issue "$source")
+            (( issue )) && ut2udF $issue || echo 'Unknown/Unset' # this should not be unknown!
+            ;;
+        keyid)
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $5; exit }'
+            ;;
+        algo)
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $4; exit }'
+            ;;
+        algo_hr)
+            gpg_algo_name $(gpg_extract_ algo "$source")
+            ;;
+        bits)
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $3; exit }'
+            ;;
+        uid)
+            # Print only the first (primary) uid and exit
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "uid" { print $10; exit }'
+            ;;
+        uid_all)
+            # Print all uids
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "uid" { print $10 }' # here wo don't exit after the first occurence, to get all uid's
+            ;;
+        trust)
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $2; exit }'
+            ;;
+        trust_hr)
+            gpg_trust_name $(gpg_extract_ trust "$source")
+            ;;
+        caps)
+            # Field 12 of pub line: capabilities (e.g. scESC)
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "pub" { print $12; exit }'
+            ;;
+        sub_fpr_all)
+            # All subkey fingerprints
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '
+                    $1 == "sub" { get=1; next }
+                    get && $1=="fpr" { print $10; get=0 }
+                '
+            ;;
+        sub_expire_all)
+            # All subkey expiry raw
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '$1 == "sub" { print $7 }'
+            ;;
+        sub_expire_hr_all)
+            # All subkey expiry human
+            local -a sub_expire
+            mapfile -t sub_expire< <(gpg_extract_ sub_expire_all "$source")
+            if (( ${#sub_expire[@]} )); then
+                local -i expire
+                for expire in "${sub_expire[@]}"; do
+                    (( expire )) && ut2udF $expire || echo '∞'
+                done
+            fi
+            ;;
+        sub_all)
+            # Summary of each subkey (fingerprint, issued, expires)
+            printf '%s\n' "$output" |
+                ${X[gawk]} -F: '
+                    $1 == "sub" {
+                        issue=$6; expire=$7;
+                        getline; if($1=="fpr") fpr=$10;
+                        issued=strftime("%F", issue);
+                        expires=(expire?strftime("%F", expire):"∞");
+                        printf "Subkey: %s | Issued: %s | Expires: %s\n", fpr, issued, expires;
+                    }
+                '
+            ;;
+        all)
+            # Multi-UID and capabilities in summary
+            local fpr issue_hr expire_hr keyid algo_hr bits uid_all trust_hr caps
+            fpr=$(gpg_extract_ fpr "$source")
+            issue_hr=$(gpg_extract_ issue_hr "$source")
+            expire_hr=$(gpg_extract_ expire_hr "$source")
+            keyid=$(gpg_extract_ keyid "$source")
+            algo_hr=$(gpg_extract_ algo_hr "$source")
+            bits=$(gpg_extract_ bits "$source")
+            uid_all=$(gpg_extract_ uid_all "$source" | ${X[paste]} -sd '; ')
+            trust_hr=$(gpg_extract_ trust_hr "$source")
+            caps=$(gpg_extract_ caps "$source")
+            printf '%-14s %s\n' "Fingerprint:" "$fpr"
+            printf '%-14s %s\n' "User IDs:"    "$uid_all"
+            printf '%-14s %s\n' "Key ID:"      "$keyid"
+            printf '%-14s %s\n' "Algorithm:"   "$algo_hr"
+            printf '%-14s %s\n' "Key size:"    "$bits"
+            printf '%-14s %s\n' "Issued:"      "$issue_hr"
+            printf '%-14s %s\n' "Expires:"     "$expire_hr"
+            printf '%-14s %s\n' "Trust:"       "$trust_hr"
+            printf '%-14s %s\n' "Caps:"        "$caps"
+            ;;
+        json)
+            # Pre‑extract raw timestamps, default to 0 if empty
+            local -i issue expire
+            issue=$(gpg_extract_ issue "$source")
+            expire=$(gpg_extract_ expire "$source")
+            # Build JSON, using --argjson for numeric values
+            ${X[jq]} -n \
+               --argjson bits   "$(gpg_extract_ bits "$source")" \
+               --argjson issue  "$issue" \
+               --argjson expire "$expire" \
+               --arg fpr        "$(gpg_extract_ fpr "$source")" \
+               --arg uid_all    "$(gpg_extract_ uid_all "$source" | ${X[paste]} -sd ';')" \
+               --arg keyid      "$(gpg_extract_ keyid "$source")" \
+               --arg algo       "$(gpg_extract_ algo_hr "$source")" \
+               --arg issue_hr   "$(gpg_extract_ issue_hr "$source")" \
+               --arg expire_hr  "$(gpg_extract_ expire_hr "$source")" \
+               --arg trust      "$(gpg_extract_ trust_hr "$source")" \
+               --arg caps       "$(gpg_extract_ caps "$source")" \
+            '{
+                fingerprint:  $fpr,
+                keyid:        $keyid,
+                algorithm:    $algo,
+                bits:         $bits,
+                user_ids:     ($uid_all | split(";")),
+                issued:       { raw: $issue, human: $issue_hr },
+                expires:      { raw: $expire, human: $expire_hr },
+                trust:        $trust,
+                caps:         $caps
+            }'
+            ;;
+    esac
+}

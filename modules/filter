@@ -21,7 +21,7 @@ ansi_filter() {
         ${X[cat]} | ${X[sed]} -E "$sedscript"
     fi
 }
-: ${X[ansifilter]:=ansi_filter} &>$NUL
+: ${X[ansifilter]:=ansi_filter} &>${NUL:=/dev/null}
 
 utf_filter(){
     local perlscript
@@ -72,8 +72,11 @@ utf_filter(){
         s/\x{FFFD}//g;        # Replacement Character
         s/\x{1F44D}/[+1]/g;   # Thumb up (Unicode 👍) to [+1]
         s/\x{1F64F}/[pray]/g; # Folded hands (Unicode 🙏) to [pray]
+        # This is to filter the name of Ondřej Surý:
+        s/\x{0159}/r/g;       # Latin small letter r with caron ř -> r
+        s/\x{00FD}/y/g;       # Latin small letter y with acute ý -> y
     '
-    if [[ -t 0 ]]; then # if no STDIN;
+    if [[ -t 0 ]]; then # no STDIN
         ${X[perl]} -CSD -pe "$perlscript" <<< "$@"
     else
         ${X[cat]} | ${X[perl]} -CSD -pe "$perlscript"
@@ -81,7 +84,7 @@ utf_filter(){
 }
 
 filter_(){
-    if [[ -t 0 ]]; then # no STDIN;
+    if [[ -t 0 ]]; then # no STDIN
          ${X[ansifilter]} <<< "$@"
     else
          ${X[cat]} | ${X[ansifilter]}

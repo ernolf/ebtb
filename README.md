@@ -12,6 +12,20 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
 ---
 **These are the scripts available for installation:**
 
+## janitor
+- ### janitor
+  - installer and launcher for all the other scripts
+  - provides extensive system information
+  - > <details>
+    >   <summary>install janitor</summary>
+    >
+    > ```sh
+    > sudo wget -O /usr/local/bin/janitor https://global-social.net/script/janitor
+    > sudo chmod +x /usr/local/bin/janitor
+    > ```
+    > </details>
+
+---
 ## scripts to interact with a nextcloud installation
 
 > [!NOTE]
@@ -27,6 +41,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-apps</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-apps https://global-social.net/script/nc-apps
     > sudo chmod +x /usr/local/bin/nc-apps
@@ -43,6 +58,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-integrity-fix</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-integrity-fix https://global-social.net/script/nc-integrity-fix
     > sudo chmod +x /usr/local/bin/nc-integrity-fix
@@ -59,6 +75,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-occ</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-occ https://global-social.net/script/nc-occ
     > sudo chmod +x /usr/local/bin/nc-occ
@@ -75,6 +92,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-who</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-who https://global-social.net/script/nc-who
     > sudo chmod +x /usr/local/bin/nc-who
@@ -91,6 +109,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-sql</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-sql https://global-social.net/script/nc-sql
     > sudo chmod +x /usr/local/bin/nc-sql
@@ -107,6 +126,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-shares</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-shares https://global-social.net/script/nc-shares
     > sudo chmod +x /usr/local/bin/nc-shares
@@ -123,6 +143,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-subscribed-calendar</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-subscribed-calendar https://global-social.net/script/nc-subscribed-calendar
     > sudo chmod +x /usr/local/bin/nc-subscribed-calendar
@@ -139,6 +160,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install nc-mimecheck</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/nc-mimecheck https://global-social.net/script/nc-mimecheck
     > sudo chmod +x /usr/local/bin/nc-mimecheck
@@ -156,6 +178,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
   - > <details>
     >   <summary>install php-updater</summary>
     >
+    > - either by the `janitor`or:
     > ```sh
     > sudo wget -O /usr/local/bin/php-updater https://global-social.net/script/php-updater
     > sudo chmod +x /usr/local/bin/php-updater

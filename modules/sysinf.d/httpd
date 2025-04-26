@@ -1,0 +1,132 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_HTTPD_BASHLIB:-_} && return
+SYSINF_HTTPD_BASHLIB=:
+
+#    . <(lrequire httpd)
+sysinf_httpd(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ${bool[spinner]} && {
+        kill_spinner
+        spinner Yi " . determine system informations - httpd ." &
+    }
+    populate_httpd_ known
+    if (( "${#HTTPD_KNOWN[@]}" )); then
+        SYSINF+=("title httpd known:")
+        SYSINF+=("true $(p_sort_numerate "${HTTPD_KNOWN[@]}")")
+    fi
+    populate_httpd_ enabled
+    if (( "${#HTTPD_ENABLED[@]}" )); then
+        SYSINF+=("title httpd enabled:")
+        SYSINF+=("true $(p_sort_numerate "${HTTPD_ENABLED[@]}")")
+    fi
+    populate_httpd_ active
+    if (( "${#HTTPD_ACTIVE[@]}" )); then
+        SYSINF+=("title httpd active:")
+        SYSINF+=("true $(p_sort_numerate "${HTTPD_ACTIVE[@]}")")
+    fi
+
+    for enabled_httpd in "${HTTPD_ENABLED[@]}"; do
+        SYSINF+=("title $enabled_httpd details:")
+        SYSINF+=("systemctl cat $enabled_httpd")
+        case $enabled_httpd in
+            apache2)
+                ( q0 ${X[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )) ) || SYSINF+=("apache2ctl configtest")
+                declare a2mod common_a2mods loaded_common_a2mods missing_common_a2mods uncommon_a2mods
+                common_a2mods="access_compat alias auth_basic authn_core authn_file authz_core authz_host authz_user deflate dir env filter mime negotiation reqtimeout ssl"
+                SYSINF+=("apache2ctl -V")
+                populate_a2modules static
+                if (( ${#A2MODULES[@]} )); then
+                    SYSINF+=("echo apache2 static (compiled in) modules: $(echo ${A2MODULES[@]%_module})")
+                fi
+                populate_a2modules shared
+                if (( ${#A2MODULES[@]} )); then
+                    for a2mod in $common_a2mods; do
+                        if [[ "${A2MODULES[@]%_module}" =~ $a2mod ]]; then
+                            loaded_common_a2mods+=" $a2mod"
+                        else
+                            missing_common_a2mods+=" $a2mod"
+                        fi
+                    done
+                    SYSINF+=("title apache2 loaded common modules:")
+                    SYSINF+=("true $(echo $loaded_common_a2mods)")
+                    missing_common_a2mods="$(trim "$missing_common_a2mods")"
+                    if [ -n "$missing_common_a2mods" ]; then
+                        SYSINF+=("echo apache2 not loaded common modules: $(echo $missing_common_a2mods)")
+                    else
+                        SYSINF+=("echo apache2 not loaded common modules: all common modules are loaded, none missing.")
+                    fi
+                    for a2mod in ${A2MODULES[@]%_module}; do
+                        if ! [[ "$common_a2mods" =~ $a2mod ]]; then
+                            uncommon_a2mods+=" $a2mod"
+                        fi
+                    done
+                    uncommon_a2mods="$(trim "$uncommon_a2mods")"
+                    if [ -n "$uncommon_a2mods" ]; then
+                        SYSINF+=("title apache2 special-usecase modules:")
+                        SYSINF+=("true $(echo $uncommon_a2mods)")
+                    fi
+                fi
+                unset -v a2mod common_a2mods missing_common_a2mods uncommon_a2mods
+                SYSINF+=("apache2ctl -S")
+
+        #        SYSINF+=("title apache2 PHP-FPM configuration - socket:")
+        #        SYSINF+=("true $(iterate_conf_files_ a2 detect_apache2_php_fpm_ socket)")
+        #        SYSINF+=("title apache2 PHP-FPM configuration - line:")
+        #        SYSINF+=("true $(iterate_conf_files_ a2 detect_apache2_php_fpm_ line)")
+
+                SYSINF+=("title apache2 PHP-FPM configuration - tag:")
+                SYSINF+=("true $(iterate_conf_files_ a2 detect_apache2_php_fpm_ tag)")
+                SYSINF+=("title_end end of $enabled_httpd details")
+            ;;
+            nginx)
+                if ( q0 ${X[nginx]} -t && (( ${#NGXCONFFILES[@]} )) ); then
+                    SYSINF+=("nginx -V")
+                    populate_ngxmodules static
+                    if (( ${#NGXMODULES[@]} )); then
+                        SYSINF+=("title nginx static (compiled in) modules:")
+                        SYSINF+=("true $(echo ${NGXMODULES[@]//_module/})")
+                    fi
+                    populate_ngxmodules shared
+                    if (( ${#NGXMODULES[@]} )); then
+                        SYSINF+=("title nginx loaded shared (dynamic) modules:")
+                        SYSINF+=("true $(echo ${NGXMODULES[@]%_module})")
+                    fi
+                    SYSINF+=("nginx -T")
+                else
+                    SYSINF+=("nginx -t")
+                fi
+
+                SYSINF+=("title detect nginx php-fpm:")
+                SYSINF+=("true $(iterate_conf_files_ ngx detect_nginx_php_fpm all verbose)")
+
+                SYSINF+=("title_end end of $enabled_httpd details")
+            ;;
+            caddy)
+                SYSINF+=("echo caddy version: $(${X[caddy]} version)")
+                caddyfile="/etc/caddy/Caddyfile"
+                [[ -e "$caddyfile" && ! -d "$caddyfile" ]] && SYSINF+=("cat $caddyfile")
+                SYSINF+=("title_end end of $enabled_httpd details")
+            ;;
+            *)
+                SYSINF+=("title_end end of $enabled_httpd details")
+        esac
+    done
+
+    populate_httpd_ all
+    if (( "${#HTTPD_ALL[@]}" )); then
+        SYSINF+=("title httpd configured directories:")
+        SYSINF+=("true $(p_nosort "${HTTPD_ALL[@]}")")
+    fi
+}

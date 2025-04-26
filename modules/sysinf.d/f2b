@@ -1,0 +1,30 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_F2B_BASHLIB:-_} && return
+SYSINF_F2B_BASHLIB=:
+
+sysinf_f2b(){
+    [ -n "${X[fail2ban-client]}" ] || return
+    f2b_status(){ ${X[fail2ban-client]} status; }
+    f2b_banned(){ ${X[fail2ban-client]} banned | ${X[sed]} "s/'/\"/g;s/\(\w\+\):/\1\":/g" | ${X[jq]}; }
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ${bool[spinner]} && {
+        kill_spinner
+        spinner Yi " . determine system informations - f2b ." &
+    }
+    SYSINF+=("title fail2ban status:")
+    SYSINF+=("true $(f2b_status)")
+    SYSINF+=("title fail2ban banned:")
+    SYSINF+=("true $(f2b_banned)")
+}

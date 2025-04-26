@@ -1,0 +1,104 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_USER_BASHLIB:-_} && return
+SYSINF_USER_BASHLIB=:
+
+sysinf_user(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    user_group() {
+        local passwd_file group_file user pw uid gid gecos home shell prim supp grp gpass ggid members
+        passwd_file="/etc/passwd" group_file="/etc/group"
+        # sanity checks
+        [[ -r "$passwd_file" ]] || { echo "Error: Cannot read $passwd_file" >&2; return 1; }
+        [[ -r "$group_file"  ]] || { echo "Error: Cannot read $group_file"  >&2; return 1; }
+        # header: all passwd fields + PRIMARY_GROUP + SUPP_GROUPS
+        {   echo "USER:PASSWD:UID:GID:GECOS:HOME:SHELL:PRIMARY_GROUP:SUPP_GROUPS"
+            # iterate over sorted passwd entries
+            while IFS=: read -r user pw uid gid gecos home shell; do
+                # lookup primary group name
+                prim=$(${X[getent]} group "$gid" | ${X[cut]} -d: -f1)
+                # lookup supplementary groups (id -nG includes primary, remove it)
+                supp=$(${X[id]} -nG "$user" 2>$NUL | ${X[tr]} ' ' ',' | ${X[sed]} "s/\b$prim\b//g;s/,,*/,/g;s/^,//;s/,$//")
+                echo "$user:$pw:$uid:$gid:$gecos:$home:$shell:$prim:$supp"
+            done < "$passwd_file"
+#            done < <(${X[sort]} -t: -k1,1 "$passwd_file")
+        } | ${X[column]} -t -s ':'
+    }
+
+    etc_group() {
+        local file="/etc/group"
+        # check if the file exists and is readable
+        if [[ ! -r "$file" ]]; then
+            echo "Error: Cannot read $file" >&2
+            return 1
+        fi
+        # print header and then the file, align fields on ':' with column
+        {   echo "GROUP:PASSWD:GID:MEMBERS"
+            ${X[cat]} "$file"
+        } | ${X[column]} -t -s ':'
+    }
+
+    # show_basic_user_table: print a table of /etc/passwd with selected metadata
+    # Columns: UID, USER, ACCOUNT_TYPE, PASSWD, PWD_LAST_CHANGE, LAST_LOGIN,
+    #          HOME, HOME_EXISTS, SHELL, SHELL_VALID
+    user_table() {
+        local passwd_file shell_file user pw uid gid gecos home shell account_type pwd_last_change last_login home_exists shell_valid
+        passwd_file="/etc/passwd" shell_file="/etc/shells"
+        # verify readability
+        [[ -r "$passwd_file" ]]  || { echo "Error: Cannot read $passwd_file" >&2;  return 1; }
+        [[ -r "$shell_file" ]]   || { echo "Error: Cannot read $shell_file" >&2;   return 1; }
+        {   # header
+            echo "UID:USER:ACCOUNT_TYPE:PASSWD:PWD_LAST_CHANGE:LAST_LOGIN:HOME:HOME_EXISTS:SHELL:SHELL_VALID"
+            # iterate over /etc/passwd sorted by UID
+            while IFS=: read -r user pw uid gid gecos home shell; do
+                # account type based on UID
+                (( uid < 1000 )) && account_type="system" || account_type="user"
+                # last password change date
+                pwd_last_change=$(${X[chage]} -l "$user" 2>$NUL |
+                    ${X[gawk]} -F: '/Last password change/ { sub(/^ +/,"",$2); print $2 }')
+                # last login (strip leading fields) get raw lastlog output for this user
+                last_login=$(${X[lastlog]} -u "$user" 2>$NUL | ${X[sed]} -n '2,$p')
+                # if “Never logged in” appears, normalize to “never”
+                if [[ "$last_login" == *"Never logged in"* ]]; then
+                    last_login="never"
+                else
+                    # otherwise strip the first three columns and collapse into one field
+                    last_login=$(${X[gawk]} '{ $1=$2=$3=""; sub(/^ +/,""); print }' <<<"$last_login")
+                    # replace any ':' to avoid breaking column delimiter
+                    last_login=${last_login//:/-}
+                fi
+                [[ -d "$home" ]] && home_exists="yes" || home_exists="no"
+                # shell listed in /etc/shells?
+                ${X[grep]} -Fxqs "$shell" "$shell_file" && shell_valid="yes" || shell_valid="no"
+                # print the fields in the requested order
+                printf "%s:%s:%s:%s:%s:%s:%s:%s:%s:%s\n" \
+                    "$uid" "$user" "$account_type" "$pw" \
+                    "$pwd_last_change" "$last_login" "$home" "$home_exists" \
+                    "$shell" "$shell_valid"
+            done < <(${X[sort]} -t: -k3,3n "$passwd_file")
+        } | ${X[column]} -t -s ':'
+    }
+    ${bool[ff]:-_} || {
+        ${bool[spinner]} && {
+            kill_spinner
+            spinner Yi " . determine system informations - user ." &
+        }
+        SYSINF+=("title user:")
+        SYSINF+=("true $(user_table)")
+        SYSINF+=("title user and groups:")
+        SYSINF+=("true $(user_group)")
+        SYSINF+=("title groups:")
+        SYSINF+=("true $(etc_group)")
+    }
+}

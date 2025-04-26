@@ -10,11 +10,12 @@ __license__
 ${PHP_SURY_BASHLIB:-_} && return
 PHP_SURY_BASHLIB=:
 
+. <(lrequire gpg)
 . <(lrequire fstring)
 . <(lrequire dpkg)
 . <(lrequire dist/os_release)
 
-ubuntu_key_asc(){
+sury_ubuntu_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 mQINBGYo0vEBEAC0Semxy5I2b8exRUxJfTKkHR4f5uyS0dTd9vYgMI5T3gsa7ypH
 HtE+GiZC+T9m/F9h66+XJMxhuNsKRs7T2In5NSeso9H/ytlSTayUaBtCFfRp6y6b
@@ -42,11 +43,10 @@ hdR1VNWThXQbZgaGSWrbjt6FdYtQb9VX88uu5gFDmr180HogHNUDUcqNLLdnjfFs
 qaNxhiNLsQ5OBMbgSp2zCbQxRBdITMVvBR5YjCetUIGEs6T1yQ5wh5Xpoi34ShHn
 v38=
 =kFlZ
------END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
 }
 
-old_ubuntu_key_asc(){
+sury_ubuntu_old_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 xo0ESX35nAEEALKDCUDVXvmW9n+T/+3G1DnTpoWh9/1xNaz/RrUH6fQKhHr568F8
 hfnZP/2CGYVYkW9hxP9LVW9IDvzcmnhgIwK+ddeaPZqh3T/FM4OTA7Q78HSvR81m
@@ -63,21 +63,10 @@ rL+R5ZoEcZvVlYscfsA0Sr8yJTsGJPefuLYI6eJkNDa1QkzBkSSW4XaCfNIxNBRs
 zN/qGe3xy0bibOaC4T2TcbZPSAVP855ahNbLAdqkyfAutiEWcKZmQpR9qNh4482k
 0pXVlQJ8UB860gVFHjwjFm/MsCeX8yfeAi38ZyInWL2OSG2pDx5ZzNESwnCPIg==
 =3DzI
------END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
 }
 
-ubuntu_key(){
-    ${X[cat]} << PUBLIC_KEY
-
- -----BEGIN PGP PUBLIC KEY BLOCK-----
- .
-$(ubuntu_key_asc | ${X[sed]} 's/^/ /g')
-
-PUBLIC_KEY
-}
-
-debian_key_asc(){
+sury_debian_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 mQGNBFyPb58BDADTDlJLrGJktWDaUT0tFohjFxy/lL2GcVYp4zB981MWIDC0aIQZ
 ERfUZRaq/ov/LG3F0UhkvouCNrnXiFaKRCeNG52pQM0P/p3gmIOoPO4/jF0o3SK1
@@ -117,11 +106,10 @@ XGTcUUYzYEY/Z/fLBYbiTO3PbCkBH8LNYMUFyL6tT0x4GS6ugaeqH9cz18yOjTCu
 5ddNhG3jYZTBnD7MzEmLmEOk28K528ocdtNtGEBeRJlsu71Av7boKWIXb3FHDgqp
 7TeoqgvpI3IUKtUlOHvv/wMKGZKEUG5OC65JSDnoLYJXyrpXr5KJkoc=
 =BOnL
------END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
 }
 
-old_debian_key_asc(){
+sury_debian_old_key(){
     ${X[cat]} << PUBLIC_KEY_ASC
 xsDNBFyPb58BDADTDlJLrGJktWDaUT0tFohjFxy/lL2GcVYp4zB981MWIDC0aIQZ
 ERfUZRaq/ov/LG3F0UhkvouCNrnXiFaKRCeNG52pQM0P/p3gmIOoPO4/jF0o3SK1
@@ -228,18 +216,24 @@ vIdH3WE0Q+D0xxLfaxJ71qmhuTPRnpWqfmdA2tnuFOZ+Th4HRfbyA4IoJr3U8FuF
 XJnJdoBjh6+pJacI9UYrIcNyOoi1I35gHvFoKJ7Ut9deNdKMeN3bAR+1JShVtdRO
 zgGtPj/bMFg=
 =FhGb
------END PGP PUBLIC KEY BLOCK-----
 PUBLIC_KEY_ASC
 }
 
-debian_key(){
-    ${X[cat]} << PUBLIC_KEY
-
- -----BEGIN PGP PUBLIC KEY BLOCK-----
- .
-$(debian_key_asc | ${X[sed]} 's/^/ /g')
-
-PUBLIC_KEY
+apt_deactivate_sources_file(){
+    require_arg @
+    local src_file dest_file
+    src_file="$1"
+    dest_file="${src_file%.sources}_deactivated.sources"
+    # if an Enabled: line exists, replace it unconditionally with 'Enabled: no'
+    if ${X[grep]} -qi '^enabled:' "$src_file"; then
+        ${X[sed]} 's/^enabled:.*$/Enabled: no/I' "$src_file" > "$dest_file"
+    # else insert 'Enabled: no' before the first "Types:" line (case-insensitive)
+    elif ${X[grep]} -qi '^types:' "$src_file"; then
+        ${X[sed]} '0,/^types:/I s/^types:/Enabled: no\n&/I' "$src_file" > "$dest_file"
+    else
+        mh "$(funcname_and_lineno) $src_file is not a valid source file"
+        return 1
+    fi
 }
 
 get_ubuntu_key_deb_url() {
@@ -269,14 +263,15 @@ sources_list_deb822(){
 # created $(${X[date]} -d @${T[rte]} "+%F %R %Z") by ernolfs $MS script
 # https://github.com/ernolf/ebtb
 ## Deb822-style format
-X-Repolib-Name: $package
+X-${M[p]}-$MS-Version: ${M[e]}
+X-${M[p]}-janitor-Name: $package
 Enabled: yes
 Types: deb
 URIs: $aptsources_url
 Suites: $codename
 Components: main
 Architectures: $architecture
-Signed-By: $(${id}_key)
+$(gpg_assemble_key_ deb822 sury_${id}_key)
 DEB822
 }
 
@@ -305,7 +300,7 @@ add_apt_repository_not_found(){
 }
 
 # add_repository $1=ubuntu or debian, $2=codename, $3=package (defaults to php)
-add_repository(){
+add_repository_oneline(){
     local -l id codename package gpgfile sources_list_file sources_list
     id="$1" codename="$2" package="${3:-php}"
     sources_list_file=/etc/apt/sources.list.d/ondrej-sury_$package.list
@@ -318,8 +313,9 @@ add_repository(){
             ;;
         ubuntu)
             [[ -n ${X[add-apt-repository]} ]] || add_apt_repository_not_found
-            sources_list="$(${X[add-apt-repository]} -y --no-update --ppa ppa:ondrej/$package | ${X[gawk]} '/Adding deb entry to/ { print $NF }')"
-            ${X[mv]} $sources_list $sources_list_file
+#            sources_list="$(${X[add-apt-repository]} -y --no-update --ppa ppa:ondrej/$package | ${X[gawk]} '/Adding deb entry to/ { print $NF }')"
+#            ${X[mv]} $sources_list $sources_list_file
+            ${X[add-apt-repository]} -y --no-update --ppa ppa:ondrej/$package
     esac
     apt_update
     populate_can_array
@@ -332,6 +328,17 @@ add_repository_deb822(){
     sources_list_deb822 $id $codename $package > /etc/apt/sources.list.d/ondrej-sury_$package.sources
     apt_update
     populate_can_array
+}
+
+# add_repository $1=ubuntu or debian, $2=codename
+add_repository(){
+    local id codename
+    id="$1" codename="$2"
+    if dpkg_min_version apt 2.4; then
+        add_repository_deb822 "$id" "$codename"
+    else
+        add_repository_oneline "$id" "$codename"
+    fi
 }
 
 supported_suites_(){
@@ -362,31 +369,6 @@ supported_suites_(){
             fi
         fi
     done
-}
-
-extract_key(){
-    local source
-    source="$1"
-    if [[ -f $source ]]; then
-        ${X[gawk]} '
-            /-----BEGIN PGP PUBLIC KEY BLOCK-----/ {in_block=1; next} 
-            /-----END PGP PUBLIC KEY BLOCK-----/ {in_block=0} 
-            in_block { 
-                if ($0 ~ /^[[:space:]]*\.$/) next; 
-                sub(/^[[:space:]]+/, "", $0); 
-                key = key $0 
-            } 
-            END { printf key }
-        ' "$source"
-    elif q0 declare -f $source; then
-        $source | ${X[gawk]} '
-            /^-----END PGP PUBLIC KEY BLOCK-----/ {exit} {
-                gsub(/[[:space:]]/, "", $0);
-                printf "%s", $0
-            }'
-    else
-        return 1
-    fi
 }
 
 sury(){
@@ -547,52 +529,60 @@ sury_message_(){
 }
 
 sources_files_check(){
+    local apturl sury_aptsourcesfile
     local -l id codename url suites package
     id="$1" codename="$2"
     local -a apturls sury_aptsourcesfiles
-    local -i r
-    r=0
-    mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
-    mapfile -t sury_aptsourcesfiles< <(p_sort $(
-            for i in "${!apturls[@]}"; do
-                [[ "${apturls[i]}" =~ (ondrej|sury) ]] && ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.sources:/{print$1}'
+    local -i i r changed
+    r=0 changed=0
+    mapfile -t apturls < <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | ${X[sed]} 's/_dists.*$//')")
+    mapfile -t sury_aptsourcesfiles < <(p_sort $(
+            for apturl in "${apturls[@]}"; do
+                [[ "$apturl" =~ (ondrej|sury) ]] && ${X[grep]} -r "$(urldecode ${apturl//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.sources:/{print$1}'
             done
         ))
     if (( ${#sury_aptsourcesfiles[@]} )); then
-        for i in ${!sury_aptsourcesfiles[@]}; do
-            if ${X[grep]} -iq "^enabled:[[:space:]]*yes$" "${sury_aptsourcesfiles[i]}"; then # sources-file is not deactivated!
-                suites="$(${X[grep]} -i '^suites:' "${sury_aptsourcesfiles[i]}" | ${X[gawk]} '{ print $2 }')"
-                if [[ "$(extract_key "${sury_aptsourcesfiles[i]}")" != "$(extract_key ${id}_key_asc)" ]]; then
-                    url="$(${X[grep]} -i '^uris:' "${sury_aptsourcesfiles[i]}" | ${X[gawk]} '{ print $2 }')"
+        for sury_aptsourcesfile in "${sury_aptsourcesfiles[@]}"; do
+            if [ -f "$sury_aptsourcesfile" ] && ! ${X[grep]} -iqs "^enabled:[[:space:]]*no$" "$sury_aptsourcesfile"; then # sources-file is not deactivated!
+                suites="$(${X[grep]} -i '^suites:' "$sury_aptsourcesfile" | ${X[gawk]} '{ print $2 }')"
+                if [[ "$(gpg_extract_ fpr "$sury_aptsourcesfile")" != "$(gpg_extract_ fpr sury_${id}_key)" ]]; then
+                    url="$(${X[grep]} -i '^uris:' "$sury_aptsourcesfile" | ${X[gawk]} '{ print $2 }')"
                     package="$(echo "$url" | ${X[sed]} -nE 's#.*(ppa\.launchpadcontent\.net/ondrej/|packages\.sury\.org/)([^/]+)/.*#\2#p')" # for ubuntu: php, apache2 or nginx
-                    if [[ "$(extract_key "${sury_aptsourcesfiles[i]}")" == "$(extract_key old_${id}_key_asc)" ]]; then # old key is in use
+                    if [[ "$(gpg_extract_ fpr "$sury_aptsourcesfile")" == "$(gpg_extract_ fpr sury_${id}_old_key)" ]]; then # old key is in use
                         if  [[ $suites != $codename ]]; then
-                            bundle echo "$(sury_message_ old_key_wrong_suites "${sury_aptsourcesfiles[i]}" "$codename" "$suites")"
+                            bundle echo "$(sury_message_ old_key_wrong_suites "$sury_aptsourcesfile" "$codename" "$suites")"
                         else
-                            bundle echo "$(sury_message_ old_key "${sury_aptsourcesfiles[i]}")"
+                            bundle echo "$(sury_message_ old_key "$sury_aptsourcesfile")"
                         fi
                     else
                         if  [[ $suites != $codename ]]; then
-                            bundle echo "$(sury_message_ unknown_key_wrong_suites "${sury_aptsourcesfiles[i]}" "$codename" "$suites")"
+                            bundle echo "$(sury_message_ unknown_key_wrong_suites "$sury_aptsourcesfile" "$codename" "$suites")"
                         else
-                            bundle echo "$(sury_message_ unknown_key "${sury_aptsourcesfiles[i]}")"
+                            bundle echo "$(sury_message_ unknown_key "$sury_aptsourcesfile")"
                         fi
                     fi
-                    ${X[sed]} 's/Enabled:[[:space:]]*yes/Enabled: no/I' "${sury_aptsourcesfiles[i]}" > ${sury_aptsourcesfiles[i]%.sources}_deactivated.sources
-                    ${X[rm]} -f -- ${sury_aptsourcesfiles[i]}
+                    apt_deactivate_sources_file "$sury_aptsourcesfile"
+                    ${X[rm]} -f -- "$sury_aptsourcesfile"
                     add_repository_deb822 "$id" "$codename" "$package"
+                    changed=1
                 elif [[ $suites != $codename ]]; then
-                    bundle echo "$(sury_message_ wrong_suites "${sury_aptsourcesfiles[i]}" "$codename" "$suites")"
-                    ${X[sed]} 's/Enabled:[[:space:]]*yes/Enabled: no/I' "${sury_aptsourcesfiles[i]}" > ${sury_aptsourcesfiles[i]%.sources}_deactivated.sources
-                    ${X[rm]} -f -- ${sury_aptsourcesfiles[i]}
+                    bundle echo "$(sury_message_ wrong_suites "$sury_aptsourcesfile" "$codename" "$suites")"
+                    apt_deactivate_sources_file "$sury_aptsourcesfile"
+                    ${X[rm]} -f -- "$sury_aptsourcesfile"
                     add_repository_deb822 "$id" "$codename" "$package"
+                    changed=1
                 fi
             fi
         done
-    fi
-    if ((sury_r == 32)); then # no sury repo detected
-        mh "$(funcname_and_lineno) recreation of apt source failed"
-        r=1
+        if (( changed )); then
+            sury_return="$(sury)"
+            sury_r=$?
+            if ((sury_r == 32)); then # no sury repo detected
+                mh "$(funcname_and_lineno) recreation of apt source failed"
+                r=1
+            fi
+            anykey
+        fi
     fi
     return $r
 }
@@ -619,12 +609,12 @@ need_sury_repo(){
                     ;;
             debian) aptsource="$asd" wrong_aptsource="$asu"
         esac
-        if ((sury_r)); then # NOT 0
+        if (( sury_r )); then # NOT 0 -> needs action
+            list_apt_sources
+            f
+            os; GRAY; echo "r=$sury_r, $sury_return"; N
+            f
             if ((sury_r == 32)); then # no sury repo
-                list_apt_sources
-                f
-                os; GRAY; echo "r=$sury_r, $sury_return"; N
-                f
                 echo "$(pf; Y; format_string "Consider adding Ondřej Surý's repo to your Apt sources to expand the range of installable PHP candidates" 3; N)"
                 f
                 os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N
@@ -633,11 +623,7 @@ need_sury_repo(){
                 sury_message_ fix_yourself_if_fails
                 if ask "$(qpf)Do you want to add sury repo now" "$YES"; then
                     [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
-                    if dpkg_min_version apt 2.4; then
-                        add_repository_deb822 "$id" "$codename"
-                    else
-                        add_repository "$id" "$codename"
-                    fi
+                    add_repository "$id" "$codename"
                     sury_return="$(sury)"
                     sury_r=$?
                     if ((sury_r == 32)); then # still no sury repo
@@ -651,16 +637,11 @@ need_sury_repo(){
                         mh "$(funcname_and_lineno) after apt source added: $(declare -p CAN)"
                         f
                         os; G; echo "This step was successfull"; N
-#                        anykey
-#                        list_candidates
-#                        "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
+                        anykey
+                        list_candidates
                     fi
                 fi
             elif ((sury_r == 33)); then # http instead of https
-                list_apt_sources
-                f
-                os; GRAY;echo "r=$sury_r, $sury_return"; N
-                f
                 echo "$(pf; format_string "Ondřej Surý's repo is added to the apt sources but the deprecated http source $(C)$http_token/..$(N) is used instead of $(B)$https_token/.." 3; N)"
                 if dpkg_min_version apt 2.0; then
                     echo "$(o3; Y; format_string "Consider fixing this for all your ppa.launchpad sources.$(N) You can find the affected files in $(B)/etc/apt/sources.list.d/$(N) directory as listed above. Simply replace $(C)$http_token$(N) with $(B)$https_token$(N) in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
@@ -712,8 +693,7 @@ need_sury_repo(){
                                 anykey
                             fi
                             apt_update
-#                            list_candidates
-#                            "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
+                            list_candidates
                         else
                             os; R; echo "Unfortunately this step was not successfull. Please fix it yourself."; N
                             anykey
@@ -724,15 +704,11 @@ need_sury_repo(){
                 fi
             elif ((sury_r == 36)); then # apt source for ${aptsources[i]#$aptsource} instead of $codename"
                 wrong_codename=$(echo "$sury_return" | ${X[gawk]} '{print $(NF-3)}')
-                list_apt_sources
-                f
-                os; GRAY; echo "r=$sury_r, $sury_return"; N
-                f
                 echo "$(o3; format_string "Ondřej Surý's repo is added to the apt sources but for $(Y)$wrong_codename$(N) instead of $(Y)$codename$(N). You should fix that in all affected files and run $(dY)sudo apt-get update$(N) and start this script again, if this message dissapeared, you did everything right." 3)"
                 f
-                os; echo "This script can replace $(Y)$wrong_codename$(N) with $(Y)$codename$(N) in sury apt-source file for you."
+                os; echo "This script can replace $(Y)$wrong_codename$(N) with $(Y)$codename$(N) in sury apt sources file for you."
                 sury_message_ fix_yourself_if_fails
-                if ask "$(qpf)Do you want to replace $(Y)$wrong_codename$(N) with $(Y)$codename$(N) in sury apt-source file now" "$YES"; then
+                if ask "$(qpf)Do you want to replace $(Y)$wrong_codename$(N) with $(Y)$codename$(N) in sury apt sources file now" "$YES"; then
                     bool[success]=_
                     [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
                     if nonullglob "/etc/apt/sources.list.d/*\.list"; then
@@ -752,34 +728,33 @@ need_sury_repo(){
                     fi
                     if nonullglob "/etc/apt/sources.list.d/*\.sources"; then
                         for aptsources_file in /etc/apt/sources.list.d/*\.sources; do
-                            if [ -f "$aptsources_file" ]; then
-                                if ! ${X[grep]} -iq "^enabled: no$" "$aptsources_file"; then # sources-file is not deactivated!
-                                    if ${X[grep]} -Eixq "^uris: $aptsource/?$" "$aptsources_file" && ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsources_file"; then # sources-file is sury php and codename is wrong
-                                        if [ "$(extract_key "$aptsources_file")" == "$(extract_key ${id}_key_asc)" ]; then # best case: no old key is used
-                                            ${X[sed]} -i "s/$wrong_codename/$codename/g" "$aptsources_file"
-                                            if ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsources_file"; then
-                                                mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsources_file failed"
-                                            else
-                                                mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsources_file succeeded"
-                                                bool[success]=:
-                                            fi
-                                        else # the newest key is not used
-                                            if [ "$(extract_key "$aptsources_file")" == "$(extract_key old_${id}_key_asc)" ]; then # old key is used
-                                                bundle echo "$(sury_message_ old_key "$aptsources_file")"
-                                            else
-                                                bundle echo "$(sury_message_ unknownKey "$aptsources_file")"
-                                            fi
-                                            ${X[sed]} 's/Enabled:[[:space:]]*yes/Enabled: no/I' "$aptsources_file" > ${aptsources_file%.sources}_deactivated.sources
-                                            ${X[rm]} -f -- $aptsources_file
-                                            add_repository_deb822 "$id" "$codename"
-                                            if ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsources_file"; then
-                                                mh "$(funcname_and_lineno) recreation of apt source failed"
-                                            else
-                                                . "${F[php]}"
-                                                mh "$(funcname_and_lineno) recreation of apt sources-file succeeded"
-                                                mh "$(funcname_and_lineno) after apt source recreation: $(declare -p CAN)"
-                                                bool[success]=:
-                                            fi
+                            if [ -f "$aptsources_file" ] && ! ${X[grep]} -iqs "^enabled:[[:space:]]*no$" "$aptsources_file"; then # don't treat deactivated sources files
+                                if ${X[grep]} -Eixq "^uris: $aptsource/?$" "$aptsources_file" && ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsources_file"; then # sources-file is sury php and codename is wrong
+                                    if [ "$(gpg_extract_ fpr "$aptsources_file")" = "$(gpg_extract_ fpr sury_${id}_key)" ]; then # best case: no old key is used
+                                        ${X[sed]} -i "s/$wrong_codename/$codename/g" "$aptsources_file"
+                                        if ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsources_file"; then
+                                            mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsources_file failed"
+                                        else
+                                            mh "$(funcname_and_lineno) replacing $wrong_codename with $codename in $aptsources_file succeeded"
+                                            bool[success]=:
+                                        fi
+                                    else # the newest key is not used
+                                        if [ "$(gpg_extract_ fpr "$aptsources_file")" = "$(gpg_extract_ fpr sury_${id}_old_key)" ]; then # old key is used
+                                            bundle echo "$(sury_message_ old_key "$aptsources_file")"
+                                        else
+                                            bundle echo "$(sury_message_ unknown_key "$aptsources_file")"
+                                        fi
+                                        ${X[sed]} 's/Enabled:[[:space:]]*yes/Enabled: no/I' "$aptsources_file" > ${aptsources_file%.sources}_deactivated.sources
+                                        apt_deactivate_sources_file "$aptsources_file"
+                                        ${X[rm]} -f -- $aptsources_file
+                                        add_repository_deb822 "$id" "$codename"
+                                        if ${X[grep]} -ixq "^suites: $wrong_codename$" "$aptsources_file"; then
+                                            mh "$(funcname_and_lineno) recreation of apt source failed"
+                                        else
+                                            . "${F[php]}"
+                                            mh "$(funcname_and_lineno) recreation of apt sources-file succeeded"
+                                            mh "$(funcname_and_lineno) after apt source recreation: $(declare -p CAN)"
+                                            bool[success]=:
                                         fi
                                     fi
                                 fi
@@ -791,25 +766,23 @@ need_sury_repo(){
                         . "${F[php]}"
                         mh "$(funcname_and_lineno) after fix: $(declare -p CAN)"
                         os; G; echo "This step was successfull"; N
-#                        anykey
-#                        list_candidates
-#                        "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
+                        anykey
+                        list_candidates
                     else
                         os; R; echo "Unfortunately this step was not successfull. Please fix it yourself."; N
                         anykey
                     fi
                 fi
             fi
-            sources_files_check "$id" "$codename"
-            anykey
-            list_candidates
-#            "$ME${FLAG[forceflag]}" "json=${J[o]}" --list-candidates
-            list_apt_sources
-            f
-        else # = 0, means everything is OK
-            list_apt_sources
-            f
         fi
+        sources_files_check "$id" "$codename"
+        sury_return="$(sury)"
+        sury_r=$?
+#        list_candidates
+        list_apt_sources
+        f
+        os; GRAY; echo "r=$sury_r, $sury_return"; N
+        f
     else
         os; Y; echo "There exists no Ondřej Surý repo for your OS version"; N
         os; GRAY; echo "Visit Ondřej Surý's website: $(W)https://deb.sury.org/$(GRAY) for more details."; N

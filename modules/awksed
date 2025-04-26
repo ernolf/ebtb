@@ -122,6 +122,17 @@ delb2p(){
 }
 del_from_begin_to_y(){ delb2p "$@";}
 
+# print everything from pattern1 to pattern2 including patterns
+print_from_x_to_y_including(){
+    local pattern1 pattern2 input
+    pattern1="$1" pattern2="$2" input="$3"
+    if [ -f "$input" ]; then
+        ${X[sed]} -n "/^[[:space:]]*$pattern1\$/,/^[[:space:]]*$pattern2\$/p" "$input"
+    else
+        printf '%s\n' "$input" | ${X[sed]} -n "/^[[:space:]]*$pattern1\$/,/^[[:space:]]*$pattern2\$/p"
+    fi
+}
+
 # Gets text enclosed in square brackets
 insquare(){
     ${X[sed]} -E 's/.*\[(.*)].*/\1/' <<< "$@"

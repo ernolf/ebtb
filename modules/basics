@@ -7,12 +7,13 @@ __copyright__
 __license__
 #
 
-declare -f _ &>$NUL || _(){ false; }
+declare -f _ &>${NUL:=/dev/null} || _(){ false; }
 if (( epoch < 1737773190 )); then
     q0(){ "$@" &>$NUL; }
     q1(){ "$@" >$NUL; }
     q2(){ "$@" 2>$NUL; }
 fi
+q0 declare -f lrequire || lrequire(){ req $@; }
 
 ${BASICS_BASHLIB:-_} && return
 BASICS_BASHLIB=:
@@ -120,6 +121,17 @@ htmldecode(){
     ${X[php]} -r "echo html_entity_decode('$*');"
 }
 
+# encrypt
+encr(){
+    ${X[php]} -r "
+        \$d='$1';
+        \$p='$2';
+        \$iv=random_bytes(openssl_cipher_iv_length('aes-256-cbc'));
+        \$encrypted=openssl_encrypt(\$d,'aes-256-cbc',\$p,OPENSSL_RAW_DATA,\$iv);
+        echo rtrim(base64_encode(\$iv . \$encrypted),'=');
+    "
+}
+
 # no nullglob
 nonullglob(){
     local -a glob_expanded=($1)
@@ -151,7 +163,7 @@ escaped(){
 # Pads a Base64 encoded string to ensure its length is divisible by 4 by adding '=' at the end if necessary.
 pad(){
     local i="$1"
-    (($((${#i}%4)))) && i="${i}$(printf '=%.0s' $(${X[seq]} 1 $((4 - $((${#i} % 4))))))"
+    (( $((${#i}%4)) )) && i="${i}$(printf '=%.0s' $(${X[seq]} 1 $((4 - $((${#i} % 4)) )) ) )"
     echo "$i"
 }
 

@@ -1,0 +1,48 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_DPKG_BASHLIB:-_} && return
+SYSINF_DPKG_BASHLIB=:
+
+sysinf_dpkg(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    # dpkg (debian) based like architecture apt sources
+    ${bool[sury]:-_} && bool[sources]=:
+    ${bool[sources]:-_} && bool[dpkg]=:
+    if ${bool[dpkg]:-_} && [ -n "${X[dpkg]}" ]; then
+        ${bool[spinner]} && {
+            kill_spinner
+            spinner Yi " . determine system informations - dpkg ." &
+        }
+        local -a aptgetversion foreign_architectures
+        if dpkg_version="$(q2 ${X[dpkg]} --robot --version)"; then
+            SYSINF+=("echo dpkg --robot --version: $dpkg_version")
+        else
+            dpkg_version="$(q2 ${X[dpkg]} --version | ${X[grep]} -oP '\d+(\.\d+){1,3} \(\S+\)')"
+            [ -z "$dpkg_version" ] || SYSINF+=("echo dpkg --version: $dpkg_version")
+        fi
+        SYSINF+=("echo dpkg --print-architecture: $(${X[dpkg]} --print-architecture)")
+        mapfile -t foreign_architectures< <(${X[dpkg]} --print-foreign-architectures)
+        (( ${#foreign_architectures[@]} )) && SYSINF+=("echo dpkg --print-foreign-architectures: ${foreign_architectures[@]}")
+        SYSINF+=("echo apt --version: $(${X[apt]} -v)")
+        # SYSINF+=("apt-get --version")
+# TODO 0 -->
+
+        local -a dpkg_locks
+        mapfile -t dpkg_locks< <(check_lockfiles -v)
+        if (( ${#dpkg_locks[@]} )); then
+            for i in ${!dpkg_locks[@]}; do mh "dpkg lockfiles $((i+1)): ${dpkg_locks[i]}"; done
+        fi
+# TODO <-- 0
+    fi
+}

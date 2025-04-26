@@ -1,0 +1,26 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_FSTAB_BASHLIB:-_} && return
+SYSINF_FSTAB_BASHLIB=:
+
+sysinf_fstab(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ${bool[ff]:-_} || {
+        ${bool[spinner]} && {
+            kill_spinner
+            spinner Yi " . determine system informations - fstab ." &
+        }
+        SYSINF+=("cat /etc/fstab")
+    }
+}

@@ -10,7 +10,7 @@ F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}")
     if T[mje]=$(json_etag ${F[lmj]}) && T[mjne]=$(json_etag ${F[lmjn]}); then (( T[mje] < T[mjne] )) && B[check]=:; fi
 }
 : ${B[check]:=_} ${B[pager]:=_}
-for x in binaries fp filter mh cleanup basics awksed exit tempfile ansi prefix button debug anykey line array ask sudo spinner dpkg dependency vdir integrity ${modules[@]}; do
+for x in binaries fp filter mh cleanup basics awksed exit tempfile ansi prefix button debug anykey line array ask sudo spinner dpkg dependency vdir gpg integrity ${modules[@]}; do
     ${B[check]} && {
         ${B[pager]} || printf "\r\e[K.. checking modules - $x"
         c4u "$x"

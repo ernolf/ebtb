@@ -1,0 +1,43 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_NEXTCLOUD_BASHLIB:-_} && return
+SYSINF_NEXTCLOUD_BASHLIB=:
+
+sysinf_nextcloud(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ${bool[spinner]} && {
+        kill_spinner
+        spinner Yi " . determine system informations - httpd (nextcloud) ." &
+    }
+    populate_httpd_ nextcloud
+    if (( "${#HTTPD_NEXTCLOUD[@]}" )); then
+        SYSINF+=("title httpd serving nextcloud:")
+        SYSINF+=("true $(p_sort_numerate "${HTTPD_NEXTCLOUD[@]}")")
+    fi
+    populate_httpd_ nc-dir
+    if (( "${#HTTPD_NC_DIR[@]}" )); then
+        SYSINF+=("title httpd configured directories with a nextcloud installation:")
+    else
+        mapfile -t HTTPD_NC_DIR< <(q2 ${X[find]} -L /var /srv -name occ -type f -exec dirname {} \; | ${X[grep]} -Ev '(/updater-oc|/overlay)' | ${X[sort]})
+        (( "${#HTTPD_NC_DIR[@]}" )) && SYSINF+=("title httpd detected nextcloud directories (none configured):")
+    fi
+    (( "${#HTTPD_NC_DIR[@]}" )) && SYSINF+=("true $(p_sort_numerate "${HTTPD_NC_DIR[@]}")")
+# TODO 0 -->
+#    [[ -f ${F[nc]:=${D[vt]}/nc} ]] && . ${F[nc]}
+#    [[ $(q2 declare -p NC) =~ 'declare -A' ]] && {
+#        SYSINF+=("title declare -p NC:")
+#        SYSINF+=("true $(declare -p NC)")
+#    }
+# TODO <-- 0
+}

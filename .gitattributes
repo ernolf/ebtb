@@ -15,5 +15,6 @@ modules/php-updater/* linguist-language=Bash
 modules/php-updater/switch.d/* linguist-language=Bash
 modules/php-updater/tasks.d/* linguist-language=Bash
 modules/php.net/* linguist-language=Bash
+modules/sysinf.d/* linguist-language=Bash
 modules/* linguist-language=Bash
 scripts/* linguist-language=Bash

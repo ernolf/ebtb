@@ -1,0 +1,24 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_ID_BASHLIB:-_} && return
+SYSINF_ID_BASHLIB=:
+
+sysinf_id(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ${bool[spinner]} && {
+        kill_spinner
+        spinner Yi " . determine system informations - machine_id ." &
+    }
+    SYSINF+=("echo machine-id: $MACHINE_ID")
+}

@@ -1,0 +1,163 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_BASHLIB:-_} && return
+SYSINF_BASHLIB=:
+
+declare -a SYSINFMOD SYSINF
+declare -A SYSINFAVAILABLEMODS
+SYSINFAVAILABLEMODS=(
+    [aa]="AppArmor status"
+    [aio]="Nextcloud All In One (yes or no)"
+    [bash]="Bash Version"
+    [cgroups]="C-Groups"
+    [cpu]="CPU-Info"
+    [debsources]="DEB Sources"
+    [disk]="Disk Space"
+    [dmi]="DMI-Decode"
+    [dpkg]="DPKG Version"
+    [env]="Environment"
+    [f2b]="Fail 2 Ban"
+    [fstab]="/etc/fstab"
+    [hostname]="Hostname"
+    [httpd]="Webservers"
+    [hypervisor]="Hypervisor"
+    [id]="Machine-ID"
+    [ip]="IP Address and Neighbourhood"
+    [locales]="Locales"
+    [mem]="Mem-Info"
+    [mount]="Mounted Filesystems"
+    [nextcloud]="Webserver serving Nextcloud"
+    [os]="Operating System"
+    [parent]="Parent Process"
+    [php]="PHP Information"
+    [pid1]="PID1 Process"
+    [prompt]="Console Prompt"
+    [se]="SELinux status"
+    [self]="/proc/self/*"
+    [sstulpen]="Active TCP/UDP sockets with process info"
+    [term]="Terminal"
+    [uptime]="Uptime"
+    [user]="User and Groups"
+    [who]="Who is logged in"
+    [whoami]="Who am I"
+)
+
+${X[mkdir]} -p ${D[li]}/sysinf.d
+
+sysinf_(){
+    local sim # sysinf module
+    local -a asm tsm
+    # available sysinf modules
+    asm=(${!SYSINFAVAILABLEMODS[@]})
+    for sim in "${SYSINFMOD[@]}"; do
+        if [[ " ${asm[@]} " =~ " $sim " ]]; then
+            . <(lrequire sysinf.d/$sim)
+            # true sysinf modules
+            tsm+=("$sim")
+        fi
+    done
+    for sim in "${tsm[@]}"; do sysinf_$sim "$@"; done
+}
+
+sysinf_print_(){
+    local bin bin1
+    echo "$(
+        separator4 --sanitized
+        echo "system information:"
+        echo "==================="
+        echo "$(ts)"
+        separator2 --sanitized
+        for bin in "$@"; do
+            case "${bin%% *}" in
+             echo)  bin="${bin#* }"
+                    bin1="${bin%%: *}:"
+                    echo -e "$bin\n$(line - N ${#bin1})" 2>&1
+                    separator --sanitized
+                ;;
+            title)  bin1="${bin#* }"
+                    echo "$bin1$(line - N ${#bin1} b1)" 2>&1
+                ;;
+        title_end)  bin1="<- ${bin#* }"
+                    echo -e "$bin1$(line - N ${#bin1} b1)" 2>&1
+                    separator --sanitized
+                ;;
+             true)  echo -e "${bin#* }" 2>&1
+                    separator --sanitized
+                ;;
+           p_sort)  bin1="${bin//p_sort/cat}:"
+                    [ -n "${X[cat]}" ] && echo -e "$bin1\n$(line - N ${#bin1})\n$(p_sort -V $(<${bin#* }) 2>&1)"
+                    separator --sanitized
+                ;;
+                *)  bin1="${bin% --}:"
+                    [ -n "${X[${bin%% *}]}" ] && echo -e "$bin1\n$(line - N ${#bin1})\n$(${X[${bin%% *}]} ${bin#* } 2>&1)"
+                    separator --sanitized
+            esac
+        done
+        separator4 --sanitized
+    )"
+}
+
+sysinf(){
+    local key desc sel
+    local -a sorted_keys
+    local -i i idx choice
+    # initialize the selected-modules array (global)
+    SYSINFMOD=() SYSINF=()
+    # build a sorted list of module keys
+    local IFS=$'\n' sorted_keys=($(p_sort "${!SYSINFAVAILABLEMODS[@]}"))
+    unset IFS
+    separator4 lP
+    f
+    echo "Generate System Information"
+    f
+    echo "Available modules:"
+    echo "------------------"
+    printf "\n %2d) %-10s  –  %s\n\n" "0" "done" "$(Pbg) finish selection and create output $(N)"
+    for i in "${!sorted_keys[@]}"; do
+        idx=$((i + 1))
+        key="${sorted_keys[$i]}"
+        desc="${SYSINFAVAILABLEMODS[$key]}"
+        printf " %2d) %-10s  –  %s\n" "$idx" "$key" "$desc"
+    done
+    # interactive selection loop
+    while :; do
+        read -rp "Choose module number (0 to finish): " choice
+        case "$choice" in
+            0)  break
+                ;;
+            ''|*[!0-9]*)
+                echo "Invalid input; please enter a number."
+                ;;
+            *)  if (( choice >= 1 && choice <= ${#sorted_keys[@]} )); then
+                    sel="${sorted_keys[$((choice - 1))]}"
+                    if [[ ! " ${SYSINFMOD[*]} " =~ " $sel " ]]; then
+                        SYSINFMOD+=("$sel")
+                        echo "Added: $sel"
+                        echo "Selected modules: ${SYSINFMOD[*]}"
+                    else
+                        echo "Already selected: $sel"
+                        echo "Selected modules: ${SYSINFMOD[*]}"
+                    fi
+                else
+                    echo "Number '$choice' out of range."
+                fi
+                ;;
+        esac
+    done
+
+    # optionally run spinner in background and dispatch your collection
+    spinner Yi " . determine system informations ." &
+    sysinf_ spinner dpkg php sources
+    kill_spinner
+
+    # print out the gathered system information
+    echo
+    sysinf_print_ "${SYSINF[@]}"
+}

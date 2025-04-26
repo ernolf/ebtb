@@ -16,19 +16,29 @@ EXIT_BASHLIB=:
 . <(lrequire ansi)
 . <(lrequire debug)
 # TODO <-- 0
+. <(lrequire ebtb)
 . <(lrequire cleanup)
+
+exit_msg(){
+    q0 ${X[pgrep]} -f '/(ebtb-)?(ebtb|janitor)(-test)?$' && return 0
+    if ebtb_is_installed janitor; then
+        GRAY; echo "the $(W)janitor$(GRAY) can provide extensive system informations and more.$(W) simply run: $(Y)janitor"; N
+    else
+        GRAY; echo "generous? feedback? questions?$(W) simply run: $(Y)$ME --contribute"; N
+    fi
+}
 
 exit0(){
     mh "exit 0"
-    G; echo "exiting script."; N
-    echo "generous? feedback? questions? run: '$ME --contribute'"; N
+    G; echo "exiting ${M[n]} script."; N
+    exit_msg
     exit 0
 }
 
 exit1(){
     mh "exit 1"
-    R; echo "exiting…"; N
-    echo "generous? feedback? questions? run: '$ME --contribute'"; N
+    R; echo "exiting ${M[n]}…"; N
+    exit_msg
     exit 1
 }
 

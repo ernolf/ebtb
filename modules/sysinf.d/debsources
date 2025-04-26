@@ -1,0 +1,67 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_DEBSOURCES_BASHLIB:-_} && return
+SYSINF_DEBSOURCES_BASHLIB=:
+
+sysinf_debsources(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    # dpkg (debian) based like architecture deb sources
+    ${bool[sury]:-_} && bool[sources]=:
+    if ${bool[sources]:-_} && [[ -n "${X[dpkg]}" && -d /var/lib/apt/lists ]]; then
+        ${bool[spinner]} && {
+            kill_spinner
+            spinner Yi " . determine system informations - deb/apt sources ." &
+        }
+        SYSINF+=("title aptsources:")
+        SYSINF+=("true $(p_sort_numerate "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | ${X[sed]} 's/_Packages.*$//; s/-deb.*$//; s/_dists/ /; s/_binary-/ /')")")
+
+        # sury BEGIN
+        ${bool[sury]:-_} && {
+            local sury
+            local -i sury_r
+            sury="$(sury)"
+            sury_r=$?
+            SYSINF+=("echo sury: r=$sury_r, $sury")
+        }
+        # sury END
+
+        # apt sources files BEGIN
+        local -a apturls
+        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
+        SYSINF+=("title aptsourcesfiles:")
+        SYSINF+=("true $(p_sort_numerate "$(
+                for i in "${!apturls[@]}"; do
+                    ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'
+                done
+            )")")
+
+        # sury apt sources files BEGIN
+        ${bool[sury]:-_} && {
+            local -a sury_aptsourcesfiles
+            mapfile -t sury_aptsourcesfiles< <(p_sort $(
+                    for i in "${!apturls[@]}"; do
+                        [[ "${apturls[i]}" =~ (ondrej|sury) ]] && ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'
+                    done
+                ))
+            if (( ${#sury_aptsourcesfiles[@]} )); then
+                for i in ${!sury_aptsourcesfiles[@]}; do
+                    if [ -s "${sury_aptsourcesfiles[i]}" ]; then
+                        ${bool[sury]:-_} && SYSINF+=("cat ${sury_aptsourcesfiles[i]}")
+                    fi
+                done
+            fi
+        }
+        # sury apt sources files END
+    fi
+}

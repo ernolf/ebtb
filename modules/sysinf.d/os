@@ -1,0 +1,33 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_OS_BASHLIB:-_} && return
+SYSINF_OS_BASHLIB=:
+
+sysinf_os(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ${bool[ff]:-_} || {
+        ${bool[spinner]} && {
+            kill_spinner
+            spinner Yi " . determine system informations - os-release ." &
+        }
+        if [ -z "${F[os_release]}" ] && [[ -f /etc/os-release || -f /usr/lib/os-release ]]; then
+            [ -f /etc/os-release ] && F[os_release]="/etc/os-release" || F[os_release]="/usr/lib/os-release"
+        fi
+        if [ -n "${F[os_release]}" ]; then
+            SYSINF+=("cat ${F[os_release]}")
+        elif [ -n "${X[lsb_release]}" ]; then
+            SYSINF+=("lsb_release -a")
+        fi
+    }
+}

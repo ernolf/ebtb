@@ -1,0 +1,45 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${SYSINF_SSTULPEN_BASHLIB:-_} && return
+SYSINF_SSTULPEN_BASHLIB=:
+
+sysinf_sstulpen(){
+    local -A bool
+    while (( $# )); do
+        [[ $1 ]] && bool[$1]=:
+        shift
+    done
+    ss_with_service_names() {
+        # print header with '|' as delimiter
+        (   echo "Proto|State|Recv-Q|Send-Q|Local Addr:Port|Service|Peer Addr:Port|Process"
+            # suppress repeated headers
+            ${X[ss]} -tulpenH | while read -r proto state recv send local peer proc _; do
+                # extract port and lookup service
+                port="${local##*:}"
+                svc=$(${X[getent]} services "${port}/${proto}" | ${X[gawk]} '{print $1}')
+                [[ -z "$svc" ]] && svc="$port"
+
+                # output pipes-delimited
+                printf "%s|%s|%s|%s|%s|%s|%s|%s\n" \
+                    "$proto" "$state" "$recv" "$send" "$local" "$svc" "$peer" "$(echo $proc | ${X[sed]} 's/^users://; s/[()]//g; s/,"/, "/g')"
+            done
+        ) | ${X[column]} -t -s '|' 
+    }
+
+    ${bool[ff]:-_} || {
+        ${bool[spinner]} && {
+            kill_spinner
+            spinner Yi " . determine system informations - sstulpen ." &
+        }
+        SYSINF+=("title ss -tulpen")
+        SYSINF+=("true $(ss_with_service_names)")
+    }
+}
+

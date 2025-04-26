@@ -1,0 +1,90 @@
+__shebang_bash__
+__path_and_scriptname__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+__whoami_whereami__
+__scriptname__
+modules=(
+    today interval dos2unix prompt fstring httpd context ask sysinf ebtb
+    dist/os_release apt/sources nc/c2j nc/aio
+    php/version php/nginx php/apache2 php/fpm php/versions php/alternatives
+    php/extensions php/sury
+)
+__debug__
+__when__
+# don't change this by hand, its done safe and interactively by the script:
+declare vdirname="" # <-- don't change this!
+__tempdir__
+__module_server__
+__general__
+__module_loader__
+__module_integrity__
+
+## SCRIPT SPECIFIC
+
+contribute_(){
+    . <(require contribute)
+    contribute "https://github.com/ernolf/ebtb"
+}; donate_(){ contribute_;}
+[[ "$@" =~ (donat|contrib) ]] && contribute_
+
+## it starts here:
+# you MUST be root:
+su_root "to run this script."
+check_context
+my_update_check
+
+main_menu() {
+    local choice
+
+    while :; do
+        echo
+        o5; echo "=== Main Menu of the ebtb Janitor ==="
+        echo
+        o5; echo "$(box 1; W)  -  System Information"
+        o5; echo "$(box 2; W)  -  Launch ebtb - Admin Scripts"
+        o5; echo "$(box 3; W)  -  Contribute"
+        o5; echo "$(box q; W)  -  Quit"
+        echo
+        # prompt user for selection
+        read  -rsn 1 -p "$(C)Select an option $(button 1) $(button 2) $(button 3) or $(button q) to quit$(N): " choice
+        case "$choice" in
+            1)  sysinf
+                ;;
+            2)  ebtb launch
+                ;;
+            3)  contribute_
+                ;;
+         [qQ])  break
+                ;;
+            *)  echo "Invalid choice, please try again."
+                ;;
+        esac
+    done
+}
+
+# if script is invoked directly, show the main menu
+if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
+    main_menu
+fi
+exit0
+# TODO 1 -->
+
+#SYSINFMOD=(id bash user prompt hypervisor aio pid1 os env locales parent term cgroups hostname ip who uptime cpu free se aa dmi dpkg php httpd nextcloud)
+#spinner Yi " . determine system informations ." &
+#sysinf_ spinner
+#kill_spinner
+#sysinf_print_ "${SYSINF[@]}"
+
+#if (( "${#HTTPD_NC_DIR[@]}" == 0 )); then
+#    mapfile -t HTTPD_NC_DIR< <(q2 ${X[find]} -L /var /srv -name occ -type f -exec dirname {} \; | ${X[grep]} -Ev '(/updater-oc|/overlay)' | ${X[sort]})
+#fi
+#[[ $(q2 declare -p NC) =~ 'declare -A' ]] && cdir=${NC[cd]} || cdir=${HTTPD_NC_DIR[0]/%//config}
+#[ -d "$cdir" ] && config2json "$cdir" | ${X[jq]} .
+
+# TODO <-- 1
