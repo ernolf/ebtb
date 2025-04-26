@@ -9,15 +9,6 @@ __license__
 
 __whoami_whereami__
 __scriptname__
-# TODO 0 -->
-#modules=(
-#    binaries today interval basics awksed tempfile prompt ansi filter prefix
-#    button fstring exit spinner anykey line array httpd sudo php/version
-#    php/versions dpkg ask dependency php/fpm vdir integrity dist/os_release
-#    php/sury php/extensions $MS/disclaimer $MS/ini $MS/pecl $MS/patch
-#    $MS/data_refine
-#)
-# TODO <-- 0
 modules=(
     today interval prompt fstring httpd php/version php/alternatives ask
     php/versions php/fpm dist/os_release php/sury php/extensions

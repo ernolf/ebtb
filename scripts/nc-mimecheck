@@ -25,14 +25,7 @@ __license__
 
 __whoami_whereami__
 __scriptname__
-# TODO 0 -->
-#modules=(
-#    binaries basics awksed tempfile ansi filter prefix button exit anykey line
-#    verbose array ask sudo dependency vdir integrity nc/nextcloud
-#    nc/nextcloud_db $MS/mime_types $MS/help $MS/functions
-#)
-# TODO <-- 0
-modules=(verbose nc/nextcloud nc/nextcloud_db $MS/mime_types $MS/help $MS/functions)
+modules=(verbose nc/nextcloud nc/occ nc/db $MS/mime_types $MS/help $MS/functions)
 __debug__
 # make module loading quiet if -q or --quiet is passed
 for a in "$@"; do [[ "$a" == '-q' || "$a" == '--quiet' ]] && B[pager]=:; done; unset -v a

@@ -1,0 +1,57 @@
+__minified_bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+declare -f _ &>$NUL || _(){ false; }
+${NC_AIO_BASHLIB:-_} && return
+NC_AIO_BASHLIB=:
+
+. <(lrequire binaries)
+
+B[aio]=_ B[docker]=_
+
+aio_not_supported(){
+    ${B[aio]} || return 0
+    f; pf; R; echo "This script cannot be used with Nextcloud All-in-One …"
+    exit1
+}
+
+[ -n "${X[docker]}" ] || return
+
+detect_aio(){
+    docker_ps_json="$(tf)"
+    # detect if any docker containers are running on the host (without -a, because only running containers matter here)
+    q2 ${X[docker]} ps --no-trunc --format=json > $docker_ps_json
+    mapfile -t docker_names < <(jq -r .Names $docker_ps_json)
+    if (( ${#docker_names[@]} )); then
+        if [[ "${docker_names[@]}" =~ nextcloud-aio-mastercontainer && "${docker_names[@]}" =~ nextcloud-aio-nextcloud ]]; then
+            B[aio]=: B[docker]=:
+        fi
+    fi
+}
+
+aio_wrapper(){
+    local interactive_tty container_name
+    if [ "$1" = '-it' ]; then
+        interactive_tty='-it'
+        shift
+    else
+        interactive_tty=''
+    fi
+    container_name="$1"
+    shift
+    ${X[sudo]} ${X[docker]} exec $interactive_tty "nextcloud-aio-$container_name" bash -c "$*"
+}
+
+if ${B[rt]}; then
+    detect_aio
+else
+    if ${X[ps]} aux | ${X[grep]} -qs "[d]ockerd"; then # dockerd is running
+        su_root "to detect all-in-one"
+    fi
+fi

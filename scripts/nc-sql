@@ -9,14 +9,7 @@ __license__
 
 __whoami_whereami__
 __scriptname__
-# TODO 0 -->
-#modules=(
-#    binaries basics awksed tempfile ansi filter prefix button fstring exit
-#    spinner anykey line array ask sudo dependency vdir integrity httpd
-#    nc/nextcloud nc/nextcloud_db
-#)
-# TODO <-- 0
-modules=(fstring httpd nc/nextcloud nc/nextcloud_db)
+modules=(fstring httpd nc/nextcloud nc/db)
 __debug__
 __when__
 __vdirname__

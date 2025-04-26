@@ -9,19 +9,10 @@ __license__
 
 __whoami_whereami__
 __scriptname__
-# TODO 0 -->
-#modules=(
-#    binaries basics awksed tempfile ansi filter prefix button exit spinner
-#    anykey line array ask sudo dependency vdir integrity php/version
-#    nc/nextcloud $MS/github_api $MS/app_update $MS/filters $MS/db $MS/appstore
-#    $MS/data_refine $MS/assumed_version $MS/list $MS/install_overwrite $MS/l10n
-#    $MS/help
-#)
-# TODO <-- 0
 modules=(
-    php/version nc/nextcloud nc/logo $MS/github_api $MS/app_update $MS/db
-    $MS/appstore $MS/data_refine $MS/assumed_version $MS/list $MS/l10n
-    $MS/commands
+    php/version nc/nextcloud nc/occ nc/versions nc/logo $MS/github_api
+    $MS/app_update $MS/db $MS/appstore $MS/data_refine $MS/assumed_version
+    $MS/list $MS/l10n $MS/commands
 )
 __debug__
 # use parallel running background jobs in order to dramatically increase speed

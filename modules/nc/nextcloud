@@ -11,75 +11,8 @@ ${NC_NEXTCLOUD_BASHLIB:-_} && return
 NC_NEXTCLOUD_BASHLIB=:
 
 . <(lrequire php/version)
-. <(require nc/nextcloud_aio)
-
-# array with latest versions from end of life platforms
-declare -ga LATEST_EOL 2>$NUL || declare -a LATEST_EOL
-LATEST_EOL=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 28.0.14)
-
-nc_version_(){
-    local version_php
-    version_php="$2"
-    case "$1" in
-      long) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6"."$7}else{print $3"."$4"."$5"."$6}}' "$version_php"
-            ;;
-     short) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5"."$6}else{print $3"."$4"."$5}}' "$version_php"
-            ;;
-       key) ${X[gawk]} -F'[][ ,()]+' '/\$OC_Version =/{if($3=="array"){print $4"."$5}else{print $3"."$4}}' "$version_php"
-            ;;
-    string) ${X[gawk]} -F\' '/\$OC_VersionString =/{print $2}' "$version_php"
-            ;;
-       tag) ${X[gawk]} -F\' '/\$OC_VersionString/{gsub(/ /,"");$2=tolower($2);print $2}' "$version_php"
-    esac
-}
-
-config2json(){
-    jq_filter(){
-# TODO 1 -->
-# as oneliner:
-# echo "$@"|${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
-# TODO <-- 1
-        echo "$@" | ${X[jq]} -c '[.[] | .[]]
-            | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
-            | reduce .[]as $item({};. * $item)'
-    }
-
-# TODO 2 -->
-# as oneliner:
-# C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
-# TODO <-- 2
-    C2J='<?php
-    $c = [];
-    foreach ($argv as $f) {
-        if ($f !== $argv[0]) {
-            include $f;
-            foreach ($CONFIG as $k => $v) {
-                $c[$f][] = ["key" => $k, "value" => $v];
-            }
-        }
-    }
-    echo json_encode($c);
-    ?>'
-
-    if q0 ${X[ls]} ${NC[cd]}/*.config.php; then
-        jq_filter $(echo "$C2J" | ${X[php]} -- ${NC[cd]}/config.php ${NC[cd]}/*.config.php)
-    else
-        jq_filter $(echo "$C2J" | ${X[php]} -- ${NC[cd]}/config.php)
-    fi
-}
-
-declare config_json
-nc_configkey(){
-    if [ -z "$config_json" ]; then
-        config_json="$(config2json)"
-        ${X[jq]} -r ".[\"$1\"].value" <<< "$config_json"
-    fi
-}
-
-nc_configkey_exist_(){
-    ${X[grep]} -qsw "$1" ${NC[cd]}/*config.php
-#    return $?
-}
+. <(lrequire nc/aio)
+. <(lrequire nc/c2j)
 
 [ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
 
@@ -101,7 +34,7 @@ if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z 
         NC[cd]="${NC[d]}/config" # NC_CDIR
         NC[dd]="/var/lib/docker/volumes/nextcloud_aio_nextcloud_data/_data"
     else
-        [ -d "${NC[d]}" ] || NC[d]=$NC_DIR
+        q0 declare -p NC_DIR && [[ -d $NC_DIR && ! -d ${NC[d]} ]] && NC[d]=$NC_DIR
 
         # detect location of config.php
         if [ -d "${NC[d]}" ]; then
@@ -147,38 +80,9 @@ if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z 
     NC[vphp]="${NC[d]}/version.php"
 fi
 
-[ "$NC_DIR" = "${NC[d]}" ] || { ${B[rt]} && setvdir v "${NC[d]}"; }
+q0 declare -p NC_DIR && [[ $NC_DIR != ${NC[d]} ]] && ${B[rt]} && setvdir v "${NC[d]}"
 
 [ -n "${NC[github_raw]}" ] || NC[github_raw]='https://raw.githubusercontent.com/nextcloud'
-
-# occ
-if ${B[aio]}; then
-    occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@; }
-else
-    # detect, if apc is required for cli
-    declare phpcli
-    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${X[grep]} -qs "apc.enable_cli"< <(${X[php$(php_ver)]} -i); then
-        phpcli="${X[php$(php_ver)]} --define apc.enable_cli=1"
-    else
-        phpcli="${X[php$(php_ver)]}"
-    fi
-    # the occ command call is saved under occ, adapted to the user and environment
-    occ(){ $phpcli -f ${NC[d]}/console.php "$@"; }
-    
-    if ${B[rt]}; then
-        occ(){ ${X[sudo]} -u ${NC[u]} $phpcli -f ${NC[d]}/console.php "$@"; }
-    else
-        [[ "${I[un]}" == "${NC[u]}" ]] || su_do "u=NC_USER"
-    fi
-fi
-
-NC[version_long]="$(nc_version_ long "${NC[vphp]}")"
-NC[version]="$(nc_version_ short "${NC[vphp]}")"
-NC[key]="$(nc_version_ key "${NC[vphp]}")"
-NC[version_string]="$(nc_version_ string "${NC[vphp]}")"
-#NC[version_tag]="$(tolower "${NC[version_string]// /}")"
-NC[version_tag]="$(nc_version_ tag "${NC[vphp]}")"
-NC[min_version]="${LATEST_EOL[0]}"
 
 declare -p NC > "${F[nc]}"
 ${X[chown]} "${NC[u]}":"${NC[u]}" "${F[nc]}"

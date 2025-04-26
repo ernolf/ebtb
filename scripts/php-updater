@@ -9,20 +9,10 @@ __license__
 
 __whoami_whereami__
 __scriptname__
-# TODO 0 -->
-#modules=(
-#    binaries today interval basics dos2unix awksed tempfile prompt ansi filter
-#    prefix button fstring exit sort spinner anykey line array httpd sudo
-#    context php/version php/nginx php/apache2 php/fpm php/versions dpkg
-#    php/extensions php/sury ask dependency vdir integrity dist/os_release
-#    php.net/ini_directives $MS/inp $MS/pdiff $MS/merge $MS/diff $MS/pool
-#    $MS/tasks $MS/linstalled $MS/help $MS/chfiles $MS/switch
-#)
-# TODO <-- 0
 modules=(
-    today interval dos2unix prompt fstring sort httpd context
+    today interval dos2unix prompt fstring sort httpd context sysinf nc/c2j
     php/version php/nginx php/apache2 php/fpm php/versions php/alternatives
-    php/extensions php/sury ask dist/os_release php.net/ini_directives
+    php/extensions php/sury ask dist/os_release php.net/ini_directives nc/aio
     $MS/inp $MS/pdiff $MS/merge $MS/diff $MS/pool $MS/tasks $MS/linstalled
     $MS/help $MS/chfiles $MS/switch
 )

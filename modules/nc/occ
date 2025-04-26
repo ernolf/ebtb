@@ -1,0 +1,38 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${NC_OCC_BASHLIB:-_} && return
+NC_OCC_BASHLIB=:
+
+. <(lrequire php/version)
+. <(require nc/aio)
+. <(require nc/c2j)
+
+[ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
+
+# occ
+if ${B[aio]}; then
+    occ(){ docker exec --user www-data -i nextcloud-aio-nextcloud php occ $@; }
+else
+    # detect, if apc is required for cli
+    declare phpcli
+    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${X[grep]} -qs "apc.enable_cli"< <(${X[php$(php_ver)]} -i); then
+        phpcli="${X[php$(php_ver)]} --define apc.enable_cli=1"
+    else
+        phpcli="${X[php$(php_ver)]}"
+    fi
+    # the occ command call is saved under occ, adapted to the user and environment
+    occ(){ $phpcli -f ${NC[d]}/console.php "$@"; }
+    
+    if ${B[rt]}; then
+        occ(){ ${X[sudo]} -u ${NC[u]} $phpcli -f ${NC[d]}/console.php "$@"; }
+    else
+        [[ "${I[un]}" == "${NC[u]}" ]] || su_do "u=NC_USER"
+    fi
+fi
