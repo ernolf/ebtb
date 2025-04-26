@@ -211,6 +211,7 @@ mark_checked(){
 #    SUPPORT_URL=https://help.ubuntu.com/
 #    BUG_REPORT_URL=https://bugs.launchpad.net/ubuntu/
 #    PRIVACY_POLICY_URL=https://www.ubuntu.com/legal/terms-and-policies/privacy-policy
+#    LOGO=ubuntu-logo
 
 #    ## 20.04 (focal)
 #    PRETTY_NAME="Ubuntu 20.04.6 LTS"
@@ -242,6 +243,12 @@ mark_checked(){
 #    VERSION_CODENAME=noble
 #    UBUNTU_CODENAME=noble
 #    LOGO=ubuntu-logo
+
+#    ## 25.04
+#    PRETTY_NAME="Ubuntu 25.04"
+#    VERSION_ID=25.04
+#    VERSION="25.04 (Plucky Puffin)"
+#    VERSION_CODENAME=plucky
 
 
 #    ### LinuxMint (old!)
