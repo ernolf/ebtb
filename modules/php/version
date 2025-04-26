@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${VERSION_BASHLIB:-_} && return
-VERSION_BASHLIB=:
+${PHP_VERSION_BASHLIB:-_} && return
+PHP_VERSION_BASHLIB=:
 
 php_ver(){
     local php_version="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"

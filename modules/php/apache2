@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${APACHE2_BASHLIB:-_} && return
-APACHE2_BASHLIB=:
+${PHP_APACHE2_BASHLIB:-_} && return
+PHP_APACHE2_BASHLIB=:
 
 . <(lrequire httpd)
 

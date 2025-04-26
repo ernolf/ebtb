@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${EXTENSIONS_BASHLIB:-_} && return
-EXTENSIONS_BASHLIB=:
+${PHP_EXTENSIONS_BASHLIB:-_} && return
+PHP_EXTENSIONS_BASHLIB=:
 
 . <(lrequire dpkg)
 . <(lrequire php/versions)

@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${VERSIONS_BASHLIB:-_} && return
-VERSIONS_BASHLIB=:
+${PHP_VERSIONS_BASHLIB:-_} && return
+PHP_VERSIONS_BASHLIB=:
 
 . <(lrequire interval)
 . <(lrequire php/sury)

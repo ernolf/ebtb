@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${ALTERNATIVES_BASHLIB:-_} && return
-ALTERNATIVES_BASHLIB=:
+${PHP_ALTERNATIVES_BASHLIB:-_} && return
+PHP_ALTERNATIVES_BASHLIB=:
 
 # TODO 0 -->
 . <(lrequire binaries)

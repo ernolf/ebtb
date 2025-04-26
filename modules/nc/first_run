@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${FIRST_RUN_BASHLIB:-_} && return
-FIRST_RUN_BASHLIB=:
+${NC_FIRST_RUN_BASHLIB:-_} && return
+NC_FIRST_RUN_BASHLIB=:
 
 . <(lrequire httpd)
 

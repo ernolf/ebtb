@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${FPM_BASHLIB:-_} && return
-FPM_BASHLIB=:
+${PHP_FPM_BASHLIB:-_} && return
+PHP_FPM_BASHLIB=:
 
 #globals
 if ! q2 declare -p SAPI_FPM | ${X[grep]} -qs 'declare -A'; then

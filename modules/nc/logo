@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${LOGO_BASHLIB:-_} && return
-LOGO_BASHLIB=:
+${NC_LOGO_BASHLIB:-_} && return
+NC_LOGO_BASHLIB=:
 
 nextcloud_logo(){
     ${X[cat]} << NEXTCLOUDLOGO

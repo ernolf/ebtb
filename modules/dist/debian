@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${DEBIAN_BASHLIB:-_} && return
-DEBIAN_BASHLIB=:
+${DIST_DEBIAN_BASHLIB:-_} && return
+DIST_DEBIAN_BASHLIB=:
 
 . <(lrequire interval)
 . <(lrequire php/sury)

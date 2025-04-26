@@ -46,8 +46,11 @@ nohome(){
     kill -TERM ${M[pid]}
 }
 sourced(){
-    local -u m="${1/\.d\//_}_BASHLIB"
-    m="${m#*/}"
+    local -u m
+    shopt -s extglob
+    eval 'm="${1/+(.d|apt|deb|dist|nc|php)\//_}_bashlib"'
+    shopt -u extglob
+    m="${m##*/}"
     q0 declare -p "$m" || declare -g "$m"=_
     ${!m}
 }

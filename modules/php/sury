@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${SURY_BASHLIB:-_} && return
-SURY_BASHLIB=:
+${PHP_SURY_BASHLIB:-_} && return
+PHP_SURY_BASHLIB=:
 
 . <(lrequire fstring)
 . <(lrequire dpkg)

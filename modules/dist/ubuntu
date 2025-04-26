@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${UBUNTU_BASHLIB:-_} && return
-UBUNTU_BASHLIB=:
+${DIST_UBUNTU_BASHLIB:-_} && return
+DIST_UBUNTU_BASHLIB=:
 
 . <(lrequire interval)
 . <(require php/sury)

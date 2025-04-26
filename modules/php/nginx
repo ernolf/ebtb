@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${NGINX_BASHLIB:-_} && return
-NGINX_BASHLIB=:
+${PHP_NGINX_BASHLIB:-_} && return
+PHP_NGINX_BASHLIB=:
 
 . <(lrequire httpd)
 

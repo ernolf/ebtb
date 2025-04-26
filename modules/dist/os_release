@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${OS_RELEASE_BASHLIB:-_} && return
-OS_RELEASE_BASHLIB=:
+${DIST_OS_RELEASE_BASHLIB:-_} && return
+DIST_OS_RELEASE_BASHLIB=:
 
 declare -A OS
 

@@ -7,8 +7,8 @@ __copyright__
 __license__
 #
 
-${NEXTCLOUD_BASHLIB:-_} && return
-NEXTCLOUD_BASHLIB=:
+${NC_NEXTCLOUD_BASHLIB:-_} && return
+NC_NEXTCLOUD_BASHLIB=:
 
 . <(lrequire php/version)
 . <(require nc/nextcloud_aio)
