@@ -69,7 +69,7 @@ sudo_message(){
   $(W)You accessed this page as user $(B)root.
   $(W; format_string "All examples provided here are presented as if you were always running as root. However, if you're running as an unprivileged user, you'll need to specify sudo here and there. That's why sudo is still displayed here in gray color: ($(GRAY)sudo$(W)) where needed if you're not root." 2)
 
-$(separator dP)
+$(separator --sanitized dP)
 
 SUDO_MESSAGE
 }
@@ -108,7 +108,7 @@ $(G;prompt;B) $ME --help --no-pager
     $(GRAY)*\`$(C)<VER>$(GRAY)\`*$(W)  = any php version
     $(GRAY)*\`$(C)<SAPI>$(GRAY)\`*$(W) = any SAPI
 
-$(separator dP)
+$(separator --sanitized dP)
 
 $(q1 prompt || sudo_message)
   $(Y)This script can only work if the following requirements are met:
@@ -117,7 +117,7 @@ $(q1 prompt || sudo_message)
 
   $(W; format_string "2. $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) must still be fully installed, since the settings to be migrated must be read from $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W). This condition is met if you have not yet explicitly uninstalled (--purge) any $(GRAY)*\`$(B)php$(C)<OLD>$(GRAY)\`*$(W) packages." 5)
 
-$(separator dP)
+$(separator --sanitized dP)
 
   $(Y)You should know, which php-SAPI is used.
 
@@ -166,7 +166,7 @@ $(G;prompt -su;B) $ME --list-installed
 
   $(W; format_string "… provides a list of all installed php related packages where the active SAPI is marked if detected by this script." 2)
 
-$(separator dP)
+$(separator --sanitized dP)
 
   $(Y)You should uninstall all meta- and dependecy packages.
 
@@ -183,9 +183,9 @@ $(G;prompt -su;B) $ME --list-installed
 
   $(W; format_string "… provides a list of all installed php related packages where all SAPI, meta- and depenency packages are marked." 2)
 
-$(separator dP)
+$(separator --sanitized dP)
   $(B)Steps performed by the script before running an update
-$(separator dP)
+$(separator --sanitized dP)
 
   $(Y)Apt sources from deb.sury.org
 
@@ -203,9 +203,9 @@ $(G;prompt -su;B) $ME --list-candidates
 
   $(P)This script will offer to add Surý's repo if it exists for your distribution.
 
-$(separator dP)
+$(separator --sanitized dP)
   $(B)Running this script
-$(separator dP)
+$(separator --sanitized dP)
 
   $(Y)execute the script simply by calling it:
 
@@ -228,9 +228,9 @@ $(G;prompt -su;B) $ME $(C)<OLD> <NEW>
 
   $(W; format_string "in this case it will assume $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) as refference, which does not have to be the $(C)running$(W) version. If required, it installs missing packages which are installed in $(GRAY)*\`$(C)<OLD>$(GRAY)\`*$(W) but not in $(GRAY)*\`$(C)<NEW>$(GRAY)\`*$(W). Then it will do the migration of all settings." 2)
 
-$(separator dP)
+$(separator --sanitized dP)
   $(B)Steps performed by the script after running an update
-$(separator dP)
+$(separator --sanitized dP)
 
   $(Y)'alternatives' mechanism
 
@@ -242,7 +242,7 @@ $(G;prompt -su;B) $ME $(C)--switch-version
 
   $(P)to complete that step.
 
-$(separator dP)
+$(separator --sanitized dP)
 
   $(Y)Connect the web server to the new FPM socket
 

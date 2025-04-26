@@ -47,24 +47,44 @@ line(){
 
 separator(){
     local color
-    color="$1"
-    kill_spinner && te1 && line ' -' ${color:-GRAY} a
+    if [ "$1" = '--sanitized' ]; then
+        color="$2"
+        line ' -' ${color:-GRAY} a
+    else
+        color="$1"
+        kill_spinner && te1 && line ' -' ${color:-GRAY} a
+    fi
 }
 
 separator2(){
     local color
-    color="$1"
-    kill_spinner && te1 && line ' =' ${color:-GRAY} a
+    if [ "$1" = '--sanitized' ]; then
+        color="$2"
+        line ' =' ${color:-GRAY} a
+    else
+        color="$1"
+        kill_spinner && te1 && line ' =' ${color:-GRAY} a
+    fi
 }
 
 separator3(){
     local color
-    color="$1"
-    kill_spinner && te1 && line - ${color:-GRAY} a
+    if [ "$1" = '--sanitized' ]; then
+        color="$2"
+        line - ${color:-GRAY} a
+    else
+        color="$1"
+        kill_spinner && te1 && line - ${color:-GRAY} a
+    fi
 }
 
 separator4(){
     local color
-    color="$1"
-    kill_spinner && te1 && line = ${color:-GRAY} a
+    if [ "$1" = '--sanitized' ]; then
+        color="$2"
+        line = ${color:-GRAY} a
+    else
+        color="$1"
+        kill_spinner && te1 && line = ${color:-GRAY} a
+    fi
 }
