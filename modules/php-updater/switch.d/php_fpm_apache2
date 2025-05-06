@@ -47,7 +47,7 @@ php_fpm_sites_available_conf_apache2(){
         bundle echo "$(es3)Processing pool: [$pool]..."
 
         sock_n[$pool]="$(fpm_socket "$ver_n" "$pool")"
-        sock_regex[$pool]="$(echo "${sock_n[$pool]}" | ${X[sed]} -E "s/${PHP[vregex]}/${PHP[vregex]}/g; s/\./\\\\./g")"
+        sock_regex[$pool]="$(sed_ "s/${PHP[vregex]}/${PHP[vregex]}/g; s/\./\\\\./g" "${sock_n[$pool]}" '-s')"
         mapfile -t sock_o< <(
             q2 ${X[find]} ${A2CONFFILES[@]} -name "*.conf" -exec ${X[grep]} -Ehos "^[^#]*${sock_regex[$pool]}" {} + |
             ${X[grep]} -Eos "${sock_regex[$pool]}" |
@@ -118,14 +118,14 @@ php_fpm_sites_available_conf_apache2(){
                 bundle printf detect_apache2_php_fpm_ tag "${conffiles[i]}"
             done
             f
-            bundle echo "$(pf; format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
-            f
-            anykey
+#            bundle echo "$(pf; format_string "If you continue here, this script will replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N) for you." 3)"
+#            f
+            anykey "replace $(listify Y ${sock_o[@]}) with $(Y)${sock_n[$pool]}$(N)"
             local line conf
             for i in ${!conffiles[@]}; do
                 line="$(fpm_connections_socket "${conffiles[i]}")"
                 conf="$(${X[realpath]} "${conffiles[i]}")"
-                ${X[sed]} -E --in-place=.backup "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" $conf
+                sed_ "${line%%:*}s#${line##*:}#${sock_n[$pool]}#" "$conf" "--in-place=.backup"
                 bundle echo "$(es3; Pbg) IMPORTANT: $(P; es; format_string "A backup-file $(C)$conf.backup$(P) was created with the previous state. Don't forget to remove that file if everything runs fine." 16; N)"
             done
             unset line conf

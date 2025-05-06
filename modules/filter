@@ -12,20 +12,15 @@ FILTER_BASHLIB=:
 
 . <(lrequire binaries)
 
-ansi_filter() {
-    local sedscript
-    sedscript='s/\x1B\[[0-9;?]*[a-zA-Z]//g'
-    if [[ -t 0 ]]; then # if no STDIN;
-        ${X[sed]} -E "$sedscript" <<< "$@"
-    else
-        ${X[cat]} | ${X[sed]} -E "$sedscript"
-    fi
+# the sed_ dispatcher function is not yet sourced here.
+sed_ansifilter(){
+    ${X[sed]} -E 's/\x1B\[[0-9;?]*[a-zA-Z]//g'
 }
-: ${X[ansifilter]:=ansi_filter} &>${NUL:=/dev/null}
+# X[ansifilter]=sed_ansifilter # <- this only for testing purposes
+: ${X[ansifilter]:=sed_ansifilter} &>${NUL:=/dev/null}
 
 utf_filter(){
-    local perlscript
-    perlscript='
+    ${X[perl]} -CSD -pe '
         # Convert \uXXXX notation to the corresponding Unicode character
         s/\\u([0-9A-Fa-f]{4})/chr(hex($1))/ge;
 
@@ -76,17 +71,8 @@ utf_filter(){
         s/\x{0159}/r/g;       # Latin small letter r with caron ř -> r
         s/\x{00FD}/y/g;       # Latin small letter y with acute ý -> y
     '
-    if [[ -t 0 ]]; then # no STDIN
-        ${X[perl]} -CSD -pe "$perlscript" <<< "$@"
-    else
-        ${X[cat]} | ${X[perl]} -CSD -pe "$perlscript"
-    fi
 }
 
 filter_(){
-    if [[ -t 0 ]]; then # no STDIN
-         ${X[ansifilter]} <<< "$@"
-    else
-         ${X[cat]} | ${X[ansifilter]}
-    fi | utf_filter
+    ${X[cat]} | ${X[ansifilter]} | utf_filter
 }

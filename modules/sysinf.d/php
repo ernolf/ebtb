@@ -46,10 +46,10 @@ sysinf_php_detect_wrong_extensions(){
 # create temporary ini file to load all existing extensions without any directives
 sysinf_php_ext_file_create(){
     [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
-    local pv sapi ext_file ini_file ext ext_in_ext_file
+    local pv sapi ext_file ini_file ext ext_in_ext_file leftstring
     local -a exts_all exts_in_ext_file
     local -i line_number
-    pv="$1" sapi="$2" ext_file="$(tf)"
+    pv="$1" sapi="$2" ext_file="$(tf)"; ${B[trace]:-_} && log_trace "pv='$pv' sapi='$sapi' ext_file='$ext_file'"
     mapfile -t exts_all< <(detect_extensions_in_ "/usr/lib/php/${EXG[$pv]%%;*}")
     ${X[grep]} -E '^\s*(zend_)?extension\s*=\s*' /etc/php/$pv/$sapi/php.ini > "$ext_file"
     if nonullglob "/etc/php/$pv/$sapi/conf.d/*.ini"; then
@@ -64,16 +64,15 @@ sysinf_php_ext_file_create(){
             echo "extension=$ext" >> "$ext_file"
         fi
     done
-    ${X[sed]} -i 's/[ "]//g' "$ext_file"
+    sed_ 's/[ "]//g' "$ext_file" '-i'
     uniq_lines "$ext_file"
     mapfile -t exts_in_ext_file < "$ext_file"
+    # only one sed task before the loop:
+    leftstring="$(sed_ 's/\.so//g' "$(echo "${exts_all[@]##*/}")" '-')"; ${B[trace]:-_} && log_trace "leftstring='$leftstring'"
     for ext_in_ext_file in ${exts_in_ext_file[@]#*extension=}; do
-        if ! [[ " $(echo ${exts_all[@]##*/}|${X[sed]} 's/\.so//g') " =~ " ${ext_in_ext_file%.so} " ]]; then
+        if ! [[ " $leftstring " =~ " ${ext_in_ext_file%.so} " ]]; then
             line_number=$(${X[grep]} -Enx "^\s*(zend_)?extension\s*=\s*$ext_in_ext_file" "$ext_file" | ${X[cut]} -d: -f1)
-            if (( $line_number )); then
-#                ${X[sed]} -i "${grep_output}d" "$ext_file"
-                ${X[sed]} -i "${line_number}d" "$ext_file"
-            fi
+            (( line_number )) && sed_ "${line_number}d" "$ext_file" '-i'
         fi
     done
     echo "$ext_file"

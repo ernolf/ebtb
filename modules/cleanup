@@ -11,6 +11,7 @@ ${CLEANUP_BASHLIB:-_} && return
 CLEANUP_BASHLIB=:
 
 cleanup() {
+    ${B[trace]:-_} && return 0
     local x
     for x in "$@"; do
         if [[ -d "$x" && "$x" != / && "$x" =~ ^(/tmp|/var/tmp|/dev/shm|/run/lock)(/|$) ]]; then

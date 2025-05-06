@@ -23,26 +23,26 @@ source <(${X[tail]} -n +10 modules/anykey)
 
 ${bool[debug]} && set -x
 
-declare channel1 channel2 dir1 dir2 lib libname libname_in_1 libname_in_2
+declare channel dir1 dir2 lib libname libname_in_1 libname_in_2
 declare -a difflibs=()
-channel1="$1"
-channel2="$2"
-dir1="$MBUILD_DIR"
-dir2="$DATA_DIR/$target_modules_dir/${channel2:=prod}"
+channel="$1" # target channel
+dir1="$MBUILD_DIR" # $ca_dir/../build/modules
+dir2="$DATA_DIR/$target_modules_dir/${channel:=prod}" # /nc/dat/data/ich/files/Documents/Coding/ebtb/modules/${channel:=prod}
 
 ${bool[verbose]} && echo "  checking libs:"
 
 #trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
 for lib in $(${X[find]} $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs BASHLIB' _ {} \; -print); do
     libname="${lib#$dir1/}"
-    libname_in_1="$(${X[head]} -n2 "$lib" | ${X[tail]} -n1 | ${X[sed]} "s|^# $INCLUDEDIR/${channel1:=test}/||")"
-    libname_in_2="$(${X[head]} -n2 "$dir2/$libname" | ${X[tail]} -n1 | ${X[sed]} "s|^# $INCLUDEDIR/$channel2/||")"
+    # Use -E to enable extended regex (so we can use “?” quantifier without backslashes).
+    # (${INCLUDEDIR}/)? : optionally to match minified libs as well
+    libname_in_1="$(${X[head]} -n2 "$lib" | ${X[tail]} -n1 | ${X[sed]} -E "s|^# (${INCLUDEDIR}/)?@channel@/||")"
+    libname_in_2="$(${X[head]} -n2 "$dir2/$libname" | ${X[tail]} -n1 | ${X[sed]} -E "s|^# (${INCLUDEDIR}/)?$channel/||")"
     ${bool[verbose]} && echo "  - \"$libname\""
     ${bool[verbose]} && echo "    1: \"$libname_in_1\"  2: \"$libname_in_2\""
     # Only modules that difference in body or path/name
-    if ( ( ${X[grep]} -qs MINIFIED <<< "$(${X[head]} -n1 "$lib")" && ! q0 ${X[diff]} "$lib" "$dir2/$libname") ||
-        ( ! ${X[grep]} -qs MINIFIED <<< "$(${X[head]} -n1 "$lib")" && ! q0 ${X[diff]} <(${X[sed]} '1,3d' "$lib") <(q2 ${X[tail]} -n +4 "$dir2/$libname") ) ||
-        ( ! ${X[grep]} -qs MINIFIED <<< "$(${X[head]} -n1 "$lib")" && [[ "$libname_in_1" != "$libname_in_2" ]] ) ); then
+#    if [[ $libname_in_1 != $libname_in_2 ]] || ! q0 ${X[diff]} <(q2 ${X[tail]} -n +4 "$lib") <(q2 ${X[tail]} -n +4 "$dir2/$libname"); then
+    if [[ $libname_in_1 != $libname_in_2 ]] || ! q0 ${X[diff]} <(q2 ${X[sed]} '1,3d; /_LIB_VERSION/d' "$lib") <(q2 ${X[sed]} '1,3d; /_LIB_VERSION/d' "$dir2/$libname"); then
         ${bool[verbose]} && echo "                  - different"
         difflibs+=("$libname")
         ${bool[verbose]} && echo "${#difflibs[@]}"

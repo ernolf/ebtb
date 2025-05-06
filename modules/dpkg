@@ -77,18 +77,80 @@ check_lockfiles(){
     fi
 }
 
-apt_update(){
-    spinner C " .  resynchronizing the APT package index files  ." &
-    ${X[apt-get]} -q2 update
-    kill_spinner
+# helper: process_apt_output <array‑name> <var_repo> <var_field> <var_from> <var_to>
+process_apt_update_output(){
+    local -n _lines=$1
+    local -n _repo=$2
+    local -n _field=$3
+    local -n _from=$4
+    local -n _to=$5
+    local line
+    for line in "${_lines[@]}"; do
+        if [[ $line =~ ^E:\ Repository\ \'([^\']+)\'\ changed\ its\ \'([^\']+)\'\ value\ from\ \'([^\']+)\'\ to\ \'([^\']+)\' ]]; then
+            _repo="${BASH_REMATCH[1]}"
+            _field="${BASH_REMATCH[2]}"
+            _from="${BASH_REMATCH[3]}"
+            _to="${BASH_REMATCH[4]}"
+        fi
+        line=${line/#E:/$(R)ERROR$(N):  |$(lR)}
+        line=${line/#W:/$(O)WARNING$(N):|$(Yi)}
+        line=${line/#N:/$(C)NOTICE$(N): |$(lC)}
+        bundle echo "$(pf; printf '%s' "${line%%|*}"; format_string "${line#*|}" 12; N)"
+    done
 }
 
-# returns true if last apt-* update is done more than $1=int (defaults to 4) hours ago
+apt_update(){
+    local repository changedreleaseinfo changedreleaseinfofrom changedreleaseinfoto
+    local -a output
+    spinner C " .  resynchronizing the APT package index files  ." &
+    mapfile -t output < <(${X[apt-get]} -q0 update 2>&1 | ${X[grep]} '^[EWN]: ')
+    kill_spinner
+    while (( ${#output[@]} )); do
+        repository= changedreleaseinfo= changedreleaseinfofrom= changedreleaseinfoto=
+        P; bundle echo "apt-get update returned:"; N
+        process_apt_update_output output repository changedreleaseinfo changedreleaseinfofrom changedreleaseinfoto
+        if [[ -n $repository && -n $changedreleaseinfo && -n $changedreleaseinfofrom && -n $changedreleaseinfoto ]]; then
+            question="$(qpf; W; format_string "Do you want to accept the change of the $(GRAYbg) $changedreleaseinfo $(W)-value for the $(O)$repository$(W) repository from $(C)$changedreleaseinfofrom$(W) to $(G)$changedreleaseinfoto" 3; N)"
+            f
+            if ask "$question" "$YES"; then
+                spinner C " .  allowing releaseinfo change in APT package index files  ." &
+                mapfile -t output < <(
+                    ${X[apt-get]} -q0 update --allow-releaseinfo-change-${changedreleaseinfo,,} 2>&1 | ${X[grep]} '^[EWN]: '
+                )
+                kill_spinner
+            else
+                separator
+                return 1
+            fi
+        else
+            anykey_noquit
+            separator
+            return 0
+        fi
+    done
+    separator
+}
+
 apt_need_update(){
     check_lockfiles || exit1
-    if (( $(( $(( $(now) - $(${X[stat]} -c %Y /var/lib/apt/lists/partial) )) / 3600 )) > ${1:-4} )); then
+    local -i ttl
+    ttl=${1:-4} # the ttl of the apt-cache defaults to 4 hours
+    if [[ -f /var/lib/apt/periodic/update-success-stamp ]]; then
+        timestampsource=/var/lib/apt/periodic/update-success-stamp
+    elif [[ -d /var/lib/apt/lists/partial ]]; then
+        timestampsource=/var/lib/apt/lists/partial
+    else
+        bundle echo "$(pf; format_string "This script requires up-to-date APT package indexes to function correctly. No previous update timestamp could be found since the file $(C)/var/lib/apt/periodic/update-success-stamp$(N) as well as the directory $(C)/var/lib/apt/lists/partial$(N) which normaly contains the last update time beared in the time of last data modification could not be found." 3)"
+        if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
+            apt_update
+        else
+            te0 3
+        fi
+        return
+    fi
+    if (( $(( $(( $(now) - $(${X[stat]} -c %Y "$timestampsource") )) / 3600 )) > ttl )); then
         f
-        echo "$(pf; format_string "The APT package indexes are synchronized more than ${1:-4} hours ago. This script requires up-to-date indexes to function correctly." 3)"
+        echo "$(pf; format_string "The APT package indexes are synchronized more than $ttl hours ago. This script requires up-to-date indexes to function correctly." 3)"
         if ask "$(qpf)Do you want to resynchronize the APT package index files now" "$YES"; then
             apt_update
         else
@@ -304,19 +366,19 @@ list_apt_sources(){
     o2; B; echo "This is a list of the effective apt sources on this machine for your information:"; N
     # apt sources
     if [ -d /var/lib/apt/lists ]; then
-        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_Packages.*$//;s/-deb.*$//;s/_dists_/ /;s/_binary-/ /')")
+        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_Packages.*$//; s/-deb.*$//; s/_dists_/ /; s/_binary-/ /')")
         for i in ${!aptsources[@]}; do
-            o2; pf; GRAY; echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/}|${X[sed]} 's/\(.*\)\/\(.*\)/\1 \2/')"; N
+            o2; pf; GRAY; echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/} | sed_ 's#(.*)/(.*)#\1 \2#')"; N
         done
 
     f
     o2; B; echo "This is a list of the files containing the apt sources for your information:"; N
     # apt sources files
-        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/;${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
+        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_dists.*$//')")
 # TODO 3 -->
 #        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
 # TODO <-- 3
-        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}"; do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done))
+        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}"; do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done))
         for i in ${!aptsourcesfiles[@]}; do
             o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N
         done

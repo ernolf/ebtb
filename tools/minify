@@ -21,7 +21,7 @@ script="$1" name="$2"
 if [ "$(${X[head]} -n1 "$script")" = '__minified_bashlib__' ]; then
     echo "# BASHLIB (minified)"
     echo "# @channel@/$name"
-    echo "# version $runtime $epoch"
+    echo "# version $epoch"
     line_no=10
 fi
 

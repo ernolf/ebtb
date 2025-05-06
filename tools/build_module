@@ -30,6 +30,8 @@ source config/configure
 source config/placeholders
 # source sed functions
 source <(${X[tail]} -n +14 modules/awksed)
+# Source the time
+source config/runtime
 
 # Declare variables
 declare input_module output_module modulename tempfile placeholder placeholder_pattern
@@ -67,7 +69,7 @@ else
     for placeholder in "${placeholders[@]}"; do
         placeholder_pattern="__${placeholder}__"
         [ -f "$output_module" ] && ${X[cat]} "$output_module" > "$tempfile"
-        ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$modulename'"); next } 1' "$tempfile" > "$output_module"
+        ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$modulename' '$epoch'"); next } 1' "$tempfile" > "$output_module"
     done
 fi
 

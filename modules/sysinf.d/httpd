@@ -12,6 +12,22 @@ SYSINF_HTTPD_BASHLIB=:
 
 #    . <(lrequire httpd)
 sysinf_httpd(){
+    nginx_T() {
+        local cl
+        while IFS= read -r cl; do
+            if [[ $cl == "# configuration file "* ]]; then
+                cl=${cl#"# configuration file "}
+                line _ dY a a2
+                dY
+                printf '%s\n' "$cl"
+                N
+                line - dY ${#cl}
+            else
+                printf '%s\n' "$cl"
+            fi
+        done < <(${X[nginx]} -T 2>&1 | remove_empty_lines_before_ "# configuration file ")
+    }
+
     local -A bool
     while (( $# )); do
         [[ $1 ]] && bool[$1]=:
@@ -61,7 +77,7 @@ sysinf_httpd(){
                     done
                     SYSINF+=("title apache2 loaded common modules:")
                     SYSINF+=("true $(echo $loaded_common_a2mods)")
-                    missing_common_a2mods="$(trim "$missing_common_a2mods")"
+                    missing_common_a2mods=${missing_common_a2mods%% }; missing_common_a2mods=${missing_common_a2mods## }
                     if [ -n "$missing_common_a2mods" ]; then
                         SYSINF+=("echo apache2 not loaded common modules: $(echo $missing_common_a2mods)")
                     else
@@ -72,7 +88,7 @@ sysinf_httpd(){
                             uncommon_a2mods+=" $a2mod"
                         fi
                     done
-                    uncommon_a2mods="$(trim "$uncommon_a2mods")"
+                    uncommon_a2mods=${uncommon_a2mods%% }; uncommon_a2mods=${uncommon_a2mods## }
                     if [ -n "$uncommon_a2mods" ]; then
                         SYSINF+=("title apache2 special-usecase modules:")
                         SYSINF+=("true $(echo $uncommon_a2mods)")
@@ -91,7 +107,7 @@ sysinf_httpd(){
                 SYSINF+=("title_end end of $enabled_httpd details")
             ;;
             nginx)
-                if ( q0 ${X[nginx]} -t && (( ${#NGXCONFFILES[@]} )) ); then
+                if q0 ${X[nginx]} -t && (( ${#NGXCONFFILES[@]} )); then
                     SYSINF+=("nginx -V")
                     populate_ngxmodules static
                     if (( ${#NGXMODULES[@]} )); then
@@ -103,7 +119,8 @@ sysinf_httpd(){
                         SYSINF+=("title nginx loaded shared (dynamic) modules:")
                         SYSINF+=("true $(echo ${NGXMODULES[@]%_module})")
                     fi
-                    SYSINF+=("nginx -T")
+                    SYSINF+=("title nginx -T:")
+                    SYSINF+=("true $(nginx_T)")
                 else
                     SYSINF+=("nginx -t")
                 fi

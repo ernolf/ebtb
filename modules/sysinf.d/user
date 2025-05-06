@@ -29,7 +29,7 @@ sysinf_user(){
                 # lookup primary group name
                 prim=$(${X[getent]} group "$gid" | ${X[cut]} -d: -f1)
                 # lookup supplementary groups (id -nG includes primary, remove it)
-                supp=$(${X[id]} -nG "$user" 2>$NUL | ${X[tr]} ' ' ',' | ${X[sed]} "s/\b$prim\b//g;s/,,*/,/g;s/^,//;s/,$//")
+                supp=$(${X[id]} -nG "$user" 2>$NUL | ${X[tr]} ' ' ',' | sed_ "s/\b$prim\b//g; s/,,*/,/g; s/^,//; s/,$//")
                 echo "$user:$pw:$uid:$gid:$gecos:$home:$shell:$prim:$supp"
             done < "$passwd_file"
 #            done < <(${X[sort]} -t: -k1,1 "$passwd_file")
@@ -68,7 +68,7 @@ sysinf_user(){
                 pwd_last_change=$(${X[chage]} -l "$user" 2>$NUL |
                     ${X[gawk]} -F: '/Last password change/ { sub(/^ +/,"",$2); print $2 }')
                 # last login (strip leading fields) get raw lastlog output for this user
-                last_login=$(${X[lastlog]} -u "$user" 2>$NUL | ${X[sed]} -n '2,$p')
+                last_login=$(${X[lastlog]} -u "$user" 2>$NUL | sed_ '2,$p')
                 # if “Never logged in” appears, normalize to “never”
                 if [[ "$last_login" == *"Never logged in"* ]]; then
                     last_login="never"

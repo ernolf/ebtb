@@ -38,14 +38,15 @@ if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z 
 
         # detect location of config.php
         if [ -d "${NC[d]}" ]; then
-            NC[du]=$(${X[stat]} -c %U ${NC[d]})
-            NC[dg]=$(${X[stat]} -c %G ${NC[d]})
-            if q2 cd ${NC[d]}; then
-                NC[cd]=$(q2 ${X[php]} -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");')
+            NC[du]=$(${X[stat]} -c %U ${NC[d]} 2> >(log_trace))
+            NC[dg]=$(${X[stat]} -c %G ${NC[d]} 2> >(log_trace))
+            if cd ${NC[d]} 2> >(log_trace); then
+                NC[cd]=$(${X[php]} -r 'require_once "lib/base.php"; OC::initPaths(); echo rtrim(OC::$configDir, "/");' 2> >(log_trace))
                 cd
+                [[ -n ${NC[cd]} && -d ${NC[cd]} ]] || NC[cd]="${NC[d]}/config"
                 # pick out NC[u]
-                if (( $(q2 ${X[stat]} -c %u ${NC[cd]}/config.php) )); then
-                    NC[u]="$(${X[stat]} -c %U ${NC[cd]}/config.php)"
+                if (( $(${X[stat]} -c %u ${NC[cd]}/config.php 2> >(log_trace)) )); then
+                    NC[u]="$(${X[stat]} -c %U ${NC[cd]}/config.php 2> >(log_trace))"
                 fi
             elif [[ "${NC[du]}" = root && "${NC[dg]}" != root ]]; then
                 NC[u]=${NC[dg]}

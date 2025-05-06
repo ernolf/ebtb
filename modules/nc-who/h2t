@@ -14,9 +14,9 @@ h2t_command(){
     local i tputcols width
     tputcols=$(${X[tput]} cols | ${X[tr]} -d '\n')
     width=$(( tputcols - 8 ))
-    if [[ -t 0 ]]; then # if no STDIN;
+    if [[ -p /dev/stdin ]]; then # read from actual STDIN
+        ${X[html2text]} -utf8 -width $width
+    else # if no STDIN;
         ${X[html2text]} -utf8 -width $width <<< "$@"
-    else
-        ${X[cat]} | ${X[html2text]} -utf8 -width $width
     fi
 }

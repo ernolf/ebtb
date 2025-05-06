@@ -81,7 +81,7 @@ check_fpm_pool_files(){
                     fi
                 fi
                 for i in ${!alt_files[@]}; do
-                    ${X[sed]} "s/$old/$new/g" "$odir/${alt_files[i]}" > "$ndir/${alt_files[i]}"
+                    sed_ "s/$old/$new/g" "$odir/${alt_files[i]}" "$ndir/${alt_files[i]}"
                     if [ -f "$ndir/${alt_files[i]}" ];then
                         bundle echo "$(rpf; format_string "Successfully created poolfile $(C)"$ndir/${alt_files[i]}"$(N)" 3;N)"
                     fi

@@ -39,32 +39,22 @@ su_root "to run this script."
 check_context
 my_update_check
 
-main_menu() {
-    local choice
-
+main_menu(){
+    declare -g MENU_CHOICE='' MENU_RESULT='' # purge any previous value
+    local opts
+    opts="$(tf)"
+    ${X[cat]} <<OPTS >"$opts"
+    title="Main Menu of the ebtb Janitor"
+    prompt="Select a janitor job from the list"
+    declare -a items=("sysinf" "ebtb launch" "contribute_")
+    declare -A descr=(
+        ["sysinf"]="System Information"
+        ["ebtb launch"]="Launch ebtb - Admin Scripts"
+        ["contribute_"]="Contribute to ebtb"
+    )
+OPTS
     while :; do
-        echo
-        o5; echo "=== Main Menu of the ebtb Janitor ==="
-        echo
-        o5; echo "$(box 1; W)  -  System Information"
-        o5; echo "$(box 2; W)  -  Launch ebtb - Admin Scripts"
-        o5; echo "$(box 3; W)  -  Contribute"
-        o5; echo "$(box q; W)  -  Quit"
-        echo
-        # prompt user for selection
-        read  -rsn 1 -p "$(C)Select an option $(button 1) $(button 2) $(button 3) or $(button q) to quit$(N): " choice
-        case "$choice" in
-            1)  sysinf
-                ;;
-            2)  ebtb launch
-                ;;
-            3)  contribute_
-                ;;
-         [qQ])  break
-                ;;
-            *)  echo "Invalid choice, please try again."
-                ;;
-        esac
+        menu "$opts" && ${MENU_RESULT:-:} || exit1
     done
 }
 

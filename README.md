@@ -66,7 +66,7 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
     > </details>
 
 - ### nc-occ
-  completely reinvented interactive *`occ`* interface that makes it easier to find the right command with the available options and arguments for your task
+  completely reinvented interactive *`occ`* interface that makes it easier to find the right command with the available options and arguments for your task, with the ability to save your most used *`occ`* commands as favorites
   - [x] Nextcloud All-in-One
   - [ ] Nextcloud snap
   - [x] MySQL/MariaDB

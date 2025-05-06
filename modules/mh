@@ -7,7 +7,14 @@ __copyright__
 __license__
 #
 
-declare -f _ &>$NUL || _(){ false; }
+declare -f _ &>${NUL:=/dev/null} || _(){ false; }
+if (( epoch < 1737773190 )); then
+    q0(){ "$@" &>$NUL; }
+    q1(){ "$@" >$NUL; }
+    q2(){ "$@" 2>$NUL; }
+    q0 declare -f lrequire || lrequire(){ req $@;}
+fi
+
 ${MH_BASHLIB:-_} && return
 MH_BASHLIB=:
 
@@ -31,7 +38,9 @@ tofifo(){
 mh(){
     local -A bool
     [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
-    tofifo "$*"
+    local pl # payload
+    pl="$*"
+    tofifo "${pl//\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
     ${bool[debugx]:-_} && set -x
     return 0
 }
@@ -45,7 +54,7 @@ haul(){
         [[ ${FUNCNAME[1]} == bundle ]] && level=2 || level=1
         case "$hauler" in
             echo) [ "$1" = '-n' ] && shift
-                  tofifo "$(funcname_and_lineno $level) e: $(echo $* | ${X[sed]} 's/  / /g')"
+                  tofifo "$(funcname_and_lineno $level) e: $(to_one_line "$@")"
 #                  mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$@")" 2>&1)
                   ;;
           printf) mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$($@)")" 2>&1) ;;
@@ -55,7 +64,7 @@ haul(){
             tofifo "$(funcname_and_lineno $level) ${hauler::1}: ${pl[0]}"
         elif (( ${#pl[@]} > 1 )); then
             i_max=${#pl[@]}
-            (( ${#i_max} > 1 )) && padding="%0${#i_max}d" || padding='%d'
+            (( i_max > 9 )) && padding="%0${#i_max}d" || padding='%d'
             for i in ${!pl[@]}; do
                 tofifo "$(funcname_and_lineno $level) ${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
             done
@@ -78,6 +87,7 @@ bundle(){
     (( ${#pl[@]} )) && for i in ${!pl[@]}; do echo -e "${pl[i]}"; done
 }
 
+cio "ansifilter: ${X[ansifilter]/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\/ansifilter/binary}"
 # Background processes that reads lines from FIFO and processes them
 ( set +ex; while [[ -p "${F[mhlog]}" ]]; do while IFS= read -r line; do [[ "$line" == 'EOF' ]] && ${X[rm]} -f -- "${F[mhlog]}" || log "$(filter_ <<< "$line")"; done < "${F[mhlog]}"; done ) &
 ( set +ex; while [[ -p "${F[mhcio]}" ]]; do while IFS= read -r line; do [[ "$line" == 'EOF' ]] && ${X[rm]} -f -- "${F[mhcio]}" || cio "$(filter_ <<< "$line")"; done < "${F[mhcio]}"; done ) &

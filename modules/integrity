@@ -60,9 +60,9 @@ integrity_check(){
     local -i r
     local -A bool tf
     bool[signed]=: tf[i]="$(tf shm)" tf[v]="$(tf shm)" r=1
-    key="$(${X[sed]} -n 's/^# OpenPGP_Key\s*\(.*\)$/\1/p' "$MP")"
-    mail="$(${X[sed]} -n 's/^# Email\s*\(.*\)$/\1/p' "$MP")"
-    aut="$(${X[sed]} -n 's/^# Copyright.*\[\(.*\)\]/\\[\1\\]/p' "$MP")"
+    key="$(sed_ 's/^# OpenPGP_Key\s*(.*)$/\1/p' "$MP" '-')"
+    mail="$(sed_ 's/^# Email\s*(.*)$/\1/p' "$MP" '-')"
+    aut="$(sed_ 's/^# Copyright.*\[(.*)\]/\\[\1\\]/p' "$MP" '-')"
     su_root "to run the integrity check" integrity_check
     delp2ei '^-----BEGIN PGP SIGNATURE-----$' "$MP" "${tf[i]}"
     if [ -n "$vdirname" ]; then
@@ -89,7 +89,7 @@ integrity_check(){
         mh "$(funcname_and_lineno) import of public key failed"
         o5; R; echo "- import of public key failed."
         qpf; ask "Continue at own risk without check?" "$NO" && {
-            ${X[sed]} -i 's/^v=false$/v=true/' "$MP" # this step must be done before convene, to not write back over the created symlink
+            sed_ 's/^v=false$/v=true/' "$MP" '-i' # this step must be done before convene, to not write back over the created symlink
             convene
             ebtb_is_installed janitor || { ebtb_install_script janitor && o5; Y; echo "The 'janitor' script provides system information. Simply run 'janitor'"; }
             cleanup_dangling_links ${D[ulb]}
@@ -132,7 +132,7 @@ integrity_check(){
             }
         fi
     else
-        ${X[sed]} -i 's/^v=false$/v=true/' "$MP" # this step must be done before convene, to not write back over the created symlink
+        sed_ 's/^v=false$/v=true/' "$MP" '-i' # this step must be done before convene, to not write back over the created symlink
         convene
         ebtb_is_installed janitor || { ebtb_install_script janitor && o5; Y; echo "The 'janitor' script provides system information. Simply run 'janitor'"; }
         cleanup_dangling_links ${D[ulb]}

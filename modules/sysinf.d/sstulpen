@@ -28,7 +28,7 @@ sysinf_sstulpen(){
 
                 # output pipes-delimited
                 printf "%s|%s|%s|%s|%s|%s|%s|%s\n" \
-                    "$proto" "$state" "$recv" "$send" "$local" "$svc" "$peer" "$(echo $proc | ${X[sed]} 's/^users://; s/[()]//g; s/,"/, "/g')"
+                    "$proto" "$state" "$recv" "$send" "$local" "$svc" "$peer" "$(sed_ 's/^users://; s/[()]//g; s/,"/, "/g' "$proc" '-')"
             done
         ) | ${X[column]} -t -s '|' 
     }
@@ -38,7 +38,7 @@ sysinf_sstulpen(){
             kill_spinner
             spinner Yi " . determine system informations - sstulpen ." &
         }
-        SYSINF+=("title ss -tulpen")
+        SYSINF+=("title ss -tulpen:")
         SYSINF+=("true $(ss_with_service_names)")
     }
 }

@@ -151,7 +151,8 @@ nc_monitor(){
 . "${F[binary]}"
 : \${NUL:=/dev/null}
 declare -A B DB
-B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB[strg]="$(${X[sed]} 's/\$/\\$/' <<< "${DB[strg]}")" DB[exec]="${DB[exec]}"
+B[aio]="${B[aio]}" B[docker]="${B[docker]}" DB[strg]="${DB[strg]/\$/\\\$}" DB[exec]="${DB[exec]}"
+log_trace(){ :;}
 $(declare -f _)
 $(declare -f q0)
 $(declare -f aio_wrapper)

@@ -10,18 +10,268 @@ __license__
 ${SYSINF_AIO_BASHLIB:-_} && return
 SYSINF_AIO_BASHLIB=:
 
+# Tese arrayss MUST be declared global, because they are sourced from within a function
+# 1) define a global indexed array for order
+declare -ga AIO_BOOL_KEYS=(
+    aio_general_information
+    aio_service_logs
+    aio_nextcloud_information_logs
+    aio_backup_container_logs
+    aio_all
+)
+
+# 2) define a global associative array for descriptions
+declare -gA AIO_BOOL_DESCR=(
+    [aio_general_information]="AIO General Information"
+    [aio_service_logs]="AIO Service logs"
+    [aio_nextcloud_information_logs]="AIO Nextcloud Information logs"
+    [aio_backup_container_logs]="AIO Backup Container logs"
+    [aio_all]="All possible AIO Information"
+)
+
 sysinf_aio(){
+    # 3) for every Sub-Section declare a JOB_KEYS/ JOB_DESCR-pair
+    local -a job_keys__aio_general_information=(
+        docker_info
+        docker_inspect_master
+        docker_log_master
+        docker_network
+    )
+    local -A job_descr__aio_general_information=(
+        [docker_info]="Docker daemon overview"
+        [docker_inspect_master]="Inspect master container"
+        [docker_log_master]="Master container logs"
+        [docker_network]="Network details"
+    )
+
+    local -a job_keys__aio_service_logs=(
+        docker_log_apache
+        docker_log_database
+        docker_log_nextcloud
+        docker_log_notify-push
+        docker_log_redis
+    )
+    local -A job_descr__aio_service_logs=(
+        [docker_log_apache]="apache service log"
+        [docker_log_database]="database service log"
+        [docker_log_nextcloud]="nextcloud service log"
+        [docker_log_notify-push]="notify-push service log"
+        [docker_log_redis]="redis service log"
+    )
+
+    local -a job_keys__aio_nextcloud_information_logs=(
+        nextcloud_log
+        install_log
+        update_log
+    )
+    local -A job_descr__aio_nextcloud_information_logs=(
+        [nextcloud_log]="nextcloud log"
+        [install_log]="install log"
+        [update_log]="update log"
+    )
+
+    local -a job_keys__aio_backup_container_logs=(
+        docker_log_borgbackup
+        docker_log_collabora
+        docker_log_talk
+        docker_log_clamav
+        docker_log_imaginary
+        docker_log_whiteboard
+        docker_log_fulltextsearch
+        docker_log_talk-recording
+    )
+    local -A job_descr__aio_backup_container_logs=(
+        [docker_log_borgbackup]="borgbackup container log"
+        [docker_log_collabora]="collabora container log"
+        [docker_log_talk]="talk container log"
+        [docker_log_clamav]="clamav container log"
+        [docker_log_imaginary]="imaginary container log"
+        [docker_log_whiteboard]="whiteboard container log"
+        [docker_log_fulltextsearch]="fulltextsearch container log"
+        [docker_log_talk-recording]="talk-recording container log"
+    )
+
     local -A bool
+    # 1) collect flags: main-flags + “aio_all”
     while (( $# )); do
         [[ $1 ]] && bool[$1]=:
         shift
     done
+    # if "all" requested, turn on all sub-sections
+    local k sub
+    ${bool[aio_all]:-_} && for k in "${AIO_BOOL_KEYS[@]}"; do bool[$k]=:; done
+    bool[aio_all]=_
+
+    # 2) if interactive tty, prompt per Sub-Section for JOB-flags
+    if [[ -t 0 ]]; then
+        ${bool[spinner]:-_} && {
+            kill_spinner
+        }
+        local -i i n
+        for sub in "${AIO_BOOL_KEYS[@]}"; do
+            ${bool[$sub]:-_} || continue
+            local -n job_keys="job_keys__$sub"
+            local -n job_descr="job_descr__$sub"
+            local -a nums sel_jobs=()
+
+            local select_jobs_title="Select jobs for ${AIO_BOOL_DESCR[$sub]}:"
+            f
+            echo "$select_jobs_title"
+            line '-' N ${#select_jobs_title}
+            printf "  %2d) %s\n" 0 "skip all"
+            for i in "${!job_keys[@]}"; do
+                printf "  %2d) %s\n" $((i+1)) "${job_descr[${job_keys[i]}]}"
+            done
+
+            while :; do
+                read -rp "Choose number(s) (e.g. 1 3, 0 to skip): " -a nums
+                [[ " ${nums[*]} " =~ " 0 " ]] && break
+                local valid=1
+                for n in "${nums[@]}"; do
+                    (( n>=1 && n<=${#job_keys[@]} )) || { echo "Invalid: $n"; valid=0; break; }
+                done
+                (( valid )) || continue
+                for n in "${nums[@]}"; do
+                    bool[${job_keys[$((n-1))]}]=:
+                    sel_jobs+=("${job_descr[${job_keys[$((n-1))]}]}")
+                done
+                echo "Will run: ${sel_jobs[*]}"
+                break
+            done
+        done
+    fi
+
+    # 3) now build SYSINF based on all flags (main + job-flags)
+    ${bool[ff]:-_} || {
+        ${bool[spinner]:-_} && {
+            kill_spinner
+            spinner Yi " . gathering AIO information ." &
+        }
+        if ${B[aio]}; then
+            local cmd_key
+            # for each Sub-Section...
+            for sub in "${AIO_BOOL_KEYS[@]}"; do
+                ${bool[$sub]:-_} || continue
+
+                # output section header
+                SYSINF+=("title ${AIO_BOOL_DESCR[$sub]}:")
+
+                # now dispatch each job-flag in order
+                local -n job_keys="job_keys__${sub}"
+                for cmd_key in "${job_keys[@]}"; do
+                    ${bool[$cmd_key]:-_} || continue
+                    case "$cmd_key" in
+            # general information
+                        docker_info) SYSINF+=("docker info") ;;
+              docker_inspect_master) SYSINF+=("docker inspect nextcloud-aio-mastercontainer") ;;
+                  docker_log_master) SYSINF+=("docker logs nextcloud-aio-mastercontainer") ;;
+                     docker_network) SYSINF+=("docker network inspect nextcloud-aio") ;;
+            # service logs
+                  docker_log_apache) SYSINF+=("docker logs nextcloud-aio-apache") ;;
+                docker_log_database) SYSINF+=("docker logs nextcloud-aio-database") ;;
+               docker_log_nextcloud) SYSINF+=("docker logs nextcloud-aio-nextcloud") ;;
+             docker_log_notify-push) SYSINF+=("docker logs nextcloud-aio-notify-push") ;;
+                   docker_log_redis) SYSINF+=("docker logs nextcloud-aio-redis") ;;
+            # nextcloud logs
+                      nextcloud_log) SYSINF+=("docker exec nextcloud-aio-nextcloud tail -n100 data/nextcloud.log") ;;
+                        install_log) SYSINF+=("docker exec nextcloud-aio-nextcloud cat data/install.log") ;;
+                         update_log) SYSINF+=("docker exec nextcloud-aio-nextcloud cat data/update.log") ;;
+            # backup container logs
+              docker_log_borgbackup) SYSINF+=("docker logs nextcloud-aio-borgbackup") ;;
+               docker_log_collabora) SYSINF+=("docker logs nextcloud-aio-collabora") ;;
+                    docker_log_talk) SYSINF+=("docker logs nextcloud-aio-talk") ;;
+                  docker_log_clamav) SYSINF+=("docker logs nextcloud-aio-clamav") ;;
+               docker_log_imaginary) SYSINF+=("docker logs nextcloud-aio-imaginary") ;;
+              docker_log_whiteboard) SYSINF+=("docker logs nextcloud-aio-whiteboard") ;;
+          docker_log_fulltextsearch) SYSINF+=("docker logs nextcloud-aio-fulltextsearch") ;;
+          docker_log_talk-recording) SYSINF+=("docker logs nextcloud-aio-talk-recording") ;;
+                    esac
+                done
+            done
+        else
+            SYSINF+=("echo No Nextcloud AIO installation detected")
+        fi
+    }
+}
+# COMMENT -->
+########################################################
     ${bool[ff]:-_} || {
         ${bool[spinner]} && {
             kill_spinner
             spinner Yi " . determine system informations - AIO ." &
         }
-        SYSINF+=("echo $(${B[aio]} || printf "No ")Nextcloud All-In-One installation detected")
-        ${bool[aio]:-_} && SYSINF+=("echo DOCKER = $(${B[docker]} && echo yes || echo no)")
+        if ${B[aio]}; then
+            # general information
+            ${bool[aio_general_information]:-_} && {
+                SYSINF+=("title ${AIO_BOOL_DESCR[aio_general_information]}:")
+                SYSINF+=("docker info")
+                SYSINF+=("docker inspect nextcloud-aio-mastercontainer")
+                SYSINF+=("docker logs nextcloud-aio-mastercontainer")
+                SYSINF+=("docker network inspect nextcloud-aio")
+            }
+            # service logs
+            ${bool[aio_service_logs]:-_} && {
+                SYSINF+=("title ${AIO_BOOL_DESCR[aio_service_logs]}:")
+                SYSINF+=("docker logs nextcloud-aio-apache")
+                SYSINF+=("docker logs nextcloud-aio-database")
+                SYSINF+=("docker logs nextcloud-aio-nextcloud")
+                SYSINF+=("docker logs nextcloud-aio-notify-push")
+                SYSINF+=("docker logs nextcloud-aio-redis")
+            }
+            # nextcloud logs
+            ${bool[aio_nextcloud_information_logs]:-_} && {
+                SYSINF+=("title ${AIO_BOOL_DESCR[aio_nextcloud_information_logs]}:")
+                SYSINF+=("docker exec nextcloud-aio-nextcloud tail -n100 data/nextcloud.log")
+                SYSINF+=("docker exec nextcloud-aio-nextcloud cat data/install.log")
+                SYSINF+=("docker exec nextcloud-aio-nextcloud cat data/update.log")
+            }
+            # backup container logs
+            ${bool[aio_backup_container_logs]:-_} && {
+                SYSINF+=("title ${AIO_BOOL_DESCR[aio_backup_container_logs]}:")
+                SYSINF+=("docker logs nextcloud-aio-borgbackup")
+                SYSINF+=("docker logs nextcloud-aio-collabora")
+                SYSINF+=("docker logs nextcloud-aio-talk")
+                SYSINF+=("docker logs nextcloud-aio-clamav")
+                SYSINF+=("docker logs nextcloud-aio-imaginary")
+                SYSINF+=("docker logs nextcloud-aio-whiteboard")
+                SYSINF+=("docker logs nextcloud-aio-fulltextsearch")
+                SYSINF+=("docker logs nextcloud-aio-talk-recording")
+            }
+        else
+            SYSINF+=("echo No Nextcloud All-In-One installation detected")
+        fi
     }
 }
+# COMMENT -->
+########################################################
+
+# General information
+docker info
+docker inspect nextcloud-aio-mastercontainer
+docker logs nextcloud-aio-mastercontainer
+docker network inspect nextcloud-aio
+
+# Retrieve service logs
+docker logs nextcloud-aio-apache
+docker logs nextcloud-aio-database
+docker logs nextcloud-aio-nextcloud
+docker logs nextcloud-aio-notify-push
+docker logs nextcloud-aio-redis
+
+# Retrieve Nextcloud information
+docker exec --user www-data nextcloud-aio-nextcloud php occ config:list
+docker exec nextcloud-aio-nextcloud tail -n100 data/nextcloud.log
+docker exec nextcloud-aio-nextcloud cat data/install.log
+docker exec nextcloud-aio-nextcloud cat data/update.log
+
+# Retrieve backup container logs
+docker logs nextcloud-aio-borgbackup
+
+# Retrieve optional container logs
+docker logs nextcloud-aio-collabora
+docker logs nextcloud-aio-talk
+docker logs nextcloud-aio-clamav
+docker logs nextcloud-aio-imaginary
+docker logs nextcloud-aio-whiteboard
+docker logs nextcloud-aio-fulltextsearch
+docker logs nextcloud-aio-talk-recording

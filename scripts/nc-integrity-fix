@@ -102,17 +102,17 @@ nc_download_default(){
                 url2="${NC[github_raw]}/$app_id/$version_tag/$file"
             else
                 xml_f="${NC[d]}/apps/$app_id/appinfo/info.xml"
-                repo="$(${X[xmls]} -v "//info/repository" "$xml_f" | ${X[sed]} '2,$d;s|.git$||1')"
+                repo="$(${X[xmls]} -v "//info/repository" "$xml_f" | sed_ '2,$d; s|.git$||1')"
                 if [ -z "$repo" ]; then
-                    issueTracker=$(${X[xmls]} -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
-                    repo=$(${X[sed]} 's|/issues$||1' <<< "${issueTracker%/}")
+                    issueTracker=$(${X[xmls]} -v "//info/bugs" "$info_xml" | sed_ '2,$d')
+                    repo=$(sed_ 's|/issues$||1' "${issueTracker%/}" '-')
                 fi
                 if [[ "$repo" =~ github.com ]]; then
-                    url="$(${X[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
+                    url="$(sed_ 's/github/raw.githubusercontent/' "$repo" '-')"
                 else
                     echo "download of '$path' failed. You must check this one yourself"
                 fi
-                version_tag="$(${X[xmls]} -v "//info/version" "$xml_f" | ${X[sed]} '2,$d')"
+                version_tag="$(${X[xmls]} -v "//info/version" "$xml_f" | sed_ '2,$d')"
                 path="apps/$app_id/$file"
                 url1="$url/$version_tag/$file"
                 url2="$url/v$version_tag/$file"

@@ -16,18 +16,21 @@ source config/configure
 # Source the placeholders file
 source config/placeholders
 # Source the time
-source config/runtime
+# source config/runtime # time is sourced only once by build script and passed as an argument!
 
 if $LOCAL_SERVER; then
     MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
 fi
 
-declare placeholder name
-placeholder="$1" name="$2" channel="$3"
+declare placeholder name runtime channel
+declare -i epoch
+placeholder="$1" name="$2" epoch=$3 channel="${4:-prod}"
 
 placeholder_replace(){
-    local placeholder minified
-    placeholder="$1"
+    local placeholder name channel minified
+    local -i epoch
+    placeholder="$1" name="$2" epoch=$3 channel="$4"
+    runtime="$(${X[date]} -d @$epoch "+%F %R %Z")"
     ${MINIFY:-false} && minified=" (minified)" || minified=''
     case "$placeholder" in
         shebang_bash)
@@ -43,7 +46,7 @@ placeholder_replace(){
             echo "# $BINDIR/$name"
             ;;
         path_and_modulename)
-            echo "# $INCLUDEDIR/@channel@/$name"
+            echo "# $MODULEDIR/$name"
             ;;
         version_and_datestring)
             echo "# version $runtime $epoch"
@@ -60,13 +63,13 @@ placeholder_replace(){
             tools/minify "blocks/whoami_whereami"
             ;;
         scriptname)
-            echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
+            echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
         libversion)
             echo "${name^^}_LIB_VERSION=$epoch"
             ;;
         debug)
-            if [ "${channel:-prod}" = "test" ]; then
+            if [ "$channel" = "test" ]; then
                 ${X[cat]} "blocks/debug"
             fi
             ;;
@@ -116,5 +119,4 @@ placeholder_replace(){
             echo "    used_binaries=(${ub[@]})" | ${X[sed]} 's/( /(/'
     esac
 }
-
-placeholder_replace $placeholder
+placeholder_replace "$placeholder" "$name" $epoch "$channel"

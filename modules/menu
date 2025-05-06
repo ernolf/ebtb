@@ -1,0 +1,337 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${MENU_BASHLIB:-_} && return
+MENU_BASHLIB=:
+
+. <(lrequire button)
+
+# A reusable menu function for Bash
+# TODO 1 -->
+menu_usage_example_1(){
+    declare -g MENU_CHOICE='' MENU_RESULT='' # purge any previous value
+    local opts="$(tf)"
+    ${X[cat]} <<OPTS >"$opts"
+    title="Main Menu of the ebtb Janitor"
+    prompt="Select a janitor job from the list"
+  # items is needed for the order:
+    declare -a items=("sysinf" "ebtb launch" "contribute_")
+  # descr is needed for the label:
+    declare -A descr=(
+        ["sysinf"]="System Information"
+        ["ebtb launch"]="Launch ebtb - Admin Scripts"
+        ["contribute_"]="Contribute to ebtb"
+    )
+OPTS
+    # execute the command or exit on error
+    menu "$opts" && ${MENU_RESULT:-:} || exit1
+}
+
+# Function to display a menu and select an option
+show_menu(){
+    local -i i number_of_options level=$1
+    shift
+    local -a options=("$@")
+    local prompt choice
+    number_of_options=${#option[@]}
+    echo "Please choose an option:"
+    f
+    for i in "${!options[@]}"; do
+        pf; printf "%2d. %s\n" $(( i + 1 )) "${options[i]}"
+    done
+    if (( level > 1 )); then
+        prompt="Your choice ($(r2r), $(q2q))"
+    else
+        prompt="Your choice ($(q2q))"
+    fi
+    f
+    cursor_ on
+    read -p "$prompt: " choice
+    cursor_ off
+    case "$choice" in
+        r)  if (( level > 1 )); then
+                exec $CMA
+            fi
+            ;;
+        q)  exit0
+            ;;
+        *)  separator
+            return $(( choice - 1 ))
+    esac
+}
+menu_usage_example_2(){
+    declare -g MENU_CHOICE='' MENU_RESULT='' # purge any previous value
+    local opts
+    local -i level
+    opts="$(tf)" level="$1"
+    shift
+    ${X[cat]} <<-OPTS >"$opts"
+    title="Main menu for occ command creation, level $level"
+    prompt="Select an occ command from the list"
+  # items is needed for the order:
+    declare -a items=($@)
+OPTS
+    if (( level > 1 )); then
+    ${X[cat]} <<OPTS >>"$opts"
+    x_prompt="$(r2r) "
+    declare -a x_items=(r)
+OPTS
+    fi
+    # execute the command or exit on error
+    if menu "$opts"; then
+        case $MENU_CHOICE in
+            r)  exec $CMA ;;
+            *)  separator
+                return $MENU_CHOICE # $(( choice - 1 ))
+        esac
+    else
+        exit1
+    fi
+}
+
+show_favorites_menu() {
+    local -a keys
+    local -i i
+    local choice
+    keys=("${!NC_OCC_FAVORITES[@]}")
+    (( ${#keys[@]} )) || return
+    f
+    echo "nc-occ favorites:"
+    echo "-----------------"
+    f
+    for i in "${!keys[@]}"; do
+        printf " %2d. %s → %s\n" $((i+1)) "${keys[i]}" "${NC_OCC_FAVORITES[${keys[i]}]}"
+    done
+    f
+    echo "  n. Create a new command"
+    f
+    cursor_ on
+    read -p "Your choice ($(q2q)): " choice
+    cursor_ off
+    case "$choice" in
+        n)  parse_json 1
+            ;;
+        q)  exit0
+            ;;
+   [0-9]*)  local idx=$((choice-1))
+            [[ $idx -ge 0 && $idx -lt ${#keys[@]} ]] || return 0
+            # Execute the saved command
+            execute_command ${NC_OCC_FAVORITES[${keys[idx]}]}
+            return 0
+            ;;
+        *)  return 0
+    esac
+}
+menu_usage_example_3() {
+    declare -g MENU_CHOICE='' MENU_RESULT='' # purge any previous value
+    local otf # options temp file
+    otf="$(tf)"
+    ${X[cat]} << OPTS >"$otf"
+    bool[compose]=:
+    title="nc-occ favorites"
+    prompt="Select an occ command from the favorites"
+    items=(${!NC_OCC_FAVORITES[@]})
+    $(declare -p NC_OCC_FAVORITES | sed_ 's/NC_OCC_FAVORITES/descr/')
+    x_items=(
+        [n]="create a new command"
+    )
+OPTS
+    (( "${#NC_OCC_FAVORITES[@]}" )) || parse_json 1
+    # execute the command or exit on error
+    if menu "$otf"; then
+        case "$MENU_CHOICE" in
+            n)  parse_json 1
+                ;;
+       [0-9]*)  execute_command ${NC_OCC_FAVORITES[$MENU_RESULT]}
+                return 0
+                ;;
+            *)  return 0
+        esac
+    else
+        exit1
+    fi
+}
+
+# TODO <-- 1
+# globals:
+declare invi="Invalid input."
+
+# discard any pending input (e.g. stray ENTER) from stdin
+flush_stdin() {
+    local _k
+    # keep reading with a very short timeout until buffer is empty
+    while read -rsn1 -t .5 _; do
+        :  # no-op, just drop the character
+    done
+}
+
+menu_invalid_input(){
+    te1
+    o5; echo -n "$invi $(button $1) does not exist"
+    ${X[sleep]} 3
+    te1 # Deletes the current line: the effect is, that after "sleep" seconds, the line is drawn again without $invi message
+}
+
+q2q(){
+    printf '%s' "$(button q) to quit"
+}
+
+_2_(){
+    printf '%s' "$(button $1) to $2"
+}
+
+# Returns:
+#   - sets MENU_RESULT to the selected key (or 'q' for quit)
+#   - returns 0 on selection, 1 on error
+menu() {
+    require_arg $@
+    local title prompt x_item x_prompt padding idx key label choice additional_digit
+    local -i count i max_key
+    local -a items
+    local -A bool descr x_items
+    [[ -f $1 ]] && . "$1" || something_went_wrong "menu: the first argument is not a file"
+    count=${#items[@]}
+    (( count > 9 )) && padding="%0${#count}d" || padding='%d'
+    (( count > 999 )) && something_went_wrong "menu: to many items. the maximum is 999"
+    if (( ${#x_items[@]} )); then
+        for x_item in ${!x_items[@]}; do
+            x_prompt="${x_prompt:-}, $(_2_ $x_item "${x_items[$x_item]}")"
+        done
+    fi
+    if ${bool[compose]:-_}; then # compute max width of all keys
+        max_key=0
+        for key in "${items[@]}"; do (( ${#key} > max_key )) && max_key=${#key}; done
+    fi
+    separator
+    f # feed one empty line
+    o5; printf $(GRAYbg)'=== %s ==='$(N)'\n\n' "${title:-Menu}" # title
+    # print each menu entry (1–9)
+    for i in "${!items[@]}"; do
+        idx=$(printf "$padding" $(( i + 1 )))
+        key="${items[i]}"
+        label="${descr[$key]:-$key}"
+        # default to key if no description
+        if ${bool[compose]:-_}; then
+            o5; printf '%s  -  %-*s  %s\n' "$(box $idx; W)" "$max_key" "$key" "$label"
+        else
+            o5; printf '%s  -  %s\n' "$(box $idx; W)" "$label"
+        fi
+    done
+    f # feed one empty line
+    while :; do
+        # prompt for single key (no Enter)
+        cursor_ show
+        read -rsn1 -p "${prompt:-Select an option} ($(button $(printf "$padding" 1)) - $(button $count))${x_prompt:-} or $(q2q): " choice
+        # echo only if it's a digit
+        if [[ $choice =~ [0-9] ]]; then
+            printf '%s' "$choice"
+        fi
+
+        if (( count > 9 )) && [[ $choice =~ [0-9] ]]; then
+            if [[ $choice =~ [0-9] ]]; then
+                read -rsn1 -p "" additional_digit
+                choice+=$additional_digit
+                if [[ $additional_digit =~ [0-9] ]]; then
+                    printf '%s' "$additional_digit"
+                else
+                    cursor_ hide
+                    menu_invalid_input "$choice"
+                    continue
+                fi
+            fi
+        fi
+        if (( count > 99 )); then
+            if [[ $choice =~ [0-9][0-9] ]]; then
+                read -rsn1 -p "" additional_digit
+                choice+=$additional_digit
+                if [[ $additional_digit =~ [0-9] ]]; then
+                    printf '%s' "$additional_digit"
+                else
+                    cursor_ hide
+                    menu_invalid_input "$choice"
+                    continue
+                fi
+            fi
+        fi
+        cursor_ hide
+        flush_stdin # flush any leftover keys (ENTER, etc.) so next read() is clean
+        case "${choice,,}" in
+        [0-9]*) if (( choice > 0 && choice <= count )); then
+                    MENU_CHOICE="$(( choice - 1 ))"
+                    MENU_RESULT="${items[choice-1]}"
+                    f
+                    return 0
+                else
+                    menu_invalid_input "$choice"
+                fi
+                ;;
+             q) f
+                exit0
+                ;;
+             *) if [[ " ${!x_items[@]} " =~ " ${choice,,} " ]]; then
+                    MENU_CHOICE="${choice,,}"
+                    MENU_RESULT="${choice,,}"
+                    f
+                    return 0
+                else
+                    menu_invalid_input "$choice"
+                fi
+        esac
+    done
+}
+
+# Functions for confirmation prompt
+confirm_choice(){
+#    required_args 2 "$@" # 1st argument can be empty!
+    local choice message key
+    local -i newlines
+    newlines="$1"
+    choice="$2" # user's initial choice (e.g., 1, 2, 3, etc.)
+    message="$(ell $newlines)\t$3" # custom message for confirmation
+    while :; do
+        echo -e "$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
+        read -rsn 1 key
+        case $key in
+            y)  return 0 ;; # user confirms
+            n)  return 1 ;; # user refuses
+            q)  exit0    ;; # quit script
+            *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
+        esac
+    done
+}
+
+# Function for confirmation prompt for questions without option -s, which needs only one empty line
+confirm_choice1(){
+#    required_args 2 "$@" # 1st argument can be empty!
+    local choice message key
+    choice="$1" # user's initial choice (e.g., 1, 2, 3, etc.)
+    message="$2" # custom message for confirmation
+    while :; do
+        echo -e "\n\t$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
+        read -rsn 1 key
+        case $key in
+            y)  return 0 ;; # user confirms
+            n)  return 1 ;; # user refuses
+            q)  exit0    ;; # quit script
+            *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
+        esac
+    done
+}
+# COMMENT -->
+#    # Example integration
+#    if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
+#        echo "Confirmed choice $(button $key)"
+#        case $key in
+#           / .. /
+#        esac
+#    else
+#        echo -e "\n\tChoice $(button $key) cancelled\n"
+#        sleep 2
+#        te0 8
+#    fi

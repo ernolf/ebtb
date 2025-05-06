@@ -18,7 +18,7 @@ print_help(){
     local -A bool
     if (($(backups | ${X[wc]} -l))); then
         bool[bak]=:
-        r_b(){ echo -e "\n    $ME restore_backup"; }
+        r_b(){ echo -e "\n     $(dY)$ME $(O)restore_backup$(N)"; }
         [ $(backups | ${X[wc]} -l) -gt 1 ] && s=s || s=''
     else
         r_b(){ :; }
@@ -26,62 +26,69 @@ print_help(){
     ${X[cat]} <<HELP
 $(nextcloud_logo)
 
- $(line = P 81)
-  $(Bi)This is the help page of $ME
- $(line = dP 81)
-
+ $(line = P a)
+  $(Bi)This is the help page of $(O)$ME$(N)
+ $(line = dP a)
   $(GRAY)You can call
-
     $(N)$ME --contribute
+  $(GRAY)or
+    $(N)janitor
+  $(GRAY).. for more information about the project.
+ $(line = dP a)
+  $(lG; format_string "This utility is similar to the Unix $(W)\`$(dY)who$(W)\`$(lG) command, allowing you to monitor live user logins and activities on your nextcloud server-instance." 2 $max_cols; N)
 
-  $(GRAY).. for information about how you can contribute to the project.
+  $(C)Usage:$(N)
 
-  $(W)Good luck!
-  $(W)ernolf
+    $(O)$ME$(N) -> $(G)without arguments, you get to a selection menu$(N)
 
- $(line = P 81)
+  $(C)Possible options:$(N)
 
-  $ME - version ${M[v]} ${V[upinf]}
+  $(Yi)* Synopsis:$(N)
 
-  This utility is similar to the Unix \`who\` command, allowing you to monitor
-  live user logins and activities on your nextcloud server-instance.
-  The script’s activity is logged for reference. You can view this log under:
-  - $(C)${F[log]}$(N)
+     $(dY)$ME $(O)-h $(GRAY)| $(O)--help$(N)
+     $(dY)$ME $(O)monitor $(GRAY)[ $(O)--trace $(GRAY)]$(N)
+     $(dY)$ME $(O)god$(N)
+     $(dY)$ME $(O)last $(GRAY)[ $(O)--trace $(GRAY)]$(N)
+     $(dY)$ME $(O)--firstrun$(N)
+     $(dY)$ME $(O)integrity_check$(N; r_b)
 
-  Usage:
-    $ME -h|--help
-    $ME monitor [--trace]
-    $ME last [--trace]
-    $ME integrity_check$(r_b)
+  $(Yi)* Description:$(N)
 
-  Options:
+    $(O)-h $(GRAY)| $(O)--help $(GRAY)Display this help message.$(N)
 
-    -h|--help       Display this help message.
+    $(O)monitor     $(GRAY; format_string "Monitor live user logins, ordered by last activity at an adjustable refresh rate." 16 $max_cols; N)
+                $(Yi)* $(GRAY; format_string "Login status is only available for cookie-based sessions on a web frontend." 18 $max_cols; N)
+                $(Yi)* $(GRAY)Last activity is shown for all clients.$(N)
 
-    monitor     Monitor live user logins, ordered by last activity at an
-                adjustable refresh rate.
-                * Login status is only available for cookie-based sessions
-                  on a web frontend.
-                * Last activity is shown for all clients.
+    $(O)god         $(GRAY; format_string "In God mode you can invalidate cookies before they expire by deleting the corresponding authtoken from the database." 16 $max_cols; N)
+                $(GRAY)You can switch to god mode from monitor mode and back.$(N)
 
-    last        List users sorted by their last login time. This is equivalent
-                to the output of \`occ user:lastseen --all\`
-                * \`--all\` is actually not available for that occ command.
+    $(O)last        $(GRAY; format_string "List users sorted by their last login time, unlike the unsorted output of" 16 $max_cols; N)
+                $(Yi)*$(W) \`$(dY)occ user:lastseen --all$(W)\`$(N)
 
-    --trace     In combination with:
-                  - monitor: produce extensive log traces
-                  - last:    print the sql query used for the output
+  $(C)Options not available in interactive mode:$(N)
 
-    --firstrun  re-run the firstrun wizard
+    $(O)--trace     $(W)In combination with:$(N)
+                  - $(Y)monitor$(W): $(GRAY)produce extensive log traces$(N)
+                  - $(Y)last$(W):    $(GRAY)print the sql query used for the output$(N)
 
-    integrity_check
-                Verify the integrity of this script with signature
+    $(O)--firstrun  $(GRAY)re-run the firstrun wizard$(N)
+
+    $(O)integrity_check$(N)
+                $(GRAY)Verify the integrity of this script with signature$(N)
 
 HELP
-    ${bool[bak]:-_} && ${X[cat]}<<BACKUP; exit 0
-    restore_backup
-                restore an older version of this script from backup
-                ($(backups|${X[wc]} -l) backup$s available, you must be root)
+    ${bool[bak]:-_} && ${X[cat]}<<BACKUP
+    $(O)restore_backup$(N)
+                $(GRAY)restore an older version of this script from backup$(N)
+                $(GRAY)($(backups|${X[wc]} -l) backup$s available, you must be root)$(N)
 
 BACKUP
+    ${X[cat]} <<LOG
+ $(line = dP a)
+  $(GRAY)Version:$(W) ${M[e]} $(GRAY)${M[v]} ${V[upinf]}$(N)
+  $(GRAY; format_string "The script’s activity is logged for reference. You can view this log under:" 2 $max_cols; N)
+  - $(W)${F[log]}$(N)
+ $(line = dP a)
+LOG
 }

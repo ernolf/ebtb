@@ -20,8 +20,6 @@ BASICS_BASHLIB=:
 
 . <(lrequire binaries)
 
-declare invi="Invalid input."
-
 # Empty spaces
 es(){
     (( ${1:-1} )) || return
@@ -67,6 +65,7 @@ p_nosort(){
 
 # printf not sorted line by line
 p_nosort_trim(){
+    (( $# )) || return 0
     if [[ "$(trim "$@")" ]]; then
         p_nosort "$@"
     fi
@@ -86,6 +85,7 @@ p_sort(){
 
 # printf sorted and remove duplicates
 p_sort_trim(){
+    (( $# )) || return 0
     if [[ "$(trim "$@")" ]]; then
         p_sort "$@"
     fi
@@ -190,6 +190,21 @@ canonicalize(){
         printf '%s' "$target"
         return 0
     fi
+}
+
+# sanitize: turn arbitrary user input into a-zA-Z0-9_- only
+sanitize() {
+    local raw="$1"
+    # replace spaces and tabs with underscore
+    raw="${raw//[[:space:]]/_}"
+    # remove everything that's not letter, digit, underscore or dash
+    raw="${raw//[^a-zA-Z0-9_-]/}"
+    # collapse multiple underscores
+    raw="${raw//__/_}"
+    # trim leading/trailing underscore
+    raw="${raw##_}"
+    raw="${raw%%_}"
+    echo "$raw"
 }
 
 # var_ name/prefix and var_ val/sufix

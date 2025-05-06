@@ -14,145 +14,210 @@ AWKSED_BASHLIB=:
 
 # awk (iof=intermediate output file)
 awk_remove_trailing_empty_lines(){
-    local infile iof
-    infile="$1" iof="$1~iof~"
-    ${X[gawk]} '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile"
+    local in iof
+    in="$1" iof="$1~iof~"
+    ${X[gawk]} '/^$/{n=n RS}; /./{printf "%s",n; n=""; print}' "$in" > "$iof" && ${X[mv]} "$iof" "$in"
 }
 # radicaly delete duplicate lines
 uniq_lines(){
-    local infile iof
-    infile="$1" iof="$1~iof~"
-    ${X[gawk]} '!seen[$0]++' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile"
+    local in iof
+    in="$1" iof="$1~iof~"
+    ${X[gawk]} '!seen[$0]++' "$in" > "$iof" && ${X[mv]} "$iof" "$in"
 }
 
 # delete duplicate empty lines, keep single empty lines
 uniq_empty_lines(){
-    local infile iof
-    infile="$1" iof="$1~iof~"
-    ${X[gawk]} 'NF || prev { print; prev = NF }' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile" \
-    && remove_trailing_empty_lines "$infile"
+    local in iof
+    in="$1" iof="$1~iof~"
+    ${X[gawk]} 'NF || prev { print; prev = NF }' "$in" > "$iof" && ${X[mv]} "$iof" "$in" \
+    && remove_trailing_empty_lines "$in"
 }
 
 # delete duplicate lines, keep single empty lines INSIDE the file, remove empty lines at the end of the file
 dedup_lines(){
-    local infile iof
-    infile="$1" iof="$1~iof~"
-    ${X[gawk]} '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$infile" > "$iof" && ${X[mv]} "$iof" "$infile" \
-    && remove_trailing_empty_lines "$infile"
+    local in iof
+    in="$1" iof="$1~iof~"
+    ${X[gawk]} '!seen[$0]++ || ($0 == "" && prev != "") { print } { prev = $0 }' "$in" > "$iof" && ${X[mv]} "$iof" "$in" \
+    && remove_trailing_empty_lines "$in"
 }
 
 # sed
+# the main sed dispatcher function
+sed_(){
+    require_arg "$@"
+    ${B[trace]:-_} && log_trace "$@"
+    local sedscript in out
+    local -a sedcall
+    sedscript="$1" in="$2" out="${3:--}" sedcall=(${X[sed]} -E)
+    # p in sed script makes the use of -n |--quiet | --silent necessary to suppress automatic printing of pattern space
+    # unless '!' is passed at position 1 of the script:
+    if [[ $sedscript == \!* ]]; then
+        sedscript="${sedscript:1}"
+    elif [[ "$sedscript" =~ ([^[:alnum:]_])p([^[:alnum:]_]|$) ]]; then
+        sedcall+=(-n)
+    fi
+    # if we're in "in-place" mode, always fall back to stdout;
+    # only append the flag to sedcall if the input file actually exists
+    if [[ $out == -i || $out == --in-place=* ]]; then
+        [[ -f $in ]] && sedcall+=("$out")
+        out='-'
+    fi
+    if [[ -z $in && -p /dev/stdin ]]; then # read from actual STDIN output to STDOUT
+        ${B[trace]:-_} && log_trace "STDIN | ${sedcall[@]} '$sedscript'"
+        ${sedcall[@]} "$sedscript" 2> >(log_trace)
+    elif [[ -n $in ]]; then # no STDIN
+        if [[ $out != '-s' && -f $in ]]; then
+            case "$out" in
+                 -) # 'in-place' or explicit output to STDOUT
+                    ${B[trace]:-_} && log_trace "${sedcall[@]} '$sedscript' $in"
+                    ${sedcall[@]} "$sedscript" "$in" 2> >(log_trace)
+                    ;;
+                 *) # redirect into file
+                    ${B[trace]:-_} && log_trace "${sedcall[@]} '$sedscript' $in > $out"
+                    ${sedcall[@]} "$sedscript" "$in" > "$out" 2> >(log_trace)
+            esac
+        else # treat 'in' as literal text, output to STDOUT
+            ${B[trace]:-_} && log_trace "echo '$in' | ${sedcall[@]} '$sedscript'"
+            printf '%s' "$in" | ${sedcall[@]} "$sedscript" 2> >(log_trace)
+        fi
+    else # no INPUT at all, only sedscript
+        log_trace "ERROR: NO INPUT"
+    fi
+}
+
 remove_trailing_empty_lines(){
-    local infile outfile
-    infile="$1" outfile="${2:--i}"
-    case "$outfile" in
-        -i) ${X[sed]} -i ':a;N;$!ba;s/\n*$//' $infile
-            ;;
-         *) ${X[sed]} ':a;N;$!ba;s/\n*$//' $infile > "$outfile"
-    esac
+    local in out sedscript
+    in="$1" out="${2:--i}" sedscript=':a; N; $!ba; s/\n*$//'
+    #    :a - defines a label for looping.
+    #    N - appends the next line into the pattern space.
+    #    $!ba - if it's not the last line, branch (jump) to label 'a' (continue reading).
+    #    s/\n*$// - after all lines are gathered, remove all trailing newlines at the end of the input.
+    sed_ "$sedscript" "$in" "$out"
+}
+
+# removes empty lines before a line containing "$pattern"
+remove_empty_lines_before_(){
+    local pattern in out sedscript
+    pattern="${1//\//\\/}" in="$2" out="${3:--i}"
+    sedscript=":a; /^$/ { N; s/^\n$pattern/$pattern/; ta }; P; D"
+    #    :a - defines a label for looping.
+    #    when it sees a blank line (/^$/), it does N (append the next line).
+    #    if that next line starts with "$pattern", the s/// deletes the leading newline, effectively dropping the blank.
+    #    ta jumps back to :a if the substitution succeeded, so multiple blanks before the marker are all collapsed.
+    #    P;D is the standard two-line loop for printing up to the first newline and then deleting it, ready for the next iteration.
+    sed_ "$sedscript" "$in" "$out"
 }
 
 # delete from $pattern to end without deleting the line containing $pattern
 delafter(){
-    local pattern infile outfile
-    pattern="$1" infile="$2" outfile="${3:--i}"
-    case "$outfile" in
-        -i) ${X[sed]} -i -n "0,/$pattern/p" "$infile"
-            ;;
-         *) ${X[sed]} -n "0,/$pattern/p" "$infile" > "$outfile"
-    esac
+    local pattern in out sedscript
+    pattern="${1//\//\\/}" in="$2" out="${3:--i}"
+    sedscript="0,/$pattern/p"
+    sed_ "$sedscript" "$in" "$out"
 }
 
 # delete from $pattern to end including the line containing $pattern
 delp2ei(){
-    local pattern infile outfile
-    pattern="$1" infile="$2" outfile="${3:--i}"
-    case "$outfile" in
-        -i) ${X[sed]} -i -n "/$pattern/q;p" "$infile"
-            ;;
-         *) ${X[sed]} -n "/$pattern/q;p" "$infile" > "$outfile"
-    esac
+    local pattern in out sedscript
+    pattern="${1//\//\\/}" in="$2" out="${3:--i}"
+    sedscript="/$pattern/q;p"
+    sed_ "$sedscript" "$in" "$out"
 }
 del_from_x_to_end_including(){ delp2ei "$@";}
 
 # search for lines containing pattern1 and pattern2 and delete those lines and everything in between.
 delx2yi(){
-    local pattern1 pattern2 infile outfile
-    pattern1="$1" pattern2="$2" infile="$3" outfile="${4:--i}"
-    case "$outfile" in
-        -i) ${X[sed]} -i "/$pattern1/,/$pattern2/d" "$infile"
-            ;;
-         *) ${X[sed]} "/$pattern1/,/$pattern2/d" "$infile" > "$outfile"
-    esac
+    local pattern1 pattern2 in out sedscript
+    pattern1="${1//\//\\/}" pattern2="${2//\//\\/}" in="$3" out="${4:--i}"
+    sedscript="/$pattern1/,/$pattern2/d"
+    sed_ "$sedscript" "$in" "$out"
 }
 del_from_x_to_y_including(){ delx2yi "$@";}
 
 # only delete the lines in between pattern1 and pattern2, remain those lines containg the patterns untouched.
 delx2y(){
-    local pattern1 pattern2 infile outfile
-    pattern1="$1" pattern2="$2" infile="$3" outfile="${4:--i}"
-    case "$outfile" in
-        -i) ${X[sed]} -i "/$pattern1/,/$pattern2/{//!d}" "$infile"
-            ;;
-         *) ${X[sed]} "/$pattern1/,/$pattern2/{//!d}" "$infile" > "$outfile"
-    esac
+    local pattern1 pattern2 in out sedscript
+    pattern1="${1//\//\\/}" pattern2="${2//\//\\/}" in="$3" out="${4:--i}"
+    sedscript="/$pattern1/,/$pattern2/{//!d}"
+    sed_ "$sedscript" "$in" "$out"
 }
 del_from_x_to_y(){ delx2y "$@";}
 
 # delete all lines from the beginning until & including the line containing pattern "p".
 delb2pi(){
-    local pattern infile outfile
-    pattern="$1" infile="$2" outfile="${3:--i}"
-    case "$outfile" in
-        -i) ${X[sed]} -i "1,/$pattern/d" "$infile"
-            ;;
-         *) ${X[sed]} "1,/$pattern/d" "$infile" > "$outfile"
-    esac
+    local pattern in out sedscript
+    pattern="${1//\//\\/}" in="$2" out="${3:--i}"
+    sedscript="1,/$pattern/d"
+    sed_ "$sedscript" "$in" "$out"
 }
 del_from_begin_to_y_including(){ delb2pi "$@";}
 
 # delete all lines from the beginning until the line containing pattern, remain the line containing pattern untouched.
 delb2p(){
-    local pattern="$1" infile="$2" outfile="$3"
-    case ${outfile:--i} in
-        -i) ${X[sed]} -i "1,/$pattern/{/$pattern/!d;}" "$infile"
-            ;;
-         *) ${X[sed]} "1,/$pattern/{/$pattern/!d;}" "$infile" > "$outfile"
-    esac
+    local pattern in out sedscript
+    pattern="${1//\//\\/}" in="$2" out="${3:--i}"
+    sedscript="1,/$pattern/{/$pattern/!d;}"
+    sed_ "$sedscript" "$in" "$out"
 }
 del_from_begin_to_y(){ delb2p "$@";}
 
 # print everything from pattern1 to pattern2 including patterns
 print_from_x_to_y_including(){
-    local pattern1 pattern2 input
-    pattern1="$1" pattern2="$2" input="$3"
-    if [ -f "$input" ]; then
-        ${X[sed]} -n "/^[[:space:]]*$pattern1\$/,/^[[:space:]]*$pattern2\$/p" "$input"
-    else
-        printf '%s\n' "$input" | ${X[sed]} -n "/^[[:space:]]*$pattern1\$/,/^[[:space:]]*$pattern2\$/p"
-    fi
-}
-
-# Gets text enclosed in square brackets
-insquare(){
-    ${X[sed]} -E 's/.*\[(.*)].*/\1/' <<< "$@"
-}
-
-# trim "$1" from leading and trailing spaces
-trim(){
-    ${X[sed]} 's/^\s*//; s/\s*$//' <<< "$1"
+    local pattern1 pattern2 in out sedscript
+    pattern1="${1//\//\\/}" pattern2="${2//\//\\/}" in="$3" out="${4:--i}"
+    sedscript="/^[[:space:]]*$pattern1\$/,/^[[:space:]]*$pattern2\$/p"
+    sed_ "$sedscript" "$in" "$out"
 }
 
 # stripconf php.ini, exclude pattern: comment marker ';', #, empty lines and '['
+# This only goes to stdout ('-')
 stripconf(){
-    ${X[sed]} -E '/^\s*($|;|#|\[)/d;/=\s*$/d' "$1"
+    local in out sedscript
+    in="$1" out='-' sedscript='/^[[:space:]]*($|;|#|\[)/d;/=[[:space:]]*$/d'
+    sed_ "$sedscript" "$in" "$out"
+}
+
+# Gets text enclosed in square brackets
+# This only goes to stdout ('-')
+insquare(){
+    (( $# )) || return 0
+    local in out sedscript
+    in="$@" out='-' sedscript='s/.*\[(.*)].*/\1/'
+    sed_ "$sedscript" "$in" "$out"
+}
+
+# trim "$1" from leading and trailing spaces
+# This only goes to stdout ('-')
+trim(){
+    (( $# )) || return 0
+    local in out sedscript
+    in="$@" out='-' sedscript='s/^[[:space:]]*//; s/[[:space:]]*$//'
+    [[ -z $in ]] || sed_ "$sedscript" "$in" "$out"
 }
 
 # remove single and double  quotes from begin and end of line $1
+# This only goes to stdout ('-')
 unquote() {
-    ${X[sed]} -E "s/^'(.*)'$|^\"(.*)\"$/\1/" <<< "$1"
+    (( $# )) || return 0
+    local in out sedscript
+    in="$@" out='-' sedscript="s/^'(.*)'$|^\"(.*)\"$/\1/"
+    sed_ "$sedscript" "$in" "$out"
 }
 
+# flatten input from possible multi lines to one line with only one single empty space between each token
+# This only goes to stdout ('-')
+to_one_line(){
+    (( $# )) || return 0
+    local in out sedscript
+    in="$@" out='-' sedscript='s/^[[:space:]]*//g; s/[[:space:]]*$//g; s/[[:space:]]* [[:space:]]*/ /g; :a; N; $!ba; s/\n/ /g; s/[[:space:]]* [[:space:]]*/ /g'
+    sed_ "$sedscript" "$in" "$out"
+}
+
+# This only goes to stdout ('-')
 urldecode(){
-    echo -n "${*//+/ }" | ${X[sed]} 's/%\([0-9a-fA-F]\{2\}\)/\\x\1/g' | ${X[xargs]} -0 printf
+#    echo -n "${*//+/ }" | sed_ 's/%([0-9a-fA-F]{2})/\\x\1/g' | ${X[xargs]} -0 printf
+    (( $# )) || return 0
+    local in out sedscript
+    in="${*//+/ }" out='-' sedscript='s/%([0-9a-fA-F]{2})/\\x\1/g'
+    sed_ "$sedscript" "$in" "$out" | ${X[xargs]} -0 printf
 }

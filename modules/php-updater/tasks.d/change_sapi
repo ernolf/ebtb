@@ -107,7 +107,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi
@@ -174,7 +174,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi
@@ -240,7 +240,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi
@@ -308,7 +308,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi
@@ -378,7 +378,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi
@@ -448,7 +448,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi
@@ -493,7 +493,7 @@ change_sapi(){
                             esac
                         else
                             echo -e "\n\tChoice $(button $key) cancelled\n"
-                            sleep 2
+                            ${X[sleep]} 2
                             te0 8
                         fi
                     fi

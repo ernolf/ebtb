@@ -24,7 +24,7 @@ sysinf_debsources(){
             spinner Yi " . determine system informations - deb/apt sources ." &
         }
         SYSINF+=("title aptsources:")
-        SYSINF+=("true $(p_sort_numerate "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | ${X[sed]} 's/_Packages.*$//; s/-deb.*$//; s/_dists/ /; s/_binary-/ /')")")
+        SYSINF+=("true $(p_sort_numerate "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_Packages.*$//; s/-deb.*$//; s/_dists/ /; s/_binary-/ /')")")
 
         # sury BEGIN
         ${bool[sury]:-_} && {
@@ -38,11 +38,11 @@ sysinf_debsources(){
 
         # apt sources files BEGIN
         local -a apturls
-        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages|${X[sed]} 's/_dists.*$//')")
+        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_dists.*$//')")
         SYSINF+=("title aptsourcesfiles:")
         SYSINF+=("true $(p_sort_numerate "$(
                 for i in "${!apturls[@]}"; do
-                    ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'
+                    ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{ print $1 }'
                 done
             )")")
 
@@ -51,7 +51,7 @@ sysinf_debsources(){
             local -a sury_aptsourcesfiles
             mapfile -t sury_aptsourcesfiles< <(p_sort $(
                     for i in "${!apturls[@]}"; do
-                        [[ "${apturls[i]}" =~ (ondrej|sury) ]] && ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'
+                        [[ "${apturls[i]}" =~ (ondrej|sury) ]] && ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{ print $1 }'
                     done
                 ))
             if (( ${#sury_aptsourcesfiles[@]} )); then

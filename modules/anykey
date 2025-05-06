@@ -15,6 +15,7 @@ anykey(){
     local p aim
     local -l choice
     aim="$1"
+    ${B[trace]:-_} && aim="${aim:-continue} - $(funcname_and_lineno 1)"
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
         cursor_status='show'
@@ -51,6 +52,7 @@ anykey(){
 anykey_noquit(){
     local p aim dummy
     aim="$1"
+    ${B[trace]:-_} && aim="${aim:-continue} - $(funcname_and_lineno 1)"
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
         cursor_status='show'

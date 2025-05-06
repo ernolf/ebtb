@@ -25,5 +25,5 @@ setvdir(){
         d) v2="$d" ;;
         *) v2="$2"
     esac
-    ${X[sed]} -i "s|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|" "$v3"
+    sed_ "s|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|" "$v3" '-i'
 }

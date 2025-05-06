@@ -59,7 +59,7 @@ populate_ngxmodules(){
     q0 ${X[nginx]} -t || return
     mapfile -t NGXMODULES< <(
         [[ -z "$1" || "$1" == 'static' ]] && ${X[nginx]} -V 2>&1 | ${X[tr]} -- - '\n' | ${X[grep]} _module
-        [[ -z "$1" || "$1" == 'shared' ]] && ${X[nginx]} -T 2>&1 | ${X[gawk]} -F / '/load_module/{print $2}' | ${X[sed]} -E 's/(^ngx_|\.so.*$)//g'
+        [[ -z "$1" || "$1" == 'shared' ]] && ${X[nginx]} -T 2>&1 | ${X[gawk]} -F / '/load_module/{print $2}' | sed_ 's/(^ngx_|\.so.*$)//g'
     )
 }
 

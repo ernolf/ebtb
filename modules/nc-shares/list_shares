@@ -88,8 +88,8 @@ function list_shares(){
 #        tmp_file=$(tf) targetdir="/nc/dat/data/ich/files" targetfile="$targetdir/${basename_me}_$runtime$@.pdf"
 #        d_echo "tmp_file: $tmp_file"
 #        d_echo "targetfile: $targetfile"
-#        eval ${DB[strg]} ${DB[exec]}\"$query\" | ${X[sed]} "s\ files/\ /\g$sed_string" | ${X[tidy]} -indent -quiet -wrap 0 -f $NUL -o $tmp_file
-#        eval ${DB[strg]} $H ${DB[exec]}\"$query\" | ${X[tidy]} -indent -quiet -wrap 0 -f $NUL | ${X[sed]} "s\<td>files/\<td>/\g$sed_string" > $tmp_file
+#        eval ${DB[strg]} ${DB[exec]}\"$query\" | sed_ "s\ files/\ /\g$sed_string" | ${X[tidy]} -indent -quiet -wrap 0 -f $NUL -o $tmp_file
+#        eval ${DB[strg]} $H ${DB[exec]}\"$query\" | ${X[tidy]} -indent -quiet -wrap 0 -f $NUL | sed_ "s\<td>files/\<td>/\g$sed_string" > $tmp_file
 
 #    anykey
 
@@ -105,7 +105,7 @@ function list_shares(){
 #        $occ files:scan -vvv --path="$targetfile"
 #    exit
 # TODO <-- 0
-    db_exec_ "$query" | ${X[column]} -t -s $'\t' | ${X[sed]} "s\ files/\ /\g$sed_string"
+    db_exec_ "$query" | ${X[column]} -t -s $'\t' | sed_ "s\ files/\ /\g$sed_string"
 # TODO 1 -->
 #    pipe_h2t "${DB[strg]} ${DB[exec]}" "$query"
 # TODO <-- 1

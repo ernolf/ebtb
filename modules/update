@@ -21,6 +21,7 @@ UPDATE_BASHLIB=:
 # TODO <-- 0
 . <(lrequire cleanup)
 . <(lrequire prefix)
+. <(lrequire ebtb)
 
 : ${M[e]:=${M[epoch]:=$epoch}}
 : ${J[e]:=${J[epoch]:=$my_epoch}}
@@ -117,6 +118,7 @@ my_update(){
 my_update_check(){
 #    configure_systemd_tmpfiles
     local -l key
+    mh "$(funcname_and_lineno) J[e]=${J[e]}, M[e]=${M[e]}"
     if (( J[e] > M[e] )); then
         mh "$(funcname_and_lineno) update available"
         f
@@ -128,12 +130,14 @@ my_update_check(){
                 u)  my_update
                     ;;
                 i)  V[upinf]="(update available)"
+                    mh "$(funcname_and_lineno) V[upinf]=${V[upinf]}"
                     (q0 di) &
                     break
             esac
         done
-    elif (( J[e] == M[e] )); then
+    elif (( J[e] <= M[e] )); then
         V[upinf]="(latest version)"
+        mh "$(funcname_and_lineno) V[upinf]=${V[upinf]}"
         (q0 di) &
     fi
 }

@@ -74,7 +74,7 @@ detect_installed_by_dpkg(){
     local -a p pe
     local -i i
     mapfile -t p< <(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*php/{printf$2"/"$3"/"$4"/"$1"/";for(i=5;i<=NF;i++){printf"%s",$i;if(i<NF)printf" ";else printf"\n"}}' | ${X[sort]})
-    mapfile -t pe< <(${X[apt-mark]} showmanual '*php*' | ${X[sed]} 's/$/:m/';${X[apt-mark]} showauto '*php*' | ${X[sed]} 's/$/:a/')
+    mapfile -t pe< <(${X[apt-mark]} showmanual '*php*' | sed_ 's/$/:m/'; ${X[apt-mark]} showauto '*php*' | sed_ 's/$/:a/')
     mapfile -t pe< <(p_sort ${pe[@]})
     for i in ${!p[@]}; do
         e=${pe[i]#*:}
@@ -166,7 +166,7 @@ detect_and_assign_extensions(){
         spinner C " . detect extensions installed by admin ." &
         ${B[verbose]:-_} && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
         mapfile -t EXTS_ADMIN< <(${X[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
-        mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
+        (( ${#EXTS_ADMIN[@]} )) && mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
         kill_spinner
     fi
 }

@@ -25,7 +25,7 @@ sysinf_os(){
             [ -f /etc/os-release ] && F[os_release]="/etc/os-release" || F[os_release]="/usr/lib/os-release"
         fi
         if [ -n "${F[os_release]}" ]; then
-            SYSINF+=("cat ${F[os_release]}")
+            SYSINF+=("grep -v URL ${F[os_release]}")
         elif [ -n "${X[lsb_release]}" ]; then
             SYSINF+=("lsb_release -a")
         fi

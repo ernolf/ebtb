@@ -98,7 +98,7 @@ gpg_is_valid_pubkey() {
     fi
     [[ -n "$data" ]] || return 1
     # try dry-run import to see if it's a valid key
-    echo "$data" | ${X[gpg]} --batch --import-options show-only --dry-run --import &> >(while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg validation: $line"; done)
+    echo "$data" | ${X[gpg]} --batch --import-options show-only --dry-run --import &> >(log_trace) # (while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg validation: $line"; done)
 }
 
 gpg_import_pubkey() {
@@ -111,7 +111,7 @@ gpg_import_pubkey() {
     fi
     [[ -n "$data" ]] || return 1
     # try dry-run import to see if it's a valid key
-    echo "$data" | ${X[gpg]} --batch --import &> >(while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg import: $line"; done)
+    echo "$data" | ${X[gpg]} --batch --import &> >(log_trace) # (while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg import: $line"; done)
 }
 
 # Convert binary .gpg to ASCII-armored .asc without touching system keyrings
@@ -155,9 +155,9 @@ gpg_strip_armor_body() {
     shift 2
     raw="$*"
     if (( hdrs )); then
-        printf '%s\n' "$raw" | ${X[sed]} "1{/^${PGP[header_$type]}\$/d}; 2,/^$/d; /^${PGP[footer_$type]}\$/d"
+        sed_ "1{/^${PGP[header_$type]}\$/d}; 2,/^$/d; /^${PGP[footer_$type]}\$/d" "$raw" '-'
     else
-        printf '%s\n' "$raw" | ${X[sed]} "/^${PGP[header_$type]}\$/d; /^${PGP[footer_$type]}\$/d; /^\$/d"
+        sed_ "/^${PGP[header_$type]}\$/d; /^${PGP[footer_$type]}\$/d; /^\$/d" "$raw" '-'
     fi
 }
 
@@ -184,10 +184,10 @@ gpg_assemble_key_() {
         # If it's a file, read its contents
         if [[ "$source" == *.gpg ]]; then
             # Convert binary .gpg file to armored ASCII format and strip header/footer
-            stripped=$(gpg_2_asc "$source" | ${X[sed]} "/^${PGP[header_pub]}\$/d; /^${PGP[footer_pub]}\$/d; /^\$/d")
+            stripped=$(gpg_2_asc "$source" | sed_ "/^${PGP[header_pub]}\$/d; /^${PGP[footer_pub]}\$/d; /^\$/d")
         else
             # Read the contents of a file containing (already armored)) asc data and strip from begin to  header and from footer to end
-            stripped=$(print_from_x_to_y_including "${PGP[header_pub]}" "${PGP[footer_pub]}" "$source" | ${X[sed]} 's/^[[:space:]]*\.\?//g')
+            stripped=$(print_from_x_to_y_including "${PGP[header_pub]}" "${PGP[footer_pub]}" "$source" | sed_ 's/^[[:space:]]*\.?//g')
             mapfile -t headers < <(gpg_map_headers pub "$stripped")
             stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$stripped")
         fi
@@ -196,7 +196,7 @@ gpg_assemble_key_() {
         stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$($source)")
     else
         # raw string input: strip any armor if present
-        stripped="$(printf '%s\n' "$source" | ${X[sed]} 's/^[[:space:]]*\.\?//g')"
+        stripped="$(sed_ 's/^[[:space:]]*\.?//g' "$source" '-')"
         mapfile -t headers < <(gpg_map_headers pub "$stripped")
         stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$source")
     fi
@@ -228,8 +228,8 @@ gpg_assemble_key_() {
         deb822)
             # deb822 sources 'Signed-By'-block
             printf '%s\n %s\n .\n' "Signed-By:" "${PGP[header_pub]}"
-            printf '%s\n' "$stripped" | ${X[sed]} 's/^/ /'
-            printf ' %s\n' "${PGP[footer_pub]}"
+            sed_ 's/^/ /' "$stripped" '-'
+            printf '\n %s\n' "${PGP[footer_pub]}"
             ;;
         *)  # unsupported mode ⇒ failure exit
             mh "$(funcname_and_lineno 1)gpg_assemble_key_(): unknown mode '$mode'"
@@ -267,9 +267,8 @@ gpg_extract_() {
     # 1) Strip leading whitespace and optional dot per line
     # 2) Feed to GPG via stdin, get machine-readable output
     output="$(
-        printf '%s\n' "$armor" |
-            ${X[sed]} 's/^[[:space:]]*\.\?//g' |
-            q2 ${X[gpg]} --batch --with-colons --import-options show-only --import -
+        sed_ 's/^[[:space:]]*\.?//g' "$armor" '-' |
+        q2 ${X[gpg]} --batch --with-colons --import-options show-only --import -
     )"
     case "$what" in
         raw)

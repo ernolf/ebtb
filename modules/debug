@@ -160,3 +160,38 @@ funcname_and_lineno(){
         echo -n "$file->$target:$funcname$lineno:"
     fi
 }
+
+#log_errors(){
+#    while IFS= read -r msg; do
+#        mh "$(funcname_and_lineno 3; funcname_and_lineno 2; funcname_and_lineno 1) arguments: $@ : $msg"
+#    done
+#}
+
+# log_trace: prefix each stderr line with full call trace in one line
+log_trace(){
+    local frame trace msg
+    local -i i depth
+    # build a single-line trace: frame1 -> frame2 -> …
+    depth=$(( ${#FUNCNAME[@]} - 2 ))
+    trace=''
+    for (( i=depth; i>0; i-- )); do
+        frame=$(funcname_and_lineno $i)
+        if (( i == depth )); then
+            trace="$frame"
+        else
+            trace+="->$frame"
+        fi
+    done
+    trace=${trace/my_update_check():4:->q0():25:->di():4:/before}
+    trace=${trace/switch_default_version():197:->q0():25:->di():4:/afterwards}
+    if (( $# )); then
+        # if arguments are provided, treat them as a single message
+        msg="$*"
+        mh "$trace ${msg/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
+    else
+        # else read from stdin
+        while IFS= read -r msg; do
+            mh "$trace ${msg/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
+        done
+    fi
+}

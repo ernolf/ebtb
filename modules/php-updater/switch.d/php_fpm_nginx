@@ -116,9 +116,7 @@ php_fpm_sites_available_conf_nginx(){
                 echo "' $conf" >> "$xtemp"
                 if ${bool[do_change]}; then
                     f
-                    bundle echo "$(pf; format_string "If you continue here, the changes will be written to file." 3)"
-                    f
-                    anykey
+                    anykey "to write changes to file"
                     haul cat "$xtemp"
                     . $xtemp
                     bool[changed]=:

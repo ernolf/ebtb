@@ -53,10 +53,10 @@ main(){
     v_echo "$4$(o 26)=>  ${1##*/}"
     if ! echo "$1" | ${X[grep]} -iE $grepopts "$2"; then
         ${B[quiet]} || echo "detected mimetype of ${1##*/} is $4"
-        ${B[dryrun]} || ${X[mv]} "$1" "$(echo "$1"|${X[sed]} 's/\..\{1,5\}$//')$3"
+        ${B[dryrun]} || ${X[mv]} "$1" "$(sed_ 's/\..{1,5}$//' "$1" '-')$3"
         do_occ_filesscan set :
         ${B[quiet]} || echo "$(G)moved $(xGRAY)${1##*/}$(N)"
-        ${B[quiet]} || echo "$(G)   to $(P)$(echo "${1##*/}"|${X[sed]} 's/\..\{1,5\}$//')$(Pbg)$3$(N)"
+        ${B[quiet]} || echo "$(G)   to $(P)$(sed_ 's/\..{1,5}$//' "${1##*/}" '-')$(Pbg)$3$(N)"
         i=0
     fi
     return $i

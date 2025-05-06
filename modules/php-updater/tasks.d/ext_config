@@ -112,7 +112,7 @@ check_invalid_sections(){
                 line="${invalid_section%%:*}"
                 content="${invalid_section#*:}"
                 echo -e "$(C)Line $(printf "%5d" $line):$(N) $(R)$content$(N)" >>"$itmp"
-                echo "${X[sed]} -i '${line}{s/^\([^[]\)/[\1/; s/\([^]]\)$/\1]/; s/\[\[*/[/g; s/\]*\]/]/g;}' $ini_file" >>"$xtmp"
+                echo "${X[sed]} -E -i '${line}{s/^([^[])/[\1/; s/([^]])$/\1]/; s/\[\[*/[/g; s/\]*\]/]/g;}' $ini_file" >>"$xtmp"
             done
             echo >>"$itmp"
         fi
@@ -177,7 +177,7 @@ You can either fix it manually and restart this script, or let the script commen
             echo -e "\n   - $(O)Invalid definition$plu detected in $(C)$ini_file$(O):\n" >> $itmp
             for i in ${!missing_equalsigns[@]}; do
                 ext=${missing_equalsigns[i]}
-                echo -e "$(C)${ext%% *}$(GRAY)$(echo "$ext" | ${X[sed]} "s/^${ext%% *}//")$(N)" >> $itmp
+                echo -e "$(C)${ext%% *}$(GRAY; sed_ "s/^${ext%% *}//" "$ext" '-s'; N)" >> $itmp
                 echo -e "   - $(R)is invalid $(N)($(GRAY)missing$(N) '$(C)=$(N)' $(GRAY)after $(C)${ext%% *}$(N))" >> $itmp
                 echo "${X[sed]} -i '$(${X[gawk]} -v pattern="^\\\s*$ext\\\s*$" '
                     $0 ~ pattern {
@@ -209,7 +209,7 @@ You can either fix it manually and restart this script, or let the script commen
                 echo -e "\n   - $(O)Remaining ($(GRAY)unfixed$(O)) invalid definition$plu detected in $(C)$ini_file$(O):\n" >> $itmp
                 for i in ${!missing_equalsigns[@]}; do
                     ext=${missing_equalsigns[i]}
-                    echo -e "$(C)${ext%% *}$(GRAY)$(echo "$ext" | ${X[sed]} "s/^${ext%% *}//")$(N)" >> $itmp
+                    echo -e "$(C)${ext%% *}$(GRAY; sed_ "s/^${ext%% *}//" "$ext" '-s'; N)" >> $itmp
                     echo -e "   - $(R)is invalid $(N)($(GRAY)missing$(N) '$(C)=$(N)' $(GRAY)after $(C)${ext%% *}$(N))" >> $itmp
                 done
                 echo >> $itmp
@@ -536,17 +536,17 @@ ext_config_fix(){
                         optionblock_sorted="redis.session.locking_enabled=1\nredis.session.lock_retries=-1\nredis.session.lock_wait_time=10000"
                         optionblock_rsorted="redis.session.lock_wait_time=10000\nredis.session.lock_retries=-1\nredis.session.locking_enabled=1"
                         pattern='redis\.session\.lock'
-                        if ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" &&
-                           ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" &&
-                           ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" &&
-                           ! p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                        if ! p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" &&
+                           ! p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" &&
+                           ! p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" &&
+                           ! p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
                             for sapi in $(${X[phpquery]} -v $pv -S); do
                                 php_ini="/etc/php/$pv/$sapi/php.ini"
                                 if [ -f "$php_ini" ]; then
-                                    if p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" ||
-                                       p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" ||
-                                       p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" ||
-                                       p_sort "$(stripconf "$php_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                                    if p_sort "$(stripconf "$php_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" ||
+                                       p_sort "$(stripconf "$php_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" ||
+                                       p_sort "$(stripconf "$php_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" ||
+                                       p_sort "$(stripconf "$php_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
                                         inifiles1_+=("$php_ini")
                                     else
                                         inifiles2_+=("$php_ini")
@@ -583,13 +583,13 @@ ext_config_fix(){
                             f
                             if ask "$(qpf)Do you want to apply this directives as suggested" "$YES"; then
                                 . $xtmp
-                                if p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" ||
-                                   p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" ||
-                                   p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" ||
-                                   p_sort "$(stripconf "$ext_ini" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
+                                if p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock" ||
+                                   p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_r" ||
+                                   p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_sorted" ||
+                                   p_sort "$(stripconf "$ext_ini" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock_rsorted"; then
                                     bundle echo "$(rpf; lG)Directives successfully written in $ext_ini."; N
                                     for i in ${!inifiles1_[@]}; do
-                                        if p_sort "$(stripconf "${inifiles1_[i]}" | ${X[sed]} -n "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock"; then
+                                        if p_sort "$(stripconf "${inifiles1_[i]}" | sed_ "/$pattern/{s/\s*=/=/; s/=\s*/=/p}")" | ${X[grep]} -qsPzw "$optionblock"; then
                                             something_went_wrong "removal from ${inifiles1_[i]} failed."
                                         else
                                             bundle echo "$(rpf; lG)removal from ${inifiles1_[i]} was successfull."; N

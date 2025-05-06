@@ -73,11 +73,3 @@ check(){
        NOK) buttonize NOK "$nok"
     esac
 }
-
-q2q(){
-    printf '%s' "$(box q) to quit"
-}
-
-r2r(){
-    printf '%s' "$(box r) to return"
-}

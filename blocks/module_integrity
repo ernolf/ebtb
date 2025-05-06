@@ -3,7 +3,7 @@ q2 ${X[jq]} -r '.modules[] | "\(.hash) \(.name)"' ${F[lmj]} >${D[li]}/modules.sh
 q0 chrf ${D[li]} 0
 cd ${D[li]}
 tntd=($(
-    q2 ${X[sha256sum]} -c --ignore-missing --quiet modules.sha256 | ${X[sed]} 's/:.*//'
+    q2 ${X[sha256sum]} -c --ignore-missing --quiet modules.sha256 | sed_ 's/:.*//'
 ))
 (( ${#tntd[@]} )) && {
     for x in ${tntd[@]}; do

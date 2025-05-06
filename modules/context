@@ -49,7 +49,7 @@ check_webmin(){
             infstr="You started this script in a Webmin terminal. This is perfectly fine; however, the character encoding is not configured to display UTF-8 correctly. This script and its output makes use of some UTF-8 symbols and emojis. To enable UTF-8 encoding, click on the gear icon in the upper left corner of the terminal (this option is not available in full-screen mode). Then either select 'en_US.UTF-8' or choose 'Custom' and enter 'C.UTF-8' or any other valid UTF-8 locale and click 'Save'. If you cannot access this configuration, this script can fix it for you by updating the settings, restarting the Webmin service, and exiting. Simply press any key if you want me to switch the terminal to UTF-8. After that, click 'RECONNECT' and restart the script in the new terminal session."
             R;echo "NOTE$(N): $(W;format_string "$infstr" 6;N)"
             anykey
-            ${X[sed]} -i 's/locale=0/locale=1/' "$config_file"
+            sed_ 's/locale=0/locale=1/' "$config_file" '-i'
             trap 'exit_trap; systemctl restart webmin.service' EXIT
             exit 0
         fi

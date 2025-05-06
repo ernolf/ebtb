@@ -13,7 +13,7 @@ SYSINF_F2B_BASHLIB=:
 sysinf_f2b(){
     [ -n "${X[fail2ban-client]}" ] || return
     f2b_status(){ ${X[fail2ban-client]} status; }
-    f2b_banned(){ ${X[fail2ban-client]} banned | ${X[sed]} "s/'/\"/g;s/\(\w\+\):/\1\":/g" | ${X[jq]}; }
+    f2b_banned(){ ${X[fail2ban-client]} banned | sed_ "s/'/\"/g; s/([[:alnum:]_]+):/\1\":/g" | ${X[jq]}; }
     local -A bool
     while (( $# )); do
         [[ $1 ]] && bool[$1]=:

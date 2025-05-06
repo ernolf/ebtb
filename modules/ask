@@ -16,6 +16,8 @@ ASK_BASHLIB=:
 . <(lrequire prefix)
 . <(lrequire awksed)
 # TODO <-- 0
+. <(lrequire menu)
+
 # declare globals for ask handling
 declare YES NO Yes No
 YES="$(lG)yes$(N)"
@@ -52,7 +54,7 @@ ask(){
     local -i lll lda ly ln ml fidx r
     question="$1" d_answer="$2"
     fidx=$(first_idx "$question")
-    mh "$(funcname_and_lineno 1) $(echo $question | ${X[sed]} 's/  / /g')? [$d_answer]"
+    mh "$(funcname_and_lineno 1; es; to_one_line "$question")? [$d_answer]"
     [ -z "$3" ] && yes="$Yes" || yes="$3"
     [ -z "$4" ] && no="$No" || no="$4"
     noansi_question_lastline="$(${X[ansifilter]} <<< "${question##*\\n}")"
@@ -74,13 +76,13 @@ ask(){
         ml=$(( $(tput cols) - 23 ))
     fi
     if (( $(( lll + lda + ly + ln )) > ml )); then
-        newline="$(\n; o $fidx; N)Make your choice: "
+        newline="$(printf '\n'; o $fidx; N)Make your choice: "
     else
         newline="$(N) "
     fi
     cursor_ show
     while :; do
-        printf "$(N)$question?$newline($yes or $no) [$d_answer]: "
+        printf '\n%s' "$(N)$question?$newline($yes or $no) [$d_answer]: "
         read -r answer
         mh "$(funcname_and_lineno 1; es; apf)${answer:="$noansi_d_answer"}"
         if [ "$answer" = "$(desquare "${noansi_yes,,}")" ] || [ "$answer" = "$(insquare "${noansi_yes,,}")" ]; then
@@ -97,53 +99,3 @@ ask(){
     cursor_ $cursor
     return $r
 }
-
-# Functions for confirmation prompt
-confirm_choice(){
-#    required_args 2 "$@" # 1st argument can be empty!
-    local choice message key
-    local -i newlines
-    newlines="$1"
-    choice="$2" # user's initial choice (e.g., 1, 2, 3, etc.)
-    message="$(ell $newlines)\t$3" # custom message for confirmation
-    while :; do
-        echo -e "$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
-        read -rsn 1 key
-        case $key in
-            y)  return 0 ;; # user confirms
-            n)  return 1 ;; # user refuses
-            q)  exit0    ;; # quit script
-            *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
-        esac
-    done
-}
-
-# Function for confirmation prompt for questions without option -s, which needs only one empty line
-confirm_choice1(){
-#    required_args 2 "$@" # 1st argument can be empty!
-    local choice message key
-    choice="$1" # user's initial choice (e.g., 1, 2, 3, etc.)
-    message="$2" # custom message for confirmation
-    while :; do
-        echo -e "\n\t$message\n\nConfirm your choice: $(box y) for yes, $(box n) for no, $(q2q)"
-        read -rsn 1 key
-        case $key in
-            y)  return 0 ;; # user confirms
-            n)  return 1 ;; # user refuses
-            q)  exit0    ;; # quit script
-            *)  echo printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
-        esac
-    done
-}
-# COMMENT -->
-#    # Example integration
-#    if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-#        echo "Confirmed choice $(button $key)"
-#        case $key in
-#           / .. /
-#        esac
-#    else
-#        echo -e "\n\tChoice $(button $key) cancelled\n"
-#        sleep 2
-#        te0 8
-#    fi

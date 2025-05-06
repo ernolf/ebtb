@@ -12,7 +12,7 @@ PHP_VERSION_BASHLIB=:
 
 php_ver(){
     local php_version="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    local -a available_php_versions=($(q2 ${X[ls]} $(command -v php)[78].[0-4] | ${X[sed]} "s|$(command -v php)||g"))
+    local -a available_php_versions=($(q2 ${X[ls]} $(command -v php)[78].[0-4] | sed_ "s|$(command -v php)||g"))
     local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|${X[tr]} ' ' '\n'|${X[grep]} -v "^$php_version$"|${X[tr]} '\n' ' '))
 
     if (($#)); then

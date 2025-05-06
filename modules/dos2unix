@@ -30,7 +30,7 @@ dos_2_unix(){
     file="$1"
     [[ -f "$file" && -w "$file" ]] || return 1
     echo "dos_2_unix: converting file $file to Unix format..."
-    ${X[sed]} -i 's/\r$//' "$file"
+    sed_ 's/\r$//' "$file" '-i'
 }
 
 dos2unix_bulk(){

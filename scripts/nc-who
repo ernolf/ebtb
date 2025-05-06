@@ -31,28 +31,53 @@ contribute_(){
 declare arg command
 declare -a args
 
-for arg in "$@"; do
-    case "$arg" in
-        --trace) B[trace]=:  ;;
-              *) args+=("$arg")
-    esac
-done
-set -- "${args[@]}" && unset -v arg args
-
 command=print_help
-while (($#));do
+
+main_menu(){
+    declare -g MENU_CHOICE='' MENU_RESULT='' # purge any previous value
+    local opts
+    opts="$(tf)"
+    ${X[cat]} <<OPTS >"$opts"
+    bool[compose]=:
+    title="Main Menu of nc-who"
+    prompt="Select an action from the list"
+    declare -a items=("--help" "last" "monitor" "god")
+    declare -A descr=(
+        [--help]="Show the help"
+        [last]="List users sorted by their last login time."
+        [monitor]="Monitor live user logins, ordered by last activity at an adjustable refresh rate"
+        [god]="God mode - invalidate cookies before they expire"
+    )
+OPTS
+    if menu "$opts"; then
+        if [[ "${MENU_RESULT}" == '--help' ]]; then
+            command='print_help'
+        elif [[ " last monitor god " =~ " ${MENU_RESULT} " ]]; then
+            command="nc_${MENU_RESULT}"
+        else
+            exit1
+        fi
+    else
+        exit1
+    fi
+}
+
+if (( $# )); then
+    # argument was provided → validate it
     case "$1" in
         monitor|last|god)
             command="nc_$1"
-            break 2
             ;;
         -h|--help)
-            print_help
+            command=print_help
             ;;
-        *)  f;echo "--> unknown option: \"$1\" <--"
+        *)  f
+            echo "--> unknown option: \"$1\" <--"
             print_help
     esac
-done
+else
+    main_menu
+fi
 
 $command
 

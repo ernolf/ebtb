@@ -103,6 +103,7 @@ for x in "$@"; do
         restore_backup) B[do_restore_backup]=: V[astr]="backup ${V[astr]}"    ;;
         integrity_check)B[do_integrity_check]=: V[astr]="integrity ${V[astr]}";;
         --firstrun)     B[firstrun]=:                                         ;;
+        --trace)        B[trace]=:                                            ;;
         *)              [ -z "${x// /}" ] || args+=("$x")
     esac
 done

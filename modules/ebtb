@@ -20,7 +20,7 @@ EBTB_SCRIPTS_DESCR=(
     [php-updater]="update PHP on your ubuntu/debian based server and switch back and forth between versions without much hassle"
     [nc-who]="follow live on the command line who is logged in on your nextcloud server, with a “GOD MODE” to selectively unvalidate cookies"
     [nc-sql]="commandline client for the nextcloud MySQL/MariaDB or PostgreSQL database"
-    [nc-occ]="interactive frontend to build and execute occ commands"
+    [nc-occ]="interactively create and execute OCC commands with favorites for your most used occ commands"
     [nc-apps]="(not only) an appstore browser/client for the commandline"
     [nc-shares]="list shares with lots of information and selection options"
     [nc-integrity-fix]="resolve “Some files have not passed the integrity check” warnings"
@@ -50,7 +50,6 @@ ebtb_launch_script() {
     [ "${M[c]}" = "test" ] && scriptname="${scriptname%-test}-test"
     # scripts that absolutely require arguments
     require_args=(nc-apps nc-mimecheck nc-shares)
-
     # if the script exists and is executable, run it
     if q0 command -v $scriptname; then
         echo "$scriptname is already installed. Launching..."
@@ -59,7 +58,6 @@ ebtb_launch_script() {
         ebtb_install_script $scriptname
         echo "Installation complete. Launching $scriptname…"
     fi
-
     # if script needs args, refuse to launch via wrapper
     for req in "${require_args[@]}"; do
         if [[ ${scriptname%-test} == $req ]]; then
@@ -76,9 +74,100 @@ ebtb_launch_script() {
     $scriptname
 }
 
+# TODO 1 -->
+# Updated ebtb_launch_script with interactive argument selection for nc-who
+
+#ebtb_launch_script() {
+#    local scriptname req
+#    local -a require_args
+#    scriptname="$1"
+#    # apply test suffix if in test mode
+#    [ "${M[c]}" = "test" ] && scriptname="${scriptname%-test}-test"
+
+#    # scripts that require arguments
+#    require_args=(nc-apps nc-mimecheck nc-shares nc-who)
+
+#    # check if the script is already installed
+#    if q0 command -v "$scriptname"; then
+#        echo "$scriptname is already installed. Launching..."
+#    else
+#        # install the script
+#        ebtb_install_script "$scriptname"
+#        echo "Installation complete. Launching $scriptname..."
+#    fi
+
+#    # handle scripts that need argument selection
+#    case "${scriptname%-test}" in
+#        nc-who)
+#            # define available arguments and descriptions
+#            declare -A NC_WHO_ARGS=(
+#                [--help]="Show help and usage information."
+#                [monitor]="Monitor live user logins, ordered by last activity at an adjustable refresh rate."
+#                [last]="List all users sorted by their last login time."
+#            )
+#            # prompt title
+#            arg_title="Please choose an argument for '$scriptname':"
+#            echo "$arg_title"
+#            line - N ${#arg_title}
+
+#            # prepare options for select menu
+#            local options=()
+#            for key in "${!NC_WHO_ARGS[@]}"; do
+#                options+=("$key: ${NC_WHO_ARGS[$key]}")
+#            done
+#            options+=("Cancel")
+
+#            # force single-column display
+#            local old_columns="$COLUMNS"
+#            COLUMNS=1
+
+#            local PS3="Selection (number): "
+#            select choice in "${options[@]}"; do
+#                if [[ "$choice" == "Cancel" ]]; then
+#                    echo "Operation cancelled."
+#                    COLUMNS="$old_columns"
+#                    return
+#                fi
+#                if [[ -n "$choice" ]]; then
+#                    # extract argument key (before colon)
+#                    local arg="${choice%%:*}"
+#                    echo "Launching '$scriptname' with argument '$arg'..."
+#                    # execute the script without exiting the wrapper
+#                    $scriptname $arg
+#                    # restore columns and return to main menu
+#                    COLUMNS="$old_columns"
+#                    return
+#                else
+#                    echo "Invalid selection. Please try again." >&2
+#                fi
+#            done
+#            ;;
+#        *)
+#            # enforce argument requirement for other scripts in require_args
+#            for req in "${require_args[@]}"; do
+#                if [[ ${scriptname%-test} == $req ]]; then
+#                    f
+#                    echo "$(Pbg) Script '$scriptname' requires arguments to run correctly. $(N)"
+#                    f
+#                    format_string "Please invoke $(C)$scriptname$(N) directly with its required parameters (or -h for help), not through this wrapper." 0
+#                    f
+#                    return
+#                fi
+#            done
+#            ;;
+#    esac
+
+#    # fallback: normal launch for scripts without required args
+#    separator4 lP
+#    echo
+#    $scriptname
+#}
+
+# TODO <-- 1
 ebtb_is_installed(){
     local s
     s="$1"
+    [ "${M[c]}" = "test" ] && s="${s%-test}-test"
     [[ -f ${D[ulb]}/$s && -x ${D[ulb]}/$s ]] || [[ -L ${D[ulb]}/$s && $(${X[realpath]} ${D[ulb]}/$s) == ${D[vts]}/$s && -f ${D[vts]}/$s && -x ${D[vts]}/$s ]]
 }
 
@@ -112,12 +201,20 @@ ebtb(){
         f
         o5; echo "$(box q) - quit"
     }
-
+# TODO 2 -->
+#    1 - nc-who                  follow live who is logged in on your nextcloud, with "GOD MODE" to selectively unvalidate cookies
+#    2 - nc-sql                  commandline client for the nextcloud MySQL/MariaDB or PostgreSQL database
+#    3 - nc-occ                  interactive frontend to build and execute occ commands
+#    4 - nc-apps                 (not only) an appstore browser/client for the commandline
+#    5 - nc-shares               list shares with lots of information and selection options
+#    6 - nc-integrity-fix        resolve “Some files have not passed the integrity check” warnings
+#    7 - nc-mimecheck            check for files without or with wrong file extension. For use with "Flow external script"
+#    8 - nc-subscribed-calendar  gives you the means to set an individual refreshrate per subscribed calendar
+# TODO <-- 2
     if ${bool[launch]}; then
         separator4 lP
         echo
     else
-        f
         echo "Do you already know the ebtb bash scripts for nextcloud admins?"
         f
         echo "Here a selection. Simply select the script you want to test:"

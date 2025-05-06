@@ -184,6 +184,14 @@ te(){
     done
 }
 
+# “Soft clear”: scrolls the entire screen up and puts cursor at top‑left
+cls(){
+    local -i lines
+    lines=$(tput lines) # get terminal height
+    printf '\n%.0s' $(seq 1 $lines) # print exactly that many blank lines → content scrolls up
+    printf '%b' "$CSI$CUP" # move cursor to top-left corner (row 0, col 0)
+}
+
 # Cursor offset absolute
 o(){
 # TODO 4 -->
@@ -194,6 +202,17 @@ o(){
 o2(){ o 2;}; o3(){ o 3;}; o4(){ o 4;}; o5(){ o 5;}
 # repeatedly used offset
 os(){ o 3;}
+
+# DEC Private Mode (DECSET/DECRST) sequences:
+#############################################
+# Auto Wrap Mode on/off
+awm_(){
+    case $1 in
+       off) printf '%b' "$CSI?7l"
+            ;;
+        on) printf '%b' "$CSI?7h"
+    esac
+}
 
 # cursor_ hide & cursor_ show
 cursor_(){
@@ -207,7 +226,7 @@ cursor_(){
 }
 
 ansi_reset(){
-    printf '%b' "$CSI?25h${CSI}0;m"
+    printf '%b' "$CSI?7h$CSI?25h${CSI}0m"
 }
 
 ${B[ansi_debugx]:-false} && set -x

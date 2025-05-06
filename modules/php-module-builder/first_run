@@ -43,7 +43,7 @@ first_run(){
             o2; B; echo "enter the directory where the$(N) \"$(Y)$project$(N)\" $(B)directory resides $q"
             read -rp "  --> " p
             [ "${p,,}" = 'q' ] && exit 0
-            dir="$(echo "$p" | ${X[sed]} 's/\"//g')"
+            dir="${p//\"/}"
             [ -d "$dir/$project" ] && register_project_dir "$dir"
             [ -d "$dir" ] && echo "$(o2;B)\"$(Y)$dir$(B)\" is an existing directory but it does not contain a subdirectory \"$project\""
         else
@@ -53,7 +53,7 @@ first_run(){
             while :; do
                 read -rp "  --> " p
                 [ "${p,,}" = 'q' ] && exit 0
-                dir="$(echo "${p//\"/}" | ${X[sed]} 's/\"//g')"
+                dir="${p//\"/}"
                 if [ -z "$dir" ]; then
                     te0
                     continue

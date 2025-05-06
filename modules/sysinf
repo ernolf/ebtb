@@ -14,7 +14,7 @@ declare -a SYSINFMOD SYSINF
 declare -A SYSINFAVAILABLEMODS
 SYSINFAVAILABLEMODS=(
     [aa]="AppArmor status"
-    [aio]="Nextcloud All In One (yes or no)"
+    [aio]="Nextcloud All In One (select sub-sections)"
     [bash]="Bash Version"
     [cgroups]="C-Groups"
     [cpu]="CPU-Info"
@@ -51,6 +51,10 @@ SYSINFAVAILABLEMODS=(
 
 ${X[mkdir]} -p ${D[li]}/sysinf.d
 
+for x in ${!SYSINFAVAILABLEMODS[@]}; do
+    . <(lrequire sysinf.d/$x)
+done
+
 sysinf_(){
     local sim # sysinf module
     local -a asm tsm
@@ -58,7 +62,7 @@ sysinf_(){
     asm=(${!SYSINFAVAILABLEMODS[@]})
     for sim in "${SYSINFMOD[@]}"; do
         if [[ " ${asm[@]} " =~ " $sim " ]]; then
-            . <(lrequire sysinf.d/$sim)
+#            . <(lrequire sysinf.d/$sim)
             # true sysinf modules
             tsm+=("$sim")
         fi
@@ -67,47 +71,53 @@ sysinf_(){
 }
 
 sysinf_print_(){
-    local bin bin1
-    echo "$(
-        separator4 --sanitized
-        echo "system information:"
-        echo "==================="
-        echo "$(ts)"
-        separator2 --sanitized
+    local bin title binary args
+    (
+        line _ Pbg a a2
+        C; echo "system information:"; N
+        C; echo "==================="; N
+        Yi; ts; N; echo
+        line _ lR a a2
         for bin in "$@"; do
             case "${bin%% *}" in
-             echo)  bin="${bin#* }"
-                    bin1="${bin%%: *}:"
-                    echo -e "$bin\n$(line - N ${#bin1})" 2>&1
-                    separator --sanitized
-                ;;
-            title)  bin1="${bin#* }"
-                    echo "$bin1$(line - N ${#bin1} b1)" 2>&1
-                ;;
-        title_end)  bin1="<- ${bin#* }"
-                    echo -e "$bin1$(line - N ${#bin1} b1)" 2>&1
-                    separator --sanitized
-                ;;
-             true)  echo -e "${bin#* }" 2>&1
-                    separator --sanitized
-                ;;
-           p_sort)  bin1="${bin//p_sort/cat}:"
-                    [ -n "${X[cat]}" ] && echo -e "$bin1\n$(line - N ${#bin1})\n$(p_sort -V $(<${bin#* }) 2>&1)"
-                    separator --sanitized
-                ;;
-                *)  bin1="${bin% --}:"
-                    [ -n "${X[${bin%% *}]}" ] && echo -e "$bin1\n$(line - N ${#bin1})\n$(${X[${bin%% *}]} ${bin#* } 2>&1)"
-                    separator --sanitized
+             echo)  bin="${bin#echo }"
+                    title="${bin%%: *}:"
+                    bin="${bin#*: }"
+                    echo "$(C)$title$(N) $bin" 2>&1 # title not underscored
+#                    echo "$(C)$title$(N) $bin$(line - C ${#title} b1)" 2>&1  # title underscored
+                    line _ lR a a2
+                    ;;
+            title)  title="${bin#title }"
+                    echo "$(C)$title$(line - C ${#title} b1)" 2>&1
+                    ;;
+        title_end)  title="<- ${bin#title_end }"
+                    echo "$(C)$title$(line - C ${#title} b1)" 2>&1
+                    line _ lR a a2
+                    ;;
+             true)  echo -e "${bin#true }" 2>&1
+                    line _ lR a a2
+                    ;;
+           p_sort)  title="${bin//p_sort/cat}:"
+                    echo "$(C)$title$(line - C ${#title} b1 a1; p_sort -V $(<${bin#* }) 2>&1)"
+                    line _ lR a a2
+                    ;;
+                *)  title="${bin% --}:" binary="${bin%% *}" args="${bin#* }"
+                    if [ -n "${X[$binary]}" ]; then
+                        echo "$(C)$title$(line - C ${#title} b1 a1; ${X[$binary]} $args 2>&1)"
+                    else
+                        echo "$(R)the $binary binary could not be found in the BINARY path array$(N)"
+                    fi
+                    line _ lR a a2
             esac
         done
-        separator4 --sanitized
-    )"
+        line _ Pbg a a2
+    ) 2>$NUL
 }
 
 sysinf(){
-    local key desc sel
-    local -a sorted_keys
-    local -i i idx choice
+    local key desc sel sub_title
+    local -a sorted_keys nums boolean_switches
+    local -i i idx choice n valid
     # initialize the selected-modules array (global)
     SYSINFMOD=() SYSINF=()
     # build a sorted list of module keys
@@ -128,7 +138,9 @@ sysinf(){
     done
     # interactive selection loop
     while :; do
-        read -rp "Choose module number (0 to finish): " choice
+        cursor_ show
+        read -rp "Choose module number (0 to finish this selection-loop): " choice
+        cursor_ hide
         case "$choice" in
             0)  break
                 ;;
@@ -139,7 +151,59 @@ sysinf(){
                     sel="${sorted_keys[$((choice - 1))]}"
                     if [[ ! " ${SYSINFMOD[*]} " =~ " $sel " ]]; then
                         SYSINFMOD+=("$sel")
+
+                        . <(lrequire sysinf.d/$sel)
+
+                        # if this module defines its own BOOL array, offer a submenu
+                        if declare -p "${sel^^}_BOOL_KEYS" &>$NUL; then
+                            local -n bool_keys="${sel^^}_BOOL_KEYS"
+                            local -n bool_descr="${sel^^}_BOOL_DESCR"
+                            sub_title="Select sub-sections for System-Information module '$sel':"
+                            f
+                            echo "$sub_title"
+                            line '-' N ${#sub_title}
+                            printf "  %2d) %s\n" 0 "skip all"
+                            for i in "${!bool_keys[@]}"; do
+                                idx=$((i+1))
+                                printf "  %2d) %s\n" "$idx" "${bool_descr[${bool_keys[i]}]}"
+                            done
+
+                            # collect choices as before...
+                            #   read -a nums
+                            #   (( valid )) || continue
+                            #   for n in "${nums[@]}"; do boolean_switches+=("${bool_keys[$((n-1))]}"); done
+                            # prompt for choices
+                            while :; do
+                                cursor_ show
+                                read -rp "Choose number(s) (e.g. 1 or 1 3, 0 to skip all): " -a nums
+                                cursor_ hide
+                                # finish immediately on 0
+                                [[ " ${nums[*]} " =~ " 0 " ]] && break
+
+                                valid=1
+                                for n in "${nums[@]}"; do
+                                    if ! [[ $n =~ ^[1-9][0-9]*$ ]] || (( n < 1 || n > ${#bool_keys[@]} )); then
+                                        echo "Invalid selection: $n" >&2
+                                        valid=0
+                                        break
+                                    fi
+                                done
+                                (( valid )) || continue
+
+                                # collect the chosen boolean flags
+                                for n in "${nums[@]}"; do
+                                    boolean_switches+=("${bool_keys[$((n-1))]}")
+                                done
+                                echo "Enabled for '$sel': ${boolean_switches[*]}"
+                                break
+                            done
+
+                            echo
+                            unset -n bool_keys bool_descr
+                        fi
+
                         echo "Added: $sel"
+
                         echo "Selected modules: ${SYSINFMOD[*]}"
                     else
                         echo "Already selected: $sel"
@@ -154,10 +218,10 @@ sysinf(){
 
     # optionally run spinner in background and dispatch your collection
     spinner Yi " . determine system informations ." &
-    sysinf_ spinner dpkg php sources
+    sysinf_ spinner dpkg php sources ${boolean_switches[*]}
     kill_spinner
-
-    # print out the gathered system information
+    awm_ on # switch DECAWM on, since it is often switched of by sysinf_print_
     echo
     sysinf_print_ "${SYSINF[@]}"
+    return 0
 }

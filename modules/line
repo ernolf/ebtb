@@ -18,18 +18,16 @@ LINE_BASHLIB=:
 # $4 and $5 either a$i or b$i where a is after and b is before
 # and $i the amount of empty lines
 line(){
-    required_args 3 "$@"
-    [[ "$-" =~ x ]] && { set +x; local debugx=true; } || local debugx=_
-    pl(){
-#        printf "%s" "$(eval printf \"\%0.s'$1'\" \{1..$2\})"
-        for ((i=0; i<$2; i++)); do printf "$1"; done # no eval required here
-    }
-    local p c
-    local -i e r a b
-    p="$1" c="$2" e=0 a=1 b=0
-    (( $(${X[expr]} $3 : '.*/.*') )) && e=${3%/*}
-    [ "${3#*/}" = 'a' ] && r=$(( ( $(max_cols) - e ) / ${#p} )) || r=${3#*/}
+    local -A bool
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
+    local p c cp # pattern, color and coolored pattern
+    local -i e r a b # empty_spaces, repetition, lines after, lines before
+    p="${1:--}" c="${2:-N}" e=0 a=1 b=0
+    q0 declare -f $c || c='N' # if color does not exist as function, fallback to neutral
+    (( $(${X[expr]} ${3:-a} : '.*/.*') )) && e=${3%/*}
+    [[ ! $3 || ${3#*/} = 'a' ]] && r=$(( ( $(max_cols) - e ) / ${#p} )) || r=${3#*/}
     shift 3
+    # declare the values for 'b'efore and 'a'fter
     while (( $# )); do
         case "${1:0:1}" in
           a|b)  (( ${1:1}1 )) && local ${1:0:1}=${1:1}
@@ -38,11 +36,13 @@ line(){
             *)  shift
         esac
     done
-    f $b
-    (( e )) && o $e
-    pl "$($c)$p$(N)" $r
-    f $a
-    $debugx && set -x
+    f $b # prepend 'b' empty lines
+    (( e )) && o $e # offset 'e' empty spaces
+    cp="$($c)$p$(N)" # compose colored pattern
+    # print the line with the colored pattern
+    for ((i=0; i<$r; i++)); do printf '%s' "$cp"; done
+    f $a # append 'a' empty lines
+    ${bool[debugx]:-_} && set -x
 }
 
 separator(){
@@ -52,7 +52,7 @@ separator(){
         line ' -' ${color:-GRAY} a
     else
         color="$1"
-        kill_spinner && te1 && line ' -' ${color:-GRAY} a
+        kill_spinner && te1 && line ' -' ${color:-GRAY}
     fi
 }
 
@@ -63,7 +63,7 @@ separator2(){
         line ' =' ${color:-GRAY} a
     else
         color="$1"
-        kill_spinner && te1 && line ' =' ${color:-GRAY} a
+        kill_spinner && te1 && line ' =' ${color:-GRAY}
     fi
 }
 
@@ -74,7 +74,7 @@ separator3(){
         line - ${color:-GRAY} a
     else
         color="$1"
-        kill_spinner && te1 && line - ${color:-GRAY} a
+        kill_spinner && te1 && line - ${color:-GRAY}
     fi
 }
 
@@ -85,6 +85,6 @@ separator4(){
         line = ${color:-GRAY} a
     else
         color="$1"
-        kill_spinner && te1 && line = ${color:-GRAY} a
+        kill_spinner && te1 && line = ${color:-GRAY}
     fi
 }

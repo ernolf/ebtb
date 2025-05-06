@@ -12,20 +12,20 @@ NC_C2J_BASHLIB=:
 
 declare config_json
 
-config2json(){
-    [ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
-    local cdir C2J
-    [[ -d $1 ]] && cdir="$1" || cdir=${NC[cd]}
-    jq_filter(){
+c2j_jq_filter(){
 # TODO 1 -->
 # as oneliner:
 # echo "$@"|${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
 # TODO <-- 1
-        echo "$@" | ${X[jq]} -c '[.[] | .[]]
-            | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
-            | reduce .[]as $item({};. * $item)'
-    }
+    echo "$@" | ${X[jq]} -c '[.[] | .[]]
+        | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
+        | reduce .[]as $item({};. * $item)'
+}
 
+config2json(){
+    [ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
+    local cdir C2J
+    [[ -d $1 ]] && cdir="$1" || cdir=${NC[cd]}
 # TODO 2 -->
 # as oneliner:
 # C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
@@ -42,26 +42,15 @@ config2json(){
     }
     echo json_encode($c);
     ?>'
-
-# TODO 3 -->
-#    if nonullglob "$1/*\.config\.php"; then
-#    if q0 ${X[ls]} ${NC[cd]}}/*.config.php; then
-# TODO <-- 3
     if nonullglob "$cdir/*\.config.php"; then
-# TODO 4 -->
-#        jq_filter $(echo "$C2J" | ${X[php]} -- ${NC[cd]}/config.php ${NC[cd]}/*.config.php)
-# TODO <-- 4
-        jq_filter $(echo "$C2J" | ${X[php]} -- $cdir/config.php $cdir/*.config.php)
+        c2j_jq_filter $(echo "$C2J" | ${X[php]} -- $cdir/config.php $cdir/*.config.php)
     else
-# TODO 5 -->
-#        jq_filter $(echo "$C2J" | ${X[php]} -- ${NC[cd]}/config.php)
-# TODO <-- 5
-        jq_filter $(echo "$C2J" | ${X[php]} -- $cdir/config.php)
+        c2j_jq_filter $(echo "$C2J" | ${X[php]} -- $cdir/config.php)
     fi
 }
 
 c2j(){
-    config2json $@ | ${X[gzip]} 2>&1 | ${X[base64]} -w 0
+    config2json "$@" | ${X[gzip]} 2>&1 | ${X[base64]} -w 0
 }
 
 nc_configkey(){

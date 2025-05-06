@@ -99,9 +99,11 @@ sign_(){
     [ -d "${target_dir%/}" ] || ${X[mkdir]} -p "${target_dir%/}"
     # write lib with adapted path to target
     if [ "${channel:-test}" = 'test' ]; then
-        ${X[cp]} -a "$lib" "$target"
+        ${X[sed]} "s#@channel@#test#" "$lib" > "$target"
+#        ${X[cp]} -a "$lib" "$target"
     else
-        ${X[sed]} "s#$INCLUDEDIR/test/#$MODULEDIR/#" "$lib" > "$target"
+        ${X[sed]} "s#@channel@#prod#" "$lib" > "$target"
+#        ${X[sed]} "s#$INCLUDEDIR/test/#$MODULEDIR/#" "$lib" > "$target"
     fi
     echo "    target: \"$target\""
     ${bool[debug]} && anykey
@@ -150,10 +152,17 @@ test_2_(){
     local backupdir libname lib backupsufix
     local -a difflibs
     backupdir="$(${X[dirname]} $ca_dir)~backups/modules/$channel"
-    mapfile -t difflibs< <(tools/compare_modules "test" "$channel")
+    mapfile -t difflibs< <(tools/compare_modules "$channel")
     if (( ${#difflibs[@]} )); then
-        [ -d "$backupdir" ] || ${X[mkdir]} -p "$backupdir"
+        echo
         echo "  \${#difflibs[@]} = ${#difflibs[@]}"
+        echo "  \${difflibs[@]} = ${difflibs[@]}"
+        echo
+        echo "  continue only if everything looks good here!"
+        echo
+        anykey
+        echo
+        [ -d "$backupdir" ] || ${X[mkdir]} -p "$backupdir"
         for libname in ${difflibs[@]}; do
             echo "  - $libname"
             lib="$dir2_dest/$libname"
@@ -185,12 +194,13 @@ echo -n "  OpenPGP_Key = "
 $LOCAL_SERVER && echo "(local server, no signing)" || echo "$OpenPGP_Key"
 echo "  source directory      = $dir1_source"
 echo "  destination directory = $dir2_dest"
-echo
-echo "  continue only if everything looks good here!"
-echo
-anykey
-echo
-${bool[test2]} && test_2_
+${bool[test2]} && test_2_ || {
+    echo
+    echo "  continue only if everything looks good here!"
+    echo
+    anykey
+    echo
+}
 
 if ${bool[all]}; then
     bulk_

@@ -19,7 +19,7 @@ packages_diff(){
         local v x
         v="$1"
         shift
-        (   ${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'$v'/{print $2}' | ${X[sed]} "s/$v//"
+        (   ${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'$v'/{print $2}' | sed_ "s/$v//"
             for x in $@; do
                 case "$x" in
             libapache2-mod-php) echo $x        ;;
@@ -48,7 +48,7 @@ packages_diff(){
             [[ " $pkg" =~ " php$pvo-" ]] && eia+=("${pkg#*-}")
         done
     fi
-    for px in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | ${X[sed]} "s/php/php$2/"); do
+    for px in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | sed_ "s/php/php$2/"); do
         if echo "$px" | ${X[grep]} -Eqsvw "^php${PHP[vregex]}$"; then
             q0 apt_exist "$px" && echo "$px"
         fi

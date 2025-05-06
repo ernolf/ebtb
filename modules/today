@@ -26,11 +26,10 @@ declare -i today=$(${X[date]} -ud 'today 00:00' +%s)
 
 # from unix to utc day
 ut2udF(){
-    if [[ -t 0 ]]; then # no STDIN
-        ${X[date]} -ud @$1 +%F
-    else
-        ${X[date]} -ud @$(${X[cat]}) +%F
-    fi
+    local ut
+    [[ -p /dev/stdin ]] && ut="$(< /dev/stdin)" || ut="$1"
+    [[ $ut =~ ^[0-9]+$ ]] || return 1
+    ${X[date]} -ud @$ut +%F
 }
 
 date2unix0hr(){

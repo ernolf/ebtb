@@ -123,11 +123,11 @@ extension_include_dir=$(extension_include_dir_of_ $php_version)
 
 #installed_modules="$(php$php_version -m|${X[grep]} -Pv '(^\[|Zend)')"   # <- not clean enough
 #installed_modules=$(/usr/sbin/phpquery -v $php_version -M)                  # <- not complete
-installed_modules="$([ -d "$extension_dir" ] && cd "$extension_dir"; echo *.so | ${X[sed]} 's/\.so//g')" # <- this sworks
+installed_modules="$([ -d "$extension_dir" ] && cd "$extension_dir"; echo *.so | sed_ 's/\.so//g')" # <- this sworks
 [[ " $installed_modules " =~ " $module " ]] && B[module_is_installed]=true
 
 if ${B[remove]}; then
-    extension="$(extension_ini_case "$module" | ${X[sed]} 's/^.*extension=//;s/\.so.*$//')"
+    extension="$(extension_ini_case "$module" | sed_ 's/^.*extension=//; s/\.so.*$//')"
     if ${B[module_is_built]}; then
         lG; echo "- php$php_version-$module seems to be installed by this script"
         ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\""; }

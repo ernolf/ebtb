@@ -26,7 +26,7 @@ placeholders=(
 # binaries for build process
 declare binary
 declare -a build_binaries
-build_binaries=(basename cat chown cp diff dirname find gawk grep gpg head jq mkdir php rm sed seq sha256sum shfmt sort stat sudo tail)
+build_binaries=(basename cat chown cp date diff dirname find gawk grep gpg head jq mkdir php rm sed seq sha256sum shfmt sort stat sudo tail)
 unset BINARIES
 declare -gA BINARIES 2>/dev/null || declare -A BINARIES
 BINARIES[env]="$(command -v env) LC_MESSAGES=C"
@@ -46,3 +46,5 @@ q1(){ "$@" >/dev/null; }
 q2(){ "$@" 2>/dev/null; }
 # printf not sorted line by line
 p_nosort(){ printf '%s\n' "$@"; }
+# make not required functions quiet:
+mh(){ :; }; funcname_and_lineno(){ :; }; require_arg(){ :; }; required_args(){ :; }; log_trace(){ :; }

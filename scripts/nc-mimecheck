@@ -240,7 +240,7 @@ fi
 cd "${NC[dd]}"
 
 # remove absolute path to NC[dd] if not invoked by nextcloud flow
-basepath="$(echo "$*" | ${X[sed]} 's\'${NC[dd]}'/\\1')"
+basepath="$(sed_ 's\'${NC[dd]}'/\\1' "$*" '-')"
 user2check="$(check_username_case "${basepath%%/*}")"
 [ "$user2check" = "${basepath%%/*}" ] || {
     v_echo "$(pf; Y)user case corrected:$(N) from \"$(B)${basepath%%/*}$(N)\" to \"$(B)$user2check$(N)\" "

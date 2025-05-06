@@ -36,7 +36,7 @@ set_selections(){
     q0 ${X[apt-mark]} unhold *php*
     [ "$modus" = "manual" ] && mf=auto
     [ "$modus" = "auto" ] && mf=manual
-    ${X[update-alternatives]} --get-selections | ${X[grep]} -E "$regex" |  ${X[sed]} -E "s/$mf/$modus/;s/$old/$new/" | q0 ${X[update-alternatives]} --set-selections
+    ${X[update-alternatives]} --get-selections | ${X[grep]} -E "$regex" | sed_ "s/$mf/$modus/; s/$old/$new/" | q0 ${X[update-alternatives]} --set-selections
 }
 
 # switch all findable php related packages to manual

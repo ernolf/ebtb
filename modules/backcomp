@@ -71,8 +71,8 @@ done
 # removed function for backwards compatibility:
 populate_pkgs_by_dpkg_array(){ :; }
 
-if (( M[e] < 1738066400 )); then # 1738164268 ?
-    echo -e "\n\n\e[31m - The current script version is very old.\n   The integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
+if (( M[e] < 1741041000 )); then # 1738164268 ?
+    echo -e "\n\n\e[31m - The current script version is to old for the integrated updater.\n   The integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
     exit 1
 fi
 

@@ -16,9 +16,9 @@ diff_other_files(){
     local opath npath plu be
     local -i count c2 c3
     opath="$FILE" npath="${FILE//$OLD/$NEW}" c2=20 c3=25
-    q0 ${X[diff]} <(${X[sed]} "s/$OLD/@VERSION@/" "$opath") <(${X[sed]} "s/$NEW/@VERSION@/" "$npath") && return # don't treat empty diffs
+    q0 ${X[diff]} <(sed_ "s/$OLD/@VERSION@/" "$opath" '-') <(sed_ "s/$NEW/@VERSION@/" "$npath" '-') && return # don't treat empty diffs
     # Count the number of lines starting with '<'
-    count=$(${X[diff]} <(${X[sed]} "s/$OLD/@VERSION@/" "$opath") <(${X[sed]} "s/$NEW/@VERSION@/" "$npath") | ${X[grep]} -c '^<')
+    count=$(${X[diff]} <(sed_ "s/$OLD/@VERSION@/" "$opath" '-') <(sed_ "s/$NEW/@VERSION@/" "$npath" '-') | ${X[grep]} -c '^<')
     if (( count == 1 )); then
         plu='' be=is
     elif (( count > 1 )); then
@@ -30,7 +30,7 @@ diff_other_files(){
     f
     echo "$(o3; W; format_string "This is the detected diff $(GRAY)(the $(dY)@VERSION@$(GRAY) string here is just used as neutral placeholder in order to only filter out the differences that matter)$(W). The line$plu preceded with '$(R)<$(W)' (red) $be from $(R)$opath$(W), while the coresponding line$plu from $(G)$npath$(W) $be preceded with '$(G)>$(W)' (green) :" 3; N)"
     f
-    ${X[diff]} --color <(${X[sed]} "s/$OLD/@VERSION@/" "$opath") <(${X[sed]} "s/$NEW/@VERSION@/" "$npath")
+    ${X[diff]} --color <(sed_ "s/$OLD/@VERSION@/" "$opath" '-') <(sed_ "s/$NEW/@VERSION@/" "$npath" '-')
     f
     o3; echo "Based on this diff, this script would suggest this:"
     line '=' P 2/a b1  # old config:
@@ -48,14 +48,14 @@ diff_other_files(){
     line '-' GRAY 2/a
     GRAY; echo -n "-->  begin"
     line "  -->" GRAY 14
-    ${X[sed]} "s/$OLD/$NEW/g" $opath
+    sed_ "s/$OLD/$NEW/g" $opath '-'
     GRAY; echo -n "<--   end "
     line "  <--" GRAY 14
     line '=' P 2/a a2
     echo "$(pf; W; format_string "Nothing has been written to disc yet. If everything looks as desired and expected and you want to apply the changes exactly as shown here, then please enter $(Gbg) yes $(W)." 3; N)"
     line '=' P 2/a b1
     if ask "$(qpf)Apply changes to $npath as suggested" "$YES"; then
-        ${X[sed]} "s/$OLD/$NEW/g" $opath > $npath
+        sed_ "s/$OLD/$NEW/g" "$opath" "$npath"
         line '-' GRAY 2/a
         o3; GRAY; echo "new:$(f; o5)- config-file$(o $c2)-->$(o $c3)$npath"
         line '-' GRAY 2/a

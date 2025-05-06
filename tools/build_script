@@ -16,7 +16,7 @@ if [[ "$#" -lt 2 ]]; then
     exit 1
 fi
 
-# Ensure that the first argument exists
+# Ensure that the first argument is an existing file
 if ! [ -f "$1" ]; then
     echo "\"$1\" does not exist"
     echo "Usage: $0 <input_script> <output_script>"
@@ -31,11 +31,13 @@ source config/configure
 source config/placeholders
 # source sed functions
 source <(${X[tail]} -n +14 modules/awksed)
+# Source the time
+source config/runtime
 
 # Declare variables
 declare input_script output_script test_mode scriptname tempfile placeholder placeholder_pattern
 # Assign the arguments to variables
-input_script="$1" output_script="$2" test_mode="$3"
+input_script="$1" output_script="$2" test_mode="${3:-prod}"
 
 if [ "$test_mode" = 'test' ]; then
     scriptname="$(${X[basename]} $input_script)-test"
@@ -58,7 +60,7 @@ tempfile="$(mktemp)"
 for placeholder in "${placeholders[@]}"; do
     placeholder_pattern="__${placeholder}__"
     [ -f "$output_script" ] && ${X[cat]} "$output_script" > "$tempfile"
-    ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
+    ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$epoch' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
 done
 ${X[rm]} -f "$tempfile"
 # minify modules array
