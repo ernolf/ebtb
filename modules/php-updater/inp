@@ -44,17 +44,20 @@ install_new_php(){
         search_candidates_4_extensions_installed_by_admin $old
         spinner C " . performing thorough review (dry run) of package sources and for candidate availability ." &
         mapfile -t packages< <(packages_diff $old $new)
-        mapfile -t sapi_packages< <(for sapi in $(${X[comm]} -23 <(p_sort $(${X[phpquery]} -v $old -S)) <(p_sort $(${X[phpquery]} -v $new -S))); do echo "${SAPI[$sapi]/@VER@/$new}"; done)
 # TODO 2 -->
+        mapfile -t sapi_packages< <(for sapi in $(${X[comm]} -23 <(p_sort $(${X[phpquery]} -v $old -S)) <(p_sort $(${X[phpquery]} -v $new -S))); do echo "${SAPI[$sapi]/@VER@/$new}"; done)
         mapfile -t sapi_not< <(for sapi in $(${X[comm]} -23 <(p_sort ${!SAPI[@]}) <(p_sort $(${X[phpquery]} -v $old -S))); do echo "${SAPI[$sapi]/@VER@/$new}"; done)
 # TODO <-- 2
         q0 ${X[apt-mark]} unhold *php*
         [ -z "${X[needrestart]}" ] || export NEEDRESTART_SUSPEND=1
         kill_spinner
-        if ((${#sapi_packages[@]})) || ((${#packages[@]})); then
-            apt_ install --yes ${sapi_packages[@]} ${packages[@]}
+        if (( ${#packages[@]} )); then
+            apt_ install --yes ${packages[@]}
         fi
 # TODO 3 -->
+        if (( ${#sapi_packages[@]} || ${#packages[@]} )); then
+            apt_ install --yes ${sapi_packages[@]} ${packages[@]}
+        fi
         if ((${#sapi_not[@]})); then
             apt_ remove --yes ${sapi_not[@]}
         fi

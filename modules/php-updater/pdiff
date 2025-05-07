@@ -13,44 +13,52 @@ PDIFF_BASHLIB=:
 . <(lrequire dpkg)
 . <(lrequire php/extensions)
 
-# returns a list with vals unique to $1 - # x1=minimum packages to be installed, x2=sapis and packages required by cli and thus installed
-packages_diff(){
-    inst(){
-        local v x
-        v="$1"
-        shift
-        (   ${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php'$v'/{print $2}' | sed_ "s/$v//"
-            for x in $@; do
-                case "$x" in
-            libapache2-mod-php) echo $x        ;;
-                         embed) echo libphp-$x ;;
-                             *) echo php-$x
-                esac
-            done
-        ) | ${X[sort]} -u
-    }
+pdiff_inst(){
+    local v x
+    v="$1"
+    shift
+    (   # dpkg -l + awk: extract $2, strip version suffix in one step
+        ${X[dpkg]} -l | ${X[gawk]} "/^[hiu]i.*php$v/ { p = \$2; sub($v, \"\", p); print p }"
+        for x in "$@"; do
+            case "$x" in
+        libapache2-mod-php) echo "$x"        ;;
+                     embed) echo "libphp-$x" ;;
+                         *) echo "php-$x"
+            esac
+        done
+    ) | ${X[grep]} -vFxf <(printf '%s\n' "${SAPI[@]/@VER@/}") | ${X[sort]} -u # sapis are filtered out here
+}
 
+# returns a list with vals unique to $1 - # x1=minimum packages to be installed, x2=packages required by cli and thus installed
+packages_diff(){
     [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
-    local pvo pvn sapi pkg pkgmod px
+    local pvo pvn pkgmod pkg sapi px
     local -a eia x1 x2
     local -i i
-    pvo="$1" pvn="$2" sapi="$3"
+    pvo="$1" pvn="$2"
     local -n C4EIBY4_pvo="C4EIBY4_${pvo//./}"
 # TODO 0 -->
 #    x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip)  ! igbinary and redis must be detected
 # TODO <-- 0
-    x1=(apcu bcmath bz2 curl gd gmp intl mbstring xml zip)
-    x2=(libapache2-mod-php fpm cli cgi embed phpdbg common json opcache readline)
+    # baseline modules vs. new-php defaults
+    x1=(apcu bcmath bz2 curl gd gmp intl mbstring xml zip) # includes
+    x2=(common json opcache readline) # excludes, since installed as dependecy
+    # collect admin-installed module names
     if (( ${#EXTS_ADMIN[@]} )); then
-        for i in ${!C4EIBY4_pvo[@]}; do
+        for i in "${!C4EIBY4_pvo[@]}"; do
             pkgmod="${C4EIBY4_pvo[i]}"
-            pkg=${pkgmod%:*}
-            [[ " $pkg" =~ " php$pvo-" ]] && eia+=("${pkg#*-}")
+            pkg="${pkgmod%:*}"
+            [[ $pkg == php$pvo-* ]] && eia+=("${pkg#*-}")
         done
     fi
-    for px in $(${X[comm]} -23 <(inst $pvo ${x1[@]} ${eia[@]}) <(inst $pvn ${x2[@]}) | sed_ "s/php/php$2/"); do
-        if echo "$px" | ${X[grep]} -Eqsvw "^php${PHP[vregex]}$"; then
-            q0 apt_exist "$px" && echo "$px"
-        fi
-    done
+    # the sapis must be at the first place of the arrays filled by this function
+    while IFS= read -r sapi; do
+        echo "${SAPI[$sapi]/@VER@/$pvn}"
+    done < <(${X[comm]} -23 <(p_sort $(${X[phpquery]} -v $pvo -S)) <(p_sort $(${X[phpquery]} -v $pvn -S)))
+    # all other packages but sapi
+    while IFS= read -r px; do
+        px="${px/php/php$pvn}"
+        [[ $px == php$pvn ]] && continue
+        q0 apt_exist "$px" && echo "$px"
+    done < <(${X[comm]} -23 <(pdiff_inst "$pvo" "${x1[@]}" "${eia[@]}") <(pdiff_inst "$pvn" "${x2[@]}"))
 }
