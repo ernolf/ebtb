@@ -9,6 +9,7 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
 modules=(
     php/version nc/nextcloud nc/occ nc/versions nc/logo $MS/github_api
     $MS/app_update $MS/db $MS/appstore $MS/data_refine $MS/assumed_version

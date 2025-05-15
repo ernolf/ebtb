@@ -62,7 +62,7 @@ switch_a2module_version(){
                 f
                 while :; do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
                     if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                        mh "$(funcname_and_lineno) key: [$key]" &
+                        mh "$(fn_ln) key: [$key]" &
                         echo "Confirmed choice $(button $key)"
                         case $key in
                                 q)  f 2;break

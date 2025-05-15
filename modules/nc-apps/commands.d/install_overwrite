@@ -55,7 +55,7 @@ install_overwrite(){
     fi
     unset -v file
 
-    spinner GRAY ". . . . . . . .  building  new  'app_install_overwrite'  array  . . . . . . . ." &
+    spinner GRAY " . . . . . . . .   building new 'app_install_overwrite' array   . . . . . . . ." &
     apps_in_array_tf="$(tf)"
     list_apps_4_array "$apps_in_array_tf" & job_id=$!
     wait $job_id
@@ -63,7 +63,7 @@ install_overwrite(){
         array_content+="    $counter => '$app',\\n"
         (( counter++ ))
     done < $apps_in_array_tf
-    kill_spinner
+    kill_spinner_te0
     # Create the array content with proper formatting
     aioa=$(printf "  'app_install_overwrite' =>\\\\n  array (\\\\n%s  )," "$array_content")
     unset -v app s_pid job_id apps_in_array_tf array_content

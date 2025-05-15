@@ -11,7 +11,7 @@ ${CLEANUP_BASHLIB:-_} && return
 CLEANUP_BASHLIB=:
 
 cleanup() {
-    ${B[trace]:-_} && return 0
+    ${B[trace]:-_} && return 0 || :
     local x
     for x in "$@"; do
         if [[ -d "$x" && "$x" != / && "$x" =~ ^(/tmp|/var/tmp|/dev/shm|/run/lock)(/|$) ]]; then
@@ -33,7 +33,7 @@ cleanup_dangling_links(){
     # "find -xtype l" also matches links pointing to other links (e.g. Debian alternatives),
     # so we use "! -exec test -e {} ;" to only select realy dangling symlinks.
     ${X[find]} "$1" -xtype l ! -exec ${X[test]} -e {} \; -print -delete | while read -r link; do
-        mh "$(funcname_and_lineno) removed: $link -> $(${X[realpath]} "$link")"
+        mh "$(fn_ln) removed: $link -> $(${X[realpath]} "$link")"
     done
 }
 
@@ -79,6 +79,6 @@ cleanup_dangling_links_match(){
             done
             (( allowed )) || should_delete=0
         fi
-        (( should_delete )) && ${X[rm]} -f -- "$link" && mh "$(funcname_and_lineno) removed: $link -> $target"
+        (( should_delete )) && ${X[rm]} -f -- "$link" && mh "$(fn_ln) removed: $link -> $target"
     done
 }

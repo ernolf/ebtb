@@ -1,0 +1,3 @@
+${C[mw]} ${D[vt]:=/var/tmp/${M[p]}} && export HOME=${D[vt]} && cd
+${C[ms]} ${D[vtm]:=${D[vt]}/modules} ${D[vts]:=${D[vt]}/scripts}
+${C[mw]} ${D[li]:=${D[vtm]}/${M[c]}}

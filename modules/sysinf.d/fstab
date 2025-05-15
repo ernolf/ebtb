@@ -10,6 +10,10 @@ __license__
 ${SYSINF_FSTAB_BASHLIB:-_} && return
 SYSINF_FSTAB_BASHLIB=:
 
+sysinf_fstab_column(){
+    ${X[sed]} 's/#.*//' /etc/fstab | ${X[column]} --table --table-columns SOURCE,TARGET,TYPE,OPTIONS,PASS,FREQ --table-right PASS,FREQ
+}
+
 sysinf_fstab(){
     local -A bool
     while (( $# )); do
@@ -21,6 +25,7 @@ sysinf_fstab(){
             kill_spinner
             spinner Yi " . determine system informations - fstab ." &
         }
-        SYSINF+=("cat /etc/fstab")
+        SYSINF+=("title cat /etc/fstab:")
+        SYSINF+=("true $(sysinf_fstab_column)")
     }
 }

@@ -31,7 +31,7 @@ declare -gA DB
 database_call(){
     ${B[dc]:-_} && return 0
     local -A db
-    db[html]="$1"
+    db[html]="${1:-}"
     for x in type:dbtype host:dbhost user:dbuser pass:dbpassword name:dbname pref:dbtableprefix; do
         db[${x%:*}]=$(nc_configkey ${x#*:})
     done
@@ -40,8 +40,8 @@ database_call(){
     db[host]="${db[host]/#localhost*/localhost}"
     case ${DB[type]} in
         my) local my_client
-            [ -n "${my_client:=${X[mysql]}}" ] || {
-                [ -n "${X[mariadb]}" ] && my_client="${X[mariadb]}" || no_client_binary
+            [[ -n ${my_client:=${X[mysql]:-}} ]] || {
+                [[ -n ${X[mariadb]:-} ]] && my_client="${X[mariadb]:-}" || no_client_binary
             }
             local my_cnf=$(tf)
             echo -e "[client]\nhost=${db[host]}\nuser=${db[user]}\npassword=${db[pass]}">$my_cnf
@@ -58,8 +58,8 @@ database_call(){
             DB[ut2ts]="DATE_FORMAT(FROM_UNIXTIME(stime), '%Y-%m-%d %H:%i')"
             DB[type_sql_query]="REVERSE(SUBSTRING_INDEX(REVERSE(principaluri), '/', 1))"
             ;;
-        pg) ${B[aio]} && db_host="$(${X[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)" || {
-                [ -n "${X[psql]}" ] || no_client_binary
+        pg) ${B[aio]:-_} && db_host="$(${X[docker]} inspect -f '{{range.NetworkSettings.Networks}}{{.IPAddress}}{{end}}' nextcloud-aio-database)" || {
+                [[ -n ${X[psql]:-} ]] || no_client_binary
             }
             export PGPASSWORD=${db[pass]}
             DB[strg]="${X[psql]} --user=${db[user]} --host=${db[host]} ${db[html]} -d ${db[name]}"

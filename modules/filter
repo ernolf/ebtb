@@ -12,19 +12,20 @@ FILTER_BASHLIB=:
 
 . <(lrequire binaries)
 
-# the sed_ dispatcher function is not yet sourced here.
-sed_ansifilter(){
+# fallback function for ansifilter
+# switched to in 'binaries_extra_treatments' functon:
+# : ${X[ansifilter]:=filter_ansi} &>${NUL:=/dev/null}
+filter_ansi(){
+    # the sed_ dispatcher function is not yet sourced here.
     ${X[sed]} -E 's/\x1B\[[0-9;?]*[a-zA-Z]//g'
 }
-# X[ansifilter]=sed_ansifilter # <- this only for testing purposes
-: ${X[ansifilter]:=sed_ansifilter} &>${NUL:=/dev/null}
+# X[ansifilter]=filter_ansi # <- this only for testing purposes
 
-utf_filter(){
-    ${X[perl]} -CSD -pe '
-        # Convert \uXXXX notation to the corresponding Unicode character
+filter_utf(){
+    ${X[perl]} -CSD -pe "$(${X[cat]} << 'PERLSCRIPT'
+    # Convert \uXXXX notation to the corresponding Unicode character:
         s/\\u([0-9A-Fa-f]{4})/chr(hex($1))/ge;
-
-        # Remove various invisible Unicode characters
+    # Remove various invisible Unicode characters:
         s/\x{00A0}//g;        # Non-breaking Space (NBSP)
         s/\x{2000}//g;        # En Quad (EN QUAD)
         s/\x{2001}//g;        # Em Quad (EM QUAD)
@@ -52,8 +53,9 @@ utf_filter(){
         s/\x{202F}//g;        # Narrow No-Break Space (NNB SP)
         s/\x{205F}//g;        # Medium Mathematical Space (M  SP)
         s/\x{2060}//g;        # Word Joiner (WJ)
-
-        # Replace special Unicode characters
+    # Replace special Unicode characters:
+        s/\x{201C}/'/g;       # Replace LEFT DOUBLE QUOTATION MARK with a single quote
+        s/\x{201D}/'/g;       # Replace RIGHT DOUBLE QUOTATION MARK with a single quote
         s/\x{2026}/.../g;     # Horizontal Ellipsis … to ...
         s/\x{2605}/*/g;       # Unicode ★ to *
         s/\x{2606}/*/g;       # Unicode ☆ to *
@@ -65,14 +67,15 @@ utf_filter(){
         s/\x{FE0F}//g;        # Variation Selector-16 (emoji)
         s/\x{FFFC}//g;        # Object Replacement Character
         s/\x{FFFD}//g;        # Replacement Character
-        s/\x{1F44D}/[+1]/g;   # Thumb up (Unicode 👍) to [+1]
-        s/\x{1F64F}/[pray]/g; # Folded hands (Unicode 🙏) to [pray]
-        # This is to filter the name of Ondřej Surý:
+        s/\x{1F44D}/:+1:/g;   # Thumb up (Unicode 👍) to :+1:
+        s/\x{1F64F}/:pray:/g; # Folded hands (Unicode 🙏) to :pray:
+    # This is to filter the name of Ondřej Surý:
         s/\x{0159}/r/g;       # Latin small letter r with caron ř -> r
         s/\x{00FD}/y/g;       # Latin small letter y with acute ý -> y
-    '
+PERLSCRIPT
+    )"
 }
 
 filter_(){
-    ${X[cat]} | ${X[ansifilter]} | utf_filter
+    ${X[cat]} | ${X[ansifilter]} | filter_utf
 }

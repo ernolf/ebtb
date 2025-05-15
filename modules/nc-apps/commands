@@ -27,11 +27,11 @@ ${X[mkdir]} -p ${D[li]}/nc-apps/commands.d
 . <(lrequire nc-apps/commands.d/filters)
 
 search_matching_spinner(){
-    ${B[pager]} || spinner GRAY " . . . . . . . . . .   searching  for  matching  apps   . . . . . . . . . . ." &
+    ${B[pager]} || spinner GRAY " . . . . . . . . . . .   searching  for  matching  apps   . . . . . . . . . . ." &
 }
 
 summary(){
-    kill_spinner
+    kill_spinner_te0
     o2; echo -n "Summary: "
     if (( V[appcount] )); then
         echo "${V[appcount]} matching apps"
@@ -153,11 +153,11 @@ name(){
         done
     }
     local n_tmp=$(tf)
-    spinner GRAY " . . . . . . . . . .  building  'app_id_-_name'  array  . . . . . . . . . . ." &
+    spinner GRAY " . . . . . . . . . . .   building 'app_id_-_name' array   . . . . . . . . . . ." &
     build_id_name_array $n_tmp "${V[app_name]}" & job_id=$!
     wait $job_id
     mapfile -t id_name_array < "$n_tmp"
-    kill_spinner
+    kill_spinner_te0
     for app in "${id_name_array[@]}";do
         search_matching_spinner
         list "$app" "$@" use_json_all=:

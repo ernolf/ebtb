@@ -19,6 +19,8 @@ EXIT_BASHLIB=:
 . <(lrequire ebtb)
 . <(lrequire cleanup)
 
+F[spinner_pid]=${D[shm]}/spinner.pid
+
 exit_msg(){
     q0 ${X[pgrep]} -f '/(ebtb-)?(ebtb|janitor)(-test)?$' && return 0
     if ebtb_is_installed janitor; then
@@ -29,14 +31,14 @@ exit_msg(){
 }
 
 exit0(){
-    mh "exit 0"
+    log_trace "exit 0"
     G; echo "exiting ${M[n]} script."; N
     exit_msg
     exit 0
 }
 
 exit1(){
-    mh "exit 1"
+    log_trace "exit 1"
     R; echo "exiting ${M[n]}…"; N
     exit_msg
     exit 1

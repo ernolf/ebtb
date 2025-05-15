@@ -74,7 +74,7 @@ switch_default_version(){
     while :;do read -rsn 1 -p "$(pf; Y)Please make your choice: $(N)" key
         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
             f
-            mh "$(funcname_and_lineno) key: [$key]"
+            mh "$(fn_ln) key: [$key]"
             echo -n "$(P; pf)Confirmed choice $(button $key)"; N
             case $key in
                     q)  P; echo ":$(Yi) quit, nothing changed"; N
@@ -168,11 +168,11 @@ switch_default_version(){
                             f
                             anykey_noquit
                             cls
-                            f
-                            echo "$(o3; G; format_string "Now, if everything has gone as expected so far – which I sincerely hope – it is probably the right moment to remind you, that $(lG)you committed yourself to make a contribution to the project by accepting the terms$(G)." 3; N)"
-                            f
-                            echo "$(o3; G; format_string "I'm not an employee or contractor of Nextcloud GmbH. I do this work out of passion and am completely dependent on your support. So, please consider making at least a small financial contribution to help cover my costs for this project, $(lG)especially if you've used this script for professional and/or commercial purposes$(G)." 3; N)"
-                            anykey_noquit
+#                            f
+#                            echo "$(o3; Yi; format_string "Now, if everything has gone as expected so far – which I sincerely hope – it is probably the right moment to remind you, that $(lG)you committed yourself to make a contribution to the project by accepting the terms$(G)." 3; N)"
+#                            f
+#                            echo "$(o3; Yi; format_string "I'm not an employee nor a contractor of Nextcloud GmbH. I do this work out of passion and am completely dependent on your support. So, please consider making at least a small financial contribution to help cover my costs for this project, $(lG)especially if you've used this script for professional and/or commercial purposes$(G)." 3; N)"
+#                            anykey_noquit
                             break
                         fi
             esac

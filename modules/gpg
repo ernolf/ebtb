@@ -98,7 +98,7 @@ gpg_is_valid_pubkey() {
     fi
     [[ -n "$data" ]] || return 1
     # try dry-run import to see if it's a valid key
-    echo "$data" | ${X[gpg]} --batch --import-options show-only --dry-run --import &> >(log_trace) # (while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg validation: $line"; done)
+    echo "$data" | ${X[gpg]} --batch --import-options show-only --dry-run --import &> >(log_trace) # (while IFS= read -r line; do mh "$(fn_ln 2)gpg_assemble_key_():gpg validation: $line"; done)
 }
 
 gpg_import_pubkey() {
@@ -111,7 +111,7 @@ gpg_import_pubkey() {
     fi
     [[ -n "$data" ]] || return 1
     # try dry-run import to see if it's a valid key
-    echo "$data" | ${X[gpg]} --batch --import &> >(log_trace) # (while IFS= read -r line; do mh "$(funcname_and_lineno 2)gpg_assemble_key_():gpg import: $line"; done)
+    echo "$data" | ${X[gpg]} --batch --import &> >(log_trace) # (while IFS= read -r line; do mh "$(fn_ln 2)gpg_assemble_key_():gpg import: $line"; done)
 }
 
 # Convert binary .gpg to ASCII-armored .asc without touching system keyrings
@@ -191,7 +191,7 @@ gpg_assemble_key_() {
             mapfile -t headers < <(gpg_map_headers pub "$stripped")
             stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$stripped")
         fi
-    elif declare -f "$source" &>$NUL; then # '$source' is a function that outputs the asc data to stdout
+    elif binaries_is_func_ "$source"; then # '$source' is a function that outputs the asc data to stdout
         mapfile -t headers < <(gpg_map_headers pub "$($source)")
         stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$($source)")
     else
@@ -203,7 +203,7 @@ gpg_assemble_key_() {
     [[ -n "$stripped" ]] || return 1
     gpg_is_valid_pubkey "$(printf '%s\n\n%s\n%s\n' "${PGP[header_pub]}" "$stripped" "${PGP[footer_pub]}")" || {
         echo "'$source' does not provide valid PGP data"
-        mh "$(funcname_and_lineno 1)gpg_assemble_key_(): $source does not provide valid PGP data"
+        mh "$(fn_ln 1)gpg_assemble_key_(): $source does not provide valid PGP data"
         return 1
     }
     case "$mode" in
@@ -232,7 +232,7 @@ gpg_assemble_key_() {
             printf '\n %s\n' "${PGP[footer_pub]}"
             ;;
         *)  # unsupported mode ⇒ failure exit
-            mh "$(funcname_and_lineno 1)gpg_assemble_key_(): unknown mode '$mode'"
+            mh "$(fn_ln 1)gpg_assemble_key_(): unknown mode '$mode'"
             return 1
             ;;
     esac
@@ -256,7 +256,7 @@ gpg_extract_() {
             # Read the contents of a .asc file (already armored)
             armor=$(< "$source")
         fi
-    elif declare -f "$source" &>$NUL; then
+    elif binaries_is_func_ "$source"; then
         # If it's a shell function, call it and wrap with armor headers
         armor="$(gpg_assemble_key_ armor $source)"
     else

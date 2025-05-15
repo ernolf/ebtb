@@ -9,6 +9,7 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
 modules=(
     today interval prompt fstring httpd php/version php/alternatives ask
     php/versions php/fpm dist/os_release php/sury php/extensions

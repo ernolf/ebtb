@@ -195,6 +195,7 @@ menu() {
     local -i count i max_key
     local -a items
     local -A bool descr x_items
+    x_items=()
     [[ -f $1 ]] && . "$1" || something_went_wrong "menu: the first argument is not a file"
     count=${#items[@]}
     (( count > 9 )) && padding="%0${#count}d" || padding='%d'

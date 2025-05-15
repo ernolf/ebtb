@@ -15,7 +15,7 @@ FIRST_RUN_BASHLIB=:
 first_run(){
     disclaimer
     register_project_dir(){
-        mh "vdir: $*" &
+        mh "vdir: $*"
         local flags=""
         [ -d "$*" ] || ${X[mkdir]} -p "$*"
         setvdir v "$*"

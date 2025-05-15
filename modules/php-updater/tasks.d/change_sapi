@@ -79,7 +79,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 1 key: [$key]" &
+                            mh "$(fn_ln) 1 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break
@@ -138,7 +138,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 2 key: [$key]" &
+                            mh "$(fn_ln) 2 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break
@@ -212,7 +212,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 3 key: [$key]" &
+                            mh "$(fn_ln) 3 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break
@@ -271,7 +271,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 4 key: [$key]" &
+                            mh "$(fn_ln) 4 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break
@@ -341,7 +341,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt " key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 5 key: [$key]" &
+                            mh "$(fn_ln) 5 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break
@@ -411,7 +411,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt " key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 6 key: [$key]" &
+                            mh "$(fn_ln) 6 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break
@@ -472,7 +472,7 @@ change_sapi(){
                 while :; do read -rsn 1 -p "$read_prompt" key
                     if [[ "$allowed_keys" =~ $key ]]; then
                         if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                            mh "$(funcname_and_lineno) 7 key: [$key]" &
+                            mh "$(fn_ln) 7 key: [$key]" &
                             echo "Confirmed choice $(button $key)"
                             case $key in
                                 q)  break

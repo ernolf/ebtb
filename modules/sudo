@@ -37,7 +37,7 @@ su_do(){
             fi
             prompt="$(Pbg)[sudo]$(N) - $(P)You have to be '$(C)root$(P)' ${arga[p]}. Password of user$(C) %p$(P):$(N) "
             if q0 ${X[sudo]} -lp "$prompt" ${arga[run]}; then # ${arga[run]} must be kept unquoted here!
-                mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[sudo]} ${arga[run]} ${args[@]}"
+                mh "$(fn_ln 1)$(fn_ln) ${X[sudo]} ${arga[run]} ${args[@]}"
                 ${X[sudo]} ${arga[run]} ${args[@]}
                 ${arga[r]} && return 0 || exit 0
             else
@@ -52,7 +52,7 @@ su_do(){
             o4; GRAY; echo "sudo -u ${NC[u]} $ME ${args[@]}$(N)"
             prompt="$(Pbg)[sudo]$(N; pf; P)Enter password of user$(C) %p $(P)to substitute user to$(C) ${NC[u]}$(P):$(N) "
             o2; if q0 ${X[sudo]} -lu ${NC[u]} -p "$prompt" $ME; then
-                mh "$(funcname_and_lineno 1)$(funcname_and_lineno) ${X[sudo]} -u ${NC[u]} $CMA"
+                mh "$(fn_ln 1)$(fn_ln) ${X[sudo]} -u ${NC[u]} $CMA"
                 ${X[sudo]} -u ${NC[u]} $CMA
                 exit 0
             else
