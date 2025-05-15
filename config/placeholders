@@ -14,21 +14,23 @@ placeholders=(
     when
     whoami_whereami
     vdirname
+    homedir
     tempdir
     module_server
     general
     module_loader
     module_integrity
     nextcloud_updater
-    used_binaries
+    binaries_used
 )
 
 # binaries for build process
-declare binary
+declare binary NUL
+NUL='/dev/null'
 declare -a build_binaries
 build_binaries=(basename cat chown cp date diff dirname find gawk grep gpg head jq mkdir php rm sed seq sha256sum shfmt sort stat sudo tail)
 unset BINARIES
-declare -gA BINARIES 2>/dev/null || declare -A BINARIES
+declare -gA BINARIES 2>$NUL || declare -A BINARIES
 BINARIES[env]="$(command -v env) LC_MESSAGES=C"
 
 for binary in "${build_binaries[@]}"; do
@@ -41,10 +43,26 @@ done
 # Create a nameref for BINARIES named X
 declare -n X=BINARIES
 _(){ false; }
-q0(){ "$@" &>/dev/null; }
-q1(){ "$@" >/dev/null; }
-q2(){ "$@" 2>/dev/null; }
+q0(){ "$@" &>$NUL; }
+q1(){ "$@" >$NUL; }
+q2(){ "$@" 2>$NUL; }
 # printf not sorted line by line
 p_nosort(){ printf '%s\n' "$@"; }
 # make not required functions quiet:
-mh(){ :; }; funcname_and_lineno(){ :; }; require_arg(){ :; }; required_args(){ :; }; log_trace(){ :; }
+mh(){ :; }; fn_ln(){ :; }; require_arg(){ :; }; required_args(){ :; }; log_trace(){ :; }
+binaries_exceptions(){
+    ${X[gawk]} '/^[[:space:]]*for bb in/ {
+        # remove leading "for bb in " including any whitespace
+        sub(/^[[:space:]]*for bb in[[:space:]]*/, "")
+        # strip off everything from the first semicolon onward
+        sub(/[[:space:]]*;.*/, "")
+        # replace one or more whitespace characters with a pipe
+        gsub(/[[:space:]]+/, "|")
+        # accumulate into the variable `out`, joining with pipe if already set
+        out = (out ? out "|" $0 : $0)
+    }
+    END {
+        # if anything was collected, wrap in parentheses and print
+        if (out) print "(" out ")"
+    }' modules/binaries
+}

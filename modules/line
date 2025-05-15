@@ -19,13 +19,13 @@ LINE_BASHLIB=:
 # and $i the amount of empty lines
 line(){
     local -A bool
-    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
+#    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; } || :
     local p c cp # pattern, color and coolored pattern
     local -i e r a b # empty_spaces, repetition, lines after, lines before
     p="${1:--}" c="${2:-N}" e=0 a=1 b=0
-    q0 declare -f $c || c='N' # if color does not exist as function, fallback to neutral
+    binaries_is_func_ $c || c='N' # if color does not exist as function, fallback to neutral
     (( $(${X[expr]} ${3:-a} : '.*/.*') )) && e=${3%/*}
-    [[ ! $3 || ${3#*/} = 'a' ]] && r=$(( ( $(max_cols) - e ) / ${#p} )) || r=${3#*/}
+    [[ ! ${3:-} || ${3#*/} = 'a' ]] && r=$(( ( $(max_cols) - e ) / ${#p} )) || r=${3#*/}
     shift 3
     # declare the values for 'b'efore and 'a'fter
     while (( $# )); do
@@ -42,49 +42,49 @@ line(){
     # print the line with the colored pattern
     for ((i=0; i<$r; i++)); do printf '%s' "$cp"; done
     f $a # append 'a' empty lines
-    ${bool[debugx]:-_} && set -x
+#    ${bool[debugx]:-_} && set -x || :
 }
 
 separator(){
     local color
-    if [ "$1" = '--sanitized' ]; then
-        color="$2"
-        line ' -' ${color:-GRAY} a
+    if [[ ${1:-} = '--sanitized' ]]; then
+        color=${2:-GRAY}
+        line ' -' $color a
     else
-        color="$1"
-        kill_spinner && te1 && line ' -' ${color:-GRAY}
+        color=${1:-GRAY}
+        kill_spinner && te1 && line ' -' $color
     fi
 }
 
 separator2(){
     local color
-    if [ "$1" = '--sanitized' ]; then
-        color="$2"
-        line ' =' ${color:-GRAY} a
+    if [[ ${1:-} = '--sanitized' ]]; then
+        color=${2:-GRAY}
+        line ' =' $color a
     else
-        color="$1"
-        kill_spinner && te1 && line ' =' ${color:-GRAY}
+        color=${1:-GRAY}
+        kill_spinner && te1 && line ' =' $color
     fi
 }
 
 separator3(){
     local color
-    if [ "$1" = '--sanitized' ]; then
-        color="$2"
-        line - ${color:-GRAY} a
+    if [[ ${1:-} = '--sanitized' ]]; then
+        color=${2:-GRAY}
+        line - $color a
     else
-        color="$1"
-        kill_spinner && te1 && line - ${color:-GRAY}
+        color=${1:-GRAY}
+        kill_spinner && te1 && line - $color
     fi
 }
 
 separator4(){
     local color
-    if [ "$1" = '--sanitized' ]; then
-        color="$2"
-        line = ${color:-GRAY} a
+    if [[ ${1:-} = '--sanitized' ]]; then
+        color=${2:-GRAY}
+        line = $color a
     else
-        color="$1"
-        kill_spinner && te1 && line = ${color:-GRAY}
+        color=${1:-GRAY}
+        kill_spinner && te1 && line = $color
     fi
 }

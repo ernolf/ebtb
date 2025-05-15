@@ -14,10 +14,10 @@ NC_NEXTCLOUD_BASHLIB=:
 . <(lrequire nc/aio)
 . <(lrequire nc/c2j)
 
-[ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
+[[ -f ${F[nc]:=${D[vt]}/nc} ]] && . ${F[nc]}
 
 if ${B[firstrun]:-_}; then
-    [ -f "${F[nc]}" ] && echo -n > ${F[nc]}
+    [[ -f ${F[nc]:-} ]] && > "${F[nc]}"
     . <(req nc/first_run)
     first_run
 fi

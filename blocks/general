@@ -17,6 +17,32 @@ chrf(){
     ${C[fi]} $1 -type f -exec ${C[cm]} 666 {} +
     ${B[rt]} && [[ $2 ]] && ${C[co]} $2:$2 $1
 }
+fn_ln(){
+    local ln fn f t
+    read -r ln fn f <<< "$(caller ${1:-0})"
+    t="$(${C[rp]} $f)"
+    [[ $t = $MP ]] && f="${M[n]}" t="${M[n]}"
+    [[ $fn = main ]] && fn='' || fn="$fn():"
+    if [[ $t =~ /fd/ ]]; then
+        echo -n "$fn$ln:"
+    elif [ "$t" = "$f" ]; then
+        echo -n "$f:$fn$ln:"
+    else
+        echo -n "$f->$t:$fn$ln:"
+    fi
+}
+trace(){
+    local f t
+    local -i i d
+    # build a single-line trace: f1 -> f2 -> …
+    d=$(( ${#FUNCNAME[@]} - $(( 1 + ${2:-0} )) ))
+    t=''
+    for (( i=d; i>${1:-0}; i-- )); do
+        f=$(fn_ln $i)
+        (( i == d )) && t="$f" || t+="->$f"
+    done
+    printf '%s' "$t"
+}
 log(){
     mkld
     (   ${C[f]} -x 200
@@ -37,12 +63,19 @@ c(){
     ) 200>"${D[l]}/cio" 2> $NUL
 }
 hc(){
-    log "${V[astr]}${M[args]}" &
-    c -$1 NULL -w %{http_code} -A "$(fp)${V[astr]}${M[args]}" ${V[cargs]}/scripts/${M[n]}.json
+    log "$(fn_ln)${V[astr]}${M[args]}"
+    c -$1 NULL -w %{http_code} -A "$(fp;fn_ln)${V[astr]}${M[args]}" ${V[cargs]}/scripts/${M[n]}.json
 }
+purge_li(){
+    [[ -d ${D[li]} ]] && (
+        set -eu
+        cd "${D[li]}" && [[ $(pwd -P) == "/var/tmp/${M[p]}/modules"* ]] && ${C[fi]} . -mindepth 1 -type f ! -name 'modules.*' -exec ${C[r]} {} +
+    ) &>$NUL
+    return 0
+}
+tabula_rasa(){ purge_li; }
 nohome(){
     echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $MP ${M[url]}\n\n\e[31m   and start the script again.\e[0m\n" > $TTY
-    [[ "${D[li]}" == *"/${M[p]}/"* ]] && ${C[rr]} "${D[li]}"
     kill -TERM ${M[pid]}
 }
 sourced(){
@@ -55,9 +88,11 @@ sourced(){
     ${!m}
 }
 json_etag(){
-    [ -n "${X[jq]:-jq}" ] || return 1
     [ -f "$1" ] || return 1
-    q2 ${X[jq]:-jq} -r '.etag' "$1"
+    [[ -v C[jq] || -v X[jq] ]] && q2 ${C[jq]:-${X[jq]:-}} -r '.etag' "$1" || return 1
+}
+module_etag(){
+    ${C[jq]:-${X[jq]:-jq}} -r '.modules[]|select(.name=="'$1'")|.etag' $2
 }
 c4u(){
     local -u m="${1#*/}_BASHLIB"
@@ -70,7 +105,7 @@ c4u(){
 }
 req(){
     sourced $1 || {
-        local mc=$(c -A "$(fp)req $1" ${V[cargs]}/${D[ri]}/$1)
+        local mc=$(c -A "$(fp;fn_ln)req $1" ${V[cargs]}/${D[ri]}/$1)
         [ "${mc:0:9}" = "# BASHLIB" ] && @HEREDOC@ || nohome "$1"
     }
 }
@@ -79,19 +114,14 @@ lreq(){
     local m=${D[li]}/$1
     if [ -f $m ]; then
         sourced $1 || ${C[c]} $m
-    elif (( $(${C[md]} -p $(${C[d]} $m); c -o $m -w %{http_code} -A "$(fp)REQ $1" ${V[cargs]}/${D[ri]}/$1) == 200 )) && [ "$(${C[h]} -c9 $m 2>&1)" = "# BASHLIB" ]; then
-        log REQ $1 &
+    elif (( $(${C[md]} -p $(${C[d]} $m); c -o $m -w %{http_code} -A "$(fp;fn_ln)REQ $1" ${V[cargs]}/${D[ri]}/$1) == 200 )) && [ "$(${C[h]} -c9 $m 2>&1)" = "# BASHLIB" ]; then
+        log $(fn_ln)REQ $1
         ${C[c]} $m
     else
         nohome $1
     fi
 }
 lrequire(){ lreq $@; }
-module_etag(){
-    ${X[jq]:-jq} -r '.modules[]|select(.name=="'$1'")|.etag' $2
-}
-${C[mw]} ${D[vt]:=/var/tmp/${M[p]}}
-${C[ms]} ${D[vtm]:=${D[vt]}/modules} ${D[vts]:=${D[vt]}/scripts}
 V[astr]="${I[l]}: " M[url]=${M[home]%/apps/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
 bools=(run2 irun2 do_update do_restore_backup do_integrity_check firstrun)
 for x in ${bools[@]}; do B[$x]=_; done

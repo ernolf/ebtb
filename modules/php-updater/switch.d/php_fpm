@@ -148,7 +148,7 @@ switch_fpm_version(){
             N; f
             while :; do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
                 if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                    mh "$(funcname_and_lineno) key: [$key]" &
+                    mh "$(fn_ln) key: [$key]" &
                     echo "Confirmed choice $(button $key)"
                     case $key in
                             q)  f 2; break
@@ -224,10 +224,10 @@ switch_fpm_version(){
             if q0 ${X[apache2ctl]} configtest && (( ${#A2CONFFILES[@]} )); then
                 if ${X[grep]} -qs "^[^#]*unix:$socket" ${A2CONFFILES[@]}; then
                     if [ "$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/ { if (match($NF, /php'${PHP[vregex]}'-fpm/, arr)) { print arr[1] } }')" = "$pv" ]; then
-                        if php_fpm_conf_ switch2 $ver_n; then
+                        php_fpm_conf_ switch2 $ver_n
+                        populate_a2conffiles
+                        if [[ "${A2CONFFILES[@]}" =~ php$ver_n-fpm\.conf ]]; then
                             bundle echo "$(ipf; G; format_string "Successfully switched the SetHandler FastCGI configuration in apache2 from PHP-FPM version $(Y)$pv$(G) to $(Y)$ver_n$(G)" 3; N)"
-                            ${X[systemctl]} restart apache2 php$ver_n-fpm
-                            populate_a2conffiles
                         else
                             bundle echo "$(xpf; R; format_string "Something went wrong while switching the SetHandler FastCGI Configuration in apache2 from version $(Y)$pv$(R) to $(Y)$ver_n$(R)" 3; N)"
                         fi

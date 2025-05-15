@@ -48,7 +48,7 @@ sed_(){
     ${B[trace]:-_} && log_trace "$@"
     local sedscript in out
     local -a sedcall
-    sedscript="$1" in="$2" out="${3:--}" sedcall=(${X[sed]} -E)
+    sedscript="$1" in="${2:-}" out="${3:--}" sedcall=(${X[sed]} -E)
     # p in sed script makes the use of -n |--quiet | --silent necessary to suppress automatic printing of pattern space
     # unless '!' is passed at position 1 of the script:
     if [[ $sedscript == \!* ]]; then
@@ -200,7 +200,7 @@ trim(){
 unquote() {
     (( $# )) || return 0
     local in out sedscript
-    in="$@" out='-' sedscript="s/^'(.*)'$|^\"(.*)\"$/\1/"
+    in="$@" out='-' sedscript="s/^[\"'](.*)[\"']$/\1/"
     sed_ "$sedscript" "$in" "$out"
 }
 

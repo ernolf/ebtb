@@ -31,62 +31,70 @@ apache2_mpm(){
 }
 
 apache2_module(){
-    require_arg "$@"
+    log_trace "$@"
     populate_a2modules && [[ " ${A2MODULES[@]%_module} " =~ " $1 " ]]
 }
 
 php_a2module_(){
-    require_arg "$@"
+    log_trace "$@"
     case $1 in
         enable) required_args 2 "$@"
-                ${X[a2enmod]} -mq mpm_prefork php$2
+                ${X[a2enmod]} -q mpm_prefork php$2 &> >(log_trace)
                 ;;
-       disable) ${X[a2dismod]} -mqf mpm_prefork
+       disable) # [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+                # local mod
+                # for mod in $(${X[ls]} /etc/apache2/mods-enabled/php*.load 2>$NUL | sed_ 's#^.*/php'${PHP[vregex]}'\.load$#php\1#p'); do
+                #     ${X[a2dismod]} -qf "$mod" &> >(log_trace)
+                # done
+                ${X[a2dismod]} -qf mpm_prefork &> >(log_trace)
+                ;;
+       switch2) required_args 2 "$@"
+                php_a2module_ disable
+                php_a2module_ enable $2
+                ${X[systemctl]} restart apache2 &> >(log_trace)
     esac
 }
 
 php_fpm_module_(){
-    require_arg "$@"
+    log_trace "$@"
     case $1 in
-        enable) ${X[a2enmod]} -mq mpm_event proxy_fcgi setenvif
+        enable) ${X[a2enmod]} -q mpm_event proxy_fcgi setenvif &> >(log_trace)
                 ;;
-       disable) ${X[a2dismod]} -mqf mpm_event
+       disable) ${X[a2dismod]} -qf mpm_event &> >(log_trace)
     esac
 }
 
 php_fpm_conf_(){
-    require_arg "$@"
+    log_trace "$@"
     case $1 in
         enable) required_args 2 "$@"
-                ${X[a2enconf]} -mq php$2-fpm
+                ${X[a2enconf]} -q php$2-fpm &> >(log_trace)
                 ;;
-       disable) ${X[a2disconf]} -mqp php*-fpm
+       disable) [[ -f ${F[php]:="${D[vt]}/php"} ]] && . "${F[php]}"
+                local mod
+                for mod in $(q2 ${X[ls]} $(a2serverroot)/conf-enabled/php*-fpm.conf | sed_ 's#^.*/php'${PHP[vregex]}'-fpm\.conf$#php\1-fpm#p'); do
+                    ${X[a2disconf]} -qp "$mod" &> >(log_trace)
+                done
                 ;;
        switch2) required_args 2 "$@"
-                q2 ${X[a2disconf]} -mqp php*-fpm
-                ${X[a2enconf]} -mq php$2-fpm
+                php_fpm_conf_ disable
+                php_fpm_conf_ enable $2
+                ${X[systemctl]} restart apache2 php$2-fpm &> >(log_trace)
     esac
 }
 
 php_fpm_2_a2module(){
-    require_arg "$@"
+    log_trace "$@"
     php_fpm_conf_ disable
     php_fpm_module_ disable
     php_a2module_ enable "$1"
-    ${X[systemctl]} restart apache2 php$1-fpm
+    ${X[systemctl]} restart apache2 php$1-fpm &> >(log_trace)
 }
 
 php_a2module_2_fpm(){
-    require_arg "$@"
+    log_trace "$@"
     php_a2module_ disable # $ver
     php_fpm_module_ enable
     php_fpm_conf_ enable "$1"
-    ${X[systemctl]} restart apache2 php$1-fpm
-}
-
-php_a2module_switch_2_(){
-    require_arg "$@"
-    ${X[a2dismod]} -mqf php*
-    ${X[a2enmod]} -mq php$1
-    ${X[systemctl]} restart apache2
+    ${X[systemctl]} restart apache2 php$1-fpm &> >(log_trace)
 }

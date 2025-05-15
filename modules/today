@@ -8,8 +8,7 @@ __license__
 #
 
 declare -f _ &>${NUL:=/dev/null} || _(){ false; }
-
-if (( epoch < 1737773190 )); then
+if (( M[e] < 1737773190 )); then
     q0(){ "$@" &>$NUL; }
     q1(){ "$@" >$NUL; }
     q2(){ "$@" 2>$NUL; }

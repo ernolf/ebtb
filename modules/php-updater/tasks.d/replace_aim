@@ -38,7 +38,7 @@ replace_aim(){ # replace admin installed modules
         ext_state fix
         apt_ install --yes ${pkgs[@]}
     }
-    if [ -n "${X[pecl]}" ]; then
+    if [ -n "${X[pecl]:-}" ]; then
         local ver module pkg pkgmod modstring serializers compression
         local -i iam imb pecli
         local -a ibymb pkgmods mods pkgs

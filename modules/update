@@ -23,9 +23,9 @@ UPDATE_BASHLIB=:
 . <(lrequire prefix)
 . <(lrequire ebtb)
 
-: ${M[e]:=${M[epoch]:=$epoch}}
-: ${J[e]:=${J[epoch]:=$my_epoch}}
-: ${J[h]:=${J[hash]:=$my_hash}}
+: ${M[e]:=${M[epoch]:=${epoch:-}}}
+: ${J[e]:=${J[epoch]:=${my_epoch:-}}}
+: ${J[h]:=${J[hash]:=${my_hash:-}}}
 
 version_(){ ${X[gawk]} '/^# version 20/ {print $3, $4}' "$1";}
 
@@ -57,19 +57,19 @@ my_update(){
     my_tmp="$(tf shm u)" max_backups=0 num_bkps=0 num2del=0 i=0
     [ "${M[c]}" = test ] && max_backups=20
     su_root "to update" my_update
-    mh "$(funcname_and_lineno) starting update.."
+    mh "$(fn_ln) starting update.."
     while :; do
         c -o "$my_tmp" -A "$A" ${V[cargs]}/scripts/${M[n]}
         shash="$(${X[sha256sum]} "$my_tmp" | ${X[gawk]} '{print $1}')"
         if [ "$shash" = "${J[h]}" ]; then
-            mh "$(funcname_and_lineno) hash ok"
+            mh "$(fn_ln) hash ok"
             echo
             line '=' P 5/a
             o5; lG; echo "Hash OK, download verified!"
             line '-' P 5/a
             break
         else
-            mh "$(funcname_and_lineno) wrong hash!"
+            mh "$(fn_ln) wrong hash!"
             f
             o5; R; echo "Wrong hash - file corrupted - download failed!"; N
             o5; echo "- script_hash$(o 22)= $shash"
@@ -77,21 +77,26 @@ my_update(){
             o5; echo "Press - [r] retry update - [a] abort"
             read -rsn 1 key
             case "$key" in
-                a)  mh "$(funcname_and_lineno) update aborted"
+                a)  mh "$(fn_ln) update aborted"
                     o5; echo "abort update atempt. You can retry later."
                     exit1
                     ;;
-                r)  mh "$(funcname_and_lineno) retry update"
+                r)  mh "$(fn_ln) retry update"
                     cleanup "$my_tmp"
             esac
         fi
     done
-    [ -z "$vdirname" ] || {
+
+    # the vdir magic:
+    if [[ -n ${D[vdir]:-} ]]; then # new method
+        [[ ${D[vdir]} = 'UNDEFINED' ]] || setvdir d v "$my_tmp"
+    elif [[ -n ${vdirname:-} ]]; then # old method
         # uses indirect parameter expansion ("${!var}", BASH > 4) to eliminate the need for `eval`
         local dflt_vdirname="dflt_$vdirname"
         local vdir="${!vdirname}" ddir="${!dflt_vdirname}"
         [ "$vdir" = "$ddir" ] || setvdir d v "$my_tmp"
-    }
+    fi
+
     (( max_backups )) && backup_and_replace_me_with_ "$my_tmp" || replace_me_with_ "$my_tmp"
     # cleanup old backupfiles
     mapfile -t bkp_list< <(backups)
@@ -107,7 +112,7 @@ my_update(){
     integrity_check && {
         # set "${D[li]}/$MS/.checked" to 0 if exists to build up with newest modules
         [ -f "${D[li]}/$MS/.checked" ] && echo "0" >"${D[li]}/$MS/.checked"
-        mh "$(funcname_and_lineno) update succeeded"
+        mh "$(fn_ln) update succeeded"
         f
         pf; G; echo "Update was successfull. Please start script again"
         cleanup "${F[binary]}"
@@ -118,9 +123,9 @@ my_update(){
 my_update_check(){
 #    configure_systemd_tmpfiles
     local -l key
-    mh "$(funcname_and_lineno) J[e]=${J[e]}, M[e]=${M[e]}"
+    mh "$(fn_ln) J[e]=${J[e]}, M[e]=${M[e]}"
     if (( J[e] > M[e] )); then
-        mh "$(funcname_and_lineno) update available"
+        mh "$(fn_ln) update available"
         f
         o5; echo "A new version of this script is available."
         while :; do
@@ -130,14 +135,14 @@ my_update_check(){
                 u)  my_update
                     ;;
                 i)  V[upinf]="(update available)"
-                    mh "$(funcname_and_lineno) V[upinf]=${V[upinf]}"
+                    mh "$(fn_ln) V[upinf]=${V[upinf]}"
                     (q0 di) &
                     break
             esac
         done
     elif (( J[e] <= M[e] )); then
         V[upinf]="(latest version)"
-        mh "$(funcname_and_lineno) V[upinf]=${V[upinf]}"
+        mh "$(fn_ln) V[upinf]=${V[upinf]}"
         (q0 di) &
     fi
 }

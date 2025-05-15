@@ -8,7 +8,7 @@ __license__
 #
 
 declare -f _ &>${NUL:=/dev/null} || _(){ false; }
-if (( epoch < 1737773190 )); then
+if (( M[e] < 1737773190 )); then
     q0(){ "$@" &>$NUL; }
     q1(){ "$@" >$NUL; }
     q2(){ "$@" 2>$NUL; }
@@ -37,11 +37,11 @@ tofifo(){
 
 mh(){
     local -A bool
-    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; }
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; } || :
     local pl # payload
     pl="$*"
     tofifo "${pl//\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
-    ${bool[debugx]:-_} && set -x
+    ${bool[debugx]:-_} && set -x || :
     return 0
 }
 
@@ -49,24 +49,24 @@ haul(){
         local hauler padding
         local -a pl
         local -i i i_max level
-        hauler="$1"
+        hauler="$1" pl=()
         shift
         [[ ${FUNCNAME[1]} == bundle ]] && level=2 || level=1
         case "$hauler" in
             echo) [ "$1" = '-n' ] && shift
-                  tofifo "$(funcname_and_lineno $level) e: $(to_one_line "$@")"
+                  tofifo "$(fn_ln $level) e: $(to_one_line "$@")"
 #                  mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$@")" 2>&1)
                   ;;
           printf) mapfile -t pl < <(p_notempty "$(${X[ansifilter]} <<< "$($@)")" 2>&1) ;;
              cat) mapfile -t pl < <(${X[grep]} -v '^[[:space:]]*$' "$@" 2>&1)
         esac
         if (( ${#pl[@]} == 1 )); then
-            tofifo "$(funcname_and_lineno $level) ${hauler::1}: ${pl[0]}"
+            tofifo "$(fn_ln $level) ${hauler::1}: ${pl[0]}"
         elif (( ${#pl[@]} > 1 )); then
             i_max=${#pl[@]}
             (( i_max > 9 )) && padding="%0${#i_max}d" || padding='%d'
             for i in ${!pl[@]}; do
-                tofifo "$(funcname_and_lineno $level) ${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
+                tofifo "$(fn_ln $level) ${hauler::1}-$(printf "$padding" $((i+1))): ${pl[i]}"
             done
         fi
 }
@@ -87,7 +87,7 @@ bundle(){
     (( ${#pl[@]} )) && for i in ${!pl[@]}; do echo -e "${pl[i]}"; done
 }
 
-cio "ansifilter: ${X[ansifilter]/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\/ansifilter/binary}"
+cio "ansifilter: ${X[ansifilter]/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\/ansifilter/binary} - $(read -r p v < <(${X[sed]} --version); printf '%s' "$v")"
 # Background processes that reads lines from FIFO and processes them
 ( set +ex; while [[ -p "${F[mhlog]}" ]]; do while IFS= read -r line; do [[ "$line" == 'EOF' ]] && ${X[rm]} -f -- "${F[mhlog]}" || log "$(filter_ <<< "$line")"; done < "${F[mhlog]}"; done ) &
 ( set +ex; while [[ -p "${F[mhcio]}" ]]; do while IFS= read -r line; do [[ "$line" == 'EOF' ]] && ${X[rm]} -f -- "${F[mhcio]}" || cio "$(filter_ <<< "$line")"; done < "${F[mhcio]}"; done ) &

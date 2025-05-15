@@ -56,12 +56,50 @@ delp2ei '# COMMENT -->' "$output_script"
 
 tempfile="$(mktemp)"
 
-# Replace placeholders with their actual contents
+# new
+# Replace placeholders with their actual contents (including additional tokens)
 for placeholder in "${placeholders[@]}"; do
-    placeholder_pattern="__${placeholder}__"
     [ -f "$output_script" ] && ${X[cat]} "$output_script" > "$tempfile"
-    ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$epoch' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
+    # Use gawk to check
+    # 1) for __placeholder__ on each line
+    # 2) collect all subsequent tokens in this line as args
+    # 3) call system(...) with placeholder, scriptname, epoch, test_mode, and args
+    ${X[gawk]} -v placeholder="$placeholder" -v name="$scriptname" -v epoch="$epoch" -v channel="$test_mode" '{
+        # If the line contains the placeholder...
+        if (match($0, "__" placeholder "__")) {
+            # split the line into fields (whitespace separated)
+            n = split($0, fields, /[[:space:]]+/)
+            extra_args = ""
+            # search in fields for the field with "__placeholder__"
+            for (i = 1; i <= n; i++) {
+                if ( fields[i] == "__" placeholder "__" ) {
+                    # all fields after i are additional arguments
+                    for (j = i+1; j <= n; j++) {
+                        # escape every argument
+                        extra_args = extra_args " \"" fields[j] "\""
+                    }
+                    break
+                }
+            }
+            # assemble the call
+            cmd = "tools/placeholders-replace \"" placeholder "\"" " \"" name "\"" " " epoch " \"" channel "\"" extra_args
+            # execute and skip original line
+            system(cmd)
+            next
+        }
+        # pass all other lines through untouched
+        print
+    }' "$tempfile" > "$output_script"
 done
+
+# old
+# Replace placeholders with their actual contents (can not handle additional tokens)
+#for placeholder in "${placeholders[@]}"; do
+#    placeholder_pattern="__${placeholder}__"
+#    [ -f "$output_script" ] && ${X[cat]} "$output_script" > "$tempfile"
+#    ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$epoch' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
+#done
+
 ${X[rm]} -f "$tempfile"
 # minify modules array
 $MINIFY && ${X[sed]} -i '/^modules=(/ {

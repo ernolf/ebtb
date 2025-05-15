@@ -20,8 +20,7 @@ interval(){
     require_arg $@
     local until since years months and n_d_f o_d_f
     local -i ut_1 ut_2 n_d o_d n_y n_m n_day o_y o_m o_day iy im id
-    ut_1=$1 ut_2=$2 until='' since='' years=' year' months=' month' and=' and '
-    (( $# == 1 )) && ut_2=$today
+    ut_1=$1 ut_2=${2:-$today} years=' year' months=' month' and=' and '
     (( ut_1 > ut_2 )) && n_d=$ut_1 o_d=$ut_2 || n_d=$ut_2 o_d=$ut_1
     (( n_d == today )) && since=" ago"
     (( o_d == today )) && until="in "
@@ -40,9 +39,9 @@ interval(){
     if (( iy > 0 || im > 0 )); then
         (( im )) || unset and im months
         (( iy )) || unset and iy years
-        echo "$until$iy$years$and$im$months$since"
+        echo "${until:-}${iy:-}${years:-}${and:-}${im:-}${months:-}${since:-}"
     else
-        echo "${until}less than 1$months$since"
+        echo "${until:-}less than 1${months:-}${since:-}"
     fi
 }
 

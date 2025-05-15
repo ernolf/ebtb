@@ -96,7 +96,7 @@ required_args() {
             echo "Error: Argument $i in function '${FUNCNAME[1]}' is empty but is required to be non-empty." >> "$outfile"
         fi
     done
-    if [ -n "$outfile" ]; then
+    if [[ -n ${outfile:-} ]]; then
         print_stack_trace >> "$outfile"
         haul cat "$outfile"
         if "${B[debug]:-_}"; then
@@ -146,42 +146,16 @@ something_went_wrong(){
     cleanup "$outfile1" "$outfile2"
 }
 
-funcname_and_lineno(){
-    local lineno funcname file target
-    read -r lineno funcname file <<< "$(caller ${1:-0})"
-    target="$(${X[realpath]} $file)"
-    [ "$target" = "$MP" ] && file="${M[n]}" target="${M[n]}"
-    [ "$funcname" = 'main' ] && funcname='' || funcname="$funcname():"
-    if [[ "$target" =~ /fd/ ]]; then
-        echo -n "$funcname$lineno:"
-    elif [ "$target" = "$file" ]; then
-        echo -n "$file:$funcname$lineno:"
-    else
-        echo -n "$file->$target:$funcname$lineno:"
-    fi
-}
-
 #log_errors(){
 #    while IFS= read -r msg; do
-#        mh "$(funcname_and_lineno 3; funcname_and_lineno 2; funcname_and_lineno 1) arguments: $@ : $msg"
+#        mh "$(fn_ln 3; fn_ln 2; fn_ln 1) arguments: $@ : $msg"
 #    done
 #}
 
 # log_trace: prefix each stderr line with full call trace in one line
 log_trace(){
-    local frame trace msg
-    local -i i depth
-    # build a single-line trace: frame1 -> frame2 -> …
-    depth=$(( ${#FUNCNAME[@]} - 2 ))
-    trace=''
-    for (( i=depth; i>0; i-- )); do
-        frame=$(funcname_and_lineno $i)
-        if (( i == depth )); then
-            trace="$frame"
-        else
-            trace+="->$frame"
-        fi
-    done
+    local trace msg
+    trace="$(trace 1 1)"
     trace=${trace/my_update_check():4:->q0():25:->di():4:/before}
     trace=${trace/switch_default_version():197:->q0():25:->di():4:/afterwards}
     if (( $# )); then
@@ -191,6 +165,7 @@ log_trace(){
     else
         # else read from stdin
         while IFS= read -r msg; do
+            [[ $msg =~ ^[[:space:]]*$ ]] && continue
             mh "$trace ${msg/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
         done
     fi

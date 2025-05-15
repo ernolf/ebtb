@@ -30,7 +30,7 @@ brief_help(){
     os; pf; B; echo -n "$ME $(C)--list-installed"; N
     echo "$(o 44; dY; format_string "Detailed information about php on this machine." 44; N)"
     f
-    os; W; echo "Only if multiple PHP versions are installed:"; N
+    os; W; echo "Only if already multiple PHP versions are (at least partially) installed:"; N
     f
     os; pf; B; echo "$ME${FLAG[forceflag]} $(GRAY)\$$(C)old $(GRAY)\$$(C)new"
     if (( ${#versions[@]} > 1 )); then

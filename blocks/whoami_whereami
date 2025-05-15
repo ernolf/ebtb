@@ -1,12 +1,15 @@
+# set -euo pipefail
 # hide the cursor
-printf '%b' '\e[?25l'
+printf '\e[?25l'
+# and the trap to bring it back if the script is interupted
+trap "printf '\e[?25h'" 0
 declare A CMA MD ME MP MS NUL=/dev/null REQ TTY=/dev/tty x
 declare -a modules tdc bools args tntd jnr
 # associative arrays: B = bools, C = commands, D = dirs, F = files, I = user/group, J = json, M = me, T = time, V = vars
 declare -A B C D F I J M T V
 declare -n TD=TMPDIR
 _(){
-    false
+    return 1
 }
 __(){
     echo -e "\n\e[31mERROR: $1\e[0m\n" >&2
@@ -19,7 +22,7 @@ di(){
     :
 }
 C[e]=$(command -v env)
-for x in a:gawk b:basename c:cat cm:chmod co:chown cu:curl d:dirname fi:find f:flock g:grep h:head id md:mkdir mt:mktemp mv p:ps rp:realpath r:rm s:stat u:uname; do
+for x in a:gawk b:basename c:cat cm:chmod co:chown cu:curl d:dirname fi:find f:flock g:grep h:head id jq md:mkdir mt:mktemp mv p:ps rp:realpath r:rm s:stat u:uname; do
     [ -x $(command -v ${x#*:}) ] && C[${x%:*}]="${C[e]} LC_MESSAGES=C $(command -v ${x#*:})" || __ "'${x#*:}' binary not found."
 done
 # mkdir -p

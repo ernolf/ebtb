@@ -22,6 +22,7 @@ DPKG_BASHLIB=:
 # TODO <-- 0
 . <(lrequire fstring)
 . <(lrequire today)
+. <(lrequire php/sury)
 
 declare -ga DPKG_LOCKFILES || declare -a DPKG_LOCKFILES
 DPKG_LOCKFILES=(
@@ -60,7 +61,7 @@ check_lockfiles(){
     local -a checked_lockfiles
     local -A flag
     local -i i
-    flag[verbose]="$1"
+    flag[verbose]="${1:-}"
     mapfile -t checked_lockfiles< <(for lockfile in "${DPKG_LOCKFILES[@]}"; do check_lockfile "$lockfile" "${flag[verbose]}"; done)
     if (( $# )); then
         for i in ${!checked_lockfiles[@]}; do
@@ -182,7 +183,7 @@ apt_file_search(){
     fi
     package=$(q2 apt-file -l search "$fullpath") || return $?
     printf "$package"
-    mh "$(funcname_and_lineno 1)$(funcname_and_lineno) $fullpath -> $package"
+    mh "$(fn_ln 1)$(fn_ln) $fullpath -> $package"
     return 0
 }
 
@@ -204,7 +205,7 @@ apt_(){
     [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     [ -z "${PHP[v]}" ] || switch_php_to_ "${PHP[v]}"
     [[ ${FUNCNAME[1]} == apt_install ]] && level=2 || level=1
-    mh "$(funcname_and_lineno $level)$(funcname_and_lineno) $@"
+    mh "$(fn_ln $level)$(fn_ln) $@"
     local command yes cursor_status
     command="$1" yes='' cursor_status='show'
     shift
@@ -218,8 +219,8 @@ apt_(){
         fi
     fi
     cursor_ show
-    if ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends $command $@; then
-        mh "$(funcname_and_lineno $level)$(funcname_and_lineno) $command succeeded"
+    if ${X[apt-get]}$yes --ignore-hold --allow-change-held-packages --no-install-recommends $command $@ 2> >(${X[tee]} /dev/stderr | log_trace); then
+        mh "$(fn_ln $level)$(fn_ln) $command succeeded"
     else
         something_went_wrong "apt-get $command returned an error"
         exit1
@@ -342,45 +343,240 @@ dpkg_min_version(){
     ${X[dpkg]} --compare-versions "$(q2 $bin --version | ${X[grep]} -oP '\d+(\.\d+){1,3}')" ge "$min" # && return 0 || return 1
 }
 
+apt_cache_policy() {
+    if [[ $1 == '-h' || $1 == '--help' || $1 == 'help' ]]; then
+        ${X[cat]} <<'HELP'
+| Abbreviation | Full Field      | Source/Release Header   | Description                                                                            |
+| :----------- | :-------------- | :---------------------- | :------------------------------------------------------------------------------------- |
+| **rank**     | rank            | —                       | The priority number assigned to a package source (e.g. `500`, `510`).                  |
+| **uri**      | uri             | Packages line of policy | The repository URI from which packages are fetched (e.g. `https://…/ubuntu`).          |
+| **a**        | Archive         | `Archive:`              | The distribution archive (e.g. “stable”, “jammy”).                                     |
+| **n**        | Codename        | `Codename:`             | The release codename (e.g. “buster”, “focal”, “jammy”).                                |
+| **l**        | Label           | `Label:`                | Human-readable label (e.g. “Ubuntu”, “PPA for PHP”).                                   |
+| **c**        | Component(s)    | `Components:`           | Repository component(s) (e.g. “main”, “universe”).                                     |
+| **o**        | Origin          | `Origin:`               | Upstream origin identifier (e.g. “Debian”, “Ubuntu”, “LP-PPA-…”).                      |
+| **v**        | Version         | `Version:`              | The release version (e.g. “22.04”).                                                    |
+| **b**        | Architecture(s) | `Architectures:`        | Supported architectures (e.g. “amd64”, “i386”).                                        |
+| **origin**   | origin (policy) | separate policy line    | The hostname of the archive server (e.g. `packages.microsoft.com`) as shown in policy. |
+HELP
+        return
+    else
+        ${X[apt-cache]} policy  | ${X[gawk]} '
+        /^[[:space:]]*[0-9]{1,4}.*Packages$/ {
+            rank = $1
+            uri = $2
+        }
+        /release / {
+            delete meta
+            line = ""
+            for (i = 2; i <= NF; i++) line = line $i " "
+            gsub(/[ \t]+$/, "", line)
+            n = split(line, fields, /,/)
+            for (i = 1; i <= n; i++) {
+                split(fields[i], kv, /=/)
+                key = kv[1]
+                val = kv[2]
+                for (j = 3; j <= length(kv); j++) val = val "=" kv[j]  # falls = im Wert
+                meta[key] = val
+            }
+        }
+        /^ *origin / {
+            origin_line = $2
+            if (uri && rank) {
+                printf "rank=%s uri=%s", rank, uri
+                for (k in meta) printf " %s=\"%s\"", k, meta[k]
+                printf " origin=%s\n", origin_line
+                uri = rank = origin_line = ""
+                delete meta
+            }
+        }'
+    fi
+}
+
+apt_sources_py() {
+    ${X[python3]} - <<'PYCODE'
+import apt_pkg, glob, os
+from aptsources.sourceslist import SourcesList
+
+# initialize libapt-pkg and locate drop-ins directory
+apt_pkg.init()
+parts_dir = apt_pkg.config.find_file("Dir::Etc::sourceparts")
+
+# helper to parse .sources Deb822 files
+def parse_deb822(path):
+    entries, cur = [], {}
+    with open(path) as f:
+        for ln in f:
+            ln = ln.rstrip("\n")
+            if not ln.strip():
+                if cur:
+                    entries.append(cur)
+                    cur = {}
+            elif ":" in ln:
+                k, v = ln.split(":", 1)
+                cur[k.strip()] = v.strip()
+        if cur:
+            entries.append(cur)
+    return entries
+
+# 1) .list entries via aptsources
+sl = SourcesList()
+for entry in sl.list:
+    if getattr(entry, "disabled", False):
+        continue
+    uri   = entry.uri.rstrip("/")
+    suite = entry.dist
+    comps = getattr(entry, "components", getattr(entry, "comps", []))
+    for comp in comps:
+        print(f"{uri}\t{suite}\t{comp}\t{entry.file}")
+
+# 2) .sources entries (Deb822 format)
+for src in glob.glob(os.path.join(parts_dir, "*.sources")):
+    for block in parse_deb822(src):
+        if block.get("Enabled", "1").lower() in ("0","no","false"):
+            continue
+        uri    = block.get("URIs", "").rstrip("/")
+        # Suites is the correct Deb822 header, not "Suite"
+        suites = block.get("Suites", "").split()
+        comps  = block.get("Components", "").split()
+        for suite in suites:
+            for comp in comps:
+                print(f"{uri}\t{suite}\t{comp}\t{src}")
+PYCODE
+}
+
+populate_with_sury_sources(){
+    local -n _uris=$1
+    local -n _suites=$2
+    local -n _files=$3
+    local uri suite comp file
+    local -i r
+    r=1
+    while IFS=$'\t' read -r uri suite comp file; do
+        if [[ $uri =~ (ondrej|sury) && $file == *'.sources' ]]; then
+            r=0 _uris+=("$uri") _suites+=("$suite") _files+=("$file")
+        fi
+    done < <(apt_sources_py)
+    return $r
+}
+
+sources_files(){
+    local _ file
+    while IFS=$'\t' read -r _ _ _ file; do
+        echo "$file"
+    done < <(apt_sources_py) | ${X[sort]} -u
+}
+
+list_sources_files(){
+    local -i i
+    local -a filemap
+    mapfile -t filemap < <(sources_files)
+    GRAY
+    for i in ${!filemap[@]}; do
+        echo "$(printf '%02d' $((i+1))) ${filemap[i]}"
+    done
+    N
+}
+
+list_sources_with_files(){
+    local uri suite comp file
+    local -i count
+    local -A filemap
+    while IFS=$'\t' read -r uri suite comp file; do
+        filemap["$uri|$suite|$comp"]="$file"
+    done < <(apt_sources_py)
+    uri='' count=1
+    while IFS= read -r line; do
+        eval local $line
+        [[ $l ]] || l=$o
+        [[ $a ]] || a=$n
+        echo -e "$(printf '%02d' $count)\t$l\t${filemap[$uri|$a|$c]}\t$uri\t$a\t$c\t$b"
+        (( count++ ))
+        unset rank uri a c v o l b n origin
+    done < <(apt_cache_policy)
+}
+
+list_sources_short_numerated(){
+    local sury_return
+    local -i count sury_r
+    count=1
+    if [[ $1 == show_sury ]]; then
+        sury_return="$(sury)"
+        sury_r=$?
+    fi
+    {   C; echo -e 'No\tLabel\tURI\tArchive\tComponent\tArch'
+        dY; echo -e '--\t-----\t---\t-------\t---------\t----'
+        GRAY
+        while IFS= read -r line; do
+            eval local $line
+            [[ $l ]] || l=$o; l="${l//\*/}"; l="${l%% }"; l="${l## }"; l="$(trunc 30 $l)"
+            [[ $a ]] || a=$n
+            if [[ $sury_return == *" $count = ok"* ]]; then
+                lG
+            elif [[ $sury_return == *" $count ="* ]]; then
+                W
+            fi
+            echo -e "$(printf '%02d' $count)\t$l\t${uri/http*:\/\//}\t$a\t$c\t$b"
+            GRAY
+            (( count++ ))
+            unset rank uri a c v o l b n origin
+        done < <(apt_cache_policy) # | column -t -s $'\t'
+    } | column -t -s $'\t' | ${X[gawk]} 'NF' # no empty lines
+    N
+}
+
 list_apt_sources(){
     local plu
     local -i i
-    local -a foreign_architectures aptsources apturls aptsourcesfiles
+    local -a foreign_architectures
 
     mapfile -t foreign_architectures< <(${X[dpkg]} --print-foreign-architectures 2>&1)
     if (( ${#foreign_architectures[@]} )); then
         f
-        o2; B; echo "This is a list of the supported architectures on this machine for your information:"; N
-        o2; pf; GRAY; echo "main architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
+        o2; B; echo "This is a list of the supported architectures on this machine:"; N
+        GRAY; echo "main architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
         (( ${#foreign_architectures[@]} > 1 )) && plu='s' || plu=''
         for i in ${!foreign_architectures[@]}; do
-            o2; pf; GRAY; echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}"; N
+            GRAY; echo "foreign architecture$plu $((i+1)): ${foreign_architectures[i]}"; N
         done
     else
         f
-        o2; B; echo "This is the supported architecture on this machine for your information:"; N
-        o2; pf; GRAY; echo "architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
+        o2; B; echo "This is the supported architecture on this machine:"; N
+        GRAY; echo "architecture: $(${X[dpkg]} --print-architecture 2>&1)"; N
     fi
-
     f
-    o2; B; echo "This is a list of the effective apt sources on this machine for your information:"; N
+    o2; B; echo "This is a list of the effective apt sources on this machine:"; N
     # apt sources
-    if [ -d /var/lib/apt/lists ]; then
-        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_Packages.*$//; s/-deb.*$//; s/_dists_/ /; s/_binary-/ /')")
-        for i in ${!aptsources[@]}; do
-            o2; pf; GRAY; echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/} | sed_ 's#(.*)/(.*)#\1 \2#')"; N
-        done
+    if [[ $1 == show_sury ]]; then
+        f
+        sury_return="$(sury)"
+        sury_r=$?
+        list_sources_short_numerated show_sury
+        os; GRAY; echo "r=$sury_r, $sury_return"; N
 
-    f
-    o2; B; echo "This is a list of the files containing the apt sources for your information:"; N
-    # apt sources files
-        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_dists.*$//')")
-# TODO 3 -->
-#        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
-# TODO <-- 3
-        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}"; do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done))
-        for i in ${!aptsourcesfiles[@]}; do
-            o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N
-        done
     fi
+    f
+    o2; B; echo "This is a list of the files containing the apt sources:"; N
+    list_sources_files
 }
+# COMMENT -->
+## old:
+#    if [ -d /var/lib/apt/lists ]; then
+#        mapfile -t aptsources< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_Packages.*$//; s/-deb.*$//; s/_dists_/ /; s/_binary-/ /')")
+#        for i in ${!aptsources[@]}; do
+#            o2; pf; GRAY; echo "aptsource-$(printf '%02d' $((i+1))): $(urldecode ${aptsources[i]//_/\/} | sed_ 's#(.*)/(.*)#\1 \2#')"; N
+#        done
+
+#        f
+#        o2; B; echo "This is a list of the files containing the apt sources:"; N
+#    # apt sources files
+#        mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_dists.*$//')")
+## TODO 3 -->
+##        mapfile -t aptsourcesfiles< <(p_sort $(for i in ${!apturls[@]};do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/|${X[grep]} -v ':\s*#'|${X[grep]} -E "*.(list|sources)\:"|${X[gawk]} -F':' '{print $1}'; done))
+## TODO <-- 3
+#        mapfile -t aptsourcesfiles< <(p_sort $(for i in "${!apturls[@]}"; do ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{print$1}'; done))
+#        for i in ${!aptsourcesfiles[@]}; do
+#            o2; pf; GRAY; echo "aptsourcefile-$(printf '%02d' $((i+1))): ${aptsourcesfiles[i]}"; N
+#        done
+#    fi
+#}

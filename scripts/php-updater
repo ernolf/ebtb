@@ -9,12 +9,13 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
 modules=(
-    today interval dos2unix prompt fstring sort httpd context sysinf nc/c2j
-    php/version php/nginx php/apache2 php/fpm php/versions php/alternatives
-    php/extensions php/sury ask dist/os_release php.net/ini_directives nc/aio
-    $MS/inp $MS/pdiff $MS/merge $MS/diff $MS/pool $MS/tasks $MS/linstalled
-    $MS/help $MS/chfiles $MS/switch
+    today interval dos2unix prompt fstring sort httpd context sysinf $MS/help
+    nc/c2j nc/aio php/version php/nginx php/apache2 php/fpm php/versions
+    php/alternatives php/extensions php/sury ask dist/os_release
+    php.net/ini_directives $MS/inp $MS/pdiff $MS/merge $MS/diff $MS/pool
+    $MS/tasks $MS/linstalled $MS/chfiles $MS/switch
 )
 __debug__
 __when__
@@ -209,28 +210,12 @@ tasks(){
 ## void ##
 declare lang=$(echo "$LANG" | ${X[cut]} -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW SAPI DEFAULT_ANSWER FILE
-[ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+[[ -f "${F[php]:=${D[vt]}/php}" ]] && . "${F[php]}"
 
 ${B[supported]} && apt_need_update
 
-declare prefix
-B[verbose]=_
-${B[verbose]} && prefix="$(pf)" || prefix="$(o2; G)Examining the system:$(pf; W)"
-${B[verbose]} && echo "Examining the system:"
-echo "${prefix}populating arrays with inventory results.."
-
-# PACKAGES_INSTALLED_BY_DPKG
-${B[verbose]} && echo "$(pf)Packages installed by dpkg.."
-if ${B[supported]}; then
-    ext_state cleanup
-    ext_state fix
-fi
-
-${B[verbose]} || te0
-# clear
-
 # $1=old;$2=new
-case "$1" in
+case "${1:-:}" in
     --list-installed)
         list_installed 'quiet=:'
         exit 0
@@ -244,8 +229,8 @@ case "$1" in
         exit 0
         ;;
     --list-candidates)
-        list_candidates
-        anykey_noquit
+#        list_candidates
+#        anykey_noquit
         need_sury_repo
         exit 0
         ;;
@@ -283,16 +268,20 @@ if ${B[supported]}; then
         OLD="$(${X[phpquery]} -V)"
         separator
         f
-        mh "$(funcname_and_lineno) only one php version ($OLD) found."
+        mh "$(fn_ln) only one php version ($OLD) found."
         echo "$(ipf; W; format_string "Only one php version ($(C)$OLD$(W)) found, which is the thinkable best possible starting situation for this script. Simply follow the instructions and recommendations to install a new PHP version if possible, which then will adopt the settings of this PHP version by the means of this script." 3; N)"
         f
         anykey
         separator
+        ext_state cleanup
+        ext_state fix
         list_installed
         anykey
-        list_candidates
-        call_me candidates
-        anykey_noquit
+        separator
+#        list_candidates
+#        call_me candidates
+#        anykey_noquit
+#        separator
         need_sury_repo
         . "${F[php]}"
         anykey
@@ -304,7 +293,7 @@ if ${B[supported]}; then
             while :; do
                 cursor_ show
                 read -rp "$(bundle echo "E: Please enter the version string you want to install (e.g. '$SUGGESTION')"): " NEW
-                mh "$(funcname_and_lineno) input: $NEW"
+                mh "$(fn_ln) input: $NEW"
                 if [ -z "$NEW" ]; then
                     echo "$rs1"
                     anykey
@@ -332,8 +321,10 @@ if ${B[supported]}; then
         else
             exit0
         fi
-    elif [ -n "$NEW" ]; then
+    elif [ -n "${NEW:-}" ]; then
         if [[ " ${CAN[@]} " =~ " $NEW " ]]; then
+            ext_state cleanup
+            ext_state fix
             list_installed 'lonly=:'
             remove_unused_sapis
             change_sapi
@@ -434,15 +425,20 @@ if ${B[supported]}; then
         exit 0
     else # if [ $# -ne 2 ]; then
         first_brief_help "Brief help:"
+        f 2
+        anykey
+        separator
+        ext_state cleanup
+        ext_state fix
+        kill_spinner
+        list_installed
         f
         anykey
         separator
-        list_installed
-        anykey
-        separator
-        list_candidates
-        call_me candidates
-        anykey_noquit
+#        list_candidates
+#        call_me candidates
+#        anykey_noquit
+#        separator
         need_sury_repo
         anykey
         separator
@@ -461,10 +457,10 @@ else
     list_installed
     anykey
     separator
-    list_candidates
-    call_me candidates
-    anykey_noquit
-    separator
+#    list_candidates
+#    call_me candidates
+#    anykey_noquit
+#    separator
     need_sury_repo
     anykey
     separator

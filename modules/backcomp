@@ -7,24 +7,49 @@ __copyright__
 __license__
 #
 
-declare -f _ &>/dev/null || _(){ false; }
+binaries_is_func_ _ || _(){ false; }
 ${BACKCOMP_BASHLIB:-_} && return
 BACKCOMP_BASHLIB=:
 
 # for backwards compatibility:
-if (( ${#deps[@]} )) && ! (( ${#dependencies[@]} )); then
+if q0 declare -p deps && ! q0 declare -p dependencies; then
     declare -a dependencies=("${deps[@]}")
 fi
 
-[[ "$(type -t q0)" == function ]] || q0(){ "$@" &>/dev/null; }
-[[ "$(type -t q1)" == function ]] || q1(){ "$@" >/dev/null; }
-[[ "$(type -t q2)" == function ]] || q2(){ "$@" 2>/dev/null; }
+binaries_is_func_ q0 || q0(){ "$@" &>/dev/null; }
+binaries_is_func_ q1 || q1(){ "$@" >/dev/null; }
+binaries_is_func_ q2 || q2(){ "$@" 2>/dev/null; }
+binaries_is_func_ fn_ln || fn_ln(){
+    local ln fn f t
+    read -r ln fn f <<< "$(caller ${1:-0})"
+    t="$(${C[rp]} $f)"
+    [[ $t = $MP ]] && f="${M[n]}" t="${M[n]}"
+    [[ $fn = main ]] && fn='' || fn="$fn():"
+    if [[ $t =~ /fd/ ]]; then
+        echo -n "$fn$ln:"
+    elif [ "$t" = "$f" ]; then
+        echo -n "$f:$fn$ln:"
+    else
+        echo -n "$f->$t:$fn$ln:"
+    fi
+}
+binaries_is_func_ trace || trace(){
+    local f t
+    local -i i d
+    # build a single-line trace: f1 -> f2 -> …
+    d=$(( ${#FUNCNAME[@]} - $(( 1 + ${2:-0} )) ))
+    t=''
+    for (( i=d; i>${1:-0}; i-- )); do
+        f=$(fn_ln $i)
+        (( i == d )) && t="$f" || t+="->$f"
+    done
+    printf '%s' "$t"
+}
+
 [ "$(q2 declare -p TD)" = 'declare -n TD="TMPDIR"' ] || declare -n TD=TMPDIR
 
 for x in jq xmlstarlet ansifilter; do
-    if ! [[ "${X[$x]}" =~ /$x ]]; then
-        q0 command -v $x && X[$x]="${X[env]} LC_MESSAGES=C $(command -v $x)" &>$NUL
-    fi
+    (q0 command -v $x && [[ ! "${X[$x]}" =~ /$x ]]) && X[$x]="${X[env]} LC_MESSAGES=C $(command -v $x)" &>$NUL
 done
 
 # Migrate legacy variables into new variable names
@@ -38,7 +63,7 @@ done
 : "${M[b]:=${bm:-$basename_me}}"
 : "${M[ap]:=$apm}"
 : "${M[n]:=$scriptname}"
-: "${M[e]:=${M[epoch]:-$epoch}}"
+: "${M[e]:=${M[epoch]:-${epoch:-1741041000}}}"
 : "${M[v]:=$version}"
 : "${M[p]:=ebtb}"
 : "${M[pid]:=$$}"
@@ -55,23 +80,24 @@ done
 : "${F[lmj]:=$lmj}"
 : "${F[rmj]:=$rmj}"
 : "${F[lmjn]:=$lmjn}"
-: "${J[e]:=${J[epoch]:-$my_epoch}}"
-: "${J[o]:=${J[json]:-$my_json}}"
+: "${J[e]:=${J[epoch]:-${my_epoch:-}}}"
+: "${J[o]:=${J[json]:-${my_json:-}}}"
 : "${V[cargs]:=$cargs}"
-: "${V[upinf]:=${upinf:-$updateinfo}}"
+: "${V[upinf]:=${upinf:-${updateinfo:-}}}"
 : "${V[w]:=drwxrwxrwt}"
 : "${CMA:=$ME json=${J[o]} $@}"
-: "${T[rte]:=$rte}"
-: "${T[mje]:=$mje}"
-: "${T[mjne]:=$mjne}"
+: "${T[rte]:=${rte:-}}"
+: "${T[mje]:=${mje:-}}"
+: "${T[mjne]:=${mjne:-}}"
 
-[ -z "$HOME" ] && eval HOME=~
-[[ "${D[li]}" = "${D[vt]}/modules/${M[c]}" && -d "$HOME/.${M[p]}" ]] && ${X[rm]} -fr -- "$HOME/.${M[p]}"
+# this is too dangerous:
+#[ -z "$HOME" ] && eval HOME=~
+#[[ "${D[li]}" = "${D[vt]}/modules/${M[c]}" && -d "$HOME/.${M[p]}" ]] && ${X[rm]} -fr -- "$HOME/.${M[p]}"
 
 # removed function for backwards compatibility:
 populate_pkgs_by_dpkg_array(){ :; }
 
-if (( M[e] < 1741041000 )); then # 1738164268 ?
+if (( M[e] <= 1741041000 )); then # 1738164268 ?
     echo -e "\n\n\e[31m - The current script version is to old for the integrated updater.\n   The integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
     exit 1
 fi
@@ -134,12 +160,12 @@ if (( M[e] < 1740748000 )); then
     for x in u un g gn G Gn; do I[$x]="$(${X[id]} -$x)"; done; unset -v x
 fi
 
-[[ "$(type -t mkld)" == function ]] || mkld(){
+binaries_is_func_ mkld || mkld(){
     [ -d "${D[l]:=/run/lock/${I[u]}/${M[p]}}" ] || ${X[mkdir]} -p "${D[l]}"
     [ -d "${D[l]}" ] || { D[l]=$TD/${M[p]}/lock; ${X[mkdir]} -p "${D[l]}"; }
 }
 
-[[ "$(type -t c)" == function ]] || c(){
+binaries_is_func_ c || c(){
     mkld
     (   ${X[flock]} -x 200
         ${X[curl]} --compressed "${@//NULL/\/dev\/null}"
@@ -164,6 +190,6 @@ if (( M[e] < 1742900000 )); then
     PHP_VERSION="${PHP[v]}"
 fi
 
-q0 declare -f lrequire || lrequire(){ req $@;}
+binaries_is_func_ lrequire || lrequire(){ req $@;}
 
 [[ "${M[n]}" =~ php ]] && . <(req di) || di(){ :;}

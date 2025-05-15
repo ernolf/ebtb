@@ -76,7 +76,7 @@ nc_monitor(){
         cursor_ hide
         while :; do
             read -rsn 1 -p "  $prompt " choice
-            ${B[trace]:-_} && mh "TRACE:$(funcname_and_lineno) choice: '$choice'"
+            ${B[trace]:-_} && mh "TRACE:$(fn_ln) choice: '$choice'"
             if [ "$choice" = 'q' ]; then
                 break 2
             elif [ "$choice" = 'g' ]; then
@@ -167,7 +167,7 @@ WATCH_COMMAND_TEMPFILE
         rr=5
         while :; do
             empty_spaces=$(( 41 - ${#list} - ${#rr} ))
-            title="$(GRAY)+$(line - GRAY 76 a0; GRAY)+\n| $(lG)$list$(N) - refresh rate = $(Gbg) every $rr seconds $(GRAY; es $empty_spaces)|\n+$(line - GRAY 76 a0; GRAY)+\n| $(button s) change refresh rate | $(button r) reload | $(button b) go back to selection | $(button q) quit |$(N)"
+            title="$(GRAY)+$(line - GRAY 76 a0; GRAY)+\n| $(lG)$list$(N) - refresh rate = $(Gbg) every $rr seconds $(GRAY; es $empty_spaces)|\n+$(line - GRAY 76 a0; GRAY)+\n| $(button s) change refresh rate | $(button r) reload | $(button b) go back to selection | $(button q) quit |$(N)\n"
             ${X[watch]} -ctn $rr "${X[bash]} '$watch_command_tempfile' '$title'" & watch_pid=$!
             trap "cleanup_nc_monitor $watch_pid cls; f; separator; interrupted INT" INT
             trap "cleanup_nc_monitor $watch_pid cls; f; separator; interrupted TERM" TERM
@@ -187,7 +187,7 @@ WATCH_COMMAND_TEMPFILE
                 fi
             ) &
             while :; do read -rsn 1 key
-                ${B[trace]:-_} && mh "TRACE:$(funcname_and_lineno) key '$key' pressed"
+                ${B[trace]:-_} && mh "TRACE:$(fn_ln) key '$key' pressed"
                 case $key in
                     q)  break 3
                         ;;

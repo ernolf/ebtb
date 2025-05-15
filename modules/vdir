@@ -12,18 +12,67 @@ VDIR_BASHLIB=:
 
 # uses indirect parameter expansion ("${!var}", BASH > 4) to eliminate the need for `eval`
 setvdir(){
-    q0 declare -p vdirname || return 0 # return if vdirname is not declared
-    [[ $vdirname ]] || return 0 # return if vdirname is empty
-    local dv d v v1 v2 v3
-    dv="dflt_$vdirname"
-    d="${!dv}"
-    v="${!vdirname}"
+    if [[ -n ${D[vdir]:-} ]]; then # new method
+        local d v v1 v2 v3
+        d='UNDEFINED'
+        v="${D[vdir]}"
+    elif declare -p vdirname &> >(log_trace) && [[ -n $vdirname ]]; then # old method
+        local dv d v v1 v2 v3
+        dv="dflt_$vdirname"
+        d="${!dv}"
+        v="${!vdirname}"
+    else
+        return 0
+    fi
     v1="${!1}"
-    [ -z "$3" ] && v3="$MP" || v3="$3"
-    case "$2" in
+    [[ -z ${3:-} ]] && v3="$MP" || v3="$3"
+    case "${2:-}" in
         v) v2="$v" ;;
         d) v2="$d" ;;
         *) v2="$2"
     esac
-    sed_ "s|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|" "$v3" '-i'
+    # new method
+    mh "$(fn_ln) 's|^D[vdir]=\"$v1\"|D[vdir]=\"$v2\"|' '$v3' '-i'"
+    sed_ 's|^D\[vdir\]=\"'$v1'\"|D[vdir]=\"'$v2'\"|' "$v3" '-i'
+    # old method
+    mh "$(fn_ln) 's|^declare \$vdirname=\"$v1\"|declare \$vdirname=\"$v2\"|' '$v3' '-i'"
+    sed_ 's|^declare \$vdirname=\"'$v1'\"|declare \$vdirname=\"'$v2'\"|' "$v3" '-i'
 }
+# COMMENT -->
+
+#  # old method
+
+#    declare vdirname='NC_DIR'
+#    declare dflt_$vdirname='UNDEFINED'
+#    declare $vdirname="UNDEFINED"
+
+#  # new method:
+
+#    D[vdir]="UNDEFINED";declare -n NC_DIR=D[vdir]
+
+#####################
+#  # implementations:
+#####################
+#    modules/nc/first_run:                  setvdir v "$1"
+#    modules/nc/nextcloud:                  q0 declare -p NC_DIR && [[ $NC_DIR != ${NC[d]} ]] && ${B[rt]} && setvdir v "${NC[d]}"
+#    modules/php-module-builder/first_run:  setvdir v "$dir"
+
+#    modules/integrity:
+#    ==================
+#    if [[ ${D[vdir]:-} ]]; then # new method
+#        [[ ${D[vdir]} = UNDEFINED ]] || setvdir v d "${tf[i]}"
+#    elif [[ ${vdirname:-} ]]; then # old method
+#        local dflt_vdirname="dflt_$vdirname"
+#        local vdir="${!vdirname}" ddir="${!dflt_vdirname}"
+#        [ "$vdir" = "$ddir" ] || setvdir v d "${tf[i]}"
+#    fi
+
+#    modules/update:
+#    ==================
+#    if [[ ${D[vdir]:-} ]]; then # new method
+#        [[ ${D[vdir]} = UNDEFINED ]] || setvdir d v "$my_tmp"
+#    elif [[ $vdirname ]]; then # old method
+#        local dflt_vdirname="dflt_$vdirname"
+#        local vdir="${!vdirname}" ddir="${!dflt_vdirname}"
+#        [ "$vdir" = "$ddir" ] || setvdir d v "$my_tmp"
+#    fi

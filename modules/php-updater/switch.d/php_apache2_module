@@ -62,7 +62,7 @@ switch_a2module_version(){
                 f
                 while :; do read -rsn 1 -p "$(pf;Y)Please make your choice: $(N)" key
                     if confirm_choice 2 "$key" "You selected option $(button $key) Is this correct?"; then
-                        mh "$(funcname_and_lineno) key: [$key]" &
+                        mh "$(fn_ln) key: [$key]" &
                         echo "Confirmed choice $(button $key)"
                         case $key in
                                 q)  f 2;break
@@ -96,7 +96,7 @@ switch_a2module_version(){
                 bundle echo "$(es3; G; format_string "The $(B)$httpd$(G) httpd is already connected to $(Y)php$ver_n$(G) ($(C)libapache2-mod-php$ver_n$(G))" 3; N)"
                 return 0
             fi
-            php_a2module_switch_2_ $ver_n
+            php_a2module_ switch2 $ver_n
             populate_a2conffiles
             if [[ "${A2CONFFILES[@]}" =~ php$ver_n\.conf && "${A2CONFFILES[@]}" =~ php$ver_n\.load ]]; then
                 bundle echo "$(es3; G; format_string "Successfully switched the $(dY)${DESCR[apache2]} $(GRAY)(libapache2-mod-php)$(G) from version $(Y)$ver_o$(G) to $(Y)$ver_n$(G)" 3; N)"

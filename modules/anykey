@@ -14,17 +14,17 @@ ANYKEY_BASHLIB=:
 anykey(){
     local p aim
     local -l choice
-    aim="$1"
-    ${B[trace]:-_} && aim="${aim:-continue} - $(funcname_and_lineno 1)"
+    aim="${1:-continue}"
+    ${B[trace]:-_} && aim="$aim - $(fn_ln 1)" || :
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
         cursor_status='show'
-        if [ -f "${F[cursor]}" ]; then
+        if [ -f "${F[cursor]:-}" ]; then
             if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
                 cursor_status='hide'
             fi
         fi
-        p="Press $(lG)any key$(N) to ${aim:-continue}$(GRAY) or $(q2q;N)"
+        p="Press $(lG)any key$(N) to $aim$(GRAY) or $(q2q;N)"
         kill_spinner &>$NUL
         cursor_ hide
         read -rsn 1 -p "$p"  choice
@@ -51,8 +51,8 @@ anykey(){
 
 anykey_noquit(){
     local p aim dummy
-    aim="$1"
-    ${B[trace]:-_} && aim="${aim:-continue} - $(funcname_and_lineno 1)"
+    aim="${1:-continue}"
+    ${B[trace]:-_} && aim="$aim - $(fn_ln 1)" || :
     if ${ANSI_BASHLIB:-_} && ${BUTTON_BASHLIB:-_} && ${EXIT_BASHLIB:-_}; then
         local -l cursor_status
         cursor_status='show'
@@ -61,7 +61,7 @@ anykey_noquit(){
                 cursor_status='hide'
             fi
         fi
-        p="Press $(lG)any key$(N) to ${aim:-continue} "
+        p="Press $(lG)any key$(N) to $aim "
         cursor_ hide
         kill_spinner &>$NUL
         read -rsn 1 -p "$p"  dummy

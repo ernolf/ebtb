@@ -23,28 +23,32 @@ sysinf_debsources(){
             kill_spinner
             spinner Yi " . determine system informations - deb/apt sources ." &
         }
+        SYSINF+=("title apt-cache policy:")
+        SYSINF+=("true $(apt_cache_policy)")
         SYSINF+=("title aptsources:")
-        SYSINF+=("true $(p_sort_numerate "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_Packages.*$//; s/-deb.*$//; s/_dists/ /; s/_binary-/ /')")")
+#        SYSINF+=("true $(p_sort_numerate "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_Packages.*$//; s/-deb.*$//; s/_dists/ /; s/_binary-/ /')")")
 
         # sury BEGIN
         ${bool[sury]:-_} && {
+            SYSINF+=("true $(list_sources_short_numerated show_sury)")
             local sury
             local -i sury_r
             sury="$(sury)"
             sury_r=$?
             SYSINF+=("echo sury: r=$sury_r, $sury")
-        }
+        } || SYSINF+=("true $(list_sources_short_numerated)")
         # sury END
 
         # apt sources files BEGIN
         local -a apturls
         mapfile -t apturls< <(p_sort "$(cd /var/lib/apt/lists/; ${X[ls]} *Packages | sed_ 's/_dists.*$//')")
         SYSINF+=("title aptsourcesfiles:")
-        SYSINF+=("true $(p_sort_numerate "$(
-                for i in "${!apturls[@]}"; do
-                    ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{ print $1 }'
-                done
-            )")")
+#        SYSINF+=("true $(p_sort_numerate "$(
+#                for i in "${!apturls[@]}"; do
+#                    ${X[grep]} -r "$(urldecode ${apturls[i]//_/\/})" /etc/apt/ | ${X[gawk]} -F: '/:\s*#/{next}/.*\.(list|sources):/{ print $1 }'
+#                done
+#            )")")
+        SYSINF+=("true $(list_sources_files)")
 
         # sury apt sources files BEGIN
         ${bool[sury]:-_} && {

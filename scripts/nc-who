@@ -9,10 +9,11 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
+__vdirname__ NC_DIR
 modules=(nc/nextcloud nc/db nc/logo $MS/help $MS/last $MS/h2t $MS/monitor $MS/god)
 __debug__
 __when__
-__vdirname__
 __tempdir__
 __module_server__
 __general__

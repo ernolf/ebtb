@@ -26,9 +26,10 @@ elif [ -n "${X[lsb_release]}" ]; then
     OS[version]="${OS[pretty_name]//${OS[name]} /} (${OS[version_codename]})"
 fi
 for x in id id_like version_codename ubuntu_codename debian_codename; do
-    OS[$x]="${OS[$x],,}"
+    [[ -v OS[$x] ]] && OS[$x]="${OS[$x],,}"
 done
 declare -p OS > "${F[os]:="${D[vt]}/os"}"
+q0 ${BINARY[chmod]} 666 "${F[os]}"
 
 os_not_supported(){
     . ${F[os]}

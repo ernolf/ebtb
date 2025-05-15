@@ -9,10 +9,11 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
+__vdirname__ NC_DIR
 modules=(fstring nc/nextcloud nc/occ nc/db)
 __debug__
 __when__
-__vdirname__
 __tempdir__
 __module_server__
 __general__
@@ -156,7 +157,7 @@ if (( ${#affected_apps[@]} )); then
             core) abspath="${NC[d]}";;
                *) abspath="$(occ app:getpath -- "$affected_app")"
         esac
-        echo -n > $scan_result
+        > $scan_result
         prune_arrays
         json_2_array "$(${X[jq]} ".$affected_app" "$integritycheck_json")" > $scan_result
         . $scan_result

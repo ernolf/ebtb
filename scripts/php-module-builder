@@ -9,6 +9,8 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
+__vdirname__ project_dir
 modules=(
     today interval prompt fstring httpd php/version php/alternatives ask
     php/versions php/fpm dist/os_release php/sury php/extensions
@@ -16,10 +18,6 @@ modules=(
 )
 __debug__
 __when__
-# don't change this by hand, its done safe and interactively by the script:
-declare vdirname='project_dir' # <-- don't change this!
-declare dflt_$vdirname='UNDEFINED' # <-- don't change this!
-declare $vdirname="UNDEFINED" # <-- don't change this!
 __tempdir__
 __module_server__
 __general__

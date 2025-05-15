@@ -9,9 +9,10 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
 modules=(
     today interval dos2unix prompt fstring httpd context ask sysinf ebtb
-    dist/os_release apt/sources nc/c2j nc/aio
+    dist/os_release nc/c2j nc/aio
     php/version php/nginx php/apache2 php/fpm php/versions php/alternatives
     php/extensions php/sury
 )

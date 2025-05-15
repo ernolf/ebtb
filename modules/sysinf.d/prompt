@@ -21,6 +21,6 @@ sysinf_prompt(){
             kill_spinner
             spinner Yi " . determine system informations - prompt ." &
         }
-        [ "$(type -t prompt)" = 'function' ] && SYSINF+=("echo prompt: $(prompt)") || return 0
+        binaries_is_func_ prompt && SYSINF+=("echo prompt: $(prompt)") || return 0
     }
 }

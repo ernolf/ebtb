@@ -212,7 +212,7 @@ create_database(){
     database_created && w_db database_created $runtime_etag && B[database_created]=:
     if ${B[bgjobs]}; then
         wait $job_ids
-        kill_spinner
+        kill_spinner_te0
         if ${B[pager]}; then
             echo "  database   created"
             line '=' N 80

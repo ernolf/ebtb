@@ -53,13 +53,13 @@ last_occurrence(){
         llnr=$(${X[grep]} -n "^\s*;\{0,1\}\s*extension" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     elif [[ "${key}" =~ ^\[.*\]$ ]]; then
         # find the section opener
-        llnr=$(${X[grep]} -n "^\s*$(escaped $key)" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*$(shex $key)" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     elif [[ "${key: -1}" = "." ]]; then
         # find the last line of the section, including uncommented lines
-        llnr=$(${X[grep]} -n "^\s*;\{0,1\}\s*$(escaped $key)" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*;\{0,1\}\s*$(shex $key)" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     else
         # find the line numbers of last occurrences of the setting name, ignoring uncommented lines
-        llnr=$(${X[grep]} -n "^\s*;\s*$(escaped $key)\s*=.*" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
+        llnr=$(${X[grep]} -n "^\s*;\s*$(shex $key)\s*=.*" "$path" | ${X[tail]} -1 | ${X[cut]} -d ":" -f 1)
     fi
     echo $llnr
 }
@@ -90,7 +90,7 @@ comm_(){
             mapfile -t diff1_keys< <(${X[comm]} -23 <(p_sort "${osettings_keys[@]}") <(p_sort "${nsettings_keys[@]}"))
             # get the values for the settings in diff1_keys
             for i in "${!diff1_keys[@]}"; do
-                val="$(${X[grep]} -Po "^\s*$(escaped ${diff1_keys[i]})\s*=\s*\K.*(?=\s*$)" "$opath")"
+                val="$(${X[grep]} -Po "^\s*$(shex ${diff1_keys[i]})\s*=\s*\K.*(?=\s*$)" "$opath")"
                 diff1_keys_with_val+=("${diff1_keys[i]}=$val")
             done
             # add all occurrences of "extension=*" to diff1_keys_with_val
@@ -112,7 +112,7 @@ comm_(){
             mapfile -t diff2_keys< <(${X[comm]} -13 <(p_sort "${osettings_keys[@]}") <(p_sort "${nsettings_keys[@]}"))
             # get the values for the settings in diff2_keys
             for j in "${!diff2_keys[@]}"; do
-                val="$(${X[grep]} -Po "^\s*$(escaped ${diff2_keys[j]})\s*=\s*\K.*(?=\s*$)" "$npath")"
+                val="$(${X[grep]} -Po "^\s*$(shex ${diff2_keys[j]})\s*=\s*\K.*(?=\s*$)" "$npath")"
                 diff2_keys_with_val+=("${diff2_keys[j]}=$val")
             done
             p_sort "${diff2_keys_with_val[@]}" # remove duplicates
@@ -126,14 +126,14 @@ append2eos(){
     kill_spinner
     # append the val at the end of the section
     if [ "${path##*/}" = "php.ini" ]; then
-        echo "$(pf; format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+        echo "$(pf; format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"${val//\"/}\"$(P) not found$(N) in $(B)$path" 3; N)"
         section="at the end of the $(bY; section "${key%.*}"; N) section" nl='\n'
     elif [ "$(sufix "$path")" = "conf" ]; then
-        echo "$(pf; format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+        echo "$(pf; format_string "Environment variable \"$(Y)$key$(N)\" with value $(GRAYbg)\"${val//\"/}\"$(P) not found$(N) in $(B)$path" 3; N)"
         section="under the other environment variables" nl=''
     fi
     defaults_and_changelog "$key" && defaultanswer="$YES" || defaultanswer="$NO"
-    question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) $section" 3)"
+    question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"${val//\"/}\"$(N) $section" 3)"
     if ask "$question" "$defaultanswer"; then
         sed_ "${last}a\\$nl$key = $val" "$path" '-i'
         echo "$(rpf; format_string "Added $(GRAYbg)\"$key = $val\"$(N) at the end of the $(Y; section "${key%.*}"; N) section in $(B)$path" 3; N)"
@@ -147,9 +147,9 @@ append2eof(){
     local -A bool
     key="$1" val="$2" path="$3" bool[ael]="$4"
     kill_spinner
-    echo "$(pf; format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(P) not found$(N) in $(B)$path" 3; N)"
+    echo "$(pf; format_string "Directive \"$(Y)$key$(N)\" with value $(GRAYbg)\"${val//\"/}\"$(P) not found$(N) in $(B)$path" 3; N)"
     defaults_and_changelog "$key"&&defaultanswer="$YES"||defaultanswer="$NO"
-    question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"$val\"$(N) to the end of the file" 3)"
+    question="$(qpf; format_string "Do you want to append \"$(Y)$key$(N)\" with value $(GRAYbg)\"${val//\"/}\"$(N) to the end of the file" 3)"
     if ask "$question" "$defaultanswer"; then
         ${bool[ael]:-_} && echo >> "$path"
         echo "$key = $val" >> "$path"
@@ -159,7 +159,7 @@ append2eof(){
 }
 
 merge_settings_step_1_(){
-    local old new opkg npkg opath npath sapi key nkey val nval question
+    local old new opkg npkg opath npath sapi key nkey val nval question o2nval
     local -a osettings nsettings keep
     local -i i ni
     old="$1" new="$2" opkg="$3" opath="$4" sapi="$5"
@@ -180,16 +180,17 @@ merge_settings_step_1_(){
                 nval="${nsettings[ni]#*=}"; nval=${nval%% }; nval=${nval## }
                 if [ "${val/$old/}" != "${nval/$new/}" ]; then
                     kill_spinner
-                    echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"$nval\"" 3; N)"
+                    echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"${val//\"/}\"$(N) in the ${opath##*/} of $(C)$opkg$(N) in the ${opath##*/} of $(C)$npkg$(N) it is $(GRAYbg)\"${nval//\"/}\"" 3; N)"
                     defaults_and_changelog "$key"
                     if [[ "${keep[@]}" =~ $key ]]; then
                         bundle echo "$(ipf; format_string "The directive \"$(Y)$key$(N)\" will not be changed by this script for the moment. If you  want to set this directive to a specific value for the $(B)${DESCR[$sapi]}$(N), you will have to edit the file $(C)$npath$(N) with an editor of your choice." 3; N; f; es3; format_string "Refer to $(GRAY)https://www.php.net/manual/errorfunc.configuration.php#ini.$key$(N) for further information" 3; N)"
                         anykey
                     else
-                        question="$(qpf; format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
+                        o2nval=${val/$old/$new}
+                        question="$(qpf; format_string "Do you want to set \"$(Y)$key$(N)\" to $(GRAYbg)\"${o2nval//\"/}\"" 3; N)"
                         if ask "$question" "$YES"; then
-                            sed_ "s|^\s*$key.*$|; $key = $nval\n$key = ${val/$old/$new}|" "$npath" '-i'
-                            echo "$(rpf; format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"$nval\"$(N) to $(GRAYbg)\"${val/$old/$new}\"" 3; N)"
+                            sed_ "s|^\s*$(shex $key)\s*=.*$|; $key = $nval\n$key = $o2nval|" "$npath" '-i'
+                            echo "$(rpf; format_string "Changed $(Y)$key$(N) from $(GRAYbg)\"${nval//\"/}\"$(N) to $(GRAYbg)\"${o2nval//\"/}\"" 3; N)"
                         fi
                     fi
                     separator
@@ -217,24 +218,25 @@ merge_settings(){
         val="${settings2merge1_[i1]#*=}"; val=${val%% }; val=${val## }
         [ "$key" = "" ] && continue
         last=$(last_occurrence "$key" "$npath") # find the last occurrence of the commented setting_name
-        if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath"; then
+        if ${X[grep]} -qs "^\s*;\s*$(shex $key)\s*=\s*$(shex $val)" "$npath"; then
             kill_spinner
-            lnr=$(${X[grep]} -n "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$npath" | ${X[cut]} -d ":" -f 1)
-            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
+            lnr=$(${X[grep]} -n "^\s*;\s*$(shex $key)\s*=\s*$(shex $val)" "$npath" | ${X[cut]} -d ":" -f 1)
+            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"${val//\"/}\"$(N) in the ${opath##*/} of $(C)$opkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
             question="$(qpf; format_string "Do you want to uncomment the line \"$(Y)$key=$val$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
-                sed_ "s|^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)|$key = $val|" "$npath" '-i'
+                sed_ "s|^\s*;\s*$(shex $key)\s*=\s*$(shex $val)|$key = $val|" "$npath" '-i'
                 echo "$(rpf; format_string "Uncommented directive $(GRAYbg)\"$key = $val\"$(N) at line $last in $(B)$npath" 3; N)"
             fi
             separator
         elif (( last )); then
             kill_spinner
             # append the val after the last occurrence
-            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$opkg$(N) and $(P)is not set$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
+            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is $(GRAYbg)\"${val//\"/}\"$(N) in the ${opath##*/} of $(C)$opkg$(N) and $(P)is not set$(N) in the ${opath##*/} of $(C)$npkg" 3; N)"
             defaults_and_changelog "$key"
-            question="$(qpf; format_string "Do you want to assign $(GRAYbg)\"$val\"$(N) to \"$(Y)$key$(N)\"" 3)"
+            question="$(qpf; format_string "Do you want to assign $(GRAYbg)\"${val//\"/}\"$(N) to \"$(Y)$key$(N)\"" 3)"
             if ask "$question" "$YES"; then
+                q0 is_path "$val" && val="\"${val//\"/}\""
                 sed_ "${last}a\\$key = $val" "$npath" '-i'
                 echo "$(rpf; format_string "Added $(GRAYbg)\"$key = $val\"$(N) after line $last in $(B)$npath" 3; N)"
             fi
@@ -266,13 +268,13 @@ merge_settings(){
         key="${settings2merge2_[i2]%%=*}"; key=${key%% }; key=${key## }
         val="${settings2merge2_[i2]#*=}"; val=${val%% }; val=${val## }
         [ "$key" = "" ] && continue
-        if ${X[grep]} -qs "^\s*;\s*$(escaped $key)\s*=\s*$(escaped $val)" "$opath"; then
+        if ${X[grep]} -qs "^\s*;\s*$(shex $key)\s*=\s*$(shex $val)" "$opath"; then
             kill_spinner
-            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"$val\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
+            echo "$(pf; format_string "The value for \"$(Y)$key$(N)\" is set to $(GRAYbg)\"${val//\"/}\"$(N) in the ${opath##*/} of $(C)$npkg$(N) but it $(P)is commented out$(N) in the ${opath##*/} of $(C)$opkg" 3; N)"
             defaults_and_changelog "$key"
             question="$(qpf; format_string "Do you want to comment out the key \"$(Y)$key$(N)\" in the new ${opath##*/} as well" 3)"
             if ask "$question" "$YES"; then
-                sed_ "s|^\s*$(escaped $key)\s*=\s*$(escaped $val)|;$key=$val|" "$npath" '-i'
+                sed_ "s|^\s*$(shex $key)\s*=\s*$(shex $val)|;$key=$val|" "$npath" '-i'
                 echo "$(rpf; format_string "Setting $(GRAYbg)\"$key = $val\"$(N) commented out in $(B)$npath" 3; N)"
             fi
             separator

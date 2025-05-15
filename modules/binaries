@@ -11,121 +11,204 @@ ${BINARIES_BASHLIB:-false} && return
 BINARIES_BASHLIB=:
 
 for x in B BINARY D F J M PHP T V; do declare -gA $x 2>${NUL:=/dev/null} || declare -A $x; done
-declare -i BINARIES_LIB_VERSION BINARY_ARRAY_VERSION
-
-__libversion__
-BINARY_ARRAY_VERSION=0
-
-[[ "$-" =~ x ]] && { set +x; B[binaries_debugx]=:; }
-
-declare -a paths used_binaries binaries
-# declare -gA BINARY 2>$NUL || declare -A BINARY
-# declare -gA PHP 2>$NUL || declare -A PHP
 PHP[vregex]='(5\.6|[78]\.[01234])'
 PHP[vextglob]='*@(*5\.6*|*[78]\.[01234]*)*'
 declare -p PHP > "${F[php]:="${D[vt]}/php"}"
+# Create a nameref for BINARY named X
+declare -gn X=BINARY &>$NUL || declare -n X=BINARY
+declare -i BINARIES_LIB_VERSION BINARY_ARRAY_VERSION
+__libversion__
+BINARY_ARRAY_VERSION=0
 
-F[binary]="${D[vt]}/binary"
-[ -f "${F[binary]}" ] && . "${F[binary]}"
-
-(( BINARIES_LIB_VERSION == BINARY_ARRAY_VERSION )) || BINARY=()
-
-reload_binaries(){
-    [ -f "${F[binary]:=${D[vt]}/binary}" ] && ${BINARY[rm]} -f -- "${F[binary]}"
-    FILTER_BASHLIB=_ BINARIES_BASHLIB=_
-    . <(lrequire filter)
+binaries_is_func_(){ 
+    d=$(declare -f $1) || return
+    d=${d//$'\n'/}
+    [[ ${d// /} != "$1(){:}" ]]
 }
 
-map_paths(){
-    # standard paths take precedence
-    PATH=$(printf "%s" "/usr/sbin:/usr/bin:/sbin:/bin:$PATH" | ${BINARY[gawk]} -v RS=: -v ORS=: '!seen[$0]++' | ${BINARY[sed]} 's/::/:/g;s/:$//')
-    mapfile -t paths< <(printf "%s\n" ${PATH//:/ })
+binaries_reload(){
+    local msg
+    msg="$(q2 fn_ln 1)rebuild BINARY array with newly installed binaries"
+    binaries_is_func_ mh && mh "$msg" || log "$msg"
+    [ -f "${F[binary]:=${D[vt]}/binary}" ] && ${C[r]} "${F[binary]}"
+    BINARIES_BASHLIB=_
+    tabula_rasa(){ :; }
+    . <(lrequire binaries)
 }
 
-nullglob_path(){
+# fallback for realpath/readlink using bash builtins
+binaries_realpath(){
+    local p msg
+    p="$1"
+    if [[ -d "$p" ]]; then
+        (cd -P "$p" 2>$NUL && printf '%s\n' "$PWD")
+    elif [[ -e "$p" ]]; then
+        (cd -P "${p%/*}" 2>$NUL && printf '%s/%s\n' "$PWD" "${p##*/}")
+    else
+        msg="binaries_realpath(): unresolvable path $p"
+        binaries_is_func_ mh && mh "$msg" || log "$msg"
+    fi
+}
+
+binaries_map_paths(){
+    local raw_paths p
+    raw_paths="/usr/sbin:/usr/bin:/sbin:/bin:$PATH"
+    printf "%s\n" ${raw_paths//:/ } | while IFS= read -r p; do
+        [[ -n "$p" ]] || continue # avoid empty entries
+        # resolve symlinks and canonicalize
+        binaries_realpath "$p" 2>$NUL || continue
+    done | ${BINARY[gawk]} '!seen[$0]++'
+}
+
+# return only the paths from the used_binaries array if existent
+binaries_used_paths(){
+    local path name
+    local -a binaries_used paths
+__binaries_used__
+    mapfile -t paths < <(binaries_map_paths)
+    for path in "${paths[@]}"; do
+        for name in "${binaries_used[@]}"; do
+            [[ -e $path/$name ]] && printf '%s\n' $path/$name
+        done
+    done
+}
+
+# return all existent binariy paths
+binaries_nullglob_paths(){
     local old_nullglob path binary
-    local -a results
-    map_paths
+    local -a paths
+    mapfile -t paths < <(binaries_map_paths)
     old_nullglob=$(shopt -p nullglob || :)
     shopt -s nullglob
     for path in "${paths[@]}"; do
         for binary in "$path"/*; do
-            results+=("$binary")
+            printf '%s\n' $binary
         done
     done
     [[ -n $old_nullglob ]] && $old_nullglob || shopt -u nullglob
-    printf '%s\n' "${results[@]}"
 }
 
-extglob_path(){
+# return all existing paths matching ${PHP[vextglob]}
+binaries_extglob_paths(){
     local path binary
-    local -a results
-    map_paths
+    local -a paths
+    mapfile -t paths < <(binaries_map_paths)
     for path in "${paths[@]}"; do
         for binary in "$path"/${PHP[vextglob]}; do
-            [[ -e "$binary" ]] && results+=("$binary")
+            [[ -e "$binary" ]] && printf '%s\n' $binary
         done
     done
-    printf '%s\n' "${results[@]}"
 }
 
-if [[ -z ${BINARY[env]} ]]; then
-    BINARY[env]="$(command -v env)"
-    for x in gawk sed; do
-        if [ -x "$(command -v $x)" ]; then
-            BINARY[$x]="${BINARY[env]} LC_MESSAGES=C $(command -v $x)" &>$NUL
-        else
-            echo -e "\e[31mERROR: no '$x' binary or '$x' not executable\e[0m" > ${TTY:=/dev/tty}
-            [ -t 0 ] || exit 1
-        fi
-    done
-    # binaries that need LC_ALL=C
-    for x in lastlog; do
-        if [ -x "$(command -v $x)" ]; then
-            BINARY[$x]="${BINARY[env]} LC_ALL=C $(command -v $x)" &>$NUL
-        fi
-    done
-    # binaries that need LC_ALL=C.UTF-8
-    for x in add-apt-repository gpg; do
-        if [ -x "$(command -v $x)" ]; then
-            BINARY[$x]="${BINARY[env]} LC_ALL=C.UTF-8 $(command -v $x)" &>$NUL
-        fi
-    done
-
-__used_binaries__
-
-    mapfile -t binaries < <(nullglob_path)
-
+binaries_load_php(){
+    # allways load actual php versions because they may have been newly installed
+    local -a binaries
+    shopt -s extglob
+    mapfile -t binaries < <(binaries_extglob_paths)
+    shopt -u extglob
     for x in "${binaries[@]}"; do
-        [ -z "${BINARY[${x##*/}]}" ] || continue
+        [ -z "${BINARY[${x##*/}]:-}" ] || continue
         [ -x "$x" ] || continue
-        [[ " ${used_binaries[@]} " =~ " ${x##*/} " ]] || continue
+        [[ "${x##*/}" =~ ^php(-config|-fpm|ize)?${PHP[vregex]}$ ]] || continue
         BINARY[${x##*/}]="${BINARY[env]} LC_MESSAGES=C $x" &>$NUL
     done
+}
+
+binaries_extra_treatments(){
+    # fallback to function if ansifilter binary is not installed
+    : ${BINARY[ansifilter]:=filter_ansi} &>$NUL
     # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
-    [ -z "${BINARY[xmlstarlet]}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
+    [ -z "${BINARY[xmlstarlet]:-}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
+}
+
+# dispatcher function.for "used" and "nullglob" (all) pathes
+binaries_load_(){
+    local -a binaries
+    mapfile -t binaries < <(binaries_$1_paths)
+    for x in "${binaries[@]}"; do
+        [[ -z ${BINARY[${x##*/}]:-} ]] || continue
+        [[ -x $x ]] || continue
+        BINARY[${x##*/}]="${BINARY[env]} LC_MESSAGES=C $x" &>$NUL
+    done
+}
+
+binaries_file_create(){
+    (   echo "BINARY_ARRAY_VERSION=$BINARIES_LIB_VERSION"
+        declare -p BINARY
+        declare -p X
+    ) > "${F[binary]}"
+    q0 ${BINARY[chmod]} 666 "${F[binary]}" "${F[php]}"
+}
+
+binaries_error(){
+    local msg
+    msg="$(q2 fn_ln 2)ERROR: no '$1' binary or '$1' not executable"
+    binaries_is_func_ mh && mh "$msg" || log "$msg"
+    echo -e "\e[31mERROR: no '$1' binary or '$1' not executable\e[0m" > ${TTY:=/dev/tty}
+    [ -t 0 ] || exit 1
+}
+
+# bootstrap
+binaries_bootstrap(){
+    local msg bb
+    if [[ -z ${BINARY[env]:-} ]]; then
+        if binaries_is_func_ tabula_rasa; then
+            tabula_rasa # force a fresh download of all modules
+            msg="$(q2 fn_ln 1)make tabula_rasa"
+            binaries_is_func_ mh && mh "$msg" || log "$msg"
+        fi
+        BINARY[env]="$(binaries_realpath "$(command -v env)")"
+        # this 'for bb in ..; do' patterns are evaluated by the 'binaries_exceptions' function during build process
+        for bb in gawk; do
+            if [ -x "$(command -v $bb)" ]; then
+                BINARY[$bb]="${BINARY[env]} LC_ALL=C $(binaries_realpath $(command -v $bb))" &>$NUL
+            else
+                binaries_error "$bb"
+                return 1
+            fi
+        done
+        # binaries that need LC_ALL=C
+        for bb in grep lastlog sed; do
+            if [ -x "$(command -v $bb)" ]; then
+                BINARY[$bb]="${BINARY[env]} LC_ALL=C $(binaries_realpath $(command -v $bb))" &>$NUL
+            
+            else
+                msg="$(q2 fn_ln 1)no '$1' binary or '$1' not executable"
+                binaries_is_func_ mh && mh "$msg" || log "$msg"
+            fi
+        done
+        # binaries that need LC_ALL=C.UTF-8
+        for bb in add-apt-repository gpg; do
+            if [ -x "$(command -v $bb)" ]; then
+                BINARY[$bb]="${BINARY[env]} LC_ALL=C.UTF-8 $(binaries_realpath $(command -v $bb))" &>$NUL
+            else
+                msg="$(q2 fn_ln 1)no '$1' binary or '$1' not executable"
+                binaries_is_func_ mh && mh "$msg" || log "$msg"
+            fi
+        done
+    else
+        return 1
+    fi
+}
+
+[[ "$-" =~ x ]] && { set +x; B[binaries_debugx]=:; } || :
+
+F[binary]="${D[vt]}/binary"
+[ -f "${F[binary]}" ] && . "${F[binary]}"
+
+if (( BINARIES_LIB_VERSION != BINARY_ARRAY_VERSION )); then
+    if binaries_is_func_ tabula_rasa; then
+        msg="$(q2 fn_ln 1)the binary-path array is outdated"
+        binaries_is_func_ mh && mh "$msg" || log "$msg"
+        unset msg
+    fi
+    BINARY=()
 fi
 
-# allways load actual php versions because they may have been newly installed
-shopt -s extglob
-mapfile -t binaries < <(extglob_path)
-shopt -u extglob
-
-for x in "${binaries[@]}"; do
-    [ -z "${BINARY[${x##*/}]}" ] || continue
-    [ -x "$x" ] || continue
-    [[ "${x##*/}" =~ ^php(-config|-fpm|ize)?${PHP[vregex]}$ ]] || continue
-    BINARY[${x##*/}]="${BINARY[env]} LC_MESSAGES=C $x" &>$NUL
-done
-unset -v used_binaries binaries
-echo "BINARY_ARRAY_VERSION=$BINARIES_LIB_VERSION" > "${F[binary]}"
-declare -p BINARY >> "${F[binary]}"
-q0 ${BINARY[chmod]} 666 "${F[binary]}" "${F[php]}"
-
-# Create a nameref for BINARY named X
-declare -n X=BINARY &>$NUL
-declare -p X >> "${F[binary]}"
+binaries_bootstrap && binaries_load_ used && binaries_extra_treatments
+binaries_load_php
+binaries_file_create
 
 [[ "$(type -t req)" == function ]] && . <(req backcomp 2>$NUL)
 
-${B[binaries_debugx]:-false} && set -x
+${B[binaries_debugx]:-false} && set -x || :

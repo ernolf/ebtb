@@ -58,14 +58,14 @@ MACHINE_ID="$(machine_id 2>&1)"
 
 fp(){
     local fingerprint
-    if [ -f "${F[fp]}" ]; then
+    if [[ -f ${F[fp]:-} ]]; then
         local -i fpttl fpe # fpo
         fpttl=86400
         fpe=$(${X[stat]} -c %Z "${F[fp]}")
-        (( T[rte] - fpe > fpttl )) && echo > "${F[fp]}"
+        (( T[rte] - fpe > fpttl )) && > "${F[fp]}"
 # TODO 1 -->
 #        fpo=$(${X[stat]} -c %u%g "${F[fp]}")
-#        (( fpo == ${I[u]}${I[g]} && T[rte] - fpe > fpttl )) && echo > "${F[fp]}"
+#        (( fpo == ${I[u]}${I[g]} && T[rte] - fpe > fpttl )) && > "${F[fp]}"
 # TODO <-- 1
         fingerprint=$(< "${F[fp]}")
     fi
@@ -129,7 +129,7 @@ max_cols(){
     local -i dmc tmc
     dmc=120 # default and minimal value for max cols
     tmc=$(${X[tput]} cols) # available cols on terminal
-    [ -f "${F[mc]:=${D[vt]}/cols}" ] || echo "$dmc" > "${F[mc]}"
+    [[ -f ${F[mc]:=${D[vt]}/cols} ]] || echo "$dmc" > "${F[mc]}"
     ${X[chmod]} -f 666 "${F[mc]}"
     mc=$(< "${F[mc]}")
     [[ "$mc" =~ ^[0-9]+$ ]] || mc=$dmc

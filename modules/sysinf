@@ -94,7 +94,7 @@ sysinf_print_(){
                     echo "$(C)$title$(line - C ${#title} b1)" 2>&1
                     line _ lR a a2
                     ;;
-             true)  echo -e "${bin#true }" 2>&1
+             true)  echo -e "${bin#true }" 2>&1 | ${X[gawk]} 'NF' # no empty lines
                     line _ lR a a2
                     ;;
            p_sort)  title="${bin//p_sort/cat}:"

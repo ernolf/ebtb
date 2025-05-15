@@ -8,7 +8,7 @@ __license__
 #
 
 declare -f _ &>${NUL:=/dev/null} || _(){ false; }
-if (( epoch < 1737773190 )); then
+if (( M[e] < 1737773190 )); then
     q0(){ "$@" &>$NUL; }
     q1(){ "$@" >$NUL; }
     q2(){ "$@" 2>$NUL; }
@@ -26,17 +26,14 @@ es(){
     printf "%*s" ${1:-1} ' '
 }; es2(){ es 2;}; es3(){ es 3;}; es4(){ es 4;}; es5(){ es 5;}; es6(){ es 6;}
 
-# Empty lines
-el(){
-    for ((i=0; i<${1:-1}; i++)); do
-        printf "\n"
-    done
-}; el2(){ el 2;}; el3(){ el 3;}; el4(){ el 4;}; el5(){ el 5;}; el6(){ el 6;}
+# Empty lines ( we use the f (feed) function from ansi)
+el(){ f ${1:-1};}; el2(){ f 2;}; el3(){ f 3;}; el4(){ f 4;}; el5(){ f 5;}; el6(){ f 6;}
 
+# Print literal "\n" $1 times
 ell(){
+    local -i i
     for (( i=0; i<${1:-1}; i++ )); do
-        # Print literal "\n" (with two backslashes, because printf needs them escaped)
-        printf "\\\\n"
+        printf '%s' '\n'
     done
 }; ell2(){ ell 2;}; ell3(){ ell 3;}; ell4(){ ell 4;}; ell5(){ ell 5;}; ell6(){ ell 6;}
 
@@ -138,6 +135,26 @@ nonullglob(){
     [ "${glob_expanded[0]}" = "$1" ] && return 1 || return 0
 }
 
+# is_path <path>
+# Returns:
+#   0 and echoes "full" if <path> exists (file or directory)
+#   0 and echoes "dir"  if <path> does not exist but its parent directory does
+#   0 and echoes "not"  if <path> syntactically looks like a UNIX path but neither it nor its parent exists
+#   1 (and echoes nothing) if <path> does not look like a UNIX path (i.e. does not begin with '/')
+is_path(){
+    local p
+    p="$1"
+    [[ "$p" == /* ]] || return 1
+    if [[ -e "$p" ]]; then
+        echo full
+    elif [[ -d "$(${X[dirname]} -- "$p")" ]]; then
+        echo dir
+    else
+        echo not
+    fi
+    return 0
+}
+
 # check if bool
 boolean(){
     if ${X[grep]} -qswiE "(on|1)" <<< "$1"; then
@@ -154,9 +171,10 @@ out_of_scope(){
     ( "$@" )
 }
 
-# escape $, [, ], ( and ) for grep -E
-# a great bash include!
-escaped(){
+# escape $, [, ], ( and ) etc.
+# %q = "shell quoted string", a great bash include!
+# shex – portmanteau from "shell" + "escape".
+shex(){
     printf '%q' "$@"
 }
 
@@ -189,6 +207,21 @@ canonicalize(){
     else
         printf '%s' "$target"
         return 0
+    fi
+}
+
+# truncate STRING to a maximum length
+trunc(){
+    local str
+    local -i max_len
+    max_len=$1
+    if [[ "$max_len" =~ ^[0-9]+$ ]]; then
+        shift
+        str="$*"
+        (( ${#str} > max_len )) && printf '%s' "${str:0:$(( max_len - 1 ))}~" || printf '%s' "$str"
+    else
+        printf '%s' "$*"
+        return 1
     fi
 }
 

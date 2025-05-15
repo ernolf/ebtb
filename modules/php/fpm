@@ -17,10 +17,10 @@ if ! q2 declare -p SAPI_FPM | ${X[grep]} -qs 'declare -A'; then
 fi
 
 fpm_conf_regex(){
-    [ -n "${X[apache2ctl]}" ] || return
-    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+    [[ -n ${X[apache2ctl]:-} ]] || return
+    [[ -f ${F[php]:="${D[vt]}/php"} ]] && . "${F[php]}"
     fpm_conf="$(q2 ${X[apache2ctl]} -t -D DUMP_INCLUDES | ${X[gawk]} '/php'${PHP[vregex]}'-fpm/{print $NF}' | sed_ "s/${PHP[vregex]}/${PHP[vregex]}/")"
-    [ -n "$fpm_conf" ] || fpm_conf="$(unquote $(q2 ${X[apache2ctl]} -t -D DUMP_RUN_CFG | ${X[gawk]} '/ServerRoot/{print $NF}'))/conf-enabled/php${PHP[vregex]}-fpm\.conf"
+    [[ -n ${fpm_conf:-} ]] || fpm_conf="$(a2serverroot)/conf-enabled/php${PHP[vregex]}-fpm\.conf"
     printf %s "$fpm_conf"
 }
 

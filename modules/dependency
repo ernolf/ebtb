@@ -21,7 +21,8 @@ DEPENDENCY_BASHLIB=:
 dependency_check(){
     local dependency bin plu pkg
     local -i c2 c3
-    local -a dependencies mis
+    local -a mis dependencies
+    mis=()
     dependencies=(
 # TODO 1 -->
         "curl#curl#Command line file transfer tool with URL syntax"
@@ -88,11 +89,11 @@ dependency_check(){
 #        if [ -z "${X[$dependency]}" ]; then
         if ! [[ "${X[$dependency]}" =~ /$dependency ]]; then
             if q0 command -v $dependency; then
-                X[$dependency]="${X[env]} LC_MESSAGES=C $(command -v $dependency)" &>$NUL
+                X[$dependency]="${X[env]} LC_MESSAGES=C $(binaries_realpath "$(command -v $dependency)")" &>$NUL
             else
                 case "$dependency" in
                     ansifilter)
-                        if [[ "$(type -t apt_exist)" == function ]]; then
+                        if binaries_is_func_ apt_exist; then
                             apt_exist "$dependency" && mis+=("$dependency")
                         fi
                         ;;
@@ -116,7 +117,7 @@ dependency_check(){
         fi
     done
     if (( ${#mis[@]} )); then
-        (( ${#mis[@]}==1 )) && plu="y:" pkg="this package" || plu="ies:" pkg="these packages"
+        (( ${#mis[@]} == 1 )) && plu="y:" pkg="this package" || plu="ies:" pkg="these packages"
         f
         o2; R; echo "Dependency not met!"
         f
@@ -130,11 +131,11 @@ dependency_check(){
         line '-' dP 2/78 a2
         if [ -n "${X[apt-get]}" ]; then
             local install="install$(for bin in ${mis[@]}; do printf " $(a_fld dependencies '#' "$bin" 2)"; done)"
-            mh "$(funcname_and_lineno) $install" &
+            mh "$(fn_ln) $install"
             if ask "$(qpf)Do you want to install $pkg now" "$YES"; then
                 if ${B[rt]}; then
                     if ${X[apt-get]} -y $install; then
-                        reload_binaries
+                        binaries_reload
                         if [[ "$install" =~ apt-file ]]; then
                             apt-file update
                         fi

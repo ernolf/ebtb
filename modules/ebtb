@@ -33,7 +33,7 @@ ebtb_install_script(){
     scriptname="$1"
     [ "${M[c]}" = "test" ] && scriptname="${scriptname%-test}-test"
     echo "Installing $scriptname.."
-    mh "$(funcname_and_lineno 1) installing $scriptname"
+    mh "$(fn_ln 1) installing $scriptname"
     script="${D[vts]}/$scriptname"
 #    c -o "$MD/$script" -A "$(fp)ebtb $script" ${V[cargs]}/scripts/$scriptname
     c -o "$script" -A "$A" ${V[cargs]}/scripts/$scriptname

@@ -218,7 +218,7 @@ list(){
 
     known_issues
     ((V[appcount]++))
-    kill_spinner
+    kill_spinner_te0
 
     if ${bool[md]}; then
         echo -e "| | |\n| - | - |"

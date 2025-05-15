@@ -12,27 +12,27 @@ FIRST_RUN_BASHLIB=:
 
 . <(lrequire php-module-builder/disclaimer)
 
+first_run_register_project_dir(){
+    local dir flags
+    dir="$1" flags=""
+    mh "vdir: $dir"
+    ${X[mkdir]} -p "$dir"
+    setvdir v "$dir"
+    f
+    o2; echo "- $(lG)first run wizard completed successfully."; N
+    f
+    ${B[force]} && flags="--force"
+    ${B[remove]} && flags="$flags --remove"
+    $ME "json=${J[o]}" $php_version $module $flags
+    exit 0
+}
+
 first_run(){
     disclaimer
-    register_project_dir(){
-        mh "vdir: $*" &
-        local flags=""
-        [ -d "$*" ] || ${X[mkdir]} -p "$*"
-        setvdir v "$*"
-        f
-        o2; echo "- $(lG)first run wizard completed successfully."; N
-        f
-        ${B[force]} && flags="--force"
-        ${B[remove]} && flags="$flags --remove"
-        $ME "json=${J[o]}" $php_version $module $flags
-        exit 0
-    }
     local yn q p dir
     local -l choice
     local -A bool
-
     yn="$(N)[$(lG)Y$(N)/$(R)n$(N)] " q="$(B)(or $(N)[$(P)q$(N)] $(B)to quit)$(N)"
-
     f
     o2; GRAY; echo "This step is required once after a new installation, sometimes after an update"
     o2; echo "or if$(N) --firstrun $(GRAY)was passed:"
@@ -44,7 +44,7 @@ first_run(){
             read -rp "  --> " p
             [ "${p,,}" = 'q' ] && exit 0
             dir="${p//\"/}"
-            [ -d "$dir/$project" ] && register_project_dir "$dir"
+            [ -d "$dir/$project" ] && first_run_register_project_dir "$dir"
             [ -d "$dir" ] && echo "$(o2;B)\"$(Y)$dir$(B)\" is an existing directory but it does not contain a subdirectory \"$project\""
         else
             o2; B; echo "enter the directory where you want to create the$(N) \"$(Y)$project$(N)\" $(B)directory or where"
@@ -58,7 +58,7 @@ first_run(){
                     te0
                     continue
                 elif [ -d "$dir/$project" ]; then
-                    register_project_dir "$dir"
+                    first_run_register_project_dir "$dir"
                 elif [ -d "$dir" ]; then
                     o2; B; echo "\"$(Y)$dir$(B)\" is an existing directory"
                     prompt="$(o2)do you want to create the \"$(Y)$project$(N)\"$(B) dir inside?  $yn$q "
@@ -71,7 +71,7 @@ first_run(){
                     read -rsn 1 -p "$prompt" choice
                     case ${choice:-y} in
                         q)  f; exit 0                                                   ;;
-                        y)  register_project_dir "$dir"                                 ;;
+                        y)  first_run_register_project_dir "$dir"                       ;;
                         n)  te1; o2; B; echo "enter the directory please $q:"; N; break ;;
                         *)  ${bool[firstloop]} && { bool[firstloop]=_; f; }
                             te0; o2; B; echo "please enter $yn$q"

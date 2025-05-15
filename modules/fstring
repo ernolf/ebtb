@@ -19,16 +19,16 @@ FSTRING_BASHLIB=:
 
 format_string() {
     local -A bool
-    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; } || bool[debugx]=_
+    [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; } || :
     local input output word noansi_word basic_color indent_type
     local -i indent max_cols max_length current_length marg
     input="$1" indent="${2/o/}" max_cols=$(max_cols) output='' basic_color=''
     indent_type='es' # default to "empty spaces"
     [[ "$2" =~ o ]] && indent_type='o' # offset to not overwrite indent space
-    if [[ "$3" =~ ^[0-9]+$ ]]; then
+    if [[ "${3:-}" =~ ^[0-9]+$ ]]; then
         (( $3 > max_cols )) || max_cols=$3
     else
-        basic_color="$($3)" # TODO: is this used?
+        basic_color="$(${3:-:})" # TODO: is this used?
     fi
 
     if (( max_cols > 90 )); then
@@ -45,6 +45,7 @@ format_string() {
         max_length=$(( max_cols - $(( marg + indent )) ))
     fi
 
+    current_length=0
     for word in $input; do
         noansi_word="$(${X[ansifilter]} <<< "$word")"
         if (( $(( current_length + ${#noansi_word} )) > $(( max_length - 1 )) )); then
@@ -60,19 +61,19 @@ format_string() {
         fi
     done
     echo -en "$output"
-    ${bool[debugx]} && set -x
+    ${bool[debugx]:-_} && set -x || :
 }
 
 listify(){
     local color
-    color=$1
+    color=${1:-:}
     shift
     echo -e "$($color; echo -n "${@//\ /@E_S@}" | sed_ "s/ /, /g; s/(.*), /\1 $(N)and$($color) /; s/@E_S@/ /g"; N)"
 }
 
 listify_(){
     local color_fg color_bg
-    color_fg=$1 color_bg=$2
+    color_fg=${1:-:} color_bg=${2:-:}
     shift 2
     echo -e "$($color_fg; echo -n "${@//\ /@E_S@}" | sed_ "s/ /, /g; s/(.*), /\1 $($color_bg)and$($color_fg) /; s/, /$($color_bg),$($color_fg) /g; s/@E_S@/ /g"; $color_bg)"
 }

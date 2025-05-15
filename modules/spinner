@@ -41,7 +41,7 @@ spinner(){
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
 
 #    ONLY USE THIS FOR DEBUGING: THE AMOUNT OF OUTPUT IS HUGE!
-#    mh "$(funcname_and_lineno 1)$BASHPID:$(funcname_and_lineno) $@"
+#    mh "$(fn_ln 1)$BASHPID:$(fn_ln) $@"
     # if not started in background, return imediately, since otherwise the spinner would be eternal
     (( BASHPID == M[pid] )) && return 0
 
@@ -87,7 +87,7 @@ spinner(){
     cursor_ hide # hide cursor
     echo -n "$cursor_status" > "${F[cursor]}"
 
-    tput rmam   # Disable automatic line wrapping
+    ${X[tput]} rmam   # Disable automatic line wrapping
 
     $color
     (( $# )) && echo "$@"
@@ -127,10 +127,11 @@ spinner(){
 # kill and clean up  spinner:
 kill_spinner(){
     # there is nothing to kill while in verbose/trace/debug mode
-    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 0
+    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 1
 
     local cursor_status
     local -i ct pid
+    local -A bool
 
     cursor_status='show'
 
@@ -138,16 +139,18 @@ kill_spinner(){
     ${X[sleep]} .08
     # Wait until the spinner PID file exists (max. ~500ms wait)
     ct=0
+    [[ "$-" =~ e ]] && { set +e; bool[errexit]=:; } || :
     until [[ -f "${F[spinner_pid]}" ]]; do
-        (( ct > 200 )) && return 0
+        (( ct > 200 )) && return 1
         (( ct++ ))
         ${X[sleep]} 0.001
     done
+    ${bool[errexit]:-_} && set -e || :
 
 #    pid="$(${X[cat]} "${F[spinner_pid]}")"
     read -r pid < "${F[spinner_pid]}"
 #    (( pid )) || return 1
-    (( pid )) || return 0
+    (( pid )) || return 1
     if [[ -f "${F[cursor]}" ]]; then
         if ${X[grep]} -qsw 'hide' "${F[cursor]}"; then
             cursor_status='hide'
@@ -155,7 +158,7 @@ kill_spinner(){
     fi
 
     # Attempt graceful termination: send 15 - SIGTERM to the spinner process.
-    kill -TERM "$pid" &>$NUL
+    kill -TERM "$pid" &>$NUL || :
 
     # Wait until the process terminates (max ~5 seconds)
     local wait_timeout=50
@@ -172,12 +175,17 @@ kill_spinner(){
 
     # Final reset actions:
     N                        # Reset any ansi color code
-    tput smam                # Re-enable automatic line wrapping
-    te0                      # Move one line up, deleting each line
+    ${X[tput]} smam                # Re-enable automatic line wrapping
+#    te0                      # Move one line up, deleting each line
+    te1                      # Delete line
     cursor_ "$cursor_status" # Restore original cursor state
 
     # Remove the PID file
-    cleanup "${F[spinner_pid]}"
+#    cleanup "${F[spinner_pid]}"
 
     return 0
+}
+
+kill_spinner_te0(){
+    kill_spinner && te0 || :
 }

@@ -10,7 +10,7 @@ __license__
 ${ANSI_BASHLIB:-_} && return
 ANSI_BASHLIB=:
 
-[[ "$-" =~ x ]] && { set +x; B[ansi_debugx]=:; }
+[[ "$-" =~ x ]] && { set +x; B[ansi_debugx]=:; } || :
 
 # TODO 0 -->
 . <(lrequire tempfile)
@@ -186,9 +186,7 @@ te(){
 
 # “Soft clear”: scrolls the entire screen up and puts cursor at top‑left
 cls(){
-    local -i lines
-    lines=$(tput lines) # get terminal height
-    printf '\n%.0s' $(seq 1 $lines) # print exactly that many blank lines → content scrolls up
+    f $(${X[tput]} lines) # get terminal height and print exactly that many blank lines → content scrolls up
     printf '%b' "$CSI$CUP" # move cursor to top-left corner (row 0, col 0)
 }
 
@@ -221,7 +219,7 @@ cursor_(){
             echo 'hide' > "${F[cursor]}"
             ;;
       show) printf '%b' "$CSI?25h"
-            echo -n > "${F[cursor]}"
+            > "${F[cursor]}"
     esac
 }
 
@@ -229,4 +227,4 @@ ansi_reset(){
     printf '%b' "$CSI?7h$CSI?25h${CSI}0m"
 }
 
-${B[ansi_debugx]:-false} && set -x
+${B[ansi_debugx]:-false} && set -x || :

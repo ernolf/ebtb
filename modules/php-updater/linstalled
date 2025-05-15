@@ -36,7 +36,7 @@ list_installed_sapi(){
     populate_httpd_ active
     fpm_reload
     [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
-    ${bool[quiet]} || for i in "${!HTTPD_ACTIVE[@]}"; do mh "$(funcname_and_lineno) active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
+    ${bool[quiet]} || for i in "${!HTTPD_ACTIVE[@]}"; do mh "$(fn_ln) active-httpd - $(printf '%02d' $((i+1))): ${HTTPD_ACTIVE[i]}"; done
     for pv in $(${X[dpkg]} -l | ${X[gawk]} -v pvrx=php${PHP[vregex]//\./\\.} '/^[hiu]i.*libapache2-mod-php'${PHP[vregex]}'/ { match($2, pvrx, m); split(m[0], a, "php"); print a[2] }'); do
         SAPI_A2[$pv]='installed'
     done
@@ -55,8 +55,10 @@ list_installed_sapi(){
         for pv in $(p_sort ${!SAPI_A2[@]}); do
             pkg="libapache2-mod-php$pv"
             Y; echo "$(pf)$pkg"; N
-            fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
-            o3; fO; echo -n "  \`-apache2handler$(O) $fullpath"; N
+            local -n ext_array=${pkg//[.-]/_}
+            fullpath=${ext_array[0]}
+            unset -n ext_array
+            o3; fO; printf %s "  \`-apache2handler$(O) $fullpath"; N
             if (( ${HTTPD[apache2]} > 2 )); then
                 if [[ "${A2CONFFILES[@]}" =~ php$pv.conf && "${A2CONFFILES[@]}" =~ php$pv.load ]]; then
                     SAPI_A2[$pv]='a'
@@ -128,7 +130,7 @@ list_installed_sapi(){
                             esac
                         done
                     fi
-                    o $((3+i)); fO; printf "  \`-listening on unix socket$(O) $socket"; N
+                    o $((3+i)); fO; printf %s "  \`-listening on unix socket$(O) $socket"; N
                     if [ -z "$connected_httpd" ]; then
                         SAPI_FPM[$pv]='i'; W; echo " <<NOT CONNECTED"; N
                     else
@@ -145,7 +147,7 @@ list_installed(){
     local arg sapi pkg plu fullpath mod pv httpd pkgmod
     local -a pkgs_by_dpkg sockets
     local -A bool # local booleans
-    local -i c2 c3 i iim iam ctr aimct
+    local -i c2 c3 i ctr aimct
     c2=28 c3=74 aimct=0 SAPI_A2=() SAPI_FPM=()
     bool[quiet]=_ bool[only]=_
     dos2unix_recursive /etc/php
@@ -155,8 +157,7 @@ list_installed(){
     fpm_reload
     detect_and_assign_extensions
     [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
-    iam=${#EXTS_ADMIN[@]}
-    ((iam)) && versions_iterate search_candidates_4_extensions_installed_by_admin
+    (( ${#EXTS_ADMIN[@]} )) && versions_iterate search_candidates_4_extensions_installed_by_admin
 #    for arg in "$@"; do bool[${arg%=*}]=${arg#*=}; done
     for arg in "$@"; do bool[$(varname $arg)]="$(varval $arg)"; done
     line '=' P 2/78 b1
@@ -169,45 +170,45 @@ list_installed(){
             o2; pf
         elif sapi=$(extension_is_ sapi "$pkg"); then
             sockets=($(${X[ss]} -lx | ${X[gawk]} '/'$pkg'/{print $5}'))
-            O; printf "SAPI "; N
+            O; printf %s "SAPI "; N
         elif [[ "$pkg" =~ php${PHP[vregex]}- ]]; then
             o2; pf
         elif extension_is_ dependency "$pkg"; then
             if rdepends -q "$pkg"; then
                 o2; pf
             else
-                R; printf "DEP  "; N
+                R; printf %s "DEP  "; N
             fi
         elif extension_is_ meta "$pkg"; then
             if rdepends -q "$pkg"; then
                 o2; pf
             else
-                dR; printf "META "; N
+                dR; printf %s "META "; N
             fi
         else
             o2; pf
         fi
-        Y; printf "$pkg"; o $c2; GRAY; echo "${pkgs_by_dpkg[i]}" | ${X[gawk]} -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}'; N
+        Y; printf %s "$pkg"; o $c2; GRAY; echo "${pkgs_by_dpkg[i]}" | ${X[gawk]} -F'/' '{printf "%-'$((c3-c2+2))'s%s\n", $2, $4}'; N
 # --> included modules
-        iim=$(eval printf \${#${pkg//[.-]/_}[@]})
-        if ((iim)); then
+        local -n ext_array=${pkg//[.-]/_}
+        if (( ${#ext_array[@]} )); then
             if [ "${sapi%:*}" = 'apache2' ]; then
-                fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[0\]\}\")
-                o5; fO; echo -n "\\apache2handler$(O) $fullpath"; N
+                fullpath=${ext_array[0]}
+                o5; fO; printf %s "\\apache2handler$(O) $fullpath"; N
             else
-                o5; dY; echo -n "\\included module"
-                if ((iim>1)); then
-                    printf 's: '; ctr=24
+                o5; dY; printf %s "\\included module"
+                if (( ${#ext_array[@]} > 1 )); then
+                    printf %s 's: '; ctr=24
                 else
-                    printf ": "; ctr=23
+                    printf %s ": "; ctr=23
                 fi
                 o $ctr; C
-                for i in $(eval echo "\${!${pkg//[.-]/_}[@]}"); do
+                for i in ${!ext_array[@]}; do
                     ((ctr<78)) || { ctr=7; f; o $ctr; }
-                    fullpath=$(eval echo \"\$\{${pkg//[.-]/_}\[i\]\}\")
+                    fullpath=${ext_array[i]}
                     mod="${fullpath##*/}"
                     mod="${mod%.so} "
-                    printf "$mod"
+                    printf %s "$mod"
                     ctr=$((ctr+${#mod}))
                 done
                 N; f
@@ -229,14 +230,14 @@ list_installed(){
             fi
         else
             case "${sapi%:*}" in
-               cli) o5; fO; echo -n "\\php binary$(O) /usr/bin/php${sapi#*:}"; N
+               cli) o5; fO; printf %s "\\php binary$(O) /usr/bin/php${sapi#*:}"; N
                     if [ "$(${X[realpath]} $(command -v php))" = "/usr/bin/php${sapi#*:}" ]; then
                         lG; echo " <ACTIVE> linked to generic /usr/bin/php"; N
                     else
                         W; echo " <<INACTIVE not linked"; N
                     fi
                     ;;
-            phpdbg) o5; fO; echo -n "\\phpdbg binary$(O) /usr/bin/phpdbg${sapi#*:}"; N
+            phpdbg) o5; fO; printf %s "\\phpdbg binary$(O) /usr/bin/phpdbg${sapi#*:}"; N
                     if [ "$(${X[realpath]} $(command -v phpdbg))" = "/usr/bin/phpdbg${sapi#*:}" ]; then
                         lG; echo " <ACTIVE> linked to generic /usr/bin/phpdbg"; N
                     else
@@ -273,7 +274,7 @@ list_installed(){
                                     esac
                                 done
                             fi
-                            o $((5+i)); fO; printf "\\listening on unix socket$(O) $socket"; N
+                            o $((5+i)); fO; printf %s "\\listening on unix socket$(O) $socket"; N
                             if [ -z "$connected_httpd" ]; then
                                 SAPI_FPM[$pv]='i'; W; echo " <<NOT CONNECTED"; N
                             else
@@ -284,27 +285,29 @@ list_installed(){
                     ;;
                 *)  :
             esac
-        fi # <-- included modules
-    done # --> admin modules
-    if (( iam )); then
-        (( iam == 1 )) && plu='' || plu='s'
+        fi
+        unset -n ext_array
+    done
+    # <-- included modules
+    # --> admin modules
+    if (( ${#EXTS_ADMIN[@]} )); then
+        (( ${#EXTS_ADMIN[@]} == 1 )) && plu='' || plu='s'
         line '-' dP 2/78
         o2; B; echo "actual PHP pecl extension$plu $(R)NOT$(B) installed and managed by dpkg"
         line '-' dP 2/78
         for pv in $(${X[phpquery]} -V | sort); do
             local -n EIBY4_pv=EIBY4_${pv//./}
-            iam=${#EIBY4_pv[@]}
-            if (( iam )); then
-                (( iam == 1 )) || plu='s'
-                o2; pf; Y;printf "php$pv$(f;o5;dY)\\module$plu installed by admin: "
+            if (( ${#EIBY4_pv[@]} )); then
+                (( ${#EIBY4_pv[@]} == 1 )) || plu='s'
+                o2; pf; Y;printf %s "php$pv$(f;o5;dY)\\module$plu installed by admin: "
                 C; for i in ${!EIBY4_pv[@]}; do
-                    printf "${EIBY4_pv[i]} "
+                    printf %s "${EIBY4_pv[i]} "
                 done; N; f
             fi
+            unset -n EIBY4_pv
             local -n C4EIBY4_pv=C4EIBY4_${pv//./}
-            iam=${#C4EIBY4_pv[@]}
-            if (( iam )); then
-                (( iam == 1 )) && plu='s a:' || plu=':s'
+            if (( ${#C4EIBY4_pv[@]} )); then
+                (( ${#C4EIBY4_pv[@]} == 1 )) && plu='s a:' || plu=':s'
                 line '-' P 5/75
                 o5; B; echo "for this $(Y)php$pv$(B) module${plu#*:} installed by admin there exist${plu%:*} packaged version${plu#*:}:$(N)"
                 line '-' P 5/75
@@ -316,7 +319,7 @@ list_installed(){
                     o5; pf; C; echo "$mod$(line ' ' Cbg $((c2-1))/51 a0;o $c2; Cbg)$pkg$(N)"
                 done
             fi
-            unset EIBY4_pv C4EIBY4_pv
+            unset -n C4EIBY4_pv
         done
     fi # <--
     line '-' dP 2/78
@@ -335,8 +338,8 @@ list_installed(){
     ${bool[only]:-_} && exit 0 || anykey
 
     if ${B[supported]:-_}; then
-        if ((aimct));then
-            ((aimct==1))&&plu='s a:'||plu=':s'
+        if (( aimct ));then
+            (( aimct == 1 )) && plu='s a:' || plu=':s'
             bundle echo "$(pf; Y; format_string "Consider replacing the administrator-installed module${plu#*:} for which exist${plu%:*} packaged version${plu#*:}, with dpkg-managed packages before updating." 3; N)"
             replace_aim
             anykey

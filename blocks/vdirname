@@ -1,4 +1,0 @@
-# don't change this by hand, its done safe and interactively by the script:
-declare vdirname='NC_DIR' # <-- don't change this!
-declare dflt_$vdirname='UNDEFINED' # <-- don't change this!
-declare $vdirname="UNDEFINED" # <-- don't change this!

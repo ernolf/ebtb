@@ -1,5 +1,5 @@
-[ -f "${F[lmj]}" ] || c -o "${F[lmj]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
-q2 ${X[jq]} -r '.modules[] | "\(.hash) \(.name)"' ${F[lmj]} >${D[li]}/modules.sha256
+[ -f "${F[lmj]}" ] || c -o "${F[lmj]}" -A "$(fp;fn_ln)$A" ${V[cargs]}/${F[rmj]}
+q2 ${X[jq]:-${C[jq]:-jq}} -r '.modules[] | "\(.hash) \(.name)"' ${F[lmj]} >${D[li]}/modules.sha256
 q0 chrf ${D[li]} 0
 cd ${D[li]}
 tntd=($(

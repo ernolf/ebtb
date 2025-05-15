@@ -9,6 +9,8 @@ __license__
 
 __whoami_whereami__
 __scriptname__
+__homedir__
+__vdirname__ NC_DIR
 modules=(
     php/version nc/nextcloud nc/occ nc/versions nc/logo $MS/github_api
     $MS/app_update $MS/db $MS/appstore $MS/data_refine $MS/assumed_version
@@ -19,7 +21,6 @@ __debug__
 B[bgjobs]=: B[trace]=_
 ${B[bgjobs]} && { [[ -t 1 && ! -p /dev/stdout ]] && B[pager]=_ || B[pager]=:; } # is piped to pager?
 __when__
-__vdirname__
 __tempdir__
 __module_server__
 __general__

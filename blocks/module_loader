@@ -1,12 +1,11 @@
 ## include bashmodules ->
 [[ ${M[c]} = test ]] && T[w4uc]=30 || T[w4uc]=300
-${C[mw]} ${D[li]=${D[vtm]}/${M[c]}}
 D[ri]="modules/${M[c]}"
 ${C[md]} "${D[li]}/$MS"
 REQ=". ${D[li]}" F[lmj]="${D[li]}/modules.json" F[rmj]="${D[ri]}/modules.json" F[lcf]="${D[li]}/$MS/.checked"
-F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}")
+F[lmjn]="${F[lmj]}~new" T[lce]=$(q2 ${C[c]} "${F[lcf]}" || :)
 (( T[rte] - T[lce] > T[w4uc] )) && {
-    c -o ${F[lmjn]} -A "$(fp)$A" ${V[cargs]}/${F[rmj]} && q0 chrf ${D[li]} 0
+    c -o ${F[lmjn]} -A "$(fp;fn_ln)$A" ${V[cargs]}/${F[rmj]} && q0 chrf ${D[li]} 0
     if T[mje]=$(json_etag ${F[lmj]}) && T[mjne]=$(json_etag ${F[lmjn]}); then (( T[mje] < T[mjne] )) && B[check]=:; fi
 }
 : ${B[check]:=_} ${B[pager]:=_}
@@ -21,9 +20,9 @@ ${B[check]} && echo ${T[rte]} > "${F[lcf]}"
 [[ -f ${F[lmjn]} ]] && ${X[mv]} ${F[lmjn]} ${F[lmj]}
 ${B[rt]} && ! (( T[lce] )) && echo ${T[rte]} > "${F[lcf]}"
 ${B[pager]} || te1
-eval "$(echo "$(unquote ${J[o]})" | ${X[jq]} -r 'keys[] as $key|"J[\($key[0:1])]=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
+eval "$(echo "$(unquote ${J[o]})" | ${X[jq]:-${C[jq]:-jq}} -r 'keys[] as $key|"J[\($key[0:1])]=\(.[$key]|@sh)"')" # <- This must be done here because of dependency of jq
 V[upinf]='(no update info available)'
 . <(req update)
 "${B[do_update]}" && my_update
-[ "$1" = "my_update_check" ] && my_update_check
+[[ ${1:-} = my_update_check ]] && my_update_check
 "${B[do_restore_backup]}" && restore_backup

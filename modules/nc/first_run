@@ -12,22 +12,23 @@ NC_FIRST_RUN_BASHLIB=:
 
 . <(lrequire httpd)
 
+first_run_register_nc_dir(){
+    local dir
+    dir="$1"
+    mh "vdir: $dir"
+    setvdir v "$dir"
+    NC[d]="$dir"
+    declare -p NC > "${F[nc]}"
+    ${X[chmod]} 666 "${F[nc]}"
+    f
+    o2; echo "- $(lG)first run wizard completed successfully. Please start script again"; N
+    o2; echo "- $(lG)No further root rights are required to use the script except for updating."; N
+    f
+    exit 0
+}
+
 first_run(){
     te1
-
-    finish(){
-        mh "vdir: $1"
-        setvdir v "$1"
-        NC[d]="$1"
-        declare -p NC > "${F[nc]}"
-        ${X[chmod]} 666 "${F[nc]}"
-        f
-        o2; echo "- $(lG)first run wizard completed successfully. Please start script again"; N
-        o2; echo "- $(lG)No further root rights are required to use the script except for updating."; N
-        f
-        exit 0
-    }
-
     local p h
     local -l ans num
     local -i c2 i
@@ -60,7 +61,7 @@ first_run(){
             read -rsn 1 ans; te1
             case ${ans:-y} in
                 q)  exit 0      ;;
-                y)  finish "$p" ;;
+                y)  first_run_register_nc_dir "$p" ;;
                 n)  break       ;;
                 *)  printf "$invi Please enter $(box y), $(box n) or $(q2q) "
             esac
@@ -101,7 +102,7 @@ first_run(){
                             q)  exit 0      ;;
                             h)  break       ;;
                             n)  continue    ;;
-                            y)  finish "$p" ;;
+                            y)  first_run_register_nc_dir "$p" ;;
                             *)  printf "$invi Please enter $(box y), $(box n), $(box h) or $(q2q) "
                         esac
                     done
@@ -119,7 +120,7 @@ first_run(){
         te1
         cursor_ hide
         [ "${p,}" = "q" ] && exit 0
-        [ -f "$p/occ" ] && finish "$p" || echo "$(Pbg)  * I can not detect a Nextcloud installation in \"$p\" $(N)"
+        [ -f "$p/occ" ] && first_run_register_nc_dir "$p" || echo "$(Pbg)  * I can not detect a Nextcloud installation in \"$p\" $(N)"
     done
 }
 # COMMENT -->

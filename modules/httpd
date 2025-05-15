@@ -154,7 +154,7 @@ populate_httpd_(){
 load_server_status(){
     local httpd
     for httpd in ${!HTTPD[@]}; do
-        if [ -n "${X[$httpd]}" ]; then
+        if [ -n "${X[$httpd]:-}" ]; then
             HTTPD["$httpd"]=1 # "known"
             if q0 ${X[systemctl]} --no-pager --quiet is-enabled "$httpd"; then
                 HTTPD["$httpd"]=2 # "enabled & inactive"
@@ -210,8 +210,8 @@ a2serverroot(){
 }
 
 load_server_status
-(( ${HTTPD[apache2]} )) && populate_a2conffiles
-(( ${HTTPD[nginx]} )) && populate_ngxconffiles
+(( ${HTTPD[apache2]} )) && populate_a2conffiles || :
+(( ${HTTPD[nginx]} )) && populate_ngxconffiles || :
 # TODO 2 -->
 # example:
 #    detected_httpd(){

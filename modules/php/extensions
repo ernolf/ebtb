@@ -28,6 +28,17 @@ SAPI=(
     [embed]="libphp@VER@-embed"
     [phpdbg]="php@VER@-phpdbg"
 )
+# TODO 1 -->
+#q2 declare -Ag SAPI_BIN || declare -A SAPI_BIN
+#SAPI_BIN=(
+#    [apache2]="libapache2-mod-php@VER@"
+#    [fpm]="/usr/sbin/php-fpm@VER@"
+#    [cli]="/usr/bin/php@VER@"
+#    [cgi]="php@VER@-cgi"
+#    [embed]="libphp@VER@-embed"
+#    [phpdbg]="/usr/bin/php-phpdbg@VER@"
+#)
+# TODO <-- 1
 q2 declare -Ag DESCR || declare -A DESCR
 DESCR=(
     [apache2]="Apache 2.0 Handler SAPI"
@@ -59,6 +70,7 @@ DESCR=(
     [opcache]="Zend OpCache module for PHP"
     [pgsql]="PostgreSQL module for PHP"
     [pq]="PostgreSQL client library (libpq) binding for PHP"
+    [pspell]="pspell module for PHP"
     [readline]="readline module for PHP"
     [redis]="PHP extension for interfacing with Redis"
     [smbclient]="PHP wrapper for libsmbclient"
@@ -133,40 +145,46 @@ extension_include_dir_of_(){
     echo "/usr/include/php/${EXG[$pv]%%;*}/ext"
 }
 
-detect_and_assign_extensions(){
-    assign(){
-        local dpkg_package phpregex
-        if [ "${search:-}" = 'apache2' ]; then
-            phpregex="libapache2-mod-php${PHP[vregex]}"
-        else
-            phpregex="php"
-        fi
+# sub function from 'detect_and_assign_extensions()'
+_assign(){
+    [[ -f "${F[php]:=${D[vt]}/php}" ]] && . "${F[php]}"
+    local -n _search=$1
+    local -n _exts_dpkg=$2
+    local dpkg_package phpregex
+    if [[ ${_search:-} = apache2 ]]; then
+        phpregex="libapache2-mod-php${PHP[vregex]}"
+    else
         spinner C " . assign detected extensions to their corresponding package ." &
-        for dpkg_package in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
-            declare -ga ${dpkg_package//[.-]/_}
-            mapfile -t "${dpkg_package//[.-]/_}"< <(${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$")
-            mapfile -t exts_dpkg< <(p_nosort ${exts_dpkg[@]};${X[dpkg]} -L $dpkg_package|${X[grep]} "\.so$"|${X[sort]})
-        done
-        kill_spinner
-    }
-    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+        phpregex="php"
+    fi
+    for dpkg_package in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*'$phpregex'/{print $2}'); do
+        declare -ga ${dpkg_package//[.-]/_} # declare array globaly
+        mapfile -t "${dpkg_package//[.-]/_}" < <(${X[dpkg]} -L $dpkg_package | ${X[grep]} "\.so$")
+        ${B[trace]:-_} && log_trace "$(declare -p ${dpkg_package//[.-]/_})"
+        $3 && mapfile -t _exts_dpkg < <(p_nosort ${_exts_dpkg[@]}; ${X[dpkg]} -L $dpkg_package | ${X[grep]} "\.so$" | ${X[sort]}) || :
+    done
+    [[ ${_search:-} = apache2 ]] || kill_spinner
+}
+
+detect_and_assign_extensions(){
     local search pv
     local -a exts_all exts_dpkg
-    [[ "$@" =~ apache2 ]] && search=apache2
+    [[ "$@" =~ apache2 ]] && search=apache2 || search=''
     if [[ "$@" =~ assign ]]; then
-        assign
+        _assign search exts_dpkg _
     else
         spinner C " . detect actually installed extensions ." &
         for pv in $(${X[phpquery]} -V); do
-            mapfile -t exts_all< <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${EXG[$pv]%%;*}")
+            mapfile -t exts_all < <(p_nosort ${exts_all[@]};detect_extensions_in_ "/usr/lib/php/${EXG[$pv]%%;*}")
         done
         kill_spinner
-        assign
+        _assign search exts_dpkg :
         # EXTENSIONS_INSTALLED_BY_ADMIN
         spinner C " . detect extensions installed by admin ." &
         ${B[verbose]:-_} && echo "$(pf)Extensions installed by admin = difference between installed by dpkg and all extensions.."
-        mapfile -t EXTS_ADMIN< <(${X[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
-        (( ${#EXTS_ADMIN[@]} )) && mapfile -t EXTS_ADMIN< <(p_sort_trim ${EXTS_ADMIN[@]})
+        mapfile -t EXTS_ADMIN < <(${X[comm]} -23 <(p_sort ${exts_all[@]}) <(p_sort ${exts_dpkg[@]}))
+        (( ${#EXTS_ADMIN[@]} )) && mapfile -t EXTS_ADMIN < <(p_sort_trim ${EXTS_ADMIN[@]})
+        ${B[trace]:-_} && log_trace "$(declare -p EXTS_ADMIN)"
         kill_spinner
     fi
 }
@@ -264,25 +282,31 @@ ext_state(){
     nonullglob "$vlpm/*" || return
     case "$1" in
         cleanup)
+            kill_spinner
+            cursor_ hide
+            spinner C " . etx_state() cleanup orphaned entries from extensions state registry ." &
             for dir in $vlpm/*; do
-                [[ -d "$dir" && ! "$(${X[phpquery]} -V)" =~ ${dir##*/} ]] && cleanup "$dir"
+                [[ -d $dir && ! "$(${X[phpquery]} -V)" =~ ${dir##*/} ]] && cleanup "$dir" || :
             done
             return
             ;;
         fix)
-            [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+            kill_spinner
+            cursor_ hide
+            spinner C " . etx_state() fix extensions state registry /var/lib/php/modules ." &
+            [[ -f "${F[php]:=${D[vt]}/php}" ]] && . "${F[php]}"
             for mod in $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i\s+[^\s]*php'${PHP[vregex]}'/{print $2}'); do
                 for pv in $(${X[phpquery]} -V); do
-                    [ "${mod%-*}" = "php$pv" ] && mod="${mod#*-}" || continue
+                    [[ ${mod%-*} = php$pv ]] && mod="${mod#*-}" || continue
                     registry_dir="$vlpm/$pv/registry"
-                    [ -d "$registry_dir" ] || mkdir -p "$registry_dir"
+                    [[ -d $registry_dir ]] || ${X[mkdir]} -p "$registry_dir"
                     for sapi in $(${X[phpquery]} -v $pv -S); do
                         state_dir="$vlpm/$pv/$sapi"
-                        if [ -f "$state_dir/enabled_by_admin/$mod" ]; then
+                        if [[ -f "$state_dir/enabled_by_admin/$mod" ]]; then
                             cleanup "$state_dir/enabled_by_admin/$mod"
-                            [ -d "$state_dir/enabled_by_maint" ] || mkdir -p "$state_dir/enabled_by_maint"
+                            [[ -d $state_dir/enabled_by_maint ]] || ${X[mkdir]} -p "$state_dir/enabled_by_maint"
                             touch "$state_dir/enabled_by_maint/$mod"
-                            [ -f "$registry_dir/$mod" ] || touch "$registry_dir/$mod"
+                            [[ -f "$registry_dir/$mod" ]] || touch "$registry_dir/$mod"
                         fi
                     done
                 done
