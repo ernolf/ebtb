@@ -14,7 +14,7 @@ ASSUMED_VERSION_BASHLIB=:
 
 # TODO 0 -->
 # min_version(){ $(echo $(r_db "SELECT CASE WHEN major = (SELECT MIN(major) FROM versions) THEN platform ELSE NULL END AS result FROM versions;"));}
-# TODO <-- 0
+# TODO 0 <--
 assumed_version_select(){
     local major query
     local -i n i version_num selected_index

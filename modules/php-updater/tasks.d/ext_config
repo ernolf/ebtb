@@ -782,7 +782,7 @@ ext_config_fix(){
 # TODO 1 -->
                         else
                             echo "${X[sed]} -i '/^$line$/d' '$php_ini'" >> $xtmp
-# TODO <-- 1
+# TODO 1 <--
                         fi
                     done
                 fi

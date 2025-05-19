@@ -38,7 +38,7 @@ SAPI=(
 #    [embed]="libphp@VER@-embed"
 #    [phpdbg]="/usr/bin/php-phpdbg@VER@"
 #)
-# TODO <-- 1
+# TODO 1 <--
 q2 declare -Ag DESCR || declare -A DESCR
 DESCR=(
     [apache2]="Apache 2.0 Handler SAPI"

@@ -115,7 +115,7 @@ while (( $# )); do
             B[nopager]=:
 # TODO 2 -->
             B[use_json_all]=:
-# TODO <-- 2
+# TODO 2 <--
             shift
             ;;
         ids)
@@ -128,7 +128,7 @@ while (( $# )); do
             ;;
 # TODO 3 -->
         version=[1-9]?([0-9]))
-# TODO <-- 3
+# TODO 3 <--
         --min@(_|-)version=*)
             assumed_version_set ${1#*=} min_
             B[use_json_all]=:
@@ -154,7 +154,7 @@ while (( $# )); do
 # TODO 4 -->
         *)  $@
             exit 0
-# TODO <-- 4
+# TODO 4 <--
         *)  echo "unknown option $1"
             print_help --cat
     esac
@@ -175,7 +175,7 @@ fi
 # yes, this must be "updat", since it must match with "update" AND "updatable"
 # TODO 8 -->
 #echo ${V[command]} | ${X[grep]} -qs updat && B[nopager]=:
-# TODO <-- 8
+# TODO 8 <--
 [[ "${V[command]}" =~ updat ]] && B[nopager]=:
 
 # create the database if it does not exist
@@ -198,7 +198,7 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     ${B[markdown]} && V[command]="${V[command]} md=:"
 # TODO 5 -->
     ${V[command]} ${V[suppunsupp]} use_json_all=${B[use_json_all]}
-# TODO <-- 5
+# TODO 5 <--
     ${V[command]} ${V[suppunsupp]}
 else
     if ${B[supported]}; then
@@ -208,7 +208,7 @@ else
 # TODO 6 -->
     elif ${B[use_json_all]}; then
         exec $ME json=${J[o]} secondrun lang=$lang --alt --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
-# TODO <-- 6
+# TODO 6 <--
     else
         exec $ME json=${J[o]} secondrun lang=$lang --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     fi

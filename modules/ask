@@ -15,7 +15,7 @@ ASK_BASHLIB=:
 . <(lrequire ansi)
 . <(lrequire prefix)
 . <(lrequire awksed)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire menu)
 
 # declare globals for ask handling

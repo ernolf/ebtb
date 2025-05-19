@@ -60,7 +60,7 @@ UBUNTU_VERSIONS_LIFECYCLE=(
     [5.04]='1112918400;1162252800'
     [4.10]='1098748800;1146355200'
 )
-# TODO <-- 1
+# TODO 1 <--
 UBUNTU_VERSIONS_DATA=(
     [25.04]="Plucky Puffin;1744848000;1769817600"
     [24.10]="Oracular Oriole;1728518400;1753920000"
@@ -124,7 +124,7 @@ UBUNTU_VERSIONS_CODENAME_LONG=(
     [5.04]="Hoary Hedgehog"
     [4.10]="Warty Warthog"
 )
-# TODO <-- 2
+# TODO 2 <--
 UBUNTU_VERSIONS=(
     [plucky]="25.04"
     [oracular]="24.10"
@@ -169,7 +169,7 @@ UBUNTU_VERSIONS=(
     [breezy]="5.10"
     [hoary]="5.04"
     [warty]="4.10"
-# TODO <-- 3
+# TODO 3 <--
 )
 
 is_ubuntu_lts(){

@@ -13,13 +13,8 @@ ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
-# Source the configure file
-source config/configure
-# Source the secrets configure file if exists
-[ -f config/secrets ] && source config/secrets
-# Source the placeholders file
-source config/placeholders
-source <(${X[tail]} -n +10 modules/anykey)
+# source common functions
+source tools/common_build_functions
 
 ${bool[debug]} && set -x
 
@@ -29,15 +24,18 @@ channel="$1" # target channel
 dir1="$MBUILD_DIR" # $ca_dir/../build/modules
 dir2="$DATA_DIR/$target_modules_dir/${channel:=prod}" # /nc/dat/data/ich/files/Documents/Coding/ebtb/modules/${channel:=prod}
 
+${bool[verbose]} && echo "  dir1: $dir1"
+${bool[verbose]} && echo "  dir2: $dir2"
+${bool[verbose]} && anykey
 ${bool[verbose]} && echo "  checking libs:"
 
 #trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
 for lib in $(${X[find]} $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs BASHLIB' _ {} \; -print); do
     libname="${lib#$dir1/}"
     # Use -E to enable extended regex (so we can use “?” quantifier without backslashes).
-    # (${INCLUDEDIR}/)? : optionally to match minified libs as well
-    libname_in_1="$(${X[head]} -n2 "$lib" | ${X[tail]} -n1 | ${X[sed]} -E "s|^# (${INCLUDEDIR}/)?@channel@/||")"
-    libname_in_2="$(${X[head]} -n2 "$dir2/$libname" | ${X[tail]} -n1 | ${X[sed]} -E "s|^# (${INCLUDEDIR}/)?$channel/||")"
+    # (${MODULES_DIR}/)? : optionally to match minified libs as well
+    libname_in_1="$(${X[head]} -n2 "$lib" | ${X[tail]} -n1 | ${X[sed]} -E "s|^# ($MODULES_DIR/)?@channel@/||")"
+    libname_in_2="$(${X[head]} -n2 "$dir2/$libname" | ${X[tail]} -n1 | ${X[sed]} -E "s|^# ($MODULES_DIR/)?$channel/||")"
     ${bool[verbose]} && echo "  - \"$libname\""
     ${bool[verbose]} && echo "    1: \"$libname_in_1\"  2: \"$libname_in_2\""
     # Only modules that difference in body or path/name
@@ -49,7 +47,7 @@ for lib in $(${X[find]} $dir1 -type f -exec sh -c 'head -n 1 "$1" | grep -qs BAS
     else
         ${bool[verbose]} && echo "        - equal"
     fi
-#    ${bool[verbose]} && anykey
+    ${bool[verbose]} && anykey
 done
 ${bool[verbose]} && echo
 ${bool[verbose]} && echo "  number of different libs = ${#difflibs[@]}"

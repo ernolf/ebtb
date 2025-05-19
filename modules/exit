@@ -15,7 +15,7 @@ EXIT_BASHLIB=:
 . <(lrequire basics)
 . <(lrequire ansi)
 . <(lrequire debug)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire ebtb)
 . <(lrequire cleanup)
 

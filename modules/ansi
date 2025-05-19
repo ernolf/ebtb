@@ -14,7 +14,7 @@ ANSI_BASHLIB=:
 
 # TODO 0 -->
 . <(lrequire tempfile)
-# TODO <-- 0
+# TODO 0 <--
 ######################## - lib: ANSI Escape codes #############################
 declare CSI _8 _24 CUU CUD CUF CUB CNL CPL CHA CUP ED EL SU SD
 declare -i FG BG BFG BBG
@@ -133,7 +133,7 @@ CCC=(  # Composed Color Codes
 )
 # TODO 1 -->
 # for p in "${!CCC[@]}";do eval "$p(){ printf '%b' '$CSI$(N_)${CCC[$p]%;}m';}";done
-# TODO <-- 1
+# TODO 1 <--
 for p in "${!CCC[@]}"; do
     eval "$p(){ printf '%b' '$CSI$(N_)${CCC[$p]%;}m';echo '$p' > \${F[color]};}"
 done
@@ -152,7 +152,7 @@ f(){
 #        printf '%b' '\x0a'
 #        printf '%b' '\012'
 #        echo
-# TODO <-- 2
+# TODO 2 <--
     done
 }
 
@@ -161,7 +161,7 @@ f(){
 #te0(){
 #    printf '%b' "\r$CSI$EL$CSI$CPL$CSI$EL"
 #}
-# TODO <-- 3
+# TODO 3 <--
 # delete and stay in actual line
 te1(){
     printf '%b' "\r$CSI$EL"
@@ -194,7 +194,7 @@ cls(){
 o(){
 # TODO 4 -->
 #    printf '%b' "\r$CSI$1$CUF"
-# TODO <-- 4
+# TODO 4 <--
     printf '%b' "$CSI$((${1:-1}+1))$CHA"
 }
 o2(){ o 2;}; o3(){ o 3;}; o4(){ o 4;}; o5(){ o 5;}

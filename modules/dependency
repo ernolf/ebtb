@@ -17,7 +17,7 @@ DEPENDENCY_BASHLIB=:
 . <(lrequire ask)
 . <(lrequire anykey)
 . <(lrequire dpkg)
-# TODO <-- 0
+# TODO 0 <--
 dependency_check(){
     local dependency bin plu pkg
     local -i c2 c3
@@ -26,7 +26,7 @@ dependency_check(){
     dependencies=(
 # TODO 1 -->
         "curl#curl#Command line file transfer tool with URL syntax"
-# TODO <-- 1
+# TODO 1 <--
         "gawk#gawk#GNU awk"
         "grep#grep#GNU grep, egrep and fgrep"
         "gpg#gnupg#GNU Privacy Guard"
@@ -73,7 +73,7 @@ dependency_check(){
                 "update-ca-certificates#ca-certificates#Common CA certificates"
                 "ccdiff#ccdiff#Colored Character Diff"
                 "add-apt-repository#software-properties-common#manage the repositories that you install software from (common)"
-# TODO <-- 2
+# TODO 2 <--
                 "less#less#A terminal pager similar to more"
                 "ss#iproute2#Networking and traffic control tools"
                 "phpquery#php-common#Common files for PHP packages"

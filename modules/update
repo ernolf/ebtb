@@ -18,7 +18,7 @@ UPDATE_BASHLIB=:
 #    . <(lrequire sudo)
 #    . <(lrequire vdir)
 #    . <(lrequire integrity)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire cleanup)
 . <(lrequire prefix)
 . <(lrequire ebtb)

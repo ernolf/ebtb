@@ -39,5 +39,5 @@ sysinf_nextcloud(){
 #        SYSINF+=("title declare -p NC:")
 #        SYSINF+=("true $(declare -p NC)")
 #    }
-# TODO <-- 0
+# TODO 0 <--
 }

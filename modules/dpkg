@@ -19,7 +19,7 @@ DPKG_BASHLIB=:
 . <(lrequire awksed)
 . <(lrequire ask)
 . <(lrequire spinner)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire fstring)
 . <(lrequire today)
 . <(lrequire php/sury)
@@ -47,7 +47,7 @@ check_lockfile(){
             o3; R; echo "- Lockfile '$(C)$lockfile$(R)' is used by: $processstring";N
 # TODO 1 -->
 #            for pid in $fuser_output; do echo "$(ps -p $pid -o comm=) (pid:$pid))"; done
-# TODO <-- 1
+# TODO 1 <--
         else
             ${bool[verbose]} && { o3; echo "- Lockfile '$(C)$lockfile$(N)' exists but no process seems to be using it."; }
         fi
@@ -195,7 +195,7 @@ apt_exist(){
 # TODO 2 -->
 # this is absolute overkill and slow:
 #    ${X[apt-get]} -qqs install "$1" 2>&1 | ${X[grep]} -Eqs "(has no installation candidate|Unable to locate package)" && return 1
-# TODO <-- 2
+# TODO 2 <--
     q0 ${X[apt-get]} -qqs install "$1"
 }
 

@@ -43,6 +43,6 @@ sysinf_dpkg(){
         if (( ${#dpkg_locks[@]} )); then
             for i in ${!dpkg_locks[@]}; do mh "dpkg lockfiles $((i+1)): ${dpkg_locks[i]}"; done
         fi
-# TODO <-- 0
+# TODO 0 <--
     fi
 }

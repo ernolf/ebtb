@@ -16,7 +16,7 @@ c2j_jq_filter(){
 # TODO 1 -->
 # as oneliner:
 # echo "$@"|${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
-# TODO <-- 1
+# TODO 1 <--
     echo "$@" | ${X[jq]} -c '[.[] | .[]]
         | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
         | reduce .[]as $item({};. * $item)'
@@ -29,7 +29,7 @@ config2json(){
 # TODO 2 -->
 # as oneliner:
 # C2J='<?php $c=[];foreach($argv as $f){if($f!==$argv[0]){include $f;foreach($CONFIG as $k=>$v){$c[$f][]=["key"=>$k,"value"=>$v];}}};echo json_encode($c);'
-# TODO <-- 2
+# TODO 2 <--
     C2J='<?php
     $c = [];
     foreach ($argv as $f) {

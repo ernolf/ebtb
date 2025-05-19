@@ -27,7 +27,7 @@ list(){
     # overwrite bools with parameter values
 # TODO 5 -->
 #    for var in "$@"; do bool[${var%=*}]=${var#*=}; done #; unset -v var
-# TODO <-- 5
+# TODO 5 <--
     for var in "$@"; do bool[$(varname "$var")]=$(varval "$var"); done #; unset -v var
     # app meta data
     local info_xml apps_path tag name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
@@ -119,7 +119,7 @@ list(){
                 if [ "$command" = "ids" -o "$command" = "name" ]; then
 # TODO 1 -->
             ${B[debug]} &&  #  echo "Unsupported App: $id";line '-' GRAY a
-# TODO <-- 1
+# TODO 1 <--
                    return
                 else
                     echo "$(Pbg)  Database too old.  $(N)"
@@ -228,13 +228,13 @@ list(){
         in="$(P)>    $(GRAY)"
 # TODO 2 -->
 #        mid="$(o 21)" # <- does not work in less -R
-# TODO <-- 2
+# TODO 2 <--
         mid=""
     else
         in="  $(GRAY)"
 # TODO 3 -->
 #        mid="$(o 20)" # <- does not work in less -R
-# TODO <-- 3
+# TODO 3 <--
         mid="  "
     fi
 
@@ -244,7 +244,7 @@ list(){
         local counter="$(printf "%7d" ${V[appcount]})"
     fi
     echo "${in}App-Id${counter:-}$(Yi)$mid$(${bool[md]} || es 3)$id"
-# TODO <-- 4
+# TODO 4 <--
     echo "${in}App-Id$(Yi)$mid$(${bool[md]} || es 10)$id"
 
     # Name
@@ -261,7 +261,7 @@ list(){
 # TODO 5 -->
 #    else
 #        echo "$in $(G)$mid$(${bool[md]} || es 15)App can be restricted to groups"
-# TODO <-- 5
+# TODO 5 <--
     fi
 
     # Categories

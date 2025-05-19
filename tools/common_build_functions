@@ -1,0 +1,281 @@
+declare NUL x # var for iterations
+declare -a unused_functions build_binaries
+
+NUL='/dev/null'
+_(){ false; }
+q0(){ "$@" &>$NUL; }
+q1(){ "$@" >$NUL; }
+q2(){ "$@" 2>$NUL; }
+# printf not sorted line by line
+p_nosort(){ printf '%s\n' "$@"; }
+
+binaries_realpath(){
+    local p
+    p="$1"
+    if [[ -d "$p" ]]; then
+        (cd -P "$p" 2>$NUL && printf '%s\n' "$PWD")
+    elif [[ -e "$p" ]]; then
+        (cd -P "${p%/*}" 2>$NUL && printf '%s/%s\n' "$PWD" "${p##*/}")
+    else
+        echo "binaries_realpath(): unresolvable path $p"
+        exit 1
+    fi
+}
+
+# make unused functions quiet:
+unused_functions=(mh fn_ln require_arg required_args log_trace)
+for x in ${unused_functions[@]}; do eval "$x(){ :;}"; done
+
+# needed binaries for build process
+build_binaries=(basename cat chown cp date diff dirname find gawk grep gpg head jq mkdir mktemp php rm sed seq sha256sum shfmt sort stat sudo tail)
+declare -A X
+X[env]="$(binaries_realpath "$(command -v env)") LC_ALL=C"
+for x in "${build_binaries[@]}"; do
+    X[$x]="${X[env]} $(binaries_realpath $(command -v $x))"
+done
+
+# Source the configure file
+source config/configure
+# Source the secrets configure file if exists
+[ -f config/secrets ] && source config/secrets
+# Source the placeholders file
+source config/placeholders
+# source sed functions
+source <(${X[tail]} -n +14 modules/awksed)
+# source anykey functions
+source <(${X[tail]} -n +10 modules/anykey)
+
+strip_todo_sections_(){
+    local -i i
+    for i in $(${X[seq]} 0 9); do
+        delx2yi "^# TODO $i -->" "^# TODO $i <--" "$1"
+    done
+}
+strip_todo_lines_(){
+    sed_ '/^# TODO/d' "$1" '-i'
+}
+strip_comment_footer_(){
+    delp2ei '^# COMMENT -->' "$1"
+}
+strip_(){
+    strip_todo_sections_ "$1"
+    strip_todo_lines_ "$1"
+    strip_comment_footer_ "$1"
+}
+
+minify(){
+    local source
+    local -i line
+    source="$1" line=${2:-0}
+    if $MINIFY; then
+        ${X[tail]} -n +$line $source |
+        ${X[shfmt]} -mn - |
+        # remove the newline immediately following the opening parenthesis in array declarations,
+        # then replace any remaining newlines within the array declaration with a space
+        sed_ ':a;N;$!ba; s/(=\()\n/\1/g; :b; s/(=\([^)]*)\n/\1 /g; tb' |
+        # fix from the step before
+        # replace the space after a directory following a "cd" command with a newline.
+        sed_ 's/(cd\s+\/[^ ;]+) /\1\n/g' |
+        # remove escaped newlines (backslash followed by a newline)
+        sed_ ':a;N;$!ba;s/\\\n//g' |
+        # replace newline following an opening curly brace with a space
+        sed_ ':a;N;$!ba;s/\{\n/{ /g' |
+        # replace all remaining newlines with semicolons
+        sed_ ':a;N;$!ba;s/\n/;/g' |
+        # Only replace the sequence ')";[' with ')" [' (and similarly for the single-quoted variant)
+        # if it is not part of a variable assignment (i.e., there is no '=' before the sequence on the same line).
+        sed_ '/^[^=]*\)";\[/ s/\)";\[/)" \[/g' |
+        sed_ "/^[^=]*\)';\[/ s/\)';\[/)' \[/g" |
+        # remove spaces preceding the ">" character
+        sed_ 's/ >/>/g' |
+        # remove spaces preceding the "< <(" sequence
+        sed_ 's/ < <\(/< <(/g' |
+        # replace "&;" with "&" to correct accidental character sequences
+        sed_ 's/&;/\&/g' |
+        # remove preceding and trailing ; from &&
+        sed_ 's/[;]*&&[;]*/\&\&/g' |
+        # remove preceding and trailing ; from ||
+        sed_ 's/[;]*\|\|[;]*/||/g' |
+        # correct spacing for the keyword "in"
+        sed_ 's/ in;/ in /g' |
+        # correct spacing for "do"
+        sed_ 's/do;/do /g' |
+        # add missing semicolon before "do" if missing
+        sed_ 's/([^;]) do /\1;do /g' |
+        # correct spacing for "then"
+        sed_ 's/then;/then /g' |
+        # add missing semicolon before "then" if missing
+        sed_ 's/([^;]) then /\1;then /g' |
+        # correct spacing for "else"
+        sed_ 's/else;/else /g' |
+        # correct spacing for "if"
+        sed_ 's/if;/if /g' |
+        # replace quadruple semicolons with a double semicolon
+        sed_ 's/;;;;/;;/g' |
+        # replace triple semicolons with a double semicolon
+        sed_ 's/;;;/;;/g' |
+        # replace the @HEREDOC@ placeholder with an actual HEREDOC block
+        sed_ 's/@HEREDOC@/{ ${C[c]} <<MC\n$mc\nMC\n}/'
+    else
+    #    ${X[cat]} "$1"
+        sed_ 's/@HEREDOC@/{ ${C[c]} <<MC\n$mc\nMC\n}/' "$source"
+    fi
+}
+
+binaries_exceptions(){
+    ${X[gawk]} '/^[[:space:]]*for bb in/ {
+        # remove leading "for bb in " including any whitespace
+        sub(/^[[:space:]]*for bb in[[:space:]]*/, "")
+        # strip off everything from the first semicolon onward
+        sub(/[[:space:]]*;.*/, "")
+        # replace one or more whitespace characters with a pipe
+        gsub(/[[:space:]]+/, "|")
+        # accumulate into the variable `out`, joining with pipe if already set
+        out = (out ? out "|" $0 : $0)
+    }
+    END {
+        # if anything was collected, wrap in parentheses and print
+        if (out) print "(" out ")"
+    }' modules/binaries
+}
+
+binaries_used(){
+    local sedscript
+    local -a used_binaries
+    sedscript="s/X\[//; s/\]//; s/^xmls$/xmlstarlet/; s/^$(binaries_exceptions)$//"
+    source <(${X[tail]} -n +14 modules/httpd)
+    mapfile -t used_binaries< <( (${X[grep]} -Roh 'X\[[^]]\+\]' blocks modules scripts | sed_ "$sedscript" | ${X[grep]} -v '\$'; p_nosort "${!HTTPD[@]}") | ${X[sort]} -u )
+    echo "${used_binaries[@]}" | sed_ 's/^\s*//'
+}
+
+placeholder_replace(){
+    local placeholder name channel minified
+    local -i epoch
+    placeholder="$1" name="$2" epoch=$3 channel="$4" extra_arg="${5:-}"
+    runtime="$(${X[date]} -d @$epoch "+%F %R %Z")"
+    ${MINIFY:-false} && minified=" (minified)" || minified=''
+    case "$placeholder" in
+        shebang_bash)
+            # https://stackoverflow.com/questions/10376206/what-is-the-preferred-bash-shebang#10383546
+#            echo "#!/bin/bash"
+#            echo "#!/usr/bin/env bash"
+            echo '#!/usr/bin/env -S LC_CTYPE=C.UTF-8 LC_MESSAGES=C bash'
+            ;;
+        minified_bashlib|bashlib)
+            echo '# BASHLIB'
+            ;;
+        path_and_scriptname)
+            echo "# $BINDIR/$name"
+            ;;
+        path_and_modulename)
+            echo "# $MODULES_DIR/@channel@/$name"
+            ;;
+        version_and_datestring)
+            echo "# version $runtime $epoch"
+            ;;
+        copyright)
+            ${X[cat]} "blocks/copyright"
+            ;;
+        license)
+            ${X[cat]} "blocks/license"
+            ;;
+        whoami_whereami)
+            ${MINIFY:-false} && echo '# minified codeblocks in human readable format: https://github.com/ernolf/ebtb/tree/main/blocks'
+            echo "## bootstrap, whoami, whereami$minified"
+            minify "blocks/whoami_whereami"
+            ;;
+        scriptname)
+            if $LOCAL_SERVER; then
+                MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
+            fi
+            echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
+            ;;
+        libversion)
+            echo "${name^^}_LIB_VERSION=$epoch"
+            ;;
+        debug)
+            if [ "$channel" = "debug" ]; then
+                ${X[cat]} "blocks/debug"
+            fi
+            ;;
+        when)
+            echo -e '# when\nprintf -v T[rte] "%(%s)T" -2'
+            ;;
+        vdirname)
+            echo "D[vdir]=\"UNDEFINED\"; declare -n $extra_arg=D[vdir] # <-- do NOT edit this line, the value is set by the script on first run or when invoked with --firstrun"
+            ;;
+        homedir)
+            echo "## create a neutral sandbox-homedir$minified"
+            if ${MINIFY:-false}; then
+                echo '${C[mw]} "${D[vt]:='$PREFIX'/${M[p]}}"&&export HOME="${D[vt]}"&&cd;${C[ms]} "${D[vtm]:=${D[vt]}/'$MODULES'}" "${D[vts]:=${D[vt]}/'$SCRIPTS'}";${C[mw]} "${D[li]:=${D[vtm]}/${M[c]}}"'
+            else
+                echo '${C[mw]} "${D[vt]:='$PREFIX'/${M[p]}}" && export HOME="${D[vt]}" && cd'
+                echo '${C[ms]} "${D[vtm]:=${D[vt]}/'$MODULES'}" "${D[vts]:=${D[vt]}/'$SCRIPTS'}"'
+                echo '${C[mw]} "${D[li]:=${D[vtm]}/${M[c]}}"'
+            fi
+            ;;
+        tempdir)
+            echo "## find a writable tempdir$minified"
+            minify "blocks/tempdir"
+            ;;
+        module_server)
+            if $LOCAL_SERVER; then
+                echo '## module server'
+                case $LOCAL_SERVER_BINARY in
+                       php) http_server_string='php -S localhost:' ;;
+                   python3) http_server_string='python3 -m http.server '
+                esac
+                echo "## local module server$minified"
+                minify "blocks/module_server" | sed_ "s/__http_server__/$http_server_string/"
+            fi
+            ;;
+        general)
+            echo "## general$minified"
+            minify "blocks/general"
+            ;;
+        module_loader)
+            echo "## include bashmodules$minified ->"
+            minify "blocks/module_loader"
+            ;;
+        module_integrity)
+            echo "# check module integrity and remove tainted modules$minified"
+            minify "blocks/module_integrity"
+            echo '## <- include bashmodules end #'
+            ;;
+        nextcloud_updater)
+            echo "## nextcloud updater$minified ->"
+            minify "blocks/nextcloud_updater"
+            echo '## <- nextcloud updater end #'
+            ;;
+        binaries_used)
+            echo "    binaries_used=($(binaries_used))"
+    esac
+}
+
+replace_placeholders_(){
+    # pure bash
+    # Replace placeholders with their actual contents (including additional tokens)
+    local tempfile outfile name channel
+    local -i epoch
+    tempfile="$1" outfile="$2" name="$3" epoch=$4 channel="${5:-prod}"
+    for placeholder in "${placeholders[@]}"; do
+        [ -f "$outfile" ] && ${X[cat]} "$outfile" > "$tempfile"
+        while IFS= read -r line; do
+            if [[ $line =~ __${placeholder}__([[:space:]]*(.*)) ]]; then
+                # BASH_REMATCH[2] containes all tokens after __placeholder__
+                extra_args=${BASH_REMATCH[2]}
+                placeholder_replace "$placeholder" "$name" $epoch "$channel" $extra_args
+            else
+                printf '%s\n' "$line"
+            fi
+        done < "$tempfile" > "$outfile"
+    done
+}
+
+epoch_(){
+    ${X[gawk]} '/^# version 20/ {print $NF}' "$1"
+}
+
+occ(){
+    ${X[sudo]} -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"
+}

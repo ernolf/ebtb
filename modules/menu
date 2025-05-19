@@ -158,7 +158,7 @@ OPTS
     fi
 }
 
-# TODO <-- 1
+# TODO 1 <--
 # globals:
 declare invi="Invalid input."
 

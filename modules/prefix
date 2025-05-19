@@ -12,7 +12,7 @@ PREFIX_BASHLIB=:
 
 # TODO 0 -->
 . <(lrequire ansi)
-# TODO <-- 0
+# TODO 0 <--
 # Prefix
 pf(){
     printf ' - '

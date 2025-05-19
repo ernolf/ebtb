@@ -136,7 +136,7 @@ mime_ext_regex_text=(
 #    "text/plain:.rc:^.*\.(rc)$"
 #    "text/plain:.ini:^.*\.(ini)$"
 #    "text/plain:.properties:^.*\.(properties)$"
-# TODO <-- 1
+# TODO 1 <--
     "text/html:.html:^.*\.(html?)$"
     "text/css:.css:^.*\.(css)$"
     "text/javascript:.js:^.*\.(js)$"

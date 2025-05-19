@@ -9,22 +9,8 @@ ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
-# Source the configure file
-source config/configure
-# Source the secrets configure file if exists
-[ -f config/secrets ] && source config/secrets
-# Source the placeholders file
-source config/placeholders
-# source anykey function
-source <(${X[tail]} -n +10 modules/anykey)
-
-occ(){
-    ${X[sudo]} -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"
-}
-
-epoch_(){
-    ${X[gawk]} '/^# version 20/ {print $NF}' "$1"
-}
+# source common functions
+source tools/common_build_functions
 
 sign_(){
     local script scriptname target hash

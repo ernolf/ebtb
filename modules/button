@@ -14,7 +14,7 @@ BUTTON_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire ansi)
 . <(lrequire basics)
-# TODO <-- 0
+# TODO 0 <--
 buttonize(){
     local oldcolor
     oldcolor="$(q2 ${X[cat]} ${F[color]})"
@@ -47,6 +47,7 @@ box(){
     esac
 }
 
+# TODO 1 -->
 #check(){
 #    [[ " OK NOK " =~ " $1 " ]]||return
 #    case $1 in
@@ -56,15 +57,20 @@ box(){
 #    esac
 #}
 
+# TODO 1 <--
 check(){
     [[ " OK NOK " =~ " $1 " ]] || return
     local ok nok
     if ${X[grep]} -qs "webmin.service" /proc/self/cgroup; then
         ok='✔' nok='✘'
+# TODO 2 -->
 #        ok='✓' nok='✗'
 #        ok="+" nok="-"
+# TODO 2 <--
     else
+# TODO 3 -->
 #        ok='✅' nok='❌'
+# TODO 3 <--
         ok='✔️' nok='✖️'
     fi
     case $1 in

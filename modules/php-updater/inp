@@ -25,7 +25,7 @@ install_new_php(){
     if [[ ! libapache2-mod-php$old && ! php$old-fpm ]]; then
         There is no sapi installed for php$old to communicate with your webserver.. Transfering the settings from that incomplete version would result in a php$new without connection to your webserver either. You must Choose an other version as $old or first install the sapi of your choice.
     fi
-# TODO <-- 0
+# TODO 0 <--
 
     if q0 apt-cache show php$new; then
         separator
@@ -39,7 +39,7 @@ install_new_php(){
             pf; echo "$(lG)system updated$(N)"
             anykey
         fi
-# TODO <-- 1
+# TODO 1 <--
         detect_and_assign_extensions
         search_candidates_4_extensions_installed_by_admin $old
         spinner C " . performing thorough review (dry run) of package sources and for candidate availability ." &
@@ -47,7 +47,7 @@ install_new_php(){
 # TODO 2 -->
         mapfile -t sapi_packages< <(for sapi in $(${X[comm]} -23 <(p_sort $(${X[phpquery]} -v $old -S)) <(p_sort $(${X[phpquery]} -v $new -S))); do echo "${SAPI[$sapi]/@VER@/$new}"; done)
         mapfile -t sapi_not< <(for sapi in $(${X[comm]} -23 <(p_sort ${!SAPI[@]}) <(p_sort $(${X[phpquery]} -v $old -S))); do echo "${SAPI[$sapi]/@VER@/$new}"; done)
-# TODO <-- 2
+# TODO 2 <--
         q0 ${X[apt-mark]} unhold *php*
         [ -z "${X[needrestart]}" ] || export NEEDRESTART_SUSPEND=1
         kill_spinner
@@ -61,7 +61,7 @@ install_new_php(){
         if ((${#sapi_not[@]})); then
             apt_ remove --yes ${sapi_not[@]}
         fi
-# TODO <-- 3
+# TODO 3 <--
         [ -z "${X[needrestart]}" ] || ${X[needrestart]} -r a
     else f
         no_candidate "$new"

@@ -77,7 +77,7 @@ capture_calendar_id(){
 # TODO 1 -->
 #    read -p "Do you want to change any refreshrates? [y N] " choice
 #    [ "$(tolower ${choice:-n})" != "y" ]&&{ echo "exiting";exit 0;}
-# TODO <-- 1
+# TODO 1 <--
     while :; do
       # Prompt for user input
         cal_id=''

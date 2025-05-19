@@ -17,7 +17,7 @@ INTEGRITY_BASHLIB=:
 . <(lrequire line)
 . <(lrequire sudo)
 . <(lrequire vdir)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire gpg)
 . <(lrequire cleanup)
 . <(lrequire ebtb)

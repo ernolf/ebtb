@@ -1,5 +1,18 @@
 #!/bin/bash
 
+# Ensure we have the correct number of arguments
+if [[ "$#" -lt 2 ]]; then
+    echo "Usage: $0 <input_module> <output_module>"
+    exit 1
+fi
+
+# Ensure that the first argument is an existing file
+if ! [ -f "$1" ]; then
+    echo "\"$1\" does not exist"
+    echo "Usage: $0 <input_module> <output_module>"
+    exit 1
+fi
+
 # whoami, whereami
 # b=basename m=me a=absolute p=path ca=canonical
 declare bm apm me ca_me ca_dir
@@ -9,36 +22,18 @@ ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
-# Ensure we have the correct number of arguments
-if [[ "$#" -lt 2 ]]; then
-    echo "Usage: $0 <input_module> <output_module>"
-    exit 1
-fi
-
-# Ensure that the first argument exists
-if ! [ -f "$1" ]; then
-    echo "\"$1\" does not exist"
-    echo "Usage: $0 <input_module> <output_module>"
-    exit 1
-fi
-
-# Source the configure file
-source config/configure
-# Source the secrets configure file if exists
-[ -f config/secrets ] && source config/secrets
-# Source the placeholders file
-source config/placeholders
-# source sed functions
-source <(${X[tail]} -n +14 modules/awksed)
+# source common functions
+source tools/common_build_functions
 # Source the time
 source config/runtime
 
 # Declare variables
 declare input_module output_module modulename tempfile placeholder placeholder_pattern
+declare -i i
 # Assign the arguments to variables
 input_module="$1" output_module="$2"
-
-modulename=${input_module#$MODULES_DIR/}
+modulename="${input_module#$MODULES/}"
+tempfile=$(${X[mktemp]})
 
 if [ -n "$EXCLUDE_SUFIXES" ]; then
     exclude_regex="${EXCLUDE_SUFIXES// /|}"
@@ -49,31 +44,19 @@ if [ -n "$EXCLUDE_SUFIXES" ]; then
     fi
 fi
 
-tempfile=$(mktemp)
-
-# copy the input module to the tempfile
-cp "$input_module" "$tempfile"
-
-for i in $(${X[seq]} 0 9); do
-    delx2yi "# TODO $i -->" "# TODO <-- $i" "$tempfile"
-done
-
-delp2ei "# COMMENT -->" "$tempfile"
-
-sed -i '/^# TODO/d' "$tempfile"
-
+# cat the input module into the tempfile
+${X[cat]} "$input_module" > "$tempfile"
+strip_ "$tempfile"
 if [[ ${MINIFY:-false} && "$(${X[head]} -n1 "$input_module")" == '__minified_bashlib__' ]]; then
-    tools/minify "$tempfile" "$modulename" > "$output_module"
+    (   echo "# BASHLIB (minified)"
+        echo "# @channel@/$modulename"
+        echo "# version $epoch"
+        minify "$tempfile" 10
+    ) > "$output_module"
 else
-    # Replace placeholders with their actual contents
-    for placeholder in "${placeholders[@]}"; do
-        placeholder_pattern="__${placeholder}__"
-        [ -f "$output_module" ] && ${X[cat]} "$output_module" > "$tempfile"
-        ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$modulename' '$epoch'"); next } 1' "$tempfile" > "$output_module"
-    done
+    replace_placeholders_ "$tempfile" "$output_module" "$modulename" $epoch
 fi
-
-rm -f "$tempfile"
+${X[rm]} -f "$tempfile"
 
 exit 0
 

@@ -14,7 +14,7 @@ FSTRING_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire ansi)
 . <(lrequire filter)
-# TODO <-- 0
+# TODO 0 <--
 # format a long string in lines with a maximum length
 
 format_string() {

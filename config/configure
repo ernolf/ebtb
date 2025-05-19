@@ -2,36 +2,40 @@
 
 PROJECT='ebtb'
 MY_HOME='https://global-social.net/apps/raw'
-# Prefix directory
-PREFIX='/usr/local'
-# Directory for scripts
-BINDIR="$PREFIX/bin"
+# Directory for scripts installation.
+# On the first run, scripts are replaced by a symlink pointing
+# to the scripts which then are moved to $SCRIPTS_DIR
+BINDIR="/usr/local/bin"
+# Prefix
+PREFIX="/var/tmp"
+# SANDBOX directory
+SANDBOX="$PREFIX/$PROJECT"
+# Directory-name for scripts
+SCRIPTS='scripts'
+# Directory-name for modules
+MODULES='modules'
+# Directory-name for build tools
+TOOLS='tools'
+# Directory-name for the build process
+BUILD='build'
+# Directory where the scripts will be moved to on first run
+SCRIPTS_DIR="$SANDBOX/$SCRIPTS"
 # Directory for modules
-INCLUDEDIR="/var/tmp/$PROJECT/modules"
-# Directory for module channel
-MODULEDIR="$INCLUDEDIR/@channel@"
-# Directory for scripts
-SCRIPTS_DIR='scripts'
-# Directory for modules
-MODULES_DIR='modules'
-# Directory for tools
-TOOLS_DIR='tools'
-# Directory for the build process
-BUILD_DIR='build'
+MODULES_DIR="$SANDBOX/$MODULES"
 # Directory for the script build process
-SBUILD_DIR="$BUILD_DIR/$SCRIPTS_DIR"
+SBUILD_DIR="$BUILD/$SCRIPTS"
 # Directory for the module build process
-MBUILD_DIR="$BUILD_DIR/$MODULES_DIR"
-# Minify (some) codeblocks in scripts
+MBUILD_DIR="$BUILD/$MODULES"
+# Minify (some) codeblocks in scripts (boolean)
 MINIFY='true'
-# Local module server
+# Local module server (boolean)
 LOCAL_SERVER='true'
 # Port (ephemeral port range = 49152 - 65535)
 LOCAL_SERVER_PORT=48484
 # php or python3
 LOCAL_SERVER_BINARY='python3'
-# Server directory
-LOCAL_SERVER_DIRECTORY="$PREFIX/srv/$PROJECT"
+# Directory where the local server resides after installation
+LOCAL_SERVER_DIRECTORY="$SANDBOX/server"
 # Do not build modules or scripts with this sufixes (space separated, case insensitive)
 EXCLUDE_SUFIXES="~ .todo .test .new .ini"
 

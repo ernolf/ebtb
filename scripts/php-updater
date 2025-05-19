@@ -206,7 +206,7 @@ tasks(){
         done
     done
 }
-# TODO <-- 1
+# TODO 1 <--
 ## void ##
 declare lang=$(echo "$LANG" | ${X[cut]} -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW SAPI DEFAULT_ANSWER FILE

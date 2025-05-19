@@ -14,7 +14,7 @@ SUDO_BASHLIB=:
 . <(lrequire binaries)
 . <(lrequire basics)
 . <(lrequire exit)
-# TODO <-- 0
+# TODO 0 <--
 su_do(){
     nosudo(){
         o2; R; echo "you have no sudo rights."; N

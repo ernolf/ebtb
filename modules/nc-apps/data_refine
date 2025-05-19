@@ -13,7 +13,7 @@ DATA_REFINE_BASHLIB=:
 # TODO 0 -->
 . <(lrequire spinner)
 . <(lrequire nc-apps/db)
-# TODO <-- 0
+# TODO 0 <--
 create_json_objects(){
     local query_version platform parts major minor item
     query_version=${NC[version]}

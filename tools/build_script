@@ -1,15 +1,5 @@
 #!/bin/bash
 
-# whoami, whereami
-# b=basename m=me a=absolute p=path ca=canonical
-declare bm apm me ca_me ca_dir
-declare -i i
-bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
-[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
-ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
-
-cd "$ca_dir/.."
-
 # Ensure we have the correct number of arguments
 if [[ "$#" -lt 2 ]]; then
     echo "Usage: $0 <input_script> <output_script> [test]"
@@ -23,84 +13,39 @@ if ! [ -f "$1" ]; then
     exit 1
 fi
 
-# Source the configure file
-source config/configure
-# Source the secrets configure file if exists
-[ -f config/secrets ] && source config/secrets
-# Source the placeholders file
-source config/placeholders
-# source sed functions
-source <(${X[tail]} -n +14 modules/awksed)
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir
+declare -i i
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
+
+cd "$ca_dir/.."
+
+# source common functions
+source tools/common_build_functions
 # Source the time
 source config/runtime
 
 # Declare variables
-declare input_script output_script test_mode scriptname tempfile placeholder placeholder_pattern
+declare input_script output_script channel scriptname tempfile placeholder placeholder_pattern
 # Assign the arguments to variables
-input_script="$1" output_script="$2" test_mode="${3:-prod}"
+input_script="$1" output_script="$2" channel="${3:-prod}"
+tempfile="$(${X[mktemp]})"
 
-if [ "$test_mode" = 'test' ]; then
+if [ "$channel" = 'test' ]; then
     scriptname="$(${X[basename]} $input_script)-test"
 else
     scriptname="$(${X[basename]} $input_script)"
 fi
 
-# copy the input script to the output script
-${X[cp]} $input_script $output_script
-
-for i in $(${X[seq]} 0 9); do
-    delx2yi "# TODO $i -->" "# TODO <-- $i" "$output_script"
-done
-
-delp2ei '# COMMENT -->' "$output_script"
-
-tempfile="$(mktemp)"
-
-# new
-# Replace placeholders with their actual contents (including additional tokens)
-for placeholder in "${placeholders[@]}"; do
-    [ -f "$output_script" ] && ${X[cat]} "$output_script" > "$tempfile"
-    # Use gawk to check
-    # 1) for __placeholder__ on each line
-    # 2) collect all subsequent tokens in this line as args
-    # 3) call system(...) with placeholder, scriptname, epoch, test_mode, and args
-    ${X[gawk]} -v placeholder="$placeholder" -v name="$scriptname" -v epoch="$epoch" -v channel="$test_mode" '{
-        # If the line contains the placeholder...
-        if (match($0, "__" placeholder "__")) {
-            # split the line into fields (whitespace separated)
-            n = split($0, fields, /[[:space:]]+/)
-            extra_args = ""
-            # search in fields for the field with "__placeholder__"
-            for (i = 1; i <= n; i++) {
-                if ( fields[i] == "__" placeholder "__" ) {
-                    # all fields after i are additional arguments
-                    for (j = i+1; j <= n; j++) {
-                        # escape every argument
-                        extra_args = extra_args " \"" fields[j] "\""
-                    }
-                    break
-                }
-            }
-            # assemble the call
-            cmd = "tools/placeholders-replace \"" placeholder "\"" " \"" name "\"" " " epoch " \"" channel "\"" extra_args
-            # execute and skip original line
-            system(cmd)
-            next
-        }
-        # pass all other lines through untouched
-        print
-    }' "$tempfile" > "$output_script"
-done
-
-# old
-# Replace placeholders with their actual contents (can not handle additional tokens)
-#for placeholder in "${placeholders[@]}"; do
-#    placeholder_pattern="__${placeholder}__"
-#    [ -f "$output_script" ] && ${X[cat]} "$output_script" > "$tempfile"
-#    ${X[gawk]} '/'$placeholder_pattern'/ { system("tools/placeholders-replace '$placeholder' '$scriptname' '$epoch' '$test_mode'"); next } 1' "$tempfile" > "$output_script"
-#done
-
+# cat the input module into the tempfile
+${X[cat]} "$input_script" > "$tempfile"
+strip_ "$tempfile"
+replace_placeholders_ "$tempfile" "$output_script" "$scriptname" $epoch "$channel"
 ${X[rm]} -f "$tempfile"
+
 # minify modules array
 $MINIFY && ${X[sed]} -i '/^modules=(/ {
         :a; N; /)/!ba;
@@ -110,9 +55,7 @@ $MINIFY && ${X[sed]} -i '/^modules=(/ {
         s/[[:space:]]*#/\n#/
     }' "$output_script"
 
-
 # disable integrity check for local server
 $LOCAL_SERVER && echo -e "v=true\nnohash" >> "$output_script"
 
 exit 0
-

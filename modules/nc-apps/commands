@@ -19,7 +19,7 @@ COMMANDS_BASHLIB=:
 . <(lrequire nc-apps/list)
 . <(lrequire nc-apps/app_update)
 . <(lrequire nc-apps/l10n)
-# TODO <-- 0
+# TODO 0 <--
 ${X[mkdir]} -p ${D[li]}/nc-apps/commands.d
 
 . <(lrequire nc-apps/commands.d/install_overwrite)
@@ -64,7 +64,7 @@ all_apps(){
 #        echo "==TRACE=end===" >$TTY
 #    fi
 #trap 'set +x;read -rp "$(printf "\033[0;31m")[DEBUG:]$(printf "\033[0;m") press Enter to proceed...";set -x' DEBUG
-# TODO <-- 1
+# TODO 1 <--
     while (( $# )); do
         case "$1" in
             shipped)

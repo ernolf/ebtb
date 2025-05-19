@@ -104,9 +104,9 @@ function list_shares(){
 
 #        $occ files:scan -vvv --path="$targetfile"
 #    exit
-# TODO <-- 0
+# TODO 0 <--
     db_exec_ "$query" | ${X[column]} -t -s $'\t' | sed_ "s\ files/\ /\g$sed_string"
 # TODO 1 -->
 #    pipe_h2t "${DB[strg]} ${DB[exec]}" "$query"
-# TODO <-- 1
+# TODO 1 <--
 }

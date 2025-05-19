@@ -69,7 +69,7 @@ database_call(){
             DB[ut2ts]="TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')"
 # TODO 1 -->
 #            DB[ut2ts]=$(format "TO_CHAR(TIMESTAMP 'epoch' + stime * INTERVAL '1 second', 'YYYY-MM-DD HH24:MI')")
-# TODO <-- 1
+# TODO 1 <--
             DB[type_sql_query]="REVERSE(SUBSTRING(REVERSE(principaluri) FROM 1 FOR POSITION('/' IN REVERSE(principaluri)) - 1))"
             ;;
          *) echo "$(Pbg) * Only mysql or pgsql as database, ${db[type]} is not (yet) supported by this script $(N)"

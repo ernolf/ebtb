@@ -13,6 +13,16 @@ ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
+# check if the secrets configure file exists
+if ! [ -f config/secrets ] && ! $LOCAL_SERVER; then
+    echo "Could not find config/secrets file while 'LOCAL_SERVER' is not set to 'true' in"
+    echo "config/configure file. This ain't gonna work."
+    echo "error"
+    exit 1
+fi
+# source common functions
+source tools/common_build_functions
+
 bool[yes]=false bool[all]=false bool[test2]=false
 declare channel arg
 declare -a args
@@ -43,36 +53,17 @@ for arg in "$@";do
 done
 set -- "${args[@]}" && unset -v arg args
 
-# Source the configure file
-source config/configure
-# Source the secrets configure file if exists
-if [ -f config/secrets ]; then
-    source config/secrets
-elif ! $LOCAL_SERVER; then
-    echo "Could not find config/secrets file while 'LOCAL_SERVER' is not set to 'true' in"
-    echo "config/configure file. This ain't gonna work."
-    echo "error"
-    exit 1
-fi
-# Source the placeholders file
-source config/placeholders
-source <(${X[tail]} -n +10 modules/anykey)
-
 ${bool[verbose]} && bool[yes]=false
 
 declare dir1_source dir2_dest
 dir1_source="$MBUILD_DIR"
 if $LOCAL_SERVER; then
-    dir2_dest="$LOCAL_SERVER_DIRECTORY/$MODULES_DIR/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
+    dir2_dest="$LOCAL_SERVER_DIRECTORY/$MODULES/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 else
     dir2_dest="$DATA_DIR/$target_modules_dir/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 fi
 
-epoch_(){ ${X[gawk]} '/^# version 20/ {print $NF}' "$1"; }
-
 version_sufix(){ ${X[sed]} -ne '/^# version 20/ s/:/./g' -e '/^# version 20/ s/ /_/g' -e '/^#_version_20/ s/#_version_/~/p' "$1"; }
-
-occ(){ ${X[sudo]} -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"; }
 
 sign_(){
 #${bool[debug]} && set -x
@@ -100,10 +91,8 @@ sign_(){
     # write lib with adapted path to target
     if [ "${channel:-test}" = 'test' ]; then
         ${X[sed]} "s#@channel@#test#" "$lib" > "$target"
-#        ${X[cp]} -a "$lib" "$target"
     else
         ${X[sed]} "s#@channel@#prod#" "$lib" > "$target"
-#        ${X[sed]} "s#$INCLUDEDIR/test/#$MODULEDIR/#" "$lib" > "$target"
     fi
     echo "    target: \"$target\""
     ${bool[debug]} && anykey

@@ -21,6 +21,7 @@ __libversion__
 BINARY_ARRAY_VERSION=0
 
 binaries_is_func_(){ 
+    local d
     d=$(declare -f $1) || return
     d=${d//$'\n'/}
     [[ ${d// /} != "$1(){:}" ]]
@@ -73,7 +74,7 @@ __binaries_used__
     done
 }
 
-# return all existent binariy paths
+# return all existent binary paths
 binaries_nullglob_paths(){
     local old_nullglob path binary
     local -a paths
@@ -121,7 +122,7 @@ binaries_extra_treatments(){
     [ -z "${BINARY[xmlstarlet]:-}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
 }
 
-# dispatcher function.for "used" and "nullglob" (all) pathes
+# dispatcher function for "used" and "nullglob" (all) paths
 binaries_load_(){
     local -a binaries
     mapfile -t binaries < <(binaries_$1_paths)

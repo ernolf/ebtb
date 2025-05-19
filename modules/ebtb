@@ -163,7 +163,7 @@ ebtb_launch_script() {
 #    $scriptname
 #}
 
-# TODO <-- 1
+# TODO 1 <--
 ebtb_is_installed(){
     local s
     s="$1"
@@ -210,7 +210,7 @@ ebtb(){
 #    6 - nc-integrity-fix        resolve “Some files have not passed the integrity check” warnings
 #    7 - nc-mimecheck            check for files without or with wrong file extension. For use with "Flow external script"
 #    8 - nc-subscribed-calendar  gives you the means to set an individual refreshrate per subscribed calendar
-# TODO <-- 2
+# TODO 2 <--
     if ${bool[launch]}; then
         separator4 lP
         echo

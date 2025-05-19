@@ -15,7 +15,7 @@ SPINNER_BASHLIB=:
 . <(lrequire basics)
 . <(lrequire exit)
 . <(lrequire fstring)
-# TODO <-- 0
+# TODO 0 <--
 F[spinner_pid]="${D[shm]}/spinner.pid"
 F[spinner_state]="$(tf 666 shm)"
 

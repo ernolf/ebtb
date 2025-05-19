@@ -13,7 +13,7 @@ HTTPD_BASHLIB=:
 # TODO 0 -->
 #. <(lrequire binaries)
 #. <(lrequire basics)
-# TODO <-- 0
+# TODO 0 <--
 # TODO 1 -->
 #        apache2     /etc/apache2            /lib/systemd/system/apache2.service
 #        caddy       /etc/caddy              /lib/systemd/system/caddy.service
@@ -22,7 +22,7 @@ HTTPD_BASHLIB=:
 #        nginx       /etc/nginx              /lib/systemd/system/nginx.service
 #        tntnet      /etc/tntnet             /lib/systemd/system/tntnet.service
 #        yaws        /etc/yaws               /lib/systemd/system/yaws.service
-# TODO <-- 1
+# TODO 1 <--
 # globals
 globalarrays="A2CONFFILES NGXCONFFILES A2MODULES NGXMODULES HTTPD_NEXTCLOUD HTTPD_NC_DIR WK_HTTPD_KNOWN WK_HTTPD_ENABLED WK_HTTPD_ACTIVE HTTPD_KNOWN HTTPD_ENABLED HTTPD_ACTIVE HTTPD_ALL"
 for array in $globalarrays; do q2 declare -ga "$array" || declare -a "$array"; done
@@ -221,4 +221,4 @@ load_server_status
 #            echo "${HTTPD_KNOWN[0]}"
 #        fi
 #    }
-# TODO <-- 2
+# TODO 2 <--

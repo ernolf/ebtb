@@ -3,15 +3,15 @@
 # Bindir for scripts
 BINDIR := $(shell . config/configure && echo $$BINDIR)
 # Include directory for modules
-INCLUDEDIR := $(shell . config/configure && echo $$INCLUDEDIR)
-# Directory for scripts
-SCRIPTS_DIR := $(shell . config/configure && echo $$SCRIPTS_DIR)
-# Directory for modules
 MODULES_DIR := $(shell . config/configure && echo $$MODULES_DIR)
+# Directory for scripts
+SCRIPTS := $(shell . config/configure && echo $$SCRIPTS)
+# Directory for modules
+MODULES := $(shell . config/configure && echo $$MODULES)
 # Directory for tools
-TOOLS_DIR := $(shell . config/configure && echo $$TOOLS_DIR)
+TOOLS := $(shell . config/configure && echo $$TOOLS)
 # Directory for the build process
-BUILD_DIR := $(shell . config/configure && echo $$BUILD_DIR)
+BUILD := $(shell . config/configure && echo $$BUILD)
 # Directory for the script build process
 SBUILD_DIR := $(shell . config/configure && echo $$SBUILD_DIR)
 # Directory for the module build process
@@ -21,11 +21,11 @@ MBUILD_DIR := $(shell . config/configure && echo $$MBUILD_DIR)
 .DEFAULT_GOAL := help
 
 # List of scripts
-SCRIPTS_BASE = $(notdir $(basename $(wildcard $(SCRIPTS_DIR)/*)))
+SCRIPTS_BASE = $(notdir $(basename $(wildcard $(SCRIPTS)/*)))
 
 # List of modules
-MODULES_REL = $(shell find $(MODULES_DIR) -type f | sed 's|$(MODULES_DIR)/||')
-MODULES = $(patsubst %,$(MBUILD_DIR)/%,$(MODULES_REL))
+MODULES_REL = $(shell find $(MODULES) -type f | sed 's|$(MODULES)/||')
+MODULES_ = $(patsubst %,$(MBUILD_DIR)/%,$(MODULES_REL))
 
 # Help message
 help:
@@ -56,9 +56,9 @@ set-executable:
 	@echo "Done."
 
 # Build a normal script
-$(SBUILD_DIR)/%: $(SCRIPTS_DIR)/% | set-executable
+$(SBUILD_DIR)/%: $(SCRIPTS)/% | set-executable
 	mkdir -p $(SBUILD_DIR)
-	$(TOOLS_DIR)/build_script $< $@
+	$(TOOLS)/build_script $< $@
 
 $(SCRIPTS_BASE): % : $(SBUILD_DIR)/%
 
@@ -66,23 +66,23 @@ $(SCRIPTS_BASE): % : $(SBUILD_DIR)/%
 .PHONY: all-prod
 all-prod: set-executable $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%)
 
-$(SBUILD_DIR)/%: $(SCRIPTS_DIR)/%
+$(SBUILD_DIR)/%: $(SCRIPTS)/%
 	mkdir -p $(SBUILD_DIR)
-	$(TOOLS_DIR)/build_script $< $@
+	$(TOOLS)/build_script $< $@
 
 # Build a test script with 'make test SCRIPT_NAME=<script_name>'
 .PHONY: test
 test: set-executable
 	mkdir -p $(SBUILD_DIR)
-	$(TOOLS_DIR)/build_script $(SCRIPTS_DIR)/$(SCRIPT_NAME) $(SBUILD_DIR)/$(SCRIPT_NAME)-test test
+	$(TOOLS)/build_script $(SCRIPTS)/$(SCRIPT_NAME) $(SBUILD_DIR)/$(SCRIPT_NAME)-test test
 
 # Build all test scripts with 'make all-test'
 .PHONY: all-test
 all-test: set-executable $(SCRIPTS_BASE:%=$(SBUILD_DIR)/%-test)
 
-$(SBUILD_DIR)/%-test: $(SCRIPTS_DIR)/%
+$(SBUILD_DIR)/%-test: $(SCRIPTS)/%
 	mkdir -p $(SBUILD_DIR)
-	$(TOOLS_DIR)/build_script $< $@ test
+	$(TOOLS)/build_script $< $@ test
 
 # Make and install all scripts (not test)
 .PHONY: and-install-all-scripts
@@ -108,62 +108,62 @@ uninstall:
 .PHONY: sign-and-release-scripts
 sign-and-release-scripts: $(wildcard $(SBUILD_DIR)/*)
 	@echo "Signing and uploading scripts to nextcloud webserver..."
-	$(TOOLS_DIR)/sign_script $^
+	$(TOOLS)/sign_script $^
 
 # Build a module
-$(MBUILD_DIR)/%: $(MODULES_DIR)/% | set-executable
+$(MBUILD_DIR)/%: $(MODULES)/% | set-executable
 	mkdir -p $(dir $@)
-	$(TOOLS_DIR)/build_module $< $@
+	$(TOOLS)/build_module $< $@
 
 # Build a module with 'make $modulename'
 $(MODULES_REL): % : $(MBUILD_DIR)/%
 
 # Build all modules with 'make modules'
 .PHONY: modules
-modules: $(MODULES) set-executable
+modules: $(MODULES_) set-executable
 
 # Build a specific module with 'make module MODULE_NAME=<module_name>'
 .PHONY: module
 module: set-executable
 	mkdir -p $(dir $(MBUILD_DIR)/$(MODULE_NAME))
-	$(TOOLS_DIR)/build_module $(MODULES_DIR)/$(MODULE_NAME) $(MBUILD_DIR)/$(MODULE_NAME)
+	$(TOOLS)/build_module $(MODULES)/$(MODULE_NAME) $(MBUILD_DIR)/$(MODULE_NAME)
 
-# Install built modules to INCLUDEDIR/test
+# Install built modules to MODULES_DIR/test
 .PHONY: install-modules
-install-modules: $(MODULES)
-	@echo "Installing modules to $(INCLUDEDIR)/test..."
-	mkdir -p $(INCLUDEDIR)/test
-	cp -r $(MBUILD_DIR)/* $(INCLUDEDIR)/test
+install-modules: $(MODULES_)
+	@echo "Installing modules to $(MODULES_DIR)/test..."
+	mkdir -p $(MODULES_DIR)/test
+	cp -r $(MBUILD_DIR)/* $(MODULES_DIR)/test
 	@echo "Done."
 
 # Sign 'prod' modules and upload to webserver
 .PHONY: sign-and-release-modules
 sign-and-release-modules: $(wildcard $(SBUILD_DIR)/*)
 	@echo "Signing and uploading 'prod' modules to moduleserver..."
-	$(TOOLS_DIR)/sign_module -t2p
+	$(TOOLS)/sign_module -t2p
 
 # Sign 'test' modules and upload to webserver
 .PHONY: sign-and-release-test-modules
 sign-and-release-test-modules: $(wildcard $(SBUILD_DIR)/*)
 	@echo "Signing and uploading 'test' modules to moduleserver..."
-	$(TOOLS_DIR)/sign_module -t2t
+	$(TOOLS)/sign_module -t2t
 
 # Sign 'prod' modules and upload to webserver
 .PHONY: sign-and-release-all-modules
 sign-and-release-all-modules: $(wildcard $(SBUILD_DIR)/*)
 	@echo "Signing and uploading 'prod' modules to moduleserver..."
-	$(TOOLS_DIR)/sign_module -p -a -y
+	$(TOOLS)/sign_module -p -a -y
 
 # Sign 'test' modules and upload to webserver
 .PHONY: sign-and-release-all-test-modules
 sign-and-release-all-test-modules: $(wildcard $(SBUILD_DIR)/*)
 	@echo "Signing and uploading 'test' modules to moduleserver..."
-	$(TOOLS_DIR)/sign_module -t -a -y
+	$(TOOLS)/sign_module -t -a -y
 
 # Clean build directory
 .PHONY: clean
 clean:
 	@echo "Cleaning up..."
-	rm -rf $(BUILD_DIR)
+	rm -rf $(BUILD)
 	@echo "Done."
 

@@ -23,7 +23,7 @@ PHP_ALTERNATIVES_BASHLIB=:
 . <(lrequire fstring)
 . <(lrequire today)
 . <(lrequire php/versions)
-# TODO <-- 0
+# TODO 0 <--
 ## PHP related:
 # $1=grep -E search string: "ph(ar|p)"
 # $2=modus manual/auto
@@ -56,7 +56,7 @@ switch_php_to_(){
     set_selections "ph(ar|p)" "manual" "${PHP[vregex]/)/|\\.default)}" "$1"
 # TODO 2 -->
 #    q0 ${X[apt-mark]} hold $(${X[dpkg]} -l | ${X[gawk]} '/^[hiu]i.*php*/{print $2}')
-# TODO <-- 2
+# TODO 2 <--
 }
 
 list_alternatives(){
@@ -102,6 +102,6 @@ cleanup_and_fix_alternatives(){
         q0 ${X[update-alternatives]} --force --all < <(${X[yes]} '')
 # TODO 4 -->
 #        ${X[yes]} '' | ${X[update-alternatives]} --force --all &>$NUL
-# TODO <-- 4
+# TODO 4 <--
     fi
 }

@@ -12,7 +12,7 @@ TEMPFILE_BASHLIB=:
 
 # TODO 0 -->
 #    . <(lrequire binaries)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire exit)
 
 chrf(){
@@ -34,7 +34,7 @@ tf(){
     t="$(${X[mktemp]} -p ${D[$dir]} -${u}t ${M[b]}${M[pid]}_XXXXXXXXXXXX)"
 # TODO 1 -->
 #    t="$(${X[mktemp]} -p $TD -${u}t ${M[b]:-$$}_XXXXXXXXXXXX)"
-# TODO <-- 1
+# TODO 1 <--
     if [ -z "$u" ]; then
         if [ -n "$mode" ]; then
             ${X[chmod]} $mode "$t"

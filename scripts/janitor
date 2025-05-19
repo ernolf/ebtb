@@ -78,4 +78,4 @@ exit0
 #[[ $(q2 declare -p NC) =~ 'declare -A' ]] && cdir=${NC[cd]} || cdir=${HTTPD_NC_DIR[0]/%//config}
 #[ -d "$cdir" ] && config2json "$cdir" | ${X[jq]} .
 
-# TODO <-- 1
+# TODO 1 <--

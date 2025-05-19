@@ -14,7 +14,7 @@ DB_BASHLIB=:
 . <(lrequire spinner)
 . <(lrequire nc/nextcloud)
 . <(lrequire nc-apps/github_api)
-# TODO <-- 0
+# TODO 0 <--
 # used (globaly) by database:
 B[database_created]=_
 
@@ -144,7 +144,7 @@ create_database(){
 # TODO 1 -->
 #TODO: create tests if up to date
 #    [ -f "$db" ] && return 0
-# TODO <-- 1
+# TODO 1 <--
     spinner GRAY " . . . . . . . . . . . . . . .  create  database  . . . . . . . . . . . . . . ." &
     init_db
 
@@ -164,14 +164,14 @@ create_database(){
 #    case $latest in
 #        v28.0.0rc1) version="28.0.0.7" versionstring="28.0.0 RC1";;
 #        *)
-# TODO <-- 2
+# TODO 2 <--
         version_php="$(tf)"
         ${X[curl]} -so "$version_php" "${NC[github_raw]}/server/$latest/version.php"
         version="$(nc_version_ short $version_php)"
         versionstring="$(nc_version_ string $version_php)"
 # TODO 3 -->
 #    esac
-# TODO <-- 3
+# TODO 3 <--
 
         local -a parts=(${version//./ })
         major="${parts[0]}" minor="${parts[1]}"

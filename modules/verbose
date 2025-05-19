@@ -15,7 +15,7 @@ VERBOSE_BASHLIB=:
 . <(lrequire button)
 . <(lrequire exit)
 . <(lrequire anykey)
-# TODO <-- 0
+# TODO 0 <--
 # error handling
 error(){
     if ! ${B[quiet]:-_}; then

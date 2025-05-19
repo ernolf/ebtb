@@ -12,7 +12,7 @@ INTERVAL_BASHLIB=:
 
 # TODO 0 -->
 . <(lrequire binaries)
-# TODO <-- 0
+# TODO 0 <--
 . <(lrequire today)
 
 # d=Date n=Newer o=Older f=Formated ut=UnixTime t=Today iy=IntervalYears im=IntervalMonths id=IntervalDays m=Month y=Year
