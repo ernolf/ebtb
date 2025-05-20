@@ -46,6 +46,6 @@ NC[version_tag]="$(nc_version_ tag "${NC[vphp]}")"
 NC[min_version]="${LATEST_EOL[0]}"
 
 declare -p NC > "${F[nc]}"
-${X[chown]} "${NC[u]}":"${NC[u]}" "${F[nc]}"
+${X[chown]} "${NC[u]}":"${NC[g]}" "${F[nc]}"
 ${X[chmod]} 666 "${F[nc]}"
 

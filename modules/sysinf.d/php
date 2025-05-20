@@ -79,7 +79,7 @@ sysinf_php_ext_file_create(){
 }
 
 sysinf_php_apache2_vals() {
-    local pv mode apache_dir ext_file phpmodule
+    local pv mode apache_dir ext_file phpmodule a_user a_group
     local -i port
     local -A bool
     pv="$1" mode="$2" apache_dir=$(${X[mktemp]} -d) port=8080 # bool[debug]=:
@@ -120,7 +120,9 @@ foreach(ini_get_all() as $k => $v) {
 }
 ?>
 EOF
-    ${X[chown]} -R www-data:www-data $apache_dir
+    a_user="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/User:/ { print $3 }')"
+    a_group="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/Group:/ { print $3 }')"
+    ${X[chown]} -R $a_user:$a_group $apache_dir
     if ${bool[debug]:-_}; then
         exec 3>&1 4>&2  # Save the original stdout and stderr
         exec > $TTY 2>&1  # Redirect both stdout and stderr to $TTY

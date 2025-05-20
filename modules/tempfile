@@ -18,7 +18,7 @@ TEMPFILE_BASHLIB=:
 chrf(){
     ${X[find]} $1 -type d -exec ${X[chmod]} -f 777 {} +
     ${X[find]} $1 -type f -exec ${X[chmod]} -f 666 {} +
-    ${B[rt]} && [[ $2 ]] && ${X[chown]} -R $2:$2 $1
+    ${B[rt]} && [[ $2 ]] && ${X[chown]} -R $2:${3:-$2} $1
 }
 
 # tempfile creation $1=u (--dry-run)

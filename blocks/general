@@ -15,7 +15,7 @@ mkld(){
 chrf(){
     ${C[fi]} $1 -type d -exec ${C[cm]} 777 {} +
     ${C[fi]} $1 -type f -exec ${C[cm]} 666 {} +
-    ${B[rt]} && [[ $2 ]] && ${C[co]} $2:$2 $1
+    ${B[rt]} && [[ $2 ]] && ${C[co]} $2:${3:-$2} $1
 }
 fn_ln(){
     local ln fn f t

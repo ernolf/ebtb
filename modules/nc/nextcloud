@@ -28,7 +28,7 @@ fi
 
 [[ $(q2 declare -p NC) =~ 'declare -A' ]] || { declare -gA NC 2>$NUL || declare -A NC; }
 
-if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z "${NC[dg]}" || -z "${NC[u]}" || -z "${NC[vphp]}" ]]; then
+if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z "${NC[dg]}" || -z "${NC[u]}" || -z "${NC[g]}" || -z "${NC[vphp]}" ]]; then
     if ${B[aio]}; then
         NC[d]="/var/lib/docker/volumes/nextcloud_aio_nextcloud/_data"
         NC[cd]="${NC[d]}/config" # NC_CDIR
@@ -47,15 +47,18 @@ if [[ -z "${NC[d]}" || -z "${NC[cd]}" || -z "${NC[dd]}" || -z "${NC[du]}" || -z 
                 # pick out NC[u]
                 if (( $(${X[stat]} -c %u ${NC[cd]}/config.php 2> >(log_trace)) )); then
                     NC[u]="$(${X[stat]} -c %U ${NC[cd]}/config.php 2> >(log_trace))"
+                    NC[g]="$(${X[stat]} -c %G ${NC[cd]}/config.php 2> >(log_trace))"
                 fi
             elif [[ "${NC[du]}" = root && "${NC[dg]}" != root ]]; then
                 NC[u]=${NC[dg]}
             fi
         fi
 
-        # if NC[u] still unknown, try these fallbacks:
+        # if NC[u] and/or NC[g] still unknown, try these fallbacks:
         [ -n "${NC[u]}" ] || NC[u]="$(${X[ps]} -o user $(${X[pgrep]} -f "php|apache2|httpd|nginx") | ${X[gawk]} 'NR>1' | ${X[sort]} -u | ${X[grep]} -v root)"
+        [ -n "${NC[g]}" ] || NC[g]="$(${X[ps]} -o group $(${X[pgrep]} -f "php|apache2|httpd|nginx") | ${X[gawk]} 'NR>1' | ${X[sort]} -u | ${X[grep]} -v root)"
         [ -n "${NC[u]}" ] || NC[u]="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/User:/ { print $3 }')"
+        [ -n "${NC[g]}" ] || NC[g]="$(q2 ${X[apache2ctl]} -S | ${X[gawk]} -F '[" ]' '/Group:/ { print $3 }')"
 
         # only load firstrun module if needed
         if [ ! -d "${NC[d]}" ]; then
@@ -85,7 +88,7 @@ q0 declare -p NC_DIR && [[ $NC_DIR != ${NC[d]} ]] && ${B[rt]} && setvdir v "${NC
 
 [ -n "${NC[github_raw]}" ] || NC[github_raw]='https://raw.githubusercontent.com/nextcloud'
 
-declare -p NC > "${F[nc]}"
-${X[chown]} "${NC[u]}":"${NC[u]}" "${F[nc]}"
+mh $(declare -p NC | ${X[tee]} "${F[nc]}")
+${X[chown]} "${NC[u]}":"${NC[g]}" "${F[nc]}"
 ${X[chmod]} 666 "${F[nc]}"
 

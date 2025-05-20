@@ -124,11 +124,11 @@ ${B[debug]} && { echo -e "app_id = $app_id\nfile = $file\npath = $path\nversion_
 
     if (($(${X[curl]} -so "$tempfile" -w %{http_code} "$url1") == 200)); then
         mv "$tempfile" "${NC[d]}/$path"
-        chown "${NC[u]}:${NC[u]}" "${NC[d]}/$path"
+        chown "${NC[u]}:${NC[g]}" "${NC[d]}/$path"
         echo "download of '$file' from '$url1' succeeded"
     elif (($(${X[curl]} -so "$tempfile" -w %{http_code} "$url2") == 200)); then
         mv "$tempfile" "${NC[d]}/$path"
-        chown "${NC[u]}:${NC[u]}" "${NC[d]}/$path"
+        chown "${NC[u]}:${NC[g]}" "${NC[d]}/$path"
         echo "download of '$file' from '$url2' succeeded"
     else
         echo "download of '$path' failed. You must check this one yourself"
