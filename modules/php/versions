@@ -44,7 +44,7 @@ declare -gA SAPI &>$NUL || declare -A SAPI
 [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
 [ -n "${X[php]}" ] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')" || no_php
 declare -p PHP > "${F[php]}"
-mh "$(fn_ln) PHP[v]: ${PHP[v]}"
+binaries_is_func_ mh && mh "$(fn_ln) PHP[v]: ${PHP[v]}"
 
 EXG=(
 #   [ver]="api;end of life;end of support;supported nextcloud versions"

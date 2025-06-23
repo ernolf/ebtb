@@ -29,7 +29,7 @@ sysinf_nextcloud(){
     if (( "${#HTTPD_NC_DIR[@]}" )); then
         SYSINF+=("title httpd configured directories with a nextcloud installation:")
     else
-        mapfile -t HTTPD_NC_DIR< <(q2 ${X[find]} -L /var /srv -name occ -type f -exec dirname {} \; | ${X[grep]} -Ev '(/updater-oc|/overlay)' | ${X[sort]})
+        mapfile -t HTTPD_NC_DIR< <(q2 ${X[find]} -L /var /srv \( -path /var/tmp -prune \) -o -name occ -type f -exec dirname {} \; | ${X[grep]} -Ev '(/updater-oc|/overlay)' | ${X[sort]})
         (( "${#HTTPD_NC_DIR[@]}" )) && SYSINF+=("title httpd detected nextcloud directories (none configured):")
     fi
     (( "${#HTTPD_NC_DIR[@]}" )) && SYSINF+=("true $(p_sort_numerate "${HTTPD_NC_DIR[@]}")")

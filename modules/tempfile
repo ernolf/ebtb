@@ -69,8 +69,8 @@ ${FP_BASHLIB:-_} || {
     D[lu]="/run/lock/user"    # lock dir for user /run/lock/user        1777 root root  created in tempdir
     D[vt]="/var/tmp/${M[p]}"  # /var/tmp dir      /var/tmp/ebtb         0777 root root  created in general
     D[vtm]="${D[vt]}/modules" # /var/tmp dir      /var/tmp/ebtb/modules 1777 root root  created in general
-    D[shm]="/dev/shm/${M[p]}" # shm dir           /dev/shm/ebtb         1777 root root  created in fp
-    for x in tu:1 tp:1 log:1 lu:1 vt:0 vtm:1 shm:1; do
+    D[shm]="/dev/shm/${M[p]}" # shm dir           /dev/shm/ebtb         0777 root root  created in fp
+    for x in tu:1 tp:1 log:1 lu:1 vt:0 vtm:1 shm:0; do
         if [ -d "${D[${x%:*}]}" ]; then
             ${X[chmod]} -f ${x#*:}777 ${D[${x%:*}]}
             ${B[rt]} && ${X[chown]} -f 0:0 ${D[${x%:*}]}

@@ -89,6 +89,6 @@ q0 declare -p NC_DIR && [[ $NC_DIR != ${NC[d]} ]] && ${B[rt]} && setvdir v "${NC
 [ -n "${NC[github_raw]}" ] || NC[github_raw]='https://raw.githubusercontent.com/nextcloud'
 
 mh $(declare -p NC | ${X[tee]} "${F[nc]}")
-${X[chown]} "${NC[u]}":"${NC[g]}" "${F[nc]}"
+${B[rt]} && ${X[chown]} 0:0 "${F[nc]}"
 ${X[chmod]} 666 "${F[nc]}"
 

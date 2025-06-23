@@ -160,13 +160,12 @@ log_trace(){
     trace=${trace/switch_default_version():197:->q0():25:->di():4:/afterwards}
     if (( $# )); then
         # if arguments are provided, treat them as a single message
-        msg="$*"
-        mh "$trace ${msg/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
+        mh "$trace $*"
     else
         # else read from stdin
         while IFS= read -r msg; do
             [[ $msg =~ ^[[:space:]]*$ ]] && continue
-            mh "$trace ${msg/\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
+            mh "$trace $msg"
         done
     fi
 }

@@ -12,6 +12,7 @@ GITHUB_API_BASHLIB=:
 
 github_api(){
     local URL="https://api.github.com/repos/$1/$2?per_page=$3"
+    log_trace "$URL"
     case $2 in
           tags) ${X[curl]} -s "$URL" | ${X[jq]} -r '.[] | .name'     | ${X[sed]} 's/^v//' | ${X[grep]} "^[0-9]\{1,2\}\.[0-9]\.[0-9]" # | ${X[grep]} -iv a
                 ;;

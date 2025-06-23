@@ -1,19 +1,22 @@
 # Update can be done by all but ${NC[u]}, since NC[u] normaly has no sudo rights.
-[[ "$*" =~ (-q|--quiet) ]] || {
-    if [ "${I[un]}" = "${NC[u]}" ]; then
-        if (( J[e] > M[e] )); then
-            V[upinf]="(update available)"
+# [[ "$*" =~ (-q|--quiet) ]] || {
+
+if [ "${I[un]}" = "${NC[u]}" ]; then
+    if (( J[e] > M[e] )); then
+        mh "$(fn_ln) update available"
+        V[upinf]="(update available)"
+        ${B[silent]} || {
             f
             ipf
             Yi
-            echo " A new version of this script is available.$(f; o3)Start this script again as user $(W)root$(Yi) if you want to update."
+            echo "A new version of this script is available.$(f; o3)Start this script again as user $(W)root$(Yi) if you want to update."
             N
             f
             anykey
-        elif (( J[e] == M[e] )); then
-            V[upinf]="(latest version)"
-        fi
-    else
-        my_update_check
+        }
+    elif (( J[e] == M[e] )); then
+        V[upinf]="(latest version)"
     fi
-}
+else
+    my_update_check
+fi

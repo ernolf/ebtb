@@ -1,6 +1,6 @@
 # set -euo pipefail
 # hide the cursor
-printf '\e[?25l'
+[[ $* == *-q* ]] || printf '\e[?25l'
 # and the trap to bring it back if the script is interupted
 trap "printf '\e[?25h'" 0
 declare A CMA MD ME MP MS NUL=/dev/null REQ TTY=/dev/tty x

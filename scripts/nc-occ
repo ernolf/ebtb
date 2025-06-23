@@ -40,6 +40,22 @@ B[include_all_options]=_
 B[include_help]=_
 B[help]=_
 
+shopt -s extglob
+for x in "$@"; do
+    case "$x" in
+   @(|-|--)php=*) if [[ " ${available_php_versions[*]} " =~ ${x#*=} ]]; then
+                      php_version="${x#*=}" NC_OCC_BASHLIB=_
+                      . <(lrequire nc/occ)
+                  else
+                      echo "$(Pbg) ERROR: php${x#*=} not found. $(N)"
+                  fi                                   ;;
+   @(|-|--)trace) B[trace]=:                           ;;
+               *) args+=("$x")
+    esac
+done
+set -- "${args[@]}"
+shopt -u extglob
+
 # Check for the arguments to include all options or just the help option
 for x in "$@"; do
     case "$x" in
@@ -77,6 +93,24 @@ help_(){
                 $(o 17; GRAY; format_string "re-run the first run wizard" 17; N)
 
 HELP
+    if ((${#alternative_php_versions[@]})); then
+        local plural
+        plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
+        ${X[cat]} << --PHP
+        $(O)--php=$(dY)PHP-VERSION$(N)
+                $(o 17; GRAY; format_string "invoke occ with another installed php version instead of the default $(C)${PHP[v]}" 17; N)
+--PHP
+        if [[ ${PHP[v]} != $php_version ]]; then
+        ${X[cat]} << --PHP
+                $(o 17; GRAY; format_string "actually used PHP-Version: $(C)$php_version" 17; N)
+--PHP
+        fi
+        ${X[cat]} << --PHP
+                $(o 17; GRAY; format_string "possible (installed) PHP-VERSION alternative$plural: $(listify_ C GRAY "${alternative_php_versions[@]}")" 17; N)
+                    $(o 20; Y; format_string "example: --php=$(dY)${alternative_php_versions[0]}" 20; N)
+
+--PHP
+    fi
 exit0
 }
 ${B[help]} && help_

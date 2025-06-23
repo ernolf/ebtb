@@ -13,8 +13,19 @@ LIST_BASHLIB=:
 . <(lrequire nc-apps/github_api)
 . <(lrequire nc-apps/db)
 
-
 V[appcount]=0
+
+list_not_restrictable_to_groups() {
+    (( ${#types[@]} )) || return 1
+    local type
+    for type in "${types[@]}"; do
+        case $type in
+            filesystem|prelogin|authentication|logging|prevent_group_restriction) return 0
+        esac
+    done
+    return 1
+}
+
 list(){
     local id var
     id="$1"
@@ -26,9 +37,9 @@ list(){
     for var in "${bools[@]}"; do bool[$var]=_; done #; unset -v bools
     # overwrite bools with parameter values
 # TODO 5 -->
-#    for var in "$@"; do bool[${var%=*}]=${var#*=}; done #; unset -v var
+#    for var in "$@"; do bool[$(varname "$var")]=$(varval "$var"); done #; unset -v var
 # TODO 5 <--
-    for var in "$@"; do bool[$(varname "$var")]=$(varval "$var"); done #; unset -v var
+    for var in "$@"; do bool[${var%=*}]=${var#*=}; done #; unset -v var
     # app meta data
     local info_xml apps_path tag name summary categories version userDocs adminDocs developerDocs repo issueTracker website created lastModified databases phpExtensions phpMinIntSize phpMin phpMax NCmin NCmax
     local -a types apps_paths
@@ -105,14 +116,14 @@ list(){
                 [ -f "${NC[d]}/$apps_path/$id/appinfo/info.xml" ] && info_xml="${NC[d]}/$apps_path/$id/appinfo/info.xml"
             done
             if ${bool[is_shipped]} && (( $(v2i ${NC[version]%.*}) != $(v2i ${NC[key]}) )); then
-                tag=$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")
+                tag="$(r_db "SELECT tag FROM versions WHERE platform == '$query_version';")"
                 local rawURLserver="${NC[github_raw]}/server/$tag/apps/$id/appinfo/info.xml"
                 local rawURLapp="${NC[github_raw]}/$id/$tag/appinfo/info.xml"
                 local github_info_xml="$(tf)"
                 if (( $(c -sD NULL -w %{http_code} -A $MS-${M[e]} -o $github_info_xml $rawURLserver) == 200 )); then
-                    info_xml=$github_info_xml
+                    info_xml="$github_info_xml"
                 elif (( $(c -sD NULL -w %{http_code} -A $MS-${M[e]} -o $github_info_xml $rawURLapp) == 200 )); then
-                    info_xml=$github_info_xml
+                    info_xml="$github_info_xml"
                 fi #; unset -v tag rawURLserver rawURLapp
             fi
             if [ ! -f "$info_xml" ]; then
@@ -127,62 +138,51 @@ list(){
                     exec $CMA
                 fi
             fi
-            name=$(${X[xmls]} -v "(//info/name)" "$info_xml" | ${X[sed]} '2,$d')
-            summary=$(${X[xmls]} -v "//info/summary[@lang='$lang']" "$info_xml" | ${X[sed]} '2,$d')
-            [ -n "$summary" ] || summary=$(${X[xmls]} -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml" | ${X[sed]} '2,$d')
+            name="$(${X[xmls]} -v "(//info/name)" "$info_xml")"; name="${name%%$'\n'*}"
+            summary="$(${X[xmls]} -v "//info/summary[@lang='$lang']" "$info_xml")"; summary="${summary%%$'\n'*}"
+            [ -n "$summary" ] || summary="$(${X[xmls]} -v "//info/summary[@lang='en' or not(@lang)]" "$info_xml")"; summary="${summary%%$'\n'*}"
             categories="$(${X[xmls]} -v "(//info/category)" "$info_xml" | ${X[tr]} '\n' ' ')"
-            version=$(${X[xmls]} -v "//info/version" "$info_xml" | ${X[sed]} '2,$d')
-            userDocs=$(${X[xmls]} -v "//info/documentation/user" "$info_xml" | ${X[sed]} '2,$d')
-            adminDocs=$(${X[xmls]} -v "//info/documentation/admin" "$info_xml" | ${X[sed]} '2,$d')
-            developerDocs=$(${X[xmls]} -v "//info/documentation/developer" "$info_xml" | ${X[sed]} '2,$d')
-            repo=$(${X[xmls]} -v "//info/repository" "$info_xml" | ${X[sed]} '2,$d;s|.git$||1')
-            issueTracker=$(${X[xmls]} -v "//info/bugs" "$info_xml" | ${X[sed]} '2,$d')
-            website=$(${X[xmls]} -v "//info/website" "$info_xml" | ${X[sed]} '2,$d')
-            databases=$(${X[xmls]} -m "//info/dependencies/database" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
-            phpExtensions=$(${X[xmls]} -m "//info/dependencies/lib" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")
-            phpMinIntSize=$(${X[xmls]} -v "//info/dependencies/php/@min-int-size" "$info_xml" | ${X[sed]} '2,$d')
-            phpMin=$(${X[xmls]} -v "//info/dependencies/php/@min-version" "$info_xml" | ${X[sed]} '2,$d')
-            phpMax=$(${X[xmls]} -v "//info/dependencies/php/@max-version" "$info_xml" | ${X[sed]} '2,$d')
-            NCmin=$(${X[xmls]} -v "//info/dependencies/nextcloud/@min-version" "$info_xml" | ${X[sed]} '2,$d')
-            NCmax=$(${X[xmls]} -v "//info/dependencies/nextcloud/@max-version" "$info_xml" | ${X[sed]} '2,$d')
+            version="$(${X[xmls]} -v "//info/version" "$info_xml")"; version="${version%%$'\n'*}"
+            userDocs="$(${X[xmls]} -v "//info/documentation/user" "$info_xml")"; userDocs="${userDocs%%$'\n'*}"
+            adminDocs="$(${X[xmls]} -v "//info/documentation/admin" "$info_xml")"; adminDocs="${adminDocs%%$'\n'*}"
+            developerDocs="$(${X[xmls]} -v "//info/documentation/developer" "$info_xml")"; developerDocs="${developerDocs%%$'\n'*}"
+            repo="$(${X[xmls]} -v "//info/repository" "$info_xml")"; repo="${repo%%$'\n'*}"; repo="${repo%.git}"
+            issueTracker="$(${X[xmls]} -v "//info/bugs" "$info_xml")"; issueTracker="${issueTracker%%$'\n'*}"
+            website="$(${X[xmls]} -v "//info/website" "$info_xml")"; website="${website%%$'\n'*}"
+            databases="$(${X[xmls]} -m "//info/dependencies/database" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")"
+            phpExtensions="$(${X[xmls]} -m "//info/dependencies/lib" -v "." -o " >= " -v "@min-version" -o ", " -n "$info_xml")"
+            phpMinIntSize="$(${X[xmls]} -v "//info/dependencies/php/@min-int-size" "$info_xml")"; phpMinIntSize="${phpMinIntSize%%$'\n'*}"
+            phpMin="$(${X[xmls]} -v "//info/dependencies/php/@min-version" "$info_xml")"; phpMin="${phpMin%%$'\n'*}"
+            phpMax="$(${X[xmls]} -v "//info/dependencies/php/@max-version" "$info_xml")"; phpMax="${phpMax%%$'\n'*}"
+            NCmin="$(${X[xmls]} -v "//info/dependencies/nextcloud/@min-version" "$info_xml")"; NCmin="${NCmin%%$'\n'*}"
+            NCmax="$(${X[xmls]} -v "//info/dependencies/nextcloud/@max-version" "$info_xml")"; NCmax="${NCmax%%$'\n'*}"
             ;;
         *)  :
     esac
 
     if [[ "$issueTracker" =~ github.com ]]; then
         if [[ "${issueTracker%/}" =~ /issues$ ]]; then
-            [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${X[sed]} 's|/issues$||1')
+            [ -n "$repo" ] || repo="${issueTracker%/}"; repo="${repo%/issues}"
         else
             issueTracker="${issueTracker%/}/issues"
         fi
     fi
-    [ -n "$repo" ] || repo=$(echo ${issueTracker%/} | ${X[sed]} 's|/issues$||1')
+    [ -n "$repo" ] || repo="${issueTracker%/}"; repo="${repo%/issues}"
     (( $(v2i ${NC[version]%.*}) != $(v2i ${NC[key]}) )) && section="$(get_applist_section_ $id)"
 
     if [ -z "$info_xml" ]; then
         if [[ "$repo" =~ github.com ]]; then
-            local url="$(${X[sed]} 's/github/raw.githubusercontent/' <<< "$repo")"
+            local url="${repo/github/raw.githubusercontent}"
             local github_info_xml=$(tf)
             for tag in "$version" "v$version" master main; do
                 if (( $(c -sD NULL -w %{http_code} -A $MS-${M[e]} -o $github_info_xml $url/$tag/appinfo/info.xml) == 200 )); then
-                    info_xml=$github_info_xml
+                    info_xml="$github_info_xml"
                     break
                 fi
             done
         fi
     fi
     [ -z "$info_xml" ] || mapfile -t types< <(${X[xmls]} -m "//types/*" -v "name()" -n "$info_xml")
-
-    not_restrictable_to_groups() {
-        (( ${#types[@]} )) || return 1
-        local type
-        for type in "${types[@]}"; do
-            case $type in
-                filesystem|prelogin|authentication|logging|prevent_group_restriction) return 0
-            esac
-        done
-        return 1
-    }
 
     known_issues(){ # Fixes and known issues
         case "$id" in
@@ -256,7 +256,7 @@ list(){
     fi
 
     # not restrictable to groups
-    if not_restrictable_to_groups; then
+    if list_not_restrictable_to_groups; then
         echo "$in $(O)$mid$(${bool[md]} || es 15)App can not be restricted to groups"
 # TODO 5 -->
 #    else
@@ -327,13 +327,13 @@ list(){
 
     # PHP extensions
     if [ -n "$phpExtensions" ]; then
-        phpExtensions="$(htmldecode $phpExtensions | ${X[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')"
+        phpExtensions="$(htmldecode $phpExtensions | sed_ 's/\s*>=\s*,/,/g;s/,\s*$//1')"
         echo "${in}php-Extensions$(N)$mid$(${bool[md]} || es 2)$phpExtensions"
     fi
 
     # Databases
     if [ -n "$databases" ]; then
-        databases=$(htmldecode $databases | ${X[sed]} 's/\s*>=\s*,/,/g;s/,\s*$//1')
+        databases="$(htmldecode $databases | sed_ 's/\s*>=\s*,/,/g;s/,\s*$//1')"
         echo "${in}Databases$(N)$mid$(${bool[md]} || es 7)$databases"
     fi
 

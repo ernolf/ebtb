@@ -252,6 +252,12 @@ sysinf_php_collect_config(){
     done
 }
 
+sysinf_php_systemctl_cat_php_asterisk(){
+    cd /root
+    systemctl cat php*
+    cd
+}
+
 sysinf_php(){
     local pv packages
     local -A bool
@@ -333,5 +339,8 @@ sysinf_php(){
         SYSINF+=("title installed PHP sapi:")
         # SYSINF+=("true $(${X[ansifilter]} <<< "$(list_installed_sapi quiet)")")
         SYSINF+=("true $(list_installed_sapi quiet)")
+
+        SYSINF+=("title systemctl cat php*")
+        SYSINF+=("true $(sysinf_php_systemctl_cat_php_asterisk)")
     }
 }

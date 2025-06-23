@@ -43,7 +43,7 @@ create_json_objects(){
     if ${B[bgjobs]}; then
         wait $job_ids
         kill_spinner_te0
-        if ${B[pager]}; then
+        if ${B[pager]} && ! ${B[silent]}; then
             echo "  json  objects  created"
             line '=' N 80
         fi
@@ -101,7 +101,10 @@ stock_up_arrays(){
     applist_json="$(r_db "SELECT json_data FROM app_lists WHERE section == 'global';")"
     ${bool[filtered_appstore]:-_} && mapfile -t availupd < "${tf[availupd]}"
     kill_spinner_te0
-    ${B[bgjobs]} && ${B[pager]} && { echo "  all arrays stocked up"; line '=' N 80; }
+    if ! ${B[silent]} && ${B[bgjobs]} && ${B[pager]}; then
+        echo "  all arrays stocked up"
+        line '=' N 80
+    fi
 }
 
 # Get different lists of apps from JSON format

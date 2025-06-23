@@ -27,7 +27,7 @@ detect_aio(){
     docker_names=()
     # detect if any docker containers are running on the host (without -a, because only running containers matter here)
     q2 ${X[docker]} ps --no-trunc --format=json > $docker_ps_json || :
-    mapfile -t docker_names < <(jq -r .Names $docker_ps_json)
+    mapfile -t docker_names < <(q2 ${X[jq]} -r .Names $docker_ps_json)
     if (( ${#docker_names[@]} )); then
         if [[ "${docker_names[@]}" =~ nextcloud-aio-mastercontainer && "${docker_names[@]}" =~ nextcloud-aio-nextcloud ]]; then
             B[aio]=: B[docker]=:

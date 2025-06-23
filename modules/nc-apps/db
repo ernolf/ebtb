@@ -20,17 +20,25 @@ B[database_created]=_
 
 declare runtime_etag db
 runtime_etag="${T[rte]}.000000"
-D[apps]="${D[vt]}/nc-apps-data"
+D[apps]="${D[vt]}/nc-apps-data/${NC[d]//\//_}"
 db="${D[apps]}/apps.db"
 
-[ -d "${D[apps]}" ] && q0 chrf "${D[apps]}" "${NC[u]}" "${NC[g]}"
+if [[ -d "${D[vt]}/nc-apps-data" ]]; then
+    cd "${D[vt]}/nc-apps-data"
+    [[ "$(pwd -P)" == "/var/tmp/${M[p]}/nc-apps-data" ]] && ${X[find]} . -maxdepth 1 -type f -delete &> >(log_trace)
+    cd
+    chrf "${D[vt]}/nc-apps-data" 0 &> >(log_trace)
+fi
+
+##[[ -d "${D[apps]}" ]] && chrf "${D[apps]}" "${NC[u]}" "${NC[g]}" &> >(log_trace)
+#[[ -d "${D[apps]}" ]] && chrf "${D[apps]}" 0 &> >(log_trace)
 
 q0 declare -p db_sleep || declare -r db_sleep=0.1
 q0 declare -p db_max_attempts || declare -ri db_max_attempts=10
 
 jsontf(){
     local t
-    t="$(${X[mktemp]} -p ${D[apps]} -t json_data_XXXXXXXXXXXX)"
+    t="$(${X[mktemp]} -p ${D[apps]} -t json_data_XXXXXXXXXXXX 2> >(log_trace))"
     ${X[chown]} "${NC[u]}":"${NC[g]}" "$t"
     ${X[chmod]} 666 "$t"
     echo "$t"
@@ -49,11 +57,13 @@ rebuild_db(){
 
 # initialise the SQLite-database-file, in case it does not exist
 init_db(){
-    [ -d "${D[apps]}" ] && q0 chrf "${D[apps]}" "${NC[u]}" || {
-        q0 ${X[mkdir]} -m 777 "${D[apps]}"
-        q0 ${X[chown]} "${NC[u]}":"${NC[g]}" "${D[apps]}"
+#    [ -d "${D[apps]}" ] && chrf "${D[apps]}" "${NC[u]}" "${NC[g]}" &> >(log_trace) || {
+    [ -d "${D[apps]}" ] && chrf "${D[apps]}" 0 &> >(log_trace) || {
+        ${X[mkdir]} -pm 0777 "${D[apps]}" &> >(log_trace)
+#        ${X[chown]} "${NC[u]}":"${NC[g]}" "${D[apps]}" &> >(log_trace)
     }
-    ${X[sqlite3]} "$db" <<SQL && { ${X[chown]} "${NC[u]}":"${NC[g]}" "$db"; ${X[chmod]} 666 "$db"; }
+#    ${X[sqlite3]} "$db" <<SQL && { ${X[chown]} "${NC[u]}":"${NC[g]}" "$db"; ${X[chmod]} 666 "$db"; }
+    ${X[sqlite3]} "$db" <<SQL && ${X[chmod]} 666 "$db"
     CREATE TABLE IF NOT EXISTS versions (platform TEXT PRIMARY KEY, major INTEGER, minor INTEGER, version TEXT, versionstring TEXT, tag TEXT, meta TEXT);
     CREATE TABLE IF NOT EXISTS shipped (platform TEXT PRIMARY KEY, json_data BLOB);
     CREATE TABLE IF NOT EXISTS categories (etag TEXT, lang TEXT, json_data TEXT);
@@ -121,6 +131,8 @@ SQL
 }
 
 create_database(){
+    ${B[database_created]} && return 0
+
     local -l latest
     local meta version_php version versionstring major minor item
 

@@ -39,7 +39,8 @@ mh(){
     local -A bool
     [[ "$-" =~ x ]] && { set +x; bool[debugx]=:; } || :
     local pl # payload
-    pl="$*"
+    pl="${*//\/usr\/bin\/env LC_ALL=C.UTF-8 \/usr\/bin\//}"
+    pl="${pl//\/usr\/bin\/env LC_ALL=C \/usr\/bin\//}"
     tofifo "${pl//\/usr\/bin\/env LC_MESSAGES=C \/usr\/bin\//}"
     ${bool[debugx]:-_} && set -x || :
     return 0

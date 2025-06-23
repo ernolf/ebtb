@@ -90,74 +90,12 @@ done
 : "${T[mje]:=${mje:-}}"
 : "${T[mjne]:=${mjne:-}}"
 
-# this is too dangerous:
-#[ -z "$HOME" ] && eval HOME=~
-#[[ "${D[li]}" = "${D[vt]}/modules/${M[c]}" && -d "$HOME/.${M[p]}" ]] && ${X[rm]} -fr -- "$HOME/.${M[p]}"
-
 # removed function for backwards compatibility:
 populate_pkgs_by_dpkg_array(){ :; }
 
-if (( M[e] <= 1741041000 )); then # 1738164268 ?
+if (( M[e] <= 1741041000 )); then
     echo -e "\n\n\e[31m - The current script version is to old for the integrated updater.\n   The integrated updater no longer works here because necessary\n   but meanwhile deprecated modules are no longer available.\n\n   Please run\n\n\e[37m     sudo\e[36m wget -O $ca_me https://global-social.net/script/$bm\n\n\e[31m   and start the script again if an update is not offered or fails.\e[0m\n\n" > /dev/tty
     exit 1
-fi
-
-if (( M[e] < 1739905000 )); then
-    # Create a nameref for BINARY named BINARIES
-    declare -n BINARIES=BINARY
-
-    # link legacy boolean variables to the coresponding new associative array "BOOL"
-    if ! q2 declare -p BOOL | grep -qs 'declare -A'; then
-        unset BOOL
-        q2 declare -gA BOOL || declare -A BOOL
-    fi
-    declare bool
-    declare -a bools
-    bools=(
-        # most comon
-        quiet verbose debug pager nopager bgjobs
-        # from general block
-        rt run2 irun2 do_update do_restore_backup do_integrity_check
-        # nc-apps
-        secondrun markdown supported unsupported use_json_all update_first allow_unstable
-        # nc-mimecheck
-        listmimes recursive dryrun enabled_user
-        # nc-sql
-        raw execute
-        # php-module-builder
-        firstrun remove force step module_is_built module_is_installed
-        # php-updater
-        help needforce nolts distrib_to_old distrib_to_new distrib_unknown
-        # nc-aio
-        AIO DOCKER
-    )
-    for bool in "${bools[@]}"; do
-        declare -n $bool=BOOL[${bool,,}]
-    done
-    unset -v bool bools
-fi
-
-#if (( epoch < 1739977000 )); then
-if (( M[e] < 1739977500 )); then
-    . <(lreq filter)
-    # do an extra check for old modules if not root. This was broken before this epoch
-    ${X[curl]} --compressed -o "${F[lmjn]}" -A "$(fp)$A" ${V[cargs]}/${F[rmj]}
-    if ${T[mje]}=$(json_etag "${F[lmj]}") && ${T[mjne]}=$(json_etag "${F[lmjn]}"); then
-        for mod in ${modules[@]}; do
-            ${BOOL[pager]} || printf "\r\e[K.. checking modules - $mod"
-            c4u "$mod"
-            . <(lreq $mod)
-        done
-    fi
-fi
-
-if (( M[e] < 1740340000 )); then
-    declare -n B=BOOL
-fi
-
-if (( M[e] < 1740748000 )); then
-    declare x; declare -A ID
-    for x in u un g gn G Gn; do I[$x]="$(${X[id]} -$x)"; done; unset -v x
 fi
 
 binaries_is_func_ mkld || mkld(){
@@ -171,20 +109,6 @@ binaries_is_func_ c || c(){
         ${X[curl]} --compressed "${@//NULL/\/dev\/null}"
     ) 200>"${D[l]}/curl"
 }
-
-if [[ -d "${D[log]}" && -d "${D[log]}files" ]]; then
-    ${X[rm]} -fr "${D[log]}files"
-fi
-
-# get rid of unused libraries in old directories
-if ${B[rt]}; then
-    if ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ebtb' /usr/local/bin; then
-        [ -d "/usr/local/include/ebtb" ] && ${X[rm]} -r "/usr/local/include/ebtb"
-    fi
-    if [[ "${D[li]}" =~ ebtb ]] && ! ${X[grep]} -qlr '${ca_dir%/\*}/include/ernolf' /usr/local/bin/; then
-        [ -d "/usr/local/include/ernolf" ] && ${X[rm]} -r "/usr/local/include/ernolf"
-    fi
-fi
 
 if (( M[e] < 1742900000 )); then
     PHP_VERSION="${PHP[v]}"

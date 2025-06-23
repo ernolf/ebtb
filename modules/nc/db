@@ -25,6 +25,19 @@ no_client_binary(){
     exit1
 }
 
+escape_mysql_password() {
+    local raw_pw tmp
+    raw_pw="$1"
+    # 1) Escape every backslash '\' → becomes '\\'
+    #    For example:  'abc\def'  →  'abc\\def'
+    tmp="${raw_pw//\\/\\\\}"
+    # 2) Escape every double quote '"' → becomes '\"'
+    #    For example:  'ab"cd'  →  'ab\"cd'
+    tmp="${tmp//\"/\\\"}"
+    # 3) Wrap the result in double quotes and print it
+    printf '"%s"' "$tmp"
+}
+
 # Database global:
 declare -gA DB
 
@@ -44,7 +57,7 @@ database_call(){
                 [[ -n ${X[mariadb]:-} ]] && my_client="${X[mariadb]:-}" || no_client_binary
             }
             local my_cnf=$(tf)
-            echo -e "[client]\nhost=${db[host]}\nuser=${db[user]}\npassword=${db[pass]}">$my_cnf
+            echo -e "[client]\nhost=${db[host]}\nuser=${db[user]}\npassword=$(escape_mysql_password "${db[pass]}")">$my_cnf
             db[utf8mb4]=$(nc_configkey mysql.utf8mb4)
             if ${db[utf8mb4]:-_}; then
                 db[dcs]="utf8mb4"

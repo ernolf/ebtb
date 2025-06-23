@@ -120,6 +120,8 @@ binaries_extra_treatments(){
     : ${BINARY[ansifilter]:=filter_ansi} &>$NUL
     # xmlstarlet invocation https://xmlstar.sourceforge.net/doc/UG/xmlstarlet-ug.html#idm47077139670224
     [ -z "${BINARY[xmlstarlet]:-}" ] || BINARY[xmls]="${BINARY[xmlstarlet]} sel -B -t" &>$NUL
+    ${B[quiet]:-_} && V[jq_nocolor]=' --monochrome-output' || :
+    [ -z "${BINARY[jq]:-}" ] || BINARY[jq]="${BINARY[jq]% --monochrome-output}${V[jq_nocolor]:-}" &>$NUL
 }
 
 # dispatcher function for "used" and "nullglob" (all) paths
@@ -206,7 +208,8 @@ if (( BINARIES_LIB_VERSION != BINARY_ARRAY_VERSION )); then
     BINARY=()
 fi
 
-binaries_bootstrap && binaries_load_ used && binaries_extra_treatments
+binaries_bootstrap && binaries_load_ used
+binaries_extra_treatments
 binaries_load_php
 binaries_file_create
 

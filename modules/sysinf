@@ -30,6 +30,7 @@ SYSINFAVAILABLEMODS=(
     [hypervisor]="Hypervisor"
     [id]="Machine-ID"
     [ip]="IP Address and Neighbourhood"
+    [jq]="jq Version"
     [locales]="Locales"
     [mem]="Mem-Info"
     [mount]="Mounted Filesystems"

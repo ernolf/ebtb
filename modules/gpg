@@ -187,7 +187,7 @@ gpg_assemble_key_() {
             stripped=$(gpg_2_asc "$source" | sed_ "/^${PGP[header_pub]}\$/d; /^${PGP[footer_pub]}\$/d; /^\$/d")
         else
             # Read the contents of a file containing (already armored)) asc data and strip from begin to  header and from footer to end
-            stripped=$(print_from_x_to_y_including "${PGP[header_pub]}" "${PGP[footer_pub]}" "$source" | sed_ 's/^[[:space:]]*\.?//g')
+            stripped=$(print_from_x_to_y_including "${PGP[header_pub]}" "${PGP[footer_pub]}" "$source" | sed_ 's/^\s*\.?//g')
             mapfile -t headers < <(gpg_map_headers pub "$stripped")
             stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$stripped")
         fi
@@ -196,7 +196,7 @@ gpg_assemble_key_() {
         stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$($source)")
     else
         # raw string input: strip any armor if present
-        stripped="$(sed_ 's/^[[:space:]]*\.?//g' "$source" '-')"
+        stripped="$(sed_ 's/^\s*\.?//g' "$source" '-')"
         mapfile -t headers < <(gpg_map_headers pub "$stripped")
         stripped=$(gpg_strip_armor_body ${#headers[@]} pub "$source")
     fi
@@ -267,7 +267,7 @@ gpg_extract_() {
     # 1) Strip leading whitespace and optional dot per line
     # 2) Feed to GPG via stdin, get machine-readable output
     output="$(
-        sed_ 's/^[[:space:]]*\.?//g' "$armor" '-' |
+        sed_ 's/^\s*\.?//g' "$armor" '-' |
         q2 ${X[gpg]} --batch --with-colons --import-options show-only --import -
     )"
     case "$what" in

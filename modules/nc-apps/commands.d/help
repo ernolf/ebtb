@@ -27,7 +27,6 @@ print_help(){
         r_b(){ :;}
     fi
     local phpversionoption=""
-    local -a alternative_php_versions=($(php_ver alternatives))
     if ((${#alternative_php_versions[@]})); then
         phpversionoption=" [ --php=PHP-VERSION ]"
     fi
@@ -133,10 +132,19 @@ $(nextcloud_logo)
    --trace                  debug the communication with the app store
 
 HELP
-    if ((${#alternative_php_versions[@]})); then
-        local plural="";[ ${#alternative_php_versions[@]} -gt 1 ]&&plural="s"
+    if (( ${#alternative_php_versions[@]} )); then
+        local plural
+        [ ${#alternative_php_versions[@]} -gt 1 ] && plural="s" || plural=""
         ${X[cat]} << --PHP >>$htf
-   --php=PHP-VERSION        use another installed php version for updates. Possible (installed) PHP-VERSION$plural: $(echo "${alternative_php_versions[@]}")
+   --php=PHP-VERSION        use another installed php version for updates instead of the default ${PHP[v]}
+--PHP
+        if [[ ${PHP[v]} != $php_version ]]; then
+        ${X[cat]} << --PHP >>$htf
+                            actually used PHP-VERSION: $php_version
+--PHP
+        fi
+        ${X[cat]} << --PHP >>$htf
+                            possible (installed) PHP-VERSION alternative$plural: $(listify '' "${alternative_php_versions[@]}")
                             example: --php=${alternative_php_versions[0]}
 
 --PHP

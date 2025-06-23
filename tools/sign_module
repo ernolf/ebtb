@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 declare -A bool
 bool[debug]=false
 bool[verbose]=false
@@ -46,9 +48,7 @@ for arg in "$@";do
         -a|--all|all)
             bool[all]=true
             ;;
-        *)
-            args+=("$arg")
-            ;;
+        *)  args+=("$arg")
     esac
 done
 set -- "${args[@]}" && unset -v arg args
@@ -62,8 +62,6 @@ if $LOCAL_SERVER; then
 else
     dir2_dest="$DATA_DIR/$target_modules_dir/${channel:?missing argument! (either -t2t|--test2test, -t2p|--test2prod, -t|--test or -p|--prod)}"
 fi
-
-version_sufix(){ ${X[sed]} -ne '/^# version 20/ s/:/./g' -e '/^# version 20/ s/ /_/g' -e '/^#_version_20/ s/#_version_/~/p' "$1"; }
 
 sign_(){
 #${bool[debug]} && set -x
@@ -90,27 +88,34 @@ sign_(){
     [ -d "${target_dir%/}" ] || ${X[mkdir]} -p "${target_dir%/}"
     # write lib with adapted path to target
     if [ "${channel:-test}" = 'test' ]; then
-        ${X[sed]} "s#@channel@#test#" "$lib" > "$target"
+        ${X[sed]} "s#@channel@#test#" "$lib" > "$target.new"
     else
-        ${X[sed]} "s#@channel@#prod#" "$lib" > "$target"
+        ${X[sed]} "s#@channel@#prod#" "$lib" > "$target.new"
     fi
-    echo "    target: \"$target\""
+    echo "    target: \"$target.new\""
     ${bool[debug]} && anykey
     # sign lib if not local server
-    $LOCAL_SERVER || ${X[gpg]} --yes --default-key $OpenPGP_Key --armor --detach-sign "$target"
+    $LOCAL_SERVER || { ${X[gpg]} --yes --default-key $OpenPGP_Key --armor --detach-sign --output "$target.asc.new"  "$target.new" || exit; }
     # create for json file
     epoch=$(epoch_ "$lib")
-    hash=$(${X[sha256sum]} "$target" | ${X[gawk]} '{printf $1}')
-    echo "$hash $libname" > "$target.sha256"
+    hash=$(${X[sha256sum]} "$target.new" | ${X[gawk]} '{printf $1}')
+    echo "$hash $libname" > "$target.sha256.new"
     # create json object without "size"
-    ${X[jq]} -n --compact-output --arg libname "$library" --arg epoch "$epoch" --arg hash "$hash" '{ name: $libname, etag: $epoch, hash: $hash }' > "$target.json"
+    ${X[jq]} -n --compact-output --arg libname "$library" --arg epoch "$epoch" --arg hash "$hash" '{ name: $libname, etag: $epoch, hash: $hash }' > "$target.json.new"
     return 0
 }
 
 scan_(){
+    echo
+    echo "  This is the last exit point"
+    echo "  continue only if everything looked good so far!"
+    echo
+    anykey
+    echo
+    manage_new_files "$dir2_dest" replace
     # create modules.json with epoch
     ${X[find]} $dir2_dest -type f -name "*.json" -exec ${X[jq]}  --compact-output --slurp '
-        . | { "etag": "'$epoch'", "modules": . }' {} + > $dir2_dest/modules.json
+        . | { "etag": "'$EPOCHSECONDS'", "modules": . }' {} + > $dir2_dest/modules.json
 
     $LOCAL_SERVER && { echo "Local server, nothing to scan"; return 0; }
 
@@ -123,24 +128,16 @@ bulk_(){
     local libname
 #    for libname in $(find $dir1_source -type f -exec sh -c 'head -n 1 "$1" | grep -qs "# BASHLIB"' _ {} \; -print); do
     ${X[find]} $dir1_source -type f -exec sh -c 'head -n 1 "$1" | grep -q BASHLIB' _ {} \; -print | while read -r libname; do
-        sign_ "${libname#$dir1_source/}"
+        libname="${libname#$dir1_source/}"
+        backup_ "$dir2_dest/$libname"
+        ${bool[debug]} && anykey
+        sign_ "$libname"
     done
 }
 
-check_if_dir_exists(){
-    if [ -d "$(${X[dirname]} "$1")" ]; then
-        echo "    - dir \"$(${X[dirname]} "$1")\" exists"
-    else
-        echo "    - dir \"$(${X[dirname]} "$1")\" does not exist"
-        echo "      create dir \"$(${X[dirname]} "$1")\""
-        ${X[mkdir]} -p $(${X[dirname]} "$1")
-    fi
-}
-
 test_2_(){
-    local backupdir libname lib backupsufix
+    local libname lib
     local -a difflibs
-    backupdir="$(${X[dirname]} $ca_dir)~backups/modules/$channel"
     mapfile -t difflibs< <(tools/compare_modules "$channel")
     if (( ${#difflibs[@]} )); then
         echo
@@ -151,20 +148,8 @@ test_2_(){
         echo
         anykey
         echo
-        [ -d "$backupdir" ] || ${X[mkdir]} -p "$backupdir"
         for libname in ${difflibs[@]}; do
-            echo "  - $libname"
-            lib="$dir2_dest/$libname"
-            if [ -f "$lib" ]; then
-                # backupsufix="$(date -d @$(stat -c %Y "$lib") "+~%F-%H%M")"
-                backupsufix="$(version_sufix "$lib")"
-                check_if_dir_exists "$backupdir/$libname$backupsufix"
-                echo "    copy \"$lib\" to \"$backupdir/$libname$backupsufix\""
-                ${X[cp]} -a "$lib" "$backupdir/$libname$backupsufix"
-            else
-                echo "    \"$lib\" does not exist."
-                check_if_dir_exists "$lib"
-            fi
+            backup_ "$dir2_dest/$libname"
             ${bool[debug]} && anykey
             sign_ $libname
         done
@@ -176,6 +161,8 @@ test_2_(){
     exit 0
 }
 
+manage_new_files "$dir2_dest" trap
+
 echo
 echo "  debug = ${bool[debug]} - yes = ${bool[yes]} - all = ${bool[all]} - channel = $channel"
 ${bool[all]} || echo "  libs to sign = $@"
@@ -183,13 +170,15 @@ echo -n "  OpenPGP_Key = "
 $LOCAL_SERVER && echo "(local server, no signing)" || echo "$OpenPGP_Key"
 echo "  source directory      = $dir1_source"
 echo "  destination directory = $dir2_dest"
-${bool[test2]} && test_2_ || {
+if ${bool[test2]}; then
+    test_2_
+else
     echo
     echo "  continue only if everything looks good here!"
     echo
     anykey
     echo
-}
+fi
 
 if ${bool[all]}; then
     bulk_

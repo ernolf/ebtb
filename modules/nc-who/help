@@ -91,4 +91,5 @@ BACKUP
   - $(W)${F[log]}$(N)
  $(line = dP a)
 LOG
+    exit0
 }

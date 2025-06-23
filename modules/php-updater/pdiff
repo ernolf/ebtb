@@ -37,11 +37,8 @@ packages_diff(){
     local -i i
     pvo="$1" pvn="$2"
     local -n C4EIBY4_pvo="C4EIBY4_${pvo//./}"
-# TODO 0 -->
-#    x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis xml zip)  ! igbinary and redis must be detected
-# TODO 0 <--
     # baseline modules vs. new-php defaults
-    x1=(apcu bcmath bz2 curl gd gmp intl mbstring xml zip) # includes
+    x1=(apcu bcmath bz2 curl gd gmp igbinary intl mbstring redis smbclient xml zip) # TODO: igbinary, redis and smbclient should be detected in a smarter way
     x2=(common json opcache readline) # excludes, since installed as dependecy
     # collect admin-installed module names
     if (( ${#EXTS_ADMIN[@]} )); then

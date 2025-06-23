@@ -29,8 +29,6 @@ __homedir__
 __vdirname__ NC_DIR
 modules=(verbose nc/nextcloud nc/occ nc/db $MS/mime_types $MS/help $MS/functions)
 __debug__
-# make module loading quiet if -q or --quiet is passed
-for a in "$@"; do [[ "$a" == '-q' || "$a" == '--quiet' ]] && B[pager]=:; done; unset -v a
 __when__
 __tempdir__
 __module_server__
@@ -46,7 +44,7 @@ contribute_(){
 [[ "$@" =~ (donat|contrib) ]] && contribute_
 
 declare -a bools vars
-bools=(listmimes recursive dryrun verbose debug quiet enabled_user)
+bools=(listmimes recursive dryrun verbose debug enabled_user)
 vars=(grepopts gg mimedetector options bool basepath nc_path tempfile iid blacklist listmimesoftype wom1 wom2)
 
 # set all ${bools[@]} to '_'
@@ -118,7 +116,7 @@ shopt -u extglob
 (( ${#args[@]} )) && set -- "${args[@]}" "$@"
 unset -v args
 
-options=$(${X[getopt]} -o dhl:qrv -l help,listmimes:,detector:,dryrun,recursive,quiet,verbose,debug -qn "$ME" -- "$@")
+options=$(${X[getopt]} -o dhl:rv -l help,listmimes:,detector:,dryrun,recursive,verbose,debug -qn "$ME" -- "$@")
 if (($?==0)); then
     eval set -- "$options"
     while :; do
@@ -146,10 +144,6 @@ if (($?==0)); then
                 ;;
             -r|--recursive)
                 B[recursive]=:
-                shift
-                ;;
-            -q|--quiet)
-                B[quiet]=:
                 shift
                 ;;
             -v|--verbose)

@@ -54,6 +54,8 @@ filter_utf(){
         s/\x{205F}//g;        # Medium Mathematical Space (M  SP)
         s/\x{2060}//g;        # Word Joiner (WJ)
     # Replace special Unicode characters:
+        s/\x{2018}/'/g;       # Replace LEFT SINGLE QUOTATION MARK with a single quote
+        s/\x{2019}/'/g;       # Replace RIGHT SINGLE QUOTATION MARK with a single quote
         s/\x{201C}/'/g;       # Replace LEFT DOUBLE QUOTATION MARK with a single quote
         s/\x{201D}/'/g;       # Replace RIGHT DOUBLE QUOTATION MARK with a single quote
         s/\x{2026}/.../g;     # Horizontal Ellipsis … to ...

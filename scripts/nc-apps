@@ -42,17 +42,23 @@ shopt -s extglob
 for x in "$@"; do
     case "$x" in
                secondrun) B[secondrun]=:                       ;;
-                  lang=*) lang="$(validate_language "${x#*=}")";;
-        --no?([_-])pager) B[nopager]=:                         ;;
-        --@(markdown|md)) B[markdown]=:                        ;;
-             --supported) B[supported]=:                       ;;
-           --unsupported) B[unsupported]=: B[use_json_all]=:   ;;
+                 --php=*) if [[ " ${available_php_versions[*]} " =~ ${x#*=} ]]; then
+                              php_version="${x#*=}" NC_OCC_BASHLIB=_
+                              . <(lrequire nc/occ)
+                          else
+                              echo "$(Pbg) ERROR: php${x#*=} not found. $(N)"
+                          fi                                   ;;
+          @(|-|--)lang=*) lang="$(validate_language "${x#*=}")";;
+     ?(-)-no?([_-])pager) B[nopager]=:                         ;;
+     ?(-)-@(markdown|md)) B[markdown]=:                        ;;
+          ?(-)-supported) B[supported]=:                       ;;
+        ?(-)-unsupported) B[unsupported]=: B[use_json_all]=:   ;;
                    --alt) B[use_json_all]=:                    ;;
  -u|--update?([_-])first) B[update_first]=:                    ;;
   --allow?([_-])unstable) B[allow_unstable]=:                  ;;
         ?(min_)version=*) NC[${x%=*}]="${x#*=}"                ;;
-      ?(--)rebuild[-_]db) ${B[database_created]} && rebuild_db ;;
-              ?(--)trace) B[trace]=:                           ;;
+   @(|-|--)rebuild[-_]db) ${B[database_created]} && rebuild_db ;;
+           @(|-|--)trace) B[trace]=:                           ;;
                        *) args+=("$x")
     esac
 done
@@ -71,8 +77,10 @@ while (( $# )); do
     case "$1" in
         appstore)
             shift
+            create_database
+#            stock_up_arrays filtered_appstore=_ all=:
             appstore platform=all "$@"
-            break 2
+            exit0
             ;;
         install_overwrite)
             B[database_created]=: B[nopager]=: V[command]="$1"
@@ -147,11 +155,17 @@ while (( $# )); do
             ${B[nopager]} && V[command]='print_help --cat'
             break 2
             ;;
-        --php=*)
-            [[ " ${available_php_versions[*]} " =~ ${1#*=} ]] && php_version="${1#*=}" || echo "$(Pbg) ERROR: php${1#*=} not found. $(N)"
-            shift
-            ;;
 # TODO 4 -->
+#        --php=*)
+#            if [[ " ${available_php_versions[*]} " =~ ${1#*=} ]]; then
+#                php_version="${1#*=}"
+#                NC_OCC_BASHLIB=_
+#                . <(lrequire nc/occ)
+#            else
+#                echo "$(Pbg) ERROR: php${1#*=} not found. $(N)"
+#            fi
+#            shift
+#            ;;
         *)  $@
             exit 0
 # TODO 4 <--
@@ -179,7 +193,7 @@ fi
 [[ "${V[command]}" =~ updat ]] && B[nopager]=:
 
 # create the database if it does not exist
-${B[database_created]} || create_database
+create_database
 
 if ${B[secondrun]} || ${B[nopager]:=_}; then
     line '-' GRAY 80 b1
@@ -192,7 +206,7 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     printf ", nopager = "
     ${B[secondrun]} && printf 'false' || { ${B[nopager]} && printf 'true' || printf 'false'; }
     echo ", lang = $lang"
-    echo "Versions: assumed = ${NC[version]}, is = ${NC[version_long]}, min = ${NC[min_version]}, php = $(php_ver)"
+    echo "Versions: assumed = ${NC[version]}, is = ${NC[version_long]}, min = ${NC[min_version]}, php = $php_version"
     line '-' GRAY 80
     line '=' N a
     ${B[markdown]} && V[command]="${V[command]} md=:"
@@ -202,15 +216,15 @@ if ${B[secondrun]} || ${B[nopager]:=_}; then
     ${V[command]} ${V[suppunsupp]}
 else
     if ${B[supported]}; then
-        exec $ME json=${J[o]} secondrun lang=$lang --supported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun --lang=$lang --php=$php_version --supported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     elif ${B[unsupported]}; then
-        exec $ME json=${J[o]} secondrun lang=$lang --unsupported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun --lang=$lang --php=$php_version --unsupported --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
 # TODO 6 -->
     elif ${B[use_json_all]}; then
-        exec $ME json=${J[o]} secondrun lang=$lang --alt --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun --lang=$lang --php=$php_version --alt --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
 # TODO 6 <--
     else
-        exec $ME json=${J[o]} secondrun lang=$lang --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
+        exec $ME json=${J[o]} secondrun --lang=$lang --php=$php_version --nopager min_version=${NC[min_version]} version=${NC[version]} ${V[command]} | ${X[less]} -R
     fi
     exit 0
 fi

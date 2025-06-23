@@ -116,6 +116,7 @@ my_update(){
         f
         pf; G; echo "Update was successfull. Please start script again"
         cleanup "${F[binary]}"
+        ansi_reset
         exit 0
     }
 }
@@ -126,24 +127,27 @@ my_update_check(){
     mh "$(fn_ln) J[e]=${J[e]}, M[e]=${M[e]}"
     if (( J[e] > M[e] )); then
         mh "$(fn_ln) update available"
-        f
-        o5; echo "A new version of this script is available."
-        while :; do
-            o5; echo "Press - [$(lG)u$(N)] for update - [$(Y)i$(N)] to ignore"
-            read -rsn 1 key
-            case "$key" in
-                u)  my_update
-                    ;;
-                i)  V[upinf]="(update available)"
-                    mh "$(fn_ln) V[upinf]=${V[upinf]}"
-                    (q0 di) &
-                    break
-            esac
-        done
+        # only update if not in silent mode
+        if ! ${B[silent]:-_}; then
+            f
+            o5; echo "A new version of this script is available."
+            while :; do
+                o5; echo "Press - [$(lG)u$(N)] for update - [$(Y)i$(N)] to ignore"
+                read -rsn 1 key
+                case "$key" in
+                    u)  my_update
+                        ;;
+                    i)  V[upinf]="(update available)"
+                        mh "$(fn_ln) V[upinf]=${V[upinf]}"
+                        (q0 di) &
+                        break
+                esac
+            done
+        fi
     elif (( J[e] <= M[e] )); then
         V[upinf]="(latest version)"
         mh "$(fn_ln) V[upinf]=${V[upinf]}"
-        (q0 di) &
+        ${B[silent]:-_} || (q0 di) &
     fi
 }
 

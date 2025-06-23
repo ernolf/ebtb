@@ -13,6 +13,7 @@ NC_OCC_BASHLIB=:
 . <(lrequire php/version)
 . <(require nc/aio)
 . <(require nc/c2j)
+. <(require nc/nextcloud)
 
 [ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
 
@@ -22,11 +23,14 @@ if ${B[aio]}; then
 else
     # detect, if apc is required for cli
     declare phpcli
-    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${X[grep]} -qs "apc.enable_cli"< <(${X[php$(php_ver)]} -i); then
-        phpcli="${X[php$(php_ver)]} --define apc.enable_cli=1"
+    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${X[grep]} -iqs '^apc.enable_cli => On => On$'< <(${X[php$php_version]} -i); then
+        phpcli="${X[php$php_version]} --define apc.enable_cli=1"
     else
-        phpcli="${X[php$(php_ver)]}"
+        phpcli="${X[php$php_version]}"
     fi
+    mh "nc/occ: \"nc_configkey memcache.local\" = '$(nc_configkey memcache.local 2>&1)'"
+    mh "nc/occ: \"grep '^apc.enable_cli => On => On$' \$(php$php_version -i)\" = '$(${X[grep]} -i '^apc.enable_cli => On => On$'< <(${X[php$php_version]} -i) 2>&1)'"
+    mh "nc/occ: phpcli = $phpcli"
     # the occ command call is saved under occ, adapted to the user and environment
     occ(){ $phpcli -f ${NC[d]}/console.php "$@"; }
     

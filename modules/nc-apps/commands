@@ -43,7 +43,7 @@ summary(){
 }
 
 all_apps(){
-    stock_up_arrays filtered_appstore=:
+    stock_up_arrays filtered_appstore=: all=:
     local all_endis app
     local -a local_args
     local -A bool
@@ -87,7 +87,11 @@ all_apps(){
                 shift
         esac
     done
-    ( ${bool[s]:-_} || ${bool[up:-_]} ) && [[ "$all_endis" =~ all|store ]] && all_endis=local
+    ( ${bool[s]:-_} || ${bool[up]:-_} ) && [[ "$all_endis" =~ all|store ]] && all_endis=local
+    log_trace "$(declare -p B)"
+    log_trace "$(declare -p bool)"
+    log_trace "$(declare -p local_args)"
+    log_trace "all_endis : $all_endis"
     for app in $(apps_ "$all_endis"); do
         search_matching_spinner
         if ${bool[s]:-_}; then     # only list the shipped apps

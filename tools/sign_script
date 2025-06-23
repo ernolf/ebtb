@@ -1,5 +1,7 @@
 #!/bin/bash
 
+set -euo pipefail
+
 # whoami, whereami
 # b=basename m=me a=absolute p=path ca=canonical
 declare bm apm me ca_me ca_dir
@@ -15,11 +17,9 @@ source tools/common_build_functions
 sign_(){
     local script scriptname target hash
     local -i size epoch
-
-    script="$1"
-    scriptname="$(${X[basename]} "$script")"
-
+    script="$1" scriptname="${1#$BUILD/$SCRIPTS/}"
     target="$DATA_DIR/$target_scripts_dir/$scriptname"
+    backup_ "$target"
 
     # first strip old signatures before signing
     echo "    strip old signature"
@@ -27,7 +27,7 @@ sign_(){
     ${X[sed]} -i -n '/^\(v\|verified\)=\(true\|false\)$/q;p' "$script"
 
     # sign script
-    ${X[gpg]} --yes --default-key $OpenPGP_Key --armor --detach-sign "$script"
+    ${X[gpg]} --yes --default-key $OpenPGP_Key --armor --detach-sign "$script" || exit
 
     # add "verified" flag for integrity test
     echo "    add 'v=false' flag for integrity test"
@@ -40,27 +40,36 @@ sign_(){
 
     # append signature and hash
     echo "    append new signature"
-    ${X[cat]} "$script.asc" >> "$script" && rm "$script.asc"
+    ${X[cat]} "$script.asc" >> "$script" && ${X[rm]} "$script.asc"
 
     # calculate size and (new) hash before copying to target
     epoch=$(epoch_ "$script")
     size=$(${X[stat]} -c%s  "$script")
-    hash=$(${X[sha256sum]} "$script" | awk '{printf $1}')
+    hash=$(${X[sha256sum]} "$script" | ${X[gawk]} '{printf $1}')
 
     # copy file to target
-    echo "    copy '$script' to '$target'"
-    ${X[cp]} "$script" "$target"
+    echo "    copy '$script' to '$target.new'"
+    ${X[cp]} "$script" "$target.new"
 
     # create json object
-    echo "    create json object '$target.json'"
+    echo "    create json object '$target.json.new'"
     ${X[jq]} -n --compact-output --arg scriptname "$scriptname" --arg epoch "$epoch" --arg size "$size" --arg hash "$hash" \
-      '{ name: $scriptname, epoch: $epoch, size: $size, hash: $hash }' > "$target.json"
+      '{ name: $scriptname, epoch: $epoch, size: $size, hash: $hash }' > "$target.json.new"
 }
 
 scan_(){
+    echo
+    echo "  This is the last exit point"
+    echo "  continue only if everything looked good so far!"
+    echo
+    anykey
+    echo
+    manage_new_files "$DATA_DIR/$target_scripts_dir" replace
     ${X[chown]} -R $HT_USER:$HT_USER "$DATA_DIR/$target_scripts_dir"
     occ files:scan --path="$target_scripts_dir"
 }
+
+manage_new_files "$DATA_DIR/$target_scripts_dir" trap
 
 (( $# )) && {
     echo "  signing this scripts"

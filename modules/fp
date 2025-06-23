@@ -36,8 +36,8 @@ D[log]="${D[tp]}/log"     # project log dir   /tmp/ebtb/log         1777 root ro
 D[lu]="/run/lock/user"    # lock dir for user /run/lock/user        1777 root root  created in tempdir
 D[vt]="/var/tmp/${M[p]}"  # /var/tmp dir      /var/tmp/ebtb         0777 root root  created in general
 D[vtm]="${D[vt]}/modules" # /var/tmp dir      /var/tmp/ebtb/modules 1777 root root  created in general
-D[shm]="/dev/shm/${M[p]}" # shm dir           /dev/shm/ebtb         1777 root root  created in fp
-for x in tu:1 tp:1 log:1 lu:1 vt:0 vtm:1 shm:1; do
+D[shm]="/dev/shm/${M[p]}" # shm dir           /dev/shm/ebtb         0777 root root  created in fp
+for x in tu:1 tp:1 log:1 lu:1 vt:0 vtm:1 shm:0; do
     if [ -d "${D[${x%:*}]}" ]; then
         ${X[chmod]} -f ${x#*:}777 ${D[${x%:*}]}
         ${B[rt]} && ${X[chown]} -f root:root ${D[${x%:*}]}
@@ -101,7 +101,7 @@ detect_hashed_file(){
     hash="$1" bool[echo]="$2"
     for item in $(cd ${D[shm]}; ${X[ls]}); do
         if [ -f "${D[shm]}/$item" ]; then
-            if [[ "$hash" =~ ${item%%_*} ]]; then
+            if [[ ${item%%_*} && "$hash" =~ ${item%%_*} ]]; then
                 ${bool[echo]} && echo "${D[shm]}/$item"
                 return 0
             fi

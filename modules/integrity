@@ -22,6 +22,7 @@ INTEGRITY_BASHLIB=:
 . <(lrequire cleanup)
 . <(lrequire ebtb)
 
+[[ :$PATH: =~ :$MD: ]] && D[ulb]=$MD
 : ${D[ulb]:=/usr/local/bin}
 : ${D[vts]:=${D[vt]}/scripts}
 
@@ -36,9 +37,31 @@ convene(){
         ${X[cmp]} -s "$MP" "${D[vts]}/${M[n]}" &> >(log_trace) &&
         ${X[rm]} -f -- "$MP" &> >(log_trace) &&
         mh "$(fn_ln) moved $MP to ${D[vts]}/${M[n]}"
-    [[ ${M[b]} != ${M[n]} ]] &&
-        ${X[ln]} -sfT "${D[vts]}/${M[n]}" "$MP" &> >(log_trace) &&
-        mh "$(fn_ln) created symlink: $MP -> ${D[vts]}/${M[n]}"
+    link="${D[ulb]}/${M[n]}"
+    if [[ ! -L "$link" || "$(${X[realpath]} "$link")" != "${D[vts]}/${M[n]}" ]]; then
+        ${X[ln]} -sfT "${D[vts]}/${M[n]}" "$link" &> >(log_trace) &&
+        mh "$(fn_ln) created symlink: $link -> ${D[vts]}/${M[n]}"
+        [[ $(${X[realpath]} "$link") = ${D[vts]}/${M[n]} ]] ||
+        mh "$(fn_ln) '${X[ln]} -sfT ${D[vts]}/${M[n]} $link' failed. 'realpath $link' = $(${X[realpath]} "$link")"
+    fi
+    if [[ ${M[b]} != ${M[n]} ]]; then # custom basename
+        link="${D[ulb]}/${M[b]}"
+        if [[ ! -L "$link" || "$(${X[realpath]} "$link")" != "${D[vts]}/${M[n]}" ]]; then
+            ${X[ln]} -sfT "${D[vts]}/${M[n]}" "$link" &> >(log_trace) &&
+            mh "$(fn_ln) created additional symlink with custom basename: $link -> ${D[vts]}/${M[n]}"
+            [[ $(${X[realpath]} "$link") = ${D[vts]}/${M[n]} ]] ||
+            mh "$(fn_ln) '${X[ln]} -sfT ${D[vts]}/${M[n]} $link' failed. 'realpath $link' = $(${X[realpath]} "$link")"
+        fi
+    fi
+    if [[ "$MD" != "${D[ulb]}" ]]; then # path not in PATH
+        link="$MP"
+        if [[ ! -L "$link" || "$(${X[realpath]} "$link")" != "${D[vts]}/${M[n]}" ]]; then
+            ${X[ln]} -sfT "${D[vts]}/${M[n]}" "$link" &> >(log_trace) &&
+            mh "$(fn_ln) created additional symlink in custom path: $link -> ${D[vts]}/${M[n]}"
+            [[ $(${X[realpath]} "$link") = ${D[vts]}/${M[n]} ]] ||
+            mh "$(fn_ln) '${X[ln]} -sfT ${D[vts]}/${M[n]} $link' failed. 'realpath $link' = $(${X[realpath]} "$link")"
+        fi
+    fi
     for script in "${D[vts]}"/*; do
         [[ -x "$script" && -f "$script" ]] || continue
         link="${D[ulb]}/$(${X[basename]} "$script")"
@@ -47,9 +70,6 @@ convene(){
             mh "$(fn_ln) created symlink: $link -> $script"
         fi
     done
-    if ! [[ $(${X[realpath]} "$MP") = ${D[vts]}/${M[n]} ]]; then
-        log_trace "'${X[ln]} -sfT ${D[vts]}/${M[n]} $MP' failed. 'realpath $MP' = $(${X[realpath]} "$MP")"
-    fi
     return 0
 }
 

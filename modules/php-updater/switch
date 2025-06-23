@@ -168,11 +168,13 @@ switch_default_version(){
                             f
                             anykey_noquit
                             cls
+# TODO 2 -->
 #                            f
 #                            echo "$(o3; Yi; format_string "Now, if everything has gone as expected so far – which I sincerely hope – it is probably the right moment to remind you, that $(lG)you committed yourself to make a contribution to the project by accepting the terms$(G)." 3; N)"
 #                            f
-#                            echo "$(o3; Yi; format_string "I'm not an employee nor a contractor of Nextcloud GmbH. I do this work out of passion and am completely dependent on your support. So, please consider making at least a small financial contribution to help cover my costs for this project, $(lG)especially if you've used this script for professional and/or commercial purposes$(G)." 3; N)"
+#                            echo "$(o3; Yi; format_string "I'm not an employee nor a contractor of Nextcloud GmbH. I do this work out of passion and am completely dependent on your support. So, please consider making a financial contribution to help cover my costs for this project, $(lG)especially if you've used this script for professional and/or commercial purposes$(G)." 3; N)"
 #                            anykey_noquit
+# TODO 2 <--
                             break
                         fi
             esac

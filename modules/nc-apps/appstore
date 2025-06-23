@@ -80,7 +80,7 @@ dl_appstore_json_db(){
         echo "curl command        - curl --compressed -D - -H \"If-None-Match: \$etag\" -s \$url" >$TTY
         echo "response header:" >$TTY
         echo "----------------" >$TTY
-        echo "$response" | ${X[sed]} '$d;/^[[:space:]]*$/d' >$TTY
+        echo "$response" | sed_ '$d;/^\s*$/d' >$TTY
         echo "----------------" >$TTY
         echo "http_code           - $http_code" >$TTY
         echo "new_etag / unix_etag- $new_etag / $new_unix_etag" >$TTY
@@ -127,6 +127,14 @@ appstore(){
     if ${B[trace]:-_}; then
         echo "==TRACE=start=" >$TTY
         print_stack_trace >$TTY
+        local iter
+        echo -n "global path values  -" >$TTY
+        for iter in ${!D[@]}; do echo -n " $iter=${D[$iter]}" >$TTY; done; echo >$TTY
+        echo -n "nextcloud values    -" >$TTY
+        for iter in ${!NC[@]}; do echo -n " $iter=${NC[$iter]}" >$TTY; done; echo >$TTY
+        echo -n "global bool values  -" >$TTY
+        for iter in ${!B[@]}; do echo -n " $iter=${B[$iter]}" >$TTY; done; echo >$TTY
+        unset iter
         if q2 declare -p bool | ${X[grep]} -qs '^declare -A'; then
             local iter
             echo -n "local bool values   -" >$TTY

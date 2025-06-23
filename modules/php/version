@@ -10,15 +10,21 @@ __license__
 ${PHP_VERSION_BASHLIB:-_} && return
 PHP_VERSION_BASHLIB=:
 
-php_ver(){
-    local php_version="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
-    local -a available_php_versions=($(q2 ${X[ls]} $(command -v php)[78].[0-4] | sed_ "s|$(command -v php)||g"))
-    local -a alternative_php_versions=($(echo "${available_php_versions[@]}"|${X[tr]} ' ' '\n'|${X[grep]} -v "^$php_version$"|${X[tr]} '\n' ' '))
+declare php_version
+declare -a available_php_versions alternative_php_versions
+[ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
+[ -n "${X[php]}" ] && PHP[v]="$(${X[php]} -r 'echo implode(".", array_slice(explode(".", PHP_VERSION), 0, 2));')"
+declare -p PHP > "${F[php]}"
+php_version="${PHP[v]}"
+available_php_versions=($(q2 ${X[ls]} $(command -v php)[578].[012346] | sed_ "s|$(command -v php)||g"))
+alternative_php_versions=($(echo "${available_php_versions[@]}"|${X[tr]} ' ' '\n'|${X[grep]} -v "^$php_version$"|${X[tr]} '\n' ' '))
 
+php_ver(){
+    [ -f "${F[php]:="${D[vt]}/php"}" ] && . "${F[php]}"
     if (($#)); then
         case "$1" in alternatives) echo "${alternative_php_versions[@]}"; esac
     elif (( ${#available_php_versions[@]} )); then
-        printf '%s' "$php_version"
+        printf '%s' "${PHP[v]}"
         return 0
     fi
 }

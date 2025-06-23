@@ -1,5 +1,6 @@
 declare NUL x # var for iterations
 declare -a unused_functions build_binaries
+declare -A B X
 
 NUL='/dev/null'
 _(){ false; }
@@ -23,12 +24,11 @@ binaries_realpath(){
 }
 
 # make unused functions quiet:
-unused_functions=(mh fn_ln require_arg required_args log_trace)
+unused_functions=(mh fn_ln require_arg required_args log_trace kill_spinner)
 for x in ${unused_functions[@]}; do eval "$x(){ :;}"; done
 
 # needed binaries for build process
-build_binaries=(basename cat chown cp date diff dirname find gawk grep gpg head jq mkdir mktemp php rm sed seq sha256sum shfmt sort stat sudo tail)
-declare -A X
+build_binaries=(basename cat chown cp date diff dirname find gawk grep gpg head jq mkdir mktemp mv php rm sed seq sha256sum shfmt sort stat sudo tail tee)
 X[env]="$(binaries_realpath "$(command -v env)") LC_ALL=C"
 for x in "${build_binaries[@]}"; do
     X[$x]="${X[env]} $(binaries_realpath $(command -v $x))"
@@ -188,7 +188,7 @@ placeholder_replace(){
             if $LOCAL_SERVER; then
                 MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
             fi
-            echo "M[p]='$PROJECT' M[n]='$name' MS='${name%-test}' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
+            echo "MS='${name%-test}' M[p]='$PROJECT' M[n]='$name' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
         libversion)
             echo "${name^^}_LIB_VERSION=$epoch"
@@ -278,4 +278,69 @@ epoch_(){
 
 occ(){
     ${X[sudo]} -u $HT_USER -E ${X[php]} -f "$NC_DIR/occ" "$@"
+}
+
+version_sufix(){
+    sed_ '/^# version 20/ s/:/./g; /^# version 20/ s/ /_/g; /^#_version_20/ s/#_version_/~/p' "$1"
+}
+
+check_if_dir_exists(){
+    local backupdir
+    backupdir="$(${X[dirname]} "$1")"
+    if [ -d "$backupdir" ]; then
+        echo "    - dir \"$backupdir\" exists"
+    else
+        echo "    - dir \"$backupdir\" does not exist"
+        echo "      create dir \"$backupdir\""
+        ${X[mkdir]} -p $backupdir
+    fi
+}
+
+backup_(){
+    local obj objname backupdir backupsufix
+    obj="$1"
+    objname=${obj#$ABSOLUTE_TARGET_DIR/} #  scripts/janitor or modules/test/nc-apps/commands.d/help
+    backupdir="$(${X[dirname]} $ca_dir)~backups"
+    echo "  - $objname"
+    if [ -f "$obj" ]; then
+        # backupsufix="$(date -d @$(stat -c %Y "$obj") "+~%F-%H%M")"
+        backupsufix="$(version_sufix "$obj")"
+        check_if_dir_exists "$backupdir/$objname"
+        echo "    copy \"$obj\" to \"$backupdir/$objname$backupsufix\""
+        ${X[cp]} -a "$obj" "$backupdir/$objname$backupsufix"
+    else
+        echo "    \"$obj\" does not exist."
+        check_if_dir_exists "$obj"
+    fi
+}
+
+# Cleanup trap variable
+declare -i CLEANUP_TRAP_SET=0
+manage_new_files() {
+    local dir action newfile origfile
+    dir="$1" action="$2"
+    [[ -z $dir || -z $action ]] && {
+        echo "Usage: manage_new_files <directory> <delete|replace>" >&2
+        return 1
+    }
+    case "$action" in
+    delete) ${X[find]} "$dir" -type f -name '*.new' -exec ${X[rm]} -f -- {} +
+            ;;
+   replace) ${X[find]} "$dir" -type f -name '*.new' | while IFS= read -r newfile; do
+                origfile="${newfile%.new}"
+                ${X[mv]} -f "$newfile" "$origfile"
+            done
+            # remove trap after successful replacement
+            if (( CLEANUP_TRAP_SET )); then
+                trap - EXIT
+                CLEANUP_TRAP_SET=0
+            fi
+            ;;
+      trap) # set trap to delete all *.new files on exit
+            trap 'manage_new_files "'"$dir"'" delete' EXIT
+            CLEANUP_TRAP_SET=1
+            ;;
+        *)  echo "Invalid action: $action. Use delete, replace, or trap." >&2
+            return 1
+    esac
 }

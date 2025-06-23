@@ -31,11 +31,13 @@ hup_spinner(){
 
 # Function to display the spinning animation
 spinner(){
+    # if --silent was passed, return without message
+    ${B[silent]:-_} && return 0
     if [ "$MS" = 'nc-apps' ]; then
-        # if no backgroundjobs, return without message
-        ${B[bgjobs]:-:} || return 0
-        # If pager, print message and return immediately
+        # If pager print message and return immediately
         ${B[pager]:-_} && { shift; (($#)) && echo "$@"; return 0; }
+        # if no backgroundjobs, print message and return immediately
+        ${B[bgjobs]:-:} || { shift; (($#)) && echo "$@"; return 0; }
     fi
     # If in verbose/trace/debug mode, print message and return immediately
     ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && { shift; (($#)) && echo "$@"; return 0; }
@@ -126,8 +128,8 @@ spinner(){
 
 # kill and clean up  spinner:
 kill_spinner(){
-    # there is nothing to kill while in verbose/trace/debug mode
-    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} && return 1
+    # there is nothing to kill while in verbose/trace/debug/silent mode
+    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} || ${B[silent]:-_} && return 0
 
     local cursor_status
     local -i ct pid
@@ -187,5 +189,7 @@ kill_spinner(){
 }
 
 kill_spinner_te0(){
+    # there is nothing to kill while in verbose/trace/debug/silent mode
+    ${B[verbose]:-_} || ${B[trace]:-_} || ${B[debug]:-_} || ${B[silent]:-_} && return 0
     kill_spinner && te0 || :
 }

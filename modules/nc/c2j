@@ -19,7 +19,7 @@ c2j_jq_filter(){
 # TODO 1 <--
     echo "$@" | ${X[jq]} -c '[.[] | .[]]
         | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
-        | reduce .[]as $item({};. * $item)'
+        | reduce .[]as $item({};. * $item)' 2> >(log_trace)
 }
 
 config2json(){
@@ -55,8 +55,8 @@ c2j(){
 
 nc_configkey(){
     if [[ -z ${config_json:-} ]]; then
-        config_json="$(config2json)"
-        ${X[jq]} -r ".[\"$1\"].value" <<< "$config_json"
+        config_json="$(config2json 2> >(log_trace))"
+        ${X[jq]} -r ".[\"$1\"].value" <<< "$config_json" 2> >(log_trace)
     fi
 }
 

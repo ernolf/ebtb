@@ -92,7 +92,7 @@ json_etag(){
     [[ -v C[jq] || -v X[jq] ]] && q2 ${C[jq]:-${X[jq]:-}} -r '.etag' "$1" || return 1
 }
 module_etag(){
-    ${C[jq]:-${X[jq]:-jq}} -r '.modules[]|select(.name=="'$1'")|.etag' $2
+    q2 ${C[jq]:-${X[jq]:-jq}} -r '.modules[]|select(.name=="'$1'")|.etag' $2
 }
 c4u(){
     local -u m="${1#*/}_BASHLIB"
@@ -123,10 +123,15 @@ lreq(){
 }
 lrequire(){ lreq $@; }
 V[astr]="${I[l]}: " M[url]=${M[home]%/apps/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
-bools=(run2 irun2 do_update do_restore_backup do_integrity_check firstrun)
+bools=(quiet silent pager check run2 irun2 do_update do_restore_backup do_integrity_check firstrun)
 for x in ${bools[@]}; do B[$x]=_; done
+${B[bgjobs]:=:} && { [[ -t 1 && ! -p /dev/stdout ]] || B[pager]=:; } # is piped to pager?
 for x in "$@"; do
+# Normalize various dash-like characters to ASCII dash (-)
+    x=${x//[‐‑–—﹣－]/-}
     case "$x" in
+# make module loading quiet and disable updater for machine readabilitity if -q or --quiet is passed
+        -q|--quiet)     B[quiet]=: B[silent]=: B[pager]=: TTY=/dev/null       ;;
         json=*)         B[run2]=: J[o]="${x#*=}" V[astr]="run2 ${V[astr]}"    ;;
         irun2)          B[irun2]=: V[astr]="irun2 ${V[astr]}"                 ;;
         my_update)      B[do_update]=: V[astr]="update ${V[astr]}"            ;;

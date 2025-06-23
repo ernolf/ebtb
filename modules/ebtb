@@ -10,6 +10,7 @@ __license__
 ${EBTB_BASHLIB:-_} && return
 EBTB_BASHLIB=:
 
+[[ :$PATH: =~ :$MD: ]] && D[ulb]=$MD
 : ${D[ulb]:=/usr/local/bin}
 : ${D[vts]:=${D[vt]}/scripts}
 
@@ -223,11 +224,11 @@ ebtb(){
     while :; do
         ebtb_list_scripts
         f 2
-            while :; do read -rsn 1 -p "Please make your choice: " key
+        while :; do read -rsn 1 -p "Please make your choice: " key
             if [ "${key,,}" = q ]; then
                 f
                 break 2
-            elif (( 0 < key && key <= ${#EBTB_SCRIPTS[@]} )) && ( ${bool[launch]} || ! [[ "$installed" =~ " $(( key - 1 )) " ]]); then
+            elif [[ $key =~ [0-9] ]] && (( 0 < key && key <= ${#EBTB_SCRIPTS[@]} )) && ( ${bool[launch]} || ! [[ "$installed" =~ " $(( key - 1 )) " ]]); then
                 if confirm_choice 2 "$key" "$(Y)You selected the $(C)${EBTB_SCRIPTS[key-1]}$channel$(Y) script. $(Yi)Is this correct?$(N)"; then
                     scriptname=${EBTB_SCRIPTS[key-1]}
                     if ${bool[launch]}; then
@@ -242,6 +243,8 @@ ebtb(){
                             echo "$(G; prompt; lB) $scriptname"; N
                             f
                             o3; echo "I hope you enjoy it a lot!"
+                            f
+                            contribute_cover_costs
                             f
                             while :; do
                                 qpf; if ask "Install another script" y; then
