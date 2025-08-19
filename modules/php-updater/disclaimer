@@ -16,7 +16,6 @@ disclaimer(){
 $(o 30)Privacy Notice
 $(o 30)==============
 
-$(o4; format_string "This isn't a simple script, but rather a remote maintenance service. It's continually being improved and adapted to meet your needs to ensure the most satisfactory result possible." 4 $max_cols)
 $(o4; format_string "Please note that use of this service is subject to the following terms and conditions. By using this service, you agree to these terms." 4 $max_cols)
 
     Contribution Requirement:
