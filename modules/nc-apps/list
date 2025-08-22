@@ -186,6 +186,11 @@ list(){
 
     known_issues(){ # Fixes and known issues
         case "$id" in
+            user_backend_sql_raw)
+                repo="https://github.com/alexeyabel/user_backend_sql_raw"
+                issueTracker="https://github.com/alexeyabel/user_backend_sql_raw/issues"
+                adminDocs="https://github.com/alexeyabel/user_backend_sql_raw/blob/master/README.md"
+                ;;
             discretepdfsigner)
                 website=""
                 repo="https://github.com/salonikumawat28/NextCloud_DiscretePDFSigner/tree/master/discretepdfsigner"
