@@ -85,6 +85,7 @@ while read pv mv; do built_module_versions[$pv]+="$mv "; done < <(find_built_mod
 
 ext_state cleanup
 ext_state fix
+separator
 
 [ "$#" -ne 2 ] && {
     echo "$(Pbg)Usage:$(B) $ME <php_version> <module> [--firstrun] [--remove] [--force] [--step]"
@@ -131,7 +132,7 @@ if ${B[remove]}; then
         ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm -r \"$project_dir/$project/$php_version/$module\""; }
         ${B[step]:-false} && anykey
         o2; B; echo "rm -r \"$project_dir/$project/$php_version/$module\""
-        cleanup "$project_dir/$project/$php_version/$module"
+        ${X[rm]} -fr -- "$project_dir/$project/$php_version/$module"
         ${B[quiet]} || { f; GRAY; echo "- next step:$(N) $(B)rm \"$extension_dir/$extension.{so,la}\""; }
         ${B[step]:-false} && anykey
         o2; B; echo "rm \"$extension_dir/$extension.{so,la}\""
@@ -139,6 +140,7 @@ if ${B[remove]}; then
         cleanup "$extension_include_dir/$module"
         module_ini
         ext_state purge "$module" "$php_version"
+        separator
     elif ${B[module_is_installed]}; then
         line ' ' Pbg 2/76 a0
         o4; echo "$(Pbg)php$php_version-$module is installed but there is no build directory in$(N)"
@@ -155,6 +157,7 @@ if ${B[remove]}; then
             cleanup "$extension_include_dir/$module"
             module_ini
             ext_state purge $module $php_version
+            separator
         else
             o 8; echo "$(Pbg)if you know what you are doing, you can remove the module and$(N)"
             line ' ' Pbg 2/76 a0
@@ -164,6 +167,7 @@ if ${B[remove]}; then
     else
         echo "$(Pbg)- php$php_version-$module is not installed on this box $(N)"
         ext_state purge $module $php_version
+        separator
         exit 1
     fi
 else
