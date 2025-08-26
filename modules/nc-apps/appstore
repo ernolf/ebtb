@@ -40,7 +40,7 @@ dl_appstore_json_db(){
               *) platformdir="/platform/$platform"
         esac
     fi
-    appstore_url="$appstore_api$platformdir"
+
     if [ "$unit" = 'apps' ]; then
         unix_etag="$(r_db "SELECT etag FROM apps WHERE platform = '$platform';")" # try to fetch ETag from database
         if [ "$platform" != "all" ]; then
@@ -66,10 +66,15 @@ dl_appstore_json_db(){
     else
         unix_etag="$(r_db "SELECT etag FROM $unit;")"
     fi
+    appstore_url="$appstore_api$platformdir"
+    # donwload the apps.json objects for EOL Plattforms from ${M[home]} server
+    if [[ " ${LATEST_EOL[*]} " =~ (^|[[:space:]])$platform($|[[:space:]]) ]]; then
+        appstore_url="${M[home]}$platformdir"
+    fi
     etag="\"$(u2e $unix_etag)\""
     response="$(${X[curl]} --compressed -D - -H "If-None-Match: $etag" -s $appstore_url/$unit.json)"
-    http_code="$(echo "$response" | ${X[head]} -n1 | ${X[gawk]} 'tolower($0)~/http\//{print $2}')"
     new_etag="$(echo "$response" | ${X[grep]} -ioPs 'etag: "\K[^"]+')"
+    http_code="$(echo "$response" | ${X[head]} -n1 | ${X[gawk]} 'tolower($0)~/http\//{print $2}')"
     new_unix_etag="$(e2u "$new_etag")"
 
     if ${B[trace]:-_}; then
@@ -86,7 +91,12 @@ dl_appstore_json_db(){
         echo "new_etag / unix_etag- $new_etag / $new_unix_etag" >$TTY
     fi
 
-    if (( http_code == 200 )); then
+    if (( http_code == 429 )); then
+        kill_spinner
+        echo "  apps.nextcloud.com returned - \"429 Too Many Requests\"" >$TTY
+        echo "  Your IP address have been banned for 1 hour. Please try again later" >$TTY
+        kill -TERM ${M[pid]}
+    elif (( http_code == 200 )); then
         if [ "$unit" = "apps" ]; then
             local json_data_file="$(jsontf)"
 
