@@ -15,9 +15,9 @@ declare config_json
 c2j_jq_filter(){
 # TODO 1 -->
 # as oneliner:
-# echo "$@"|${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
+# ${X[jq]} -c '[.[]|.[]]|map(. as $item|{($item.key):{key:$item.key,value:$item.value}})|reduce .[]as $item({};. * $item)'
 # TODO 1 <--
-    echo "$@" | ${X[jq]} -c '[.[] | .[]]
+    ${X[jq]} -c '[.[] | .[]]
         | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
         | reduce .[]as $item({};. * $item)' 2> >(log_trace)
 }
@@ -43,9 +43,9 @@ config2json(){
     echo json_encode($c);
     ?>'
     if nonullglob "$cdir/*\.config.php"; then
-        c2j_jq_filter $(echo "$C2J" | ${X[php]} -- $cdir/config.php $cdir/*.config.php)
+        echo "$C2J" | ${X[php]} -- $cdir/config.php $cdir/*.config.php | c2j_jq_filter
     else
-        c2j_jq_filter $(echo "$C2J" | ${X[php]} -- $cdir/config.php)
+        echo "$C2J" | ${X[php]} -- $cdir/config.php | c2j_jq_filter
     fi
 }
 
