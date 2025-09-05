@@ -1,0 +1,423 @@
+#!/usr/bin/env -S LC_CTYPE=C.UTF-8 LC_MESSAGES=C bash
+# /usr/local/bin/nc-cron-logger
+#
+# Copyright (c) 2025 [ernolf] Raphael Gradenwitz
+# Email raphael.gradenwitz<at>googlemail.com
+#
+# This script may be freely used, modified, and distributed, provided
+# that credit is given to the original author, [ernolf] Raphael Gradenwitz.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+# EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+# MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NON-INFRINGEMENT.
+# IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY
+# CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
+# TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+set -euo pipefail
+
+# Please report issues here: https://github.com/ernolf/ebtb/issues
+# -------------------------
+# Installation
+# -------------------------
+# 1) requires `jq` to be installed.
+#    On debian or ubuntu run: apt install jq
+#
+# 2) locate this file to `/usr/local/bin/nc-cron-logger`
+#
+# 3) make the script to be owned by root
+#    sudo chown root:root /usr/local/bin/nc-cron-logger
+#
+# 4) make the script executable
+#    sudo chmod +x /usr/local/bin/nc-cron-logger
+#
+# 5) configure these vars to your needs:
+#
+# Nextcloud installation directory:
+NC_DIR="/var/www/nextcloud"
+#
+# Log directory (must exist and be owned by the nextcoud user, mostly `www-data`):
+LOG_DIR="/var/log/nextcloud/cron"
+#
+# 6) add this line in the `/etc/crontab` file:
+#
+#    3-59/5	*	*	*	*	www-data	/usr/local/bin/nc-cron-logger
+#
+#    ! any previous cron entry of your nextcloud cronjob should of course be removed or commented out !
+#
+# The rest is magic and normally does not require any changes
+
+# VERBOSE can be one of
+#  none       oneliner format, only begin, end, duration and returncode is listet
+#  joblist    list of executed jobs without much further information around it
+#  filtered   list of executed jobs with more verbose information around it
+#  verbose    the unfiltered verbose output of the cron.php script.
+#             This also includes jobs that are called because of pure time criteria,
+#             but are not yet executed due to other criteria, thus only filling the
+#             log output with unnecessary noise.
+VERBOSE='joblist'
+
+# weather display the job arguments (which are shown if VERBOSE='joblist') as raw JSON, or as plain text single-line key=value pairs (boolean, can be 'true' or 'false')
+JOB_ARGS_AS_JSON='true'
+
+# the pathes to the different logfiles
+CRON_LOG="$LOG_DIR/cron.log"
+ERROR_LOG="$LOG_DIR/cron_error.log"
+
+# -------------------------
+# PHP CLI configuration
+# -------------------------
+# The memory_limit in MB to be set for cron job execution
+PHP_MEMORY_LIMIT_MB="512"
+# Set desired PHP major.minor version, e.g "8.4" (empty -> use `php` from PATH)
+PHP_VERSION=""
+PHP_CLI=( "php${PHP_VERSION}" )
+
+# wether to use file locking on the logfile or not (boolean, can be 'true' or 'false')
+USE_FLOCK='false'
+
+# some vars to change the look of the logfile
+SEPARATOR="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+TODAY="$(date '+%Y-%m-%d %Z')"
+
+# -------------------------
+# Helper functions
+# -------------------------
+
+# temporarily enable nullglob to test if a glob matches any files
+nonullglob(){
+    local pattern old_shopt
+    local -a files
+    # enable nullglob only in this function so shell-wide behaviour is unchanged
+    pattern="$1"
+    old_shopt=$(shopt -p nullglob)
+    shopt -s nullglob
+    files=( $pattern )
+    # only restore previous nullglob state if $old_shopt is not empty
+    [ -z "$old_shopt" ] || eval "$old_shopt" &>/dev/null || :
+    (( "${#files[@]}" ))
+}
+
+# read JSON from stdin and merge duplicate keys; errors go to ERROR_LOG
+jq_filter() {
+    jq -c '[.[] | .[]]
+        | map(. as $item | {($item.key): {key: $item.key, value: $item.value}})
+        | reduce .[] as $item ({}; . * $item)' 2>>"$ERROR_LOG"
+}
+
+config2json() {
+    local cdir c2j_php_code
+    cdir="$NC_DIR/config"
+    c2j_php_code='<?php
+    $c = [];
+    foreach ($argv as $f) {
+        if ($f !== $argv[0]) {
+            include $f;
+            foreach ($CONFIG as $k => $v) {
+                $c[$f][] = ["key" => $k, "value" => $v];
+            }
+        }
+    }
+    echo json_encode($c);
+    ?>'
+
+    # expand config files properly; if extras exist, pass them to php via argv
+    if nonullglob "$cdir/*.config.php"; then
+        # pipe php output into jq_filter (avoid command-substitution)
+        echo "$c2j_php_code" | ${PHP_CLI[@]} -- "$cdir/config.php" "$cdir"/*.config.php | jq_filter
+    else
+        echo "$c2j_php_code" | ${PHP_CLI[@]} -- "$cdir/config.php" | jq_filter
+    fi
+}
+
+nc_configkey() {
+    config2json | jq -r ".[\"$1\"].value"
+}
+
+# Ensure a header ("$SEPARATOR\n$TODAY\n$SEPARATOR") exists at the end of logfile.
+ensure_today_header() {
+    local logfile
+    logfile="$1"
+
+    # check last N lines for the today header; if not found, append it
+    # tail may fail if file is empty, ignore errors
+    if ! tail -n 500 "$logfile" 2>/dev/null | grep -Fq "$TODAY"; then
+        printf "%s\n%s\n%s\n" "$SEPARATOR" "$TODAY" "$SEPARATOR" >> "$logfile"
+    fi
+}
+
+# Acquire an exclusive lock on the logfile while checking/writing, so other processes
+# cannot race and insert duplicate headers.
+# Usage: ensure_header_and_lock /path/to/log fd
+#   fd is the numeric file descriptor to use for the lock/write (e.g. 200, 201)
+ensure_today_header_and_lock() {
+    local logfile
+    local -i fd
+    logfile="$1"
+    fd="$2"
+
+    # open logfile for append on fd
+    # shellcheck disable=SC2154
+    eval "exec $fd>>\"$logfile\"" || return 1
+
+    # lock fd (blocks until obtained)
+    flock "$fd" || { eval "exec $fd>&-"; return 1; }
+
+    # check last N lines for the today header; if not found, append it
+    # tail may fail if file is empty, ignore errors
+    if ! tail -n 500 "$logfile" 2>/dev/null | grep -Fq "$TODAY"; then
+        printf "%s\n%s\n%s\n" "$SEPARATOR" "$TODAY" "$SEPARATOR" >&$fd
+    fi
+
+    # At this point the caller holds the lock (fd open); writes should be done to >&fd
+    # Caller must call release_lock fd when done.
+}
+
+# release lock and close fd
+# Usage: release_lock fd
+release_lock() {
+    local -i fd
+    fd="$1"
+    flock -u "$fd" 2>/dev/null || true
+    eval "exec $fd>&-"
+}
+
+# -------------------------
+# APC detection and append --define if needed
+# -------------------------
+if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ]; then
+    (( $(${PHP_CLI[@]} -r 'echo ini_get("apc.enable_cli") ?: 0;') )) || PHP_CLI+=( --define=apc.enable_cli=1 )
+fi
+
+# -------------------------
+# Ensure CLI memory_limit is at least $PHP_MEMORY_LIMIT_MB MB
+# -------------------------
+
+PHP_MEMORY_LIMIT_BYTES=$(( PHP_MEMORY_LIMIT_MB * 1024 * 1024 ))
+
+# ask PHP to normalize effective memory_limit into bytes; print "-1" for unlimited
+mem_bytes=$(${PHP_CLI[@]} -r '
+    $m = ini_get("memory_limit");
+    if ($m === false) { exit(2); }
+    if ($m === "-1") { echo "-1"; exit; }
+
+    $u = strtoupper(substr($m, -1));
+    $v = (int)$m;
+
+    if ($u === "G") {
+        $v *= 1024 * 1024 * 1024;
+    } elseif ($u === "M") {
+        $v *= 1024 * 1024;
+    } elseif ($u === "K") {
+        $v *= 1024;
+    }
+
+    echo $v;
+' 2>/dev/null) || mem_bytes=""
+
+# If we couldn't read a value, be conservative and do nothing
+if [ -n "$mem_bytes" ] && [ "$mem_bytes" != "-1" ]; then
+    # numeric compare
+    if [ "$mem_bytes" -lt "$PHP_MEMORY_LIMIT_BYTES" ]; then
+        # append define in human-friendly form (e.g. 512M)
+        PHP_CLI+=( --define=memory_limit="${PHP_MEMORY_LIMIT_MB}M" )
+    fi
+fi
+
+TMP_VERBOSE=$(mktemp) || exit 1
+TMP_JOBLIST=$(mktemp) || exit 1
+TMP_OUT=$(mktemp) || exit 1
+TMP_ERR=$(mktemp) || { rm -f -- "$TMP_VERBOSE" "$TMP_JOBLIST" "$TMP_OUT"; exit 1; }
+
+cleanup() {
+    rm -f -- "$TMP_VERBOSE" "$TMP_JOBLIST" "$TMP_OUT" "$TMP_ERR"
+}
+trap cleanup EXIT
+
+CRON_PHP=( "$NC_DIR/cron.php" "--" )
+if [[ $VERBOSE != none ]]; then
+    CRON_PHP+=( "--verbose" )
+fi
+
+# start timestamp (once per block)
+TS_start="$(date --iso-8601=seconds)"
+TS_start_epoch=$(date -d "$TS_start" +%s)
+TS_start_time="$(date -d "$TS_start" +%T)"
+
+# Run php, determine the exit code (briefly disable errexit)
+set +e
+${PHP_CLI[@]} -f ${CRON_PHP[@]} >"$TMP_VERBOSE" 2>"$TMP_ERR"
+RC=$?
+set -e
+
+if [[ $VERBOSE == joblist || $VERBOSE == filtered ]]; then
+    joblist_json_filter='.[]
+        | select(.last_run != null)
+        # parse last_run robustly: try match with "+HH:MM" tz (capture -> rebuild without colon),
+        # fallback to replacing "Z" by "+0000" if present; convert to epoch
+        | (.last_run
+            | (try (capture("^(?<ts>[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2})(?<tzsign>[+-])(?<tzh>[0-9]{2}):(?<tzm>[0-9]{2})$")
+                    | (.ts + .tzsign + .tzh + .tzm)
+                    | strptime("%Y-%m-%dT%H:%M:%S%z") | mktime)
+                // (sub("Z$"; "+0000") | strptime("%Y-%m-%dT%H:%M:%S%z") | mktime)
+                )
+            ) as $epoch
+        | select($epoch >= $start_epoch)'
+    joblist_json_filter_args_json='
+        | "\(.id) \(.class)\(if .argument == null or .argument == "null" then "" else " arg:\(.argument)" end)"'
+    joblist_json_filter_args_plain='
+        | "\(.id) \(.class)\(if .argument == null or .argument == "null" then "" 
+            else " argument(s): " + (.argument | fromjson | to_entries | map("\(.key)=\(.value)") | join(" ")) end)"'
+    if ${JOB_ARGS_AS_JSON:-true}; then
+        joblist_json_filter="$joblist_json_filter $joblist_json_filter_args_json"
+    else
+        joblist_json_filter="$joblist_json_filter $joblist_json_filter_args_plain"
+    fi
+    ${PHP_CLI[@]} -f "$NC_DIR/occ" background-job:list --limit=100000 --output=json 2>/dev/null \
+        | jq -r --argjson start_epoch "$TS_start_epoch" "$joblist_json_filter" >>"$TMP_JOBLIST"
+fi
+
+if [[ $VERBOSE == filtered ]]; then
+    # --- Load IDs into an associative array for fast lookup ---
+    declare -A JOBID_PRESENT
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Extract first field (the numeric id)
+        id="${line%% *}"
+        # Accept only numeric ids
+        if [[ $id =~ ^[0-9]+$ ]]; then
+            JOBID_PRESENT[$id]=1
+        fi
+    done < "$TMP_JOBLIST"
+    # --- Scan verbose file and emit only blocks whose id exists in JOBID_PRESENT ---
+    # collecting: 1 when we are inside a block we want to keep
+    collecting=0
+    cur_id=""
+    # Read verbose file line by line, preserving raw content
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        # Detect "Starting job ..." lines (allow leading whitespace),
+        # capture numeric id after "id:".
+        if [[ $line =~ ^[[:space:]]*Starting[[:space:]]job.*id:[[:space:]]*([0-9]+) ]]; then
+            cur_id="${BASH_REMATCH[1]}"
+            # Start collecting if id is present in joblist
+            if [[ -n "${JOBID_PRESENT[$cur_id]:-}" ]]; then
+                collecting=1
+                printf '%s\n' "$line" >> "$TMP_OUT"
+            else
+                collecting=0
+                cur_id=""
+            fi
+            continue
+        fi
+        # Detect "Job ... done ..." lines; capture numeric id.
+        if [[ $line =~ ^[[:space:]]*Job[[:space:]].*id:[[:space:]]*([0-9]+).*done ]]; then
+            end_id="${BASH_REMATCH[1]}"
+            if [[ $collecting -eq 1 && "$end_id" == "$cur_id" ]]; then
+                # Finish the currently collected block
+                printf '%s\n' "$line" >> "$TMP_OUT"
+                collecting=0
+                cur_id=""
+                continue
+            fi
+            # If we weren't collecting but this end_id is in joblist, emit the standalone done line
+            if [[ -n "${JOBID_PRESENT[$end_id]:-}" ]]; then
+                printf '%s\n' "$line" >> "$TMP_OUT"
+            fi
+            continue
+        fi
+        # If currently collecting, emit the intermediate line
+        if [[ $collecting -eq 1 ]]; then
+            printf '%s\n' "$line" >> "$TMP_OUT"
+        fi
+    done < "$TMP_VERBOSE"
+elif [[ $VERBOSE == joblist ]]; then
+    # Build set of performed ids from TMP_VERBOSE
+    declare -A JOBID_PRESENT
+    while IFS= read -r vline || [[ -n "$vline" ]]; do
+        # capture "id: N" where N is a number and make sure it's not followed by another digit
+        if [[ $vline =~ id:[[:space:]]*([0-9]+) ]]; then
+            JOBID_PRESENT[${BASH_REMATCH[1]}]=1
+        fi
+    done < "$TMP_VERBOSE"
+    # Now filter TMP_JOBLIST by membership in JOBID_PRESENT
+    while IFS= read -r line || [[ -n "$line" ]]; do
+        id="${line%% *}"
+        if [[ $id =~ ^[0-9]+$ && -n "${JOBID_PRESENT[$id]:-}" ]]; then
+            printf '%s\n' "$line" >> "$TMP_OUT"
+        fi
+    done < "$TMP_JOBLIST"
+elif [[ $VERBOSE == verbose ]]; then
+    cat "$TMP_VERBOSE" > "$TMP_OUT"
+fi
+
+# end timestamp (once per block)
+TS_end="$(date --iso-8601=seconds)"
+TS_end_epoch=$(date -d "$TS_end" +%s)
+TS_end_time="$(date -d "$TS_end" +%T)"
+
+# calculate duration
+DURATION=$(( TS_end_epoch - TS_start_epoch ))
+D_H=$(( DURATION / 3600 ))
+D_M=$(( (DURATION % 3600) / 60 ))
+D_S=$(( DURATION % 60 ))
+
+if (( D_H )); then
+    DURATION_FMT=$(printf "%02d:%02d:%02d" "$D_H" "$D_M" "$D_S")
+elif (( D_M )); then
+    DURATION_FMT=$(printf "%02d:%02d" "$D_M" "$D_S")
+else
+    DURATION_FMT=$(printf "%02d seconds" "$D_S")
+fi
+
+# The normal log
+if ${USE_FLOCK:-false}; then
+    # write to CRON_LOG under lock (fd 200)
+    ensure_today_header_and_lock "$CRON_LOG" 200
+else
+    ensure_today_header "$CRON_LOG"
+fi
+
+if [ -s "$TMP_OUT" ]; then
+    if ${USE_FLOCK:-false}; then
+        # multi-line block (start, content, end + duration + rc + separator)
+        printf "%s %s =>\n" "$TS_start_time" "$TODAY" >&200
+        LC_ALL=C sed 's/^/    /' "$TMP_OUT" >&200
+        printf "=> %s - Δ %s - returncode %s\n%s\n" "$TS_end_time" "$DURATION_FMT" "$RC" "$SEPARATOR" >&200
+    else
+        # multi-line block (start, content, end + duration + rc + separator)
+        printf "%s %s =>\n" "$TS_start_time" "$TODAY" >> "$CRON_LOG"
+        LC_ALL=C sed 's/^/    /' "$TMP_OUT" >> "$CRON_LOG"
+        printf "=> %s - Δ %s - returncode %s\n%s\n" "$TS_end_time" "$DURATION_FMT" "$RC" "$SEPARATOR" >> "$CRON_LOG"
+    fi
+else
+    # compact one-liner for normal runs
+    if ${USE_FLOCK:-false}; then
+        printf "%s => %s - Δ %s - returncode %s\n" "$TS_start_time" "$TS_end_time" "$DURATION_FMT" "$RC" >&200
+    else
+        printf "%s => %s - Δ %s - returncode %s\n" "$TS_start_time" "$TS_end_time" "$DURATION_FMT" "$RC" >> "$CRON_LOG"
+    fi
+fi
+
+${USE_FLOCK:-false} && release_lock 200
+
+# The error log
+if [ -s "$TMP_ERR" ]; then
+    if ${USE_FLOCK:-false}; then
+        # write to ERROR_LOG under lock (fd 201)
+        ensure_today_header_and_lock "$ERROR_LOG" 201
+        printf "%s %s =>\n" "$TS_start_time" "$TODAY" >&201
+        # use perl -pe to preserves raw bytes
+        perl -pe 's/^/    /' "$TMP_ERR" >&201
+        printf "=> %s - Δ %s - returncode %s\n%s\n" "$TS_end_time" "$DURATION_FMT" "$RC" "$SEPARATOR" >&201
+        release_lock 201
+    else
+        ensure_today_header "$ERROR_LOG"
+        printf "%s %s =>\n" "$TS_start_time" "$TODAY" >> "$ERROR_LOG"
+        # use perl -pe to preserves raw bytes
+        perl -pe 's/^/    /' "$TMP_ERR" >> "$ERROR_LOG"
+        printf "=> %s - Δ %s - returncode %s\n%s\n" "$TS_end_time" "$DURATION_FMT" "$RC" "$SEPARATOR" >> "$ERROR_LOG"
+    fi
+fi
+
+exit 0
+
