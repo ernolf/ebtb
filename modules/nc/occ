@@ -23,8 +23,8 @@ if ${B[aio]}; then
 else
     # detect, if apc is required for cli
     declare phpcli
-    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ] && ! ${X[grep]} -iqs '^apc.enable_cli => On => On$'< <(${X[php$php_version]} -i); then
-        phpcli="${X[php$php_version]} --define apc.enable_cli=1"
+    if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ]; then
+        (( $(${X[php$php_version]} -r 'echo ini_get("apc.enable_cli") ?: 0;') )) || phpcli="${X[php$php_version]} --define apc.enable_cli=1"
     else
         phpcli="${X[php$php_version]}"
     fi
