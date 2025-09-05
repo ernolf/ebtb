@@ -299,12 +299,19 @@ The modules as well as the scripts are usually signed and hosted on my Nextcloud
     > </details>
 
 ---
+## [standalone wrapper-scripts](wrapper)
+
+- ### [nc-cron-logger](wrapper/nc-cron-logger)
+  lightweight wrapper script for running Nextcloud’s cron.php reliably.\
+  It ensures that PHP is configured correctly (memory limits, APCu CLI), captures both stdout and stderr, and writes them into structured log files with timestamps.
+
+---
 <details>
   <summary>Development setup</summary>
 
 Since the scripts are very restrictive with the integrity check and do not allow any changes to the code — modified modules are immediately deleted and replaced by the module server — I have integrated a local module server that allows anyone to host the modules on their own localhost independently of any outside web server. If the scripts are built that way, the local module server starts and stops together with the script and takes over the provision of the modules.
 
-The [config/configure file](/config/configure) is already set up to build the scripts with the local web server.
+The [config/configure file](config/configure) is already set up to build the scripts with the local web server.
 
 These are the steps to build:
 
