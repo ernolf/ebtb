@@ -130,9 +130,18 @@ encr(){
 }
 
 # no nullglob
+# temporarily enable nullglob to test if a glob matches any files
 nonullglob(){
-    local -a glob_expanded=($1)
-    [ "${glob_expanded[0]}" = "$1" ] && return 1 || return 0
+    local pattern old_shopt
+    local -a files
+    # enable nullglob only in this function so shell-wide behaviour is unchanged
+    pattern="$1"
+    old_shopt=$(shopt -p nullglob)
+    shopt -s nullglob
+    files=( $pattern )
+    # only restore previous nullglob state if $old_shopt is not empty
+    [ -z "$old_shopt" ] || eval "$old_shopt" &>$NUL || :
+    (( "${#files[@]}" ))
 }
 
 # is_path <path>
