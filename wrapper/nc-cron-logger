@@ -17,12 +17,39 @@
 
 set -euo pipefail
 
+###############################################################################
+# --- begin: runtime-lock handling for logrotate compatibility ---
+# If /run/lock/nc-cron-logger.lock exists we must not start a new run while rotate is active.
+LOCK="/run/lock/nc-cron-logger.lock"
+if [ -e "$LOCK" ]; then
+    # If other instances are currently running, exit immediately.
+    # If no other instances are running, assume this may be a stale lock and wait a little then remove.
+    if pgrep -f '/usr/local/bin/nc-cron-logger|cron.php' >/dev/null 2>&1; then exit 0; fi
+    # No other instances running; wait up to 15 seconds for the lock to be cleared by logrotate.
+    STALE_WAIT=15 INTERVAL=5 ELAPSED=0
+    while [ -e "$LOCK" ] && [ "$ELAPSED" -lt "$STALE_WAIT" ]; do sleep "$INTERVAL"; ELAPSED=$((ELAPSED + INTERVAL)); done
+    # If after waiting the lock is still present, treat it as stale and remove it.
+    if [ -e "$LOCK" ]; then rm -f "$LOCK"; fi
+fi
+# --- end: runtime-lock handling for logrotate compatibility ---
+###############################################################################
+
 # Please report issues here: https://github.com/ernolf/ebtb/issues
 # -------------------------
 # Installation
 # -------------------------
 # 1) requires `jq` to be installed.
-#    On debian or ubuntu run: apt install jq
+#    On Debian/Ubuntu run:
+#       sudo apt install jq
+#    On Fedora/Red Hat/CentOS run:
+#       sudo dnf install jq      # Fedora
+#       sudo yum install jq      # RHEL/CentOS 7
+#    On Arch Linux / Manjaro run:
+#       sudo pacman -S jq
+#    On openSUSE run:
+#       sudo zypper install jq
+#    On Alpine Linux run:
+#       sudo apk add jq
 #
 # 2) locate this file to `/usr/local/bin/nc-cron-logger`
 #
@@ -40,11 +67,25 @@ NC_DIR="/var/www/nextcloud"
 # Log directory (must exist and be owned by the nextcoud user, mostly `www-data`):
 LOG_DIR="/var/log/nextcloud/cron"
 #
-# 6) add this line in the `/etc/crontab` file:
+# 6) add this line in the system crontab file `/etc/crontab` (not `crontab -e` owned by the user):
 #
 #    3-59/5	*	*	*	*	www-data	/usr/local/bin/nc-cron-logger
 #
 #    ! any previous cron entry of your nextcloud cronjob should of course be removed or commented out !
+#    In this example, `www-data` was assumed to be the Nextcloud user.
+#    However, cron.php only runs when called by the user who owns the file "$NC_DIR/config/config.php"
+#    You can display that user with this command:
+#
+#    stat -c '%U' "$NC_DIR/config/config.php"
+#
+# 7) create a logrotate file with proper lockfile handling with this command:
+#
+#    sudo nc-cron-logger --create-logrotate-file
+#
+#    if you want to rotate the logfiles using logrotate.
+#    This command must be run only once. It will work out of the box
+#    Simply edit the file '/etc/logrotate.d/nc-cron' if you want to logrotating with other values or
+#    delete that file, if you don't want logrotate anymore.
 #
 # The rest is magic and normally does not require any changes
 
@@ -75,7 +116,7 @@ PHP_VERSION=""
 PHP_CLI=( "php${PHP_VERSION}" )
 
 # wether to use file locking on the logfile or not (boolean, can be 'true' or 'false')
-USE_FLOCK='false'
+USE_FLOCK='true'
 
 # some vars to change the look of the logfile
 SEPARATOR="━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
@@ -84,6 +125,69 @@ TODAY="$(date '+%Y-%m-%d %Z')"
 # -------------------------
 # Helper functions
 # -------------------------
+
+create_logrotate_file() {
+    # Check if logrotate is installed (cross-distro by checking binary in PATH)
+    if ! command -v logrotate >/dev/null 2>&1; then
+        echo "Error: logrotate is not installed. Please install logrotate first." >&2
+        exit 1
+    fi
+
+    local target config_owner
+    target="/etc/logrotate.d/nc-cron"
+
+    # Determine the user that owns $NC_DIR/config/config.php
+    config_owner=$(stat -c '%U' "$NC_DIR/config/config.php")
+
+    # Create the logrotate config
+    cat > "$target" <<EOF
+$CRON_LOG $ERROR_LOG {
+    weekly
+    rotate 4
+    compress
+    delaycompress
+    size 10485760
+    missingok
+    notifempty
+    create 0640 $config_owner $config_owner
+    sharedscripts
+
+    prerotate
+        LOCK="/run/lock/nc-cron-logger.lock"
+        touch "\$LOCK"
+        chown $config_owner:$config_owner "\$LOCK"
+        chmod 0644 "\$LOCK"
+
+        INTERVAL=5
+        MAX_WAIT=3600
+        ELAPSED=0
+
+        while pgrep -u $config_owner -f 'cron.php' >/dev/null 2>&1; do
+            sleep "\$INTERVAL"
+            ELAPSED=\$((ELAPSED + INTERVAL))
+            if [ "\$ELAPSED" -ge "\$MAX_WAIT" ]; then
+                logger -t nc-cron-logrotate "timeout waiting for nc-cron-logger (waited \${ELAPSED}s), proceeding"
+                break
+            fi
+        done
+    endscript
+
+    postrotate
+        LOCK="/run/lock/nc-cron-logger.lock"
+        if [ -f "\$LOCK" ]; then
+            rm -f "\$LOCK"
+        fi
+    endscript
+}
+EOF
+
+    echo "Created logrotate configuration at $target"
+}
+
+if [[ "${1:-}" == "--create-logrotate-file" ]]; then
+    create_logrotate_file
+    exit 0
+fi
 
 # temporarily enable nullglob to test if a glob matches any files
 nonullglob(){
@@ -154,19 +258,20 @@ ensure_today_header() {
 ensure_today_header_and_lock() {
     local logfile
     local -i fd
-    logfile="$1"
-    fd="$2"
+    logfile="$1" fd="$2"
 
     # open logfile for append on fd
     # shellcheck disable=SC2154
     eval "exec $fd>>\"$logfile\"" || return 1
 
-    # lock fd (blocks until obtained)
+    # acquire lock on fd (blocks until obtained)
     flock "$fd" || { eval "exec $fd>&-"; return 1; }
 
     # check last N lines for the today header; if not found, append it
     # tail may fail if file is empty, ignore errors
-    if ! tail -n 500 "$logfile" 2>/dev/null | grep -Fq "$TODAY"; then
+    # operate on the already-opened fd via /proc/self/fd/$fd to avoid races with rotation
+    # (use the fd path both when checking and when writing)
+    if ! tail -n 500 "/proc/self/fd/$fd" 2>/dev/null | grep -Fq "$TODAY"; then
         printf "%s\n%s\n%s\n" "$SEPARATOR" "$TODAY" "$SEPARATOR" >&$fd
     fi
 
