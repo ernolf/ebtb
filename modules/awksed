@@ -46,15 +46,66 @@ dedup_lines(){
 sed_(){
     require_arg "$@"
     ${B[trace]:-_} && log_trace "$@"
-    local sedscript in out
+    local raw sedscript in out
     local -a sedcall
-    sedscript="${1//\\s/[[:space:]]}" in="${2:-}" out="${3:--}" sedcall=(${X[sed]} -E)
+    local -i skip_minus_n need_minus_n
+    raw="$1" in="${2:-}" out="${3:--}" sedcall=(${X[sed]} -E)
     # p in sed script makes the use of -n |--quiet | --silent necessary to suppress automatic printing of pattern space
     # unless '!' is passed at position 1 of the script:
-    if [[ $sedscript == \!* ]]; then
-        sedscript="${sedscript:1}"
-    elif [[ "$sedscript" =~ ([^[:alnum:]_])p([^[:alnum:]_]|$) ]]; then
-        sedcall+=(-n)
+    [[ $raw == \!* ]] && raw="${raw:1}" skip_minus_n=1 || skip_minus_n=0
+    # replace '\s' with '[[:space:]]'
+    # sedscript="${1//\\s/[[:space:]]}" breaks the script if script beginns with '$address[aic]\' followed by an 's'
+    # therefor we need some heuristic, which we do with perl here, in order to cover all possible cases as comprehensively as possible:
+    sedscript=$(printf '%s' "$raw" | ${X[perl]} -0777 -pe '
+        # Marker strings (should not appear in scripts)
+        my $ML = "__SED__LITERAL_BACKSLASH_S__";
+        my $MC = "__SED__COMMAND_BACKSLASH_S__";
+        # address token: number, $, or /.../ (allow escaped \/ inside)
+        my $addr = qr/(?:\d+|\$|\/(?:\\.|[^\/])*\/)/;
+        # 1) mask literal "\\s" (double backslash + s)
+        s{\\\\s}{$ML}g;
+        # 2) mask \s only when it follows a command-position a|i|c
+        #    (start of string or after ; or newline or after an opening '{'),
+        #    optionally with addresses before
+        s{((?:^|;|\n|\{)\s*(?:$addr(?:\s*,\s*$addr)*)?\s*[aic])\\s}{$1.$MC}ge;
+        # 3) replace remaining \s -> [[:space:]]
+        s{\\s}{[[:space:]]}g;
+        # 4) restore masked command-cases -> single backslash + s
+        s/\Q$MC\E/chr(92)."s"/ge;
+        # 5) restore masked literal "\\s" -> double backslash + s
+        s/\Q$ML\E/chr(92).chr(92)."s"/ge;
+    ')
+    if (( skip_minus_n )); then
+        : # user explicitly disabled auto -n; do nothing
+    elif [[ $raw =~ (^|[^[:alnum:]_])p([^[:alnum:]_]|$) ]]; then
+        # detect whether "sed -n" is necessary: find 'p' command or an 's' command with 'p' flag
+        # coarse check matched — run precise perl probe (prints "1" or "0")
+        # use the raw original argument to avoid side-effects of prior modifications
+        need_minus_n=$(printf '%s' "$raw" | ${X[perl]} -0777 -ne '
+            # Helper regex for addresses: number, $, or /.../ (allow escaped \/ inside)
+            my $addr = qr/(?:\d+|\$|\/(?:\\.|[^\/])*\/)(?:\s*,\s*(?:\d+|\$|\/(?:\\.|[^\/])*\/))*/;
+            # Iterate command positions: (start|;|\n|'{') optional addresses then one command letter and the rest
+            # treat '}' as a command-block terminator so we do not overrun into the next block
+            while ( /(?:^|;|\n|\{)\s*(?:$addr)?\s*([a-zA-Z])(.*?)(?=(?:^|;|\n|\})|\z)/gs ) {
+                my ($cmd, $rest) = (lc($1), $2);
+                # if command is 'p' => need -n
+                if ($cmd eq "p") { print 1; exit 0 }
+                # if command is 's' => parse delimiter, pattern, replacement, then flags
+                if ($cmd eq "s") {
+                    # match delimiter, respecting escaped delimiters
+                    if ($rest =~ /\A(.)(?:\\.|(?!\1).)*\1(?:\\.|(?!\1).)*\1([a-zA-Z]*)/s) {
+                        my $flags = $2 || "";
+                        if ($flags =~ /p/) { print 1; exit 0 }
+                    }
+                }
+                # otherwise continue scanning
+            }
+            # nothing found -> explicit "0"
+            print 0; exit 0
+        ') || need_minus_n=0
+        # defensive sanitization: keep digits only (discard stray warnings/newlines)
+        need_minus_n=${need_minus_n//[^0-9]/}
+        (( need_minus_n )) && sedcall+=(-n)
     fi
     # if we're in "in-place" mode, always fall back to stdout;
     # only append the flag to sedcall if the input file actually exists
