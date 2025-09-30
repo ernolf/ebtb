@@ -23,17 +23,15 @@ if ${B[aio]}; then
 else
     # detect, if apc is required for cli
     declare phpcli
+    phpcli="${X[php$php_version]}"
     if [ "$(nc_configkey memcache.local)" = '\OC\Memcache\APCu' ]; then
         (( $(${X[php$php_version]} -r 'echo ini_get("apc.enable_cli") ?: 0;') )) || phpcli="${X[php$php_version]} --define apc.enable_cli=1"
-    else
-        phpcli="${X[php$php_version]}"
     fi
     mh "nc/occ: \"nc_configkey memcache.local\" = '$(nc_configkey memcache.local 2>&1)'"
     mh "nc/occ: \"grep '^apc.enable_cli => On => On$' \$(php$php_version -i)\" = '$(${X[grep]} -i '^apc.enable_cli => On => On$'< <(${X[php$php_version]} -i) 2>&1)'"
     mh "nc/occ: phpcli = $phpcli"
     # the occ command call is saved under occ, adapted to the user and environment
     occ(){ $phpcli -f ${NC[d]}/console.php "$@"; }
-    
     if ${B[rt]}; then
         occ(){ ${X[sudo]} -u ${NC[u]} $phpcli -f ${NC[d]}/console.php "$@"; }
     else
