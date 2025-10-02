@@ -11,8 +11,8 @@ ${BINARIES_BASHLIB:-false} && return
 BINARIES_BASHLIB=:
 
 for x in B BINARY D F J M PHP T V; do declare -gA $x 2>${NUL:=/dev/null} || declare -A $x; done
-PHP[vregex]='(5\.6|[78]\.[01234])'
-PHP[vextglob]='*@(*5\.6*|*[78]\.[01234]*)*'
+PHP[vregex]='(5\.6|[78]\.[01234]|8\.5)'
+PHP[vextglob]='*@(*5\.6*|*[78]\.[01234]*|*8\.5*)*'
 declare -p PHP > "${F[php]:="${D[vt]}/php"}"
 # Create a nameref for BINARY named X
 declare -gn X=BINARY &>$NUL || declare -n X=BINARY
