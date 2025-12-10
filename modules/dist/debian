@@ -15,22 +15,25 @@ DIST_DEBIAN_BASHLIB=:
 
 declare -A DEBIAN_VERSIONS_DATA DEBIAN_VERSIONS
 
+# https://www.debian.org/releases/index.en.html
 # https://wiki.debian.org/DebianReleases
 
 DEBIAN_VERSIONS_DATA=(
     [sid]="Sid;unstable;RR;-;-" # Roling release
-    [14]="Forky;futuretesting;TBA;TBA;TBA" # To be anounced
-    [13]="Trixie;testing;TBA;TBA;TBA"
-    [12]="Bookworm;stable;1686355200;1781049600;1845936000"
-    [11]="Bullseye;oldstable;1628899200;1723593600;1788134400"
-    [10]="Buster;oldoldstable;1562371200;1662768000;1719705600"
+    [15]="Duke;futuretesting;TBA;TBA;TBA" # To be anounced
+    [14]="Forky;testing;TBA;TBA;TBA" # To be anounced
+    [13]="Trixie;stable;1754697600;1849392000;1909008000"
+    [12]="Bookworm;oldstable;1686355200;1781049600;1845936000"
+    [11]="Bullseye;oldoldstable;1628899200;1723593600;1788134400"
+    [10]="Buster;obsolete;1562371200;1662768000;1719705600"
     [09]="Stretch;obsolete;1497657600;1595030400;1656547200"
 )
 
 DEBIAN_VERSIONS=(
     [sid]="sid"
-    [forky]="14"
-    [trixie]="13" # https://www.debian.org/releases/trixie/
+    [duke]="15"
+    [forky]="14" # https://wiki.debian.org/DebianForky https://www.debian.org/releases/forky/
+    [trixie]="13" # https://wiki.debian.org/DebianTrixie https://www.debian.org/releases/trixie/
     [lory]="12" # Parrot Security 6.[23] (lorikeet) is based on debian stable
     [bookworm]="12" # https://www.debian.org/releases/bookworm/
     [bullseye]="11" # https://www.debian.org/releases/bullseye/
