@@ -74,7 +74,8 @@ dl_appstore_json_db(){
     etag="\"$(u2e $unix_etag)\""
     response="$(${X[curl]} --compressed -D - -H "If-None-Match: $etag" -Ls $appstore_url/$unit.json)"
     new_etag="$(echo "$response" | ${X[grep]} -ioPs 'etag: "\K[^"]+')"
-    http_code="$(echo "$response" | ${X[head]} -n1 | ${X[gawk]} 'tolower($0)~/http\//{print $2}')"
+    # we search the last HTTP status code since the first one can be a 302 redirect
+    http_code="$(echo "$response" | ${X[head]} -n -1 | ${X[gawk]} 'tolower($0)~/^http\//{code=$2} END{print code}')"
     new_unix_etag="$(e2u "$new_etag")"
 
     if ${B[trace]:-_}; then
@@ -82,7 +83,7 @@ dl_appstore_json_db(){
         print_stack_trace >$TTY
         echo "unix_etag / etag    - $unix_etag / $etag" >$TTY
         echo "url                 - $appstore_url/$unit.json" >$TTY
-        echo "curl command        - curl --compressed -D - -H \"If-None-Match: \$etag\" -s \$url" >$TTY
+        echo "curl command        - curl --compressed -D - -H \"If-None-Match: \$etag\" -Ls \$url" >$TTY
         echo "response header:" >$TTY
         echo "----------------" >$TTY
         echo "$response" | sed_ '$d;/^\s*$/d' >$TTY
