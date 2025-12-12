@@ -1,0 +1,41 @@
+#!/bin/bash
+
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir
+declare -i i
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
+
+cd "$ca_dir/.."
+
+# source common functions
+source tools/common_build_functions
+# source LATEST_EOL:
+source <(${X[tail]} -n +21 modules/nc/versions | ${X[head]} -n 2)
+
+appstore_api='https://apps.nextcloud.com/api/v1'
+
+for latest in ${LATEST_EOL[@]}; do
+    platform_dir="$ABSOLUTE_TARGET_DIR/platform/$latest"
+    ${X[mkdir]} -p $platform_dir
+    ${X[chown]} $HT_USER:$HT_USER $platform_dir
+    apps_json="$platform_dir/apps.json"
+    etag="$platform_dir/etag"
+    appstore_url="$appstore_api/platform/$latest/apps.json"
+    last_etag="\"$(${X[cat]} $etag 2>$NUL)\""
+    response="$(${X[curl]} --compressed -D - -H "If-None-Match: $last_etag" -Ls $appstore_url)"
+    http_code="$(echo "$response" | ${X[head]} -n -1 | ${X[gawk]} 'tolower($0)~/^http\//{code=$2} END{print code}')"
+    new_etag="$(echo "$response" | ${X[grep]} -ioPs 'etag: "\K[^"]+')"
+    if (( http_code == 429 )); then # 429 - Too Many Requests
+        exit 1
+    elif (( http_code == 200 )); then
+        echo "$response" | ${X[tail]} -n 1 > "$apps_json"
+        echo -n "$new_etag" > $etag
+        ${X[chown]} -R $HT_USER:$HT_USER $platform_dir
+        occ files:scan --quiet --path="$TARGET_DIR/platform/$latest"
+    fi
+    ${X[sleep]} 90
+done
+exit 0

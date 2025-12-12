@@ -28,7 +28,7 @@ unused_functions=(mh fn_ln require_arg required_args log_trace kill_spinner)
 for x in ${unused_functions[@]}; do eval "$x(){ :;}"; done
 
 # needed binaries for build process
-build_binaries=(basename cat chown cp date diff dirname find gawk grep gpg head jq mkdir mktemp mv perl php rm sed seq sha256sum shfmt sort stat sudo tail tee)
+build_binaries=(basename cat chown cp curl date diff dirname find gawk grep gpg head jq mkdir mktemp mv perl php rm sed seq sha256sum shfmt sleep sort stat sudo tail tee)
 X[env]="$(binaries_realpath "$(command -v env)") LC_ALL=C"
 for x in "${build_binaries[@]}"; do
     X[$x]="${X[env]} $(binaries_realpath $(command -v $x))"

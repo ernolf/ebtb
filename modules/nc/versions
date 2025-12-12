@@ -18,7 +18,7 @@ NC_VERSIONS_BASHLIB=:
 [ -f "${F[nc]:=${D[vt]}/nc}" ] && . ${F[nc]}
 
 # array with latest versions from end of life platforms
-declare -ga LATEST_EOL 2>$NUL || declare -a LATEST_EOL
+declare -ga LATEST_EOL 2>$NUL || declare -a LATEST_EOL # this lines are sourced by tools scripts. Keep at this location
 LATEST_EOL=(11.0.8 12.0.13 13.0.12 14.0.14 15.0.14 16.0.11 17.0.10 18.0.14 19.0.13 20.0.14 21.0.9 22.2.10 23.0.12 24.0.12 25.0.13 26.0.13 27.1.11 28.0.14 29.0.16 30.0.17)
 
 nc_version_(){
