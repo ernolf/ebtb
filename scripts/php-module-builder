@@ -76,7 +76,7 @@ module="$2" # e.g. igbinary
 etc_dir="/etc/php/$php_version"
 ini_dir="$etc_dir/mods-available"
 
-supported_php_versions=(8.0 8.1 8.2 8.3 8.4)
+supported_php_versions=(8.0 8.1 8.2 8.3 8.4 8.5)
 supported_modules=(apcu brotli decimal excimer facedetect igbinary imagick inotify lua lz4 memcache memcached msgpack redis rrd smbclient solr ssh2 stomp swoole tideways uopz uploadprogress uuid vips xdebug xhprof yac yaml zstd)
 not_supported_modules=(xmlrpc zmq)
 
@@ -350,97 +350,109 @@ fi
 ${B[quiet]} && exit 0 || exit0
 # COMMENT -->
 <<EOF
-Module         8.0 8.1 8.2 8.3 8.4 Supported
---------------+---+---+---+---+---------
-amqp          | x | x | x | x | x |
-apcu          | x | x | x | x | x |     X
-ast           | x | x | x | x | x |
-bcmath        | x | x | x | x | x |
-brotli        | - | - | - | - | - |     X
-bz2           | x | x | x | x | x |
-cgi           | x | x | x | x | x |
-cli           | x | x | x | x | x |
-common        | x | x | x | x | x |
-curl          | x | x | x | x | x |
-dba           | x | x | x | x | x |
-decimal       | x | x | x | x | - |     X
-dev           | x | x | x | x | x |
-dio           | x | x | x | x | - |
-ds            | x | x | x | x | x |
-enchant       | x | x | x | x | x |
-excimer       | x | x | x | x | x |     X
-facedetect    | x | x | - | - | - |     X
-fpm           | x | x | x | x | x |
-gd            | x | x | x | x | x |
-gearman       | x | x | x | x | x |
-gmagick       | x | x | x | x | x |
-gmp           | x | x | x | x | x |
-gnupg         | x | x | x | x | x |
-grpc          | x | x | x | x | - |
-http          | x | x | x | x | x |
-igbinary      | x | x | x | x | x |     X
-imagick       | x | x | x | x | x |     X
-imap          | x | x | x | x | x |
-inotify       | x | x | x | x | - |     X
-interbase     | x | x | x | x | x |
-intl          | x | x | x | x | x |
-ldap          | x | x | x | x | x |
-libvirt-php   | x | x | x | x | x |
-lua           | - | - | - | - | - |     X
-lz4           | x | x | x | x | - |     X
-mailparse     | x | x | x | x | x |
-maxminddb     | x | x | x | x | x |
-mbstring      | x | x | x | x | x |
-mcrypt        | x | x | x | x | x |
-memcache      | x | x | x | x | x |     X
-memcached     | x | x | x | x | x |     X
-mongodb       | x | x | x | x | x |
-msgpack       | x | x | x | x | x |     X
-mysql         | x | x | x | x | x |
-oauth         | x | x | x | x | x |
-odbc          | x | x | x | x | x |
-opcache       | x | x | x | x | x |
-pcov          | x | x | x | x | x |
-pgsql         | x | x | x | x | x |
-phalcon       | x | x | x | x | x |
-phalcon5      | x | x | x | x | - |
-phpdbg        | x | x | x | x | x |
-pinba         | x | x | x | x | - |
-pq            | x | x | x | x | x |
-propro        | x | x | x | - | - |
-protobuf      | x | x | x | x | - |
-ps            | x | x | x | x | x |
-pspell        | x | x | x | x | x |
-psr           | x | x | x | x | x |
-raphf         | x | x | x | x | x |
-rdkafka       | x | x | x | x | - |
-readline      | x | x | x | x | x |
-redis         | x | x | x | x | x |     X
-rrd           | x | x | x | x | x |     X
-smbclient     | x | x | x | x | - |     X
-snmp          | x | x | x | x | x |
-soap          | x | x | x | x | x |
-solr          | x | x | x | x | - |     X
-sqlite3       | x | x | x | x | x |
-ssh2          | x | x | x | x | x |     x
-stomp         | x | x | x | x | x |     X
-swoole        | x | x | x | x | - |     x
-sybase        | x | x | x | x | x |
-tideways      | x | x | x | - | - |     X
-tidy          | x | x | x | x | x |
-uopz          | x | x | x | x | x |     X
-uploadprogress| x | x | x | x | x |     X
-uuid          | x | x | x | x | x |     X
-vips          | x | x | x | x | - |     X
-xdebug        | x | x | x | x | x |     X
-xhprof        | x | x | x | x | - |     X
-xml           | x | x | x | x | x |
-xmlrpc        | x | x | x | x | x |
-xsl           | x | x | x | x | x |
-yac           | x | x | x | x | x |     X
-yaml          | x | x | x | x | x |     X
-zip           | x | x | x | x | x |
-zmq           | x | x | x | x | x |
-zstd          | x | x | x | x | - |     X
+  - > <details>
+    >   <summary>supported modules</summary>
+    >
+    > Columns 8.0 to 8.5: available packaged versions for Debian/Ubuntu from "Debian PHP Maintainers" ([Ondřej Surý](https://deb.sury.org/))
+    >
+    > | | | | | | | | |
+    > | :- | :-: | :-: | :-: | :-: | :-: | :-: | :-: |
+    > | Module | 8.0 | 8.1 | 8.2 | 8.3 | 8.4 | 8.5 | *php-module-builder* |
+    > | | | | | | | | |
+    > amqp          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > apcu          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > ast           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > bcmath        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > brotli        | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :white_check_mark:
+    > bz2           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > cgi           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > cli           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > common        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > curl          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > dba           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > decimal       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > dev           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > dio           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > ds            | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > enchant       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > excimer       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > facedetect    | :green_circle: | :green_circle: | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :white_check_mark:
+    > fpm           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > gd            | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > gearman       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > gmagick       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > gmp           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > gnupg         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > grpc          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > http          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > igbinary      | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > imagick       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > imap          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > inotify       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > interbase     | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > intl          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > ldap          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > libvirt-php   | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   |
+    > lua           | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :red_circle:   | :white_check_mark:
+    > lz4           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > mailparse     | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > maxminddb     | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > mbstring      | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > mcrypt        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > memcache      | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :white_check_mark:
+    > memcached     | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > mongodb       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > msgpack       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > mysql         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > oauth         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > odbc          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > opcache       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   |
+    > openswoole    | :red_circle:   | :red_circle:   | :green_circle: | :green_circle: | :green_circle: | :red_circle:   |
+    > opentelemetry | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > pcov          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > pgsql         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > phalcon       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   |
+    > phalcon5      | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :red_circle:   |
+    > phpdbg        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > pinba         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :red_circle:   |
+    > pq            | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > propro        | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :red_circle:   | :red_circle:   |
+    > protobuf      | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > ps            | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > pspell        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > psr           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > raphf         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > rdkafka       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > readline      | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > redis         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > rrd           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :white_check_mark:
+    > smbclient     | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > snmp          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > soap          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > solr          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > sqlite3       | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > ssh2          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > stomp         | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > swoole        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :white_check_mark:
+    > sybase        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > tideways      | :green_circle: | :green_circle: | :green_circle: | :red_circle:   | :red_circle:   | :red_circle:   | :white_check_mark:
+    > tidy          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > uopz          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > uploadprogress| :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > uuid          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > vips          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > xdebug        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > xhprof        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > xlswriter     | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > xml           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > xmlrpc        | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > xsl           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > yac           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > yaml          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    > zip           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > zmq           | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: |
+    > zstd          | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :green_circle: | :white_check_mark:
+    >
+    > </details>
 EOF
 

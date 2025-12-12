@@ -10,12 +10,17 @@ __license__
 ${PATCH_BASHLIB:-_} && return
 PATCH_BASHLIB=:
 
+include_dirs() {
+    # Get the PHP include directories (retrieved from php-config) and sort by length (longest first)
+    ${X[php-config$php_version]} --includes | sed_ 's/-I//g' | ${X[tr]} ' ' '\n' | ${X[gawk]} '{ print length, $0 }' | ${X[sort]} -nr | ${X[cut]} -d" " -f2-
+}
+
 patch_84() {
-    local include_dirs files file headers header dir alt_header
+    local files file headers header dir alt_header
     local -A bool
 
-    # Get the PHP include directories (retrieved from php-config) and sort by length (longest first)
-    include_dirs=$(${X[php-config$php_version]} --includes | sed_ 's/-I//g' | ${X[tr]} ' ' '\n' | ${X[gawk]} '{ print length, $0 }' | ${X[sort]} -nr | ${X[cut]} -d" " -f2-)
+#    # Get the PHP include directories (retrieved from php-config) and sort by length (longest first)
+#    include_dirs=$(${X[php-config$php_version]} --includes | sed_ 's/-I//g' | ${X[tr]} ' ' '\n' | ${X[gawk]} '{ print length, $0 }' | ${X[sort]} -nr | ${X[cut]} -d" " -f2-)
 
     # Find all source files that include PHP headers
     files=$(${X[grep]} -rl '#include [<"]' --include="*.c" --include="*.h" .)
@@ -42,7 +47,7 @@ patch_84() {
         # Check each header file if it exists in one of the PHP include directories
         for header in $headers; do
             bool[found]=_
-            for dir in $include_dirs; do
+            for dir in $(include_dirs); do
                 if [[ -f "$dir/$header" ]]; then
                     bool[found]=:
                     break
@@ -52,7 +57,7 @@ patch_84() {
             # If not found in the default path, try to find it in alternative directories
             if ! ${bool[found]}; then
                 # Search in all directories for the header
-                for dir in $include_dirs; do
+                for dir in $(include_dirs); do
                     alt_header=$(find "$dir" -name "$(${X[basename]} "$header")" -print -quit)
                     if [[ -n "$alt_header" ]]; then
                         echo "Correcting $header to ${alt_header#$dir/} in $file"
@@ -65,9 +70,19 @@ patch_84() {
     done
 }
 
+patch_85() {
+    local smart_string_hdr
+    smart_string_hdr="$(include_dirs | grep '/ext$')/standard/php_smart_string.h"
+    if [[ ! -f $smart_string_hdr ]]; then
+        echo '#include "zend_smart_string.h"' > $smart_string_hdr
+    fi
+}
+
 patch_code() {
     case $php_version in
-        8.4) patch_84
+       8.4) patch_84
+            ;;
+       8.5) patch_85
     esac
 }
 

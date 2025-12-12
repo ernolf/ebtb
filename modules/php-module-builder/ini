@@ -25,7 +25,7 @@ ini_symlinks(){
         ${X[phpenmod]} -rv $php_version -s ALL $module
         f
         GRAY; echo "- result:"
-        for sapi in "$(${X[phpquery]} -v $php_version -S)"; do
+        for sapi in $(${X[phpquery]} -v $php_version -S); do
             o2; lG; ${X[phpquery]} -v $php_version -s $sapi -m $module
         done
         N
