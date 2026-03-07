@@ -71,11 +71,74 @@ patch_84() {
 }
 
 patch_85() {
-    local smart_string_hdr
-    smart_string_hdr="$(include_dirs | grep '/ext$')/standard/php_smart_string.h"
-    if [[ ! -f $smart_string_hdr ]]; then
-        echo '#include "zend_smart_string.h"' > $smart_string_hdr
+    local smart_string_dir smart_string_hdr files file
+
+    # Re-create removed compatibility header if a source still expects it.
+    smart_string_dir="$(include_dirs | ${X[grep]} '/ext$' | head -n1)"
+    smart_string_hdr="$smart_string_dir/standard/php_smart_string.h"
+    if [[ -n $smart_string_dir && ! -f $smart_string_hdr ]]; then
+        echo '#include "Zend/zend_smart_string.h"' > "$smart_string_hdr"
     fi
+
+    # Find candidate source files once.
+    files=$(${X[grep]} -Rrl \
+        --include="*.c" \
+        --include="*.h" \
+        --include="*.cc" \
+        --include="*.cpp" \
+        --include="*.m4" \
+        -e 'zend_exception_get_default' \
+        -e 'zend_get_error_exception' \
+        -e 'zend_ce_exception()' \
+        -e 'zend_ce_error_exception()' \
+        -e 'php_smart_string\.h' \
+        -e 'php_smart_string_public\.h' \
+        -e 'IS_INTERNED(' \
+        -e 'STR_EMPTY_ALLOC(' \
+        -e '_STR_HEADER_SIZE' \
+        -e 'STR_ALLOCA_ALLOC(' \
+        -e 'STR_ALLOCA_INIT(' \
+        -e 'STR_ALLOCA_FREE(' \
+        . 2>/dev/null || :)
+
+    for file in $files; do
+        [[ -f $file ]] || continue
+
+        if ${X[grep]} -q 'zend_exception_get_default\|zend_ce_exception()' "$file"; then
+            sed_ 's/zend_exception_get_default[[:space:]]*\(\)/zend_ce_exception/g' "$file" '-i'
+            sed_ 's/zend_ce_exception[[:space:]]*\(\)/zend_ce_exception/g' "$file" '-i' && echo "Correcting zend_exception_get_default() to zend_ce_exception in $file"
+        fi
+        if ${X[grep]} -q 'zend_get_error_exception\|zend_ce_error_exception()' "$file"; then
+            sed_ 's/zend_get_error_exception[[:space:]]*\(\)/zend_ce_error_exception/g' "$file" '-i'
+            sed_ 's/zend_ce_error_exception[[:space:]]*\(\)/zend_ce_error_exception/g' "$file" '-i' && echo "Correcting zend_get_error_exception() to zend_ce_error_exception in $file"
+        fi
+        if ${X[grep]} -q 'php_smart_string\.h' "$file"; then
+            sed_ 's#ext/standard/php_smart_string\.h#Zend/zend_smart_string.h#g' "$file" '-i'
+            sed_ 's#php_smart_string\.h#Zend/zend_smart_string.h#g' "$file" '-i' && echo "Correcting php_smart_string.h include in $file"
+        fi
+        if ${X[grep]} -q 'php_smart_string_public\.h' "$file"; then
+            sed_ 's#ext/standard/php_smart_string_public\.h#Zend/zend_smart_string_public.h#g' "$file" '-i'
+            sed_ 's#php_smart_string_public\.h#Zend/zend_smart_string_public.h#g' "$file" '-i' && echo "Correcting php_smart_string_public.h include in $file"
+        fi
+        if ${X[grep]} -q 'IS_INTERNED(' "$file"; then
+            sed_ 's/IS_INTERNED[[:space:]]*\(/ZSTR_IS_INTERNED(/g' "$file" '-i' && echo "Correcting IS_INTERNED() to ZSTR_IS_INTERNED() in $file"
+        fi
+        if ${X[grep]} -q 'STR_EMPTY_ALLOC(' "$file"; then
+            sed_ 's/STR_EMPTY_ALLOC[[:space:]]*\(/ZSTR_EMPTY_ALLOC(/g' "$file" '-i' && echo "Correcting STR_EMPTY_ALLOC() to ZSTR_EMPTY_ALLOC() in $file"
+        fi
+        if ${X[grep]} -q '_STR_HEADER_SIZE' "$file"; then
+            sed_ 's/_STR_HEADER_SIZE/_ZSTR_HEADER_SIZE/g' "$file" '-i' && echo "Correcting _STR_HEADER_SIZE to _ZSTR_HEADER_SIZE in $file"
+        fi
+        if ${X[grep]} -q 'STR_ALLOCA_ALLOC(' "$file"; then
+            sed_ 's/STR_ALLOCA_ALLOC[[:space:]]*\(/ZSTR_ALLOCA_ALLOC(/g' "$file" '-i' && echo "Correcting STR_ALLOCA_ALLOC() to ZSTR_ALLOCA_ALLOC() in $file"
+        fi
+        if ${X[grep]} -q 'STR_ALLOCA_INIT(' "$file"; then
+            sed_ 's/STR_ALLOCA_INIT[[:space:]]*\(/ZSTR_ALLOCA_INIT(/g' "$file" '-i' && echo "Correcting STR_ALLOCA_INIT() to ZSTR_ALLOCA_INIT() in $file"
+        fi
+        if ${X[grep]} -q 'STR_ALLOCA_FREE(' "$file"; then
+            sed_ 's/STR_ALLOCA_FREE[[:space:]]*\(/ZSTR_ALLOCA_FREE(/g' "$file" '-i' && echo "Correcting STR_ALLOCA_FREE() to ZSTR_ALLOCA_FREE() in $file"
+        fi
+    done
 }
 
 patch_code() {

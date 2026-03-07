@@ -237,7 +237,7 @@ else
 #                ;;
            lua) apt_install ${basics[@]} liblua5.4-dev git
                 configure_opts="--with-lua-version=5.4"
-                mver=$module-2.0.7
+                mver=$module-2.0.8-dev
                 git clone https://github.com/badoo/php-lua.git $mver
                 cd $mver
                 ;;
