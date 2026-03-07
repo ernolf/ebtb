@@ -32,8 +32,10 @@ exit_msg(){
 
 exit0(){
     log_trace "exit 0"
-    G; echo "exiting ${M[n]} script."; N
-    exit_msg
+    ${B[quiet]} || {
+        G; echo "exiting ${M[n]} script."; N
+        exit_msg
+    }
     exit 0
 }
 
