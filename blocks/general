@@ -122,7 +122,7 @@ lreq(){
     fi
 }
 lrequire(){ lreq $@; }
-V[astr]="${I[l]}: " M[url]=${M[home]%/apps/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
+V[astr]="${I[l]}: " M[url]=${M[home]%/raw}/script/${M[n]} V[cargs]="-se ${M[b]}-${M[e]} ${M[home]}"
 bools=(quiet silent pager check run2 irun2 do_update do_restore_backup do_integrity_check firstrun)
 for x in ${bools[@]}; do B[$x]=_; done
 ${B[bgjobs]:=:} && { [[ -t 1 && ! -p /dev/stdout ]] || B[pager]=:; } # is piped to pager?

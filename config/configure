@@ -1,7 +1,7 @@
 # Configuration file for the project
 
 PROJECT='ebtb'
-MY_HOME='https://global-social.net/apps/raw'
+MY_HOME='https://global-social.net/raw'
 # Directory for scripts installation.
 # On the first run, scripts are replaced by a symlink pointing
 # to the scripts which then are moved to $SCRIPTS_DIR
