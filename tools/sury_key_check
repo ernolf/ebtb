@@ -1,0 +1,69 @@
+#!/bin/bash
+
+# whoami, whereami
+# b=basename m=me a=absolute p=path ca=canonical
+declare bm apm me ca_me ca_dir
+declare -i i
+bm="$(basename "$0")"; apm="$(cd "$(dirname "$0")" && pwd)/$bm"
+[ "$(command -v "$bm")" = "$apm" ] && me="$bm" || me="$apm"
+ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
+
+cd "$ca_dir/.."
+
+# source common functions
+source tools/common_build_functions
+
+# disable webloading and loging functions for bash shell initialazation:
+req(){ :; }; require(){ :; }; lreq() { :; }; lrequire() { :; }; mh(){ :; }; log_trace(){ :; }; funcname_and_lineno(){ :; }; fn_ln(){ :; }; require_arg(){ :; }; required_args(){ :; }
+
+binaries_is_func_(){ 
+    local d
+    d=$(declare -f $1) || return
+    d=${d//$'\n'/}
+    [[ ${d// /} != "$1(){:}" ]]
+}
+
+## source ebtb-functions:
+declare includedir module
+includedir="$ca_dir/../modules"
+declare -a modules
+modules=(cleanup gpg php/sury)
+# source the ebtb ${modules[@]}
+for module in ${modules[@]}; do
+############################################ DEBUGING IS DONE HERE ->
+#echo "- $module"
+#read dummy
+############################################ DEBUGING IS DONE HERE <-
+    source <(tail -n +10 $includedir/$module)
+done
+unset -v includedir module modules
+
+TMPDIR="$(${X[mktemp]} -d)"
+DEB="$TMPDIR/debsuryorg-archive-keyring.deb"
+GPG_EXTRACTED="$TMPDIR/extracted.asc"
+GPG_FILE="$TMPDIR/unpacked/usr/share/keyrings/debsuryorg-archive-keyring.gpg"
+
+# 1. download
+${X[curl]} -sSLo "$DEB" https://packages.sury.org/debsuryorg-archive-keyring.deb
+
+# 2. unpack (no install)
+${X[dpkg-deb]} -x "$DEB" "$TMPDIR/unpacked"
+
+[[ -z "$GPG_FILE" ]] && {
+    echo "could not find .gpg file"
+    ${X[rm]} -rf -- "$TMPDIR"
+    exit 1
+}
+
+# 4. compare
+NEW_KEY="$(gpg_assemble_key_ armor "$GPG_FILE")"
+OLD_KEY="$(gpg_assemble_key_ armor sury_debian_key)"
+
+if [[ "$NEW_KEY" != "$OLD_KEY" ]]; then
+    echo "Sury changed its gpg signing key. Please update '/root/Projekte/ebtb/modules/php/sury'"
+else
+    echo "there is no new key"
+fi
+
+# Cleanup
+${X[rm]} -rf "$TMPDIR"
