@@ -19,7 +19,7 @@ ini_directives(){
         apc.coredump_unmap)                    def="0"                                chlog="";;
         apc.enable_cli)                        def="0"                                chlog="";;
         apc.enabled)                           def="1"                                chlog="";;
-        apc.entries_hint)                      def="4096"                             chlog="";;
+        apc.entries_hint)                      def="512 apc.shm_size"                 chlog="Prior to APcu 5.1.25, the default was 4096";;
         apc.gc_ttl)                            def="3600"                             chlog="";;
         apc.mmap_file_mask)                    def="NULL"                             chlog="";;
         apc.preload_path)                      def="NULL"                             chlog="";;
@@ -104,6 +104,7 @@ ini_directives(){
         fastcgi.logging)                       def="1"                                chlog="";;
         ffi.enable)                            def="preload"                          chlog="";;
         ffi.preload)                           def=""                                 chlog="";;
+        fiber.stack_size)                      def=""                                 chlog="Available as of PHP 8.1.0";;
         file_uploads)                          def="1"                                chlog="";;
         filter.default)                        def="unsafe_raw"                       chlog="Deprecated as of PHP 8.1.0";;
         filter.default_flags)                  def="NULL"                             chlog="";;
@@ -167,6 +168,7 @@ ini_directives(){
         mail.add_x_header)                     def="0"                                chlog="";;
         mail.force_extra_parameters)           def="NULL"                             chlog="";;
         mail.log)                              def="NULL"                             chlog="";;
+        mail.mixed_lf_and_crlf)                def="0"                                chlog="Added in PHP 8.2.4";;
         mailparse.def_charset)                 def="us-ascii"                         chlog="";;
         max_execution_time)                    def="30"                               chlog="";;
         max_file_uploads)                      def="20"                               chlog="";;
@@ -301,9 +303,9 @@ ini_directives(){
         opcache.jit_bisect_limit)              def="0"                                chlog="Available as of PHP 8.0.0";;
         opcache.jit_blacklist_root_trace)      def="16"                               chlog="Available as of PHP 8.0.0";;
         opcache.jit_blacklist_side_trace)      def="8"                                chlog="Available as of PHP 8.0.0";;
-        opcache.jit_buffer_size)               def="0"                                chlog="Available as of PHP 8.0.0";;
+        opcache.jit_buffer_size)               def="64M"                              chlog="Available as of PHP 8.0.0. Prior to PHP 8.4.0, the default value was 0";;
         opcache.jit_debug)                     def="0"                                chlog="Available as of PHP 8.0.0";;
-        opcache.jit)                           def="tracing"                          chlog="Available as of PHP 8.0.0";;
+        opcache.jit)                           def="disable"                          chlog="Available as of PHP 8.0.0. Prior to PHP 8.4.0, the default value was tracing";;
         opcache.jit_hot_func)                  def="127"                              chlog="Available as of PHP 8.0.0";;
         opcache.jit_hot_loop)                  def="64"                               chlog="Available as of PHP 8.0.0";;
         opcache.jit_hot_return)                def="8"                                chlog="Available as of PHP 8.0.0";;
@@ -341,6 +343,7 @@ ini_directives(){
         open_basedir)                          def="NULL"                             chlog="";;
         openssl.cafile)                        def=""                                 chlog="";;
         openssl.capath)                        def=""                                 chlog="";;
+        openssl.libctx)                        def="custom"                           chlog="";;
         output_buffering)                      def="0"                                chlog="";;
         output_encoding)                       def=""                                 chlog="";;
         output_handler)                        def="NULL"                             chlog="";;
@@ -453,15 +456,12 @@ ini_directives(){
         stomp.default_connection_timeout_usec) def="0"                                chlog="";;
         stomp.default_read_timeout_sec)        def="2"                                chlog="";;
         stomp.default_read_timeout_usec)       def="0"                                chlog="";;
-        swoole.aio_thread_num)                 def="2"                                chlog="";;
         swoole.display_errors)                 def="On"                               chlog="";;
-        swoole.enable_coroutine)               def="On"                               chlog="Available as of swoole 4.0.0";;
-        swoole.enable_library)                 def="On"                               chlog="Available as of swoole 4.0.0";;
-        swoole.enable_preemptive_scheduler)    def="Off"                              chlog="Available as of swoole 4.4.0";;
-        swoole.fast_serialize)                 def="Off"                              chlog="";;
+        swoole.enable_fiber_mock)              def="Off"                              chlog="";;
+        swoole.enable_library)                 def="On"                               chlog="";;
+        swoole.enable_preemptive_scheduler)    def="Off"                              chlog="";;
         swoole.unixsock_buffer_size)           def="8388608"                          chlog="";;
-        swoole.use_namespace)                  def="On"                               chlog="";;
-        swoole.use_shortname)                  def="On"                               chlog="Available as of swoole 4.0.0";;
+        swoole.use_shortname)                  def="On"                               chlog="";;
         syslog.facility)                       def="LOG_USER"                         chlog="Available as of PHP 7.3.0";;
         syslog.filter)                         def="no-ctrl"                          chlog="Available as of PHP 7.3.0";;
         syslog.ident)                          def="php"                              chlog="Available as of PHP 7.3.0";;
@@ -540,7 +540,9 @@ ini_directives(){
         zend.exception_ignore_args)            def="0"                                chlog="Available as of PHP 7.4.0";;
         zend.exception_string_param_max_len)   def="15"                               chlog="Available as of PHP 8.0.0";;
         zend_extension)                        def="NULL"                             chlog="";;
+        zend.max_allowed_stack_size)           def="0"                                chlog="Available as of PHP 8.3.0";;
         zend.multibyte)                        def="0"                                chlog="";;
+        zend.reserved_stack_size)              def="0"                                chlog="Available as of PHP 8.3.0";;
         zend.script_encoding)                  def="NULL"                             chlog="";;
         zend.signal_check)                     def="0"                                chlog="";;
         zlib.output_compression)               def="0"                                chlog="";;
