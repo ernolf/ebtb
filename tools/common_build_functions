@@ -31,6 +31,7 @@ for x in ${unused_functions[@]}; do eval "$x(){ :;}"; done
 build_binaries=(basename cat chmod chown cp curl date diff dirname dpkg-deb find gawk grep gpg head jq mkdir mktemp mv paste perl php reset rm sed seq sha256sum shfmt sleep sort stat sudo tail tee)
 X[env]="$(binaries_realpath "$(command -v env)") LC_ALL=C"
 for x in "${build_binaries[@]}"; do
+    q0 command -v "$x" || { echo "Missing build dependency: $x" >&2; exit 1; }
     X[$x]="${X[env]} $(binaries_realpath $(command -v $x))"
 done
 
@@ -186,9 +187,10 @@ placeholder_replace(){
             ;;
         scriptname)
             if $LOCAL_SERVER; then
-                MY_HOME="'http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT"
+                echo "MS='${name%-test}' M[p]='$PROJECT' M[n]='$name' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='http://localhost:$LOCAL_SERVER_PORT' lsd='$LOCAL_SERVER_DIRECTORY' local_server='$LOCAL_SERVER' ls_pid_file=\"\$TMPDIR/\${bm}-moduleserver.pid\";declare -i lsp=$LOCAL_SERVER_PORT;M[pid]=\$\$"
+            else
+                echo "MS='${name%-test}' M[p]='$PROJECT' M[n]='$name' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             fi
-            echo "MS='${name%-test}' M[p]='$PROJECT' M[n]='$name' M[c]='$channel' M[v]='$runtime' M[e]=$epoch M[home]='$MY_HOME' M[pid]=\$\$"
             ;;
         libversion)
             echo "${name^^}_LIB_VERSION=$epoch"
@@ -299,7 +301,7 @@ check_if_dir_exists(){
 backup_(){
     local obj objname backupdir backupsufix
     obj="$1"
-    objname=${obj#$ABSOLUTE_TARGET_DIR/} #  scripts/janitor or modules/test/nc-apps/commands.d/help
+    objname=${obj#${ABSOLUTE_TARGET_DIR:-}/} #  scripts/janitor or modules/test/nc-apps/commands.d/help
     backupdir="$(${X[dirname]} $ca_dir)~backups"
     echo "  - $objname"
     if [ -f "$obj" ]; then

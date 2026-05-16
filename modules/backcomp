@@ -115,5 +115,5 @@ if (( M[e] < 1742900000 )); then
 fi
 
 binaries_is_func_ lrequire || lrequire(){ req $@;}
-
-[[ "${M[n]}" =~ php ]] && . <(req di) || di(){ :;}
+di(){ :; }
+[[ "${M[n]}" =~ php ]] && (( $(c -o $NUL -w %{http_code} -A "$(fp;fn_ln)check di" ${V[cargs]}/${D[ri]}/di) == 200 )) && . <(req di)

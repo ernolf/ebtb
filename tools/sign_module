@@ -15,6 +15,8 @@ ca_me="$(readlink -e "$apm")"; ca_dir="$(dirname "$ca_me")"
 
 cd "$ca_dir/.."
 
+# source common functions
+source tools/common_build_functions
 # check if the secrets configure file exists
 if ! [ -f config/secrets ] && ! $LOCAL_SERVER; then
     echo "Could not find config/secrets file while 'LOCAL_SERVER' is not set to 'true' in"
@@ -22,8 +24,6 @@ if ! [ -f config/secrets ] && ! $LOCAL_SERVER; then
     echo "error"
     exit 1
 fi
-# source common functions
-source tools/common_build_functions
 
 bool[yes]=false bool[all]=false bool[test2]=false
 declare channel arg

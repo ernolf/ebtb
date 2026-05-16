@@ -16,6 +16,8 @@ BUILD := $(shell . config/configure && echo $$BUILD)
 SBUILD_DIR := $(shell . config/configure && echo $$SBUILD_DIR)
 # Directory for the module build process
 MBUILD_DIR := $(shell . config/configure && echo $$MBUILD_DIR)
+# The sanbox directory
+SANDBOX := $(shell . config/configure && echo $$SANDBOX)
 
 # Default goal
 .DEFAULT_GOAL := help
@@ -87,9 +89,10 @@ $(SBUILD_DIR)/%-test: $(SCRIPTS)/%
 # Make and install all scripts (not test)
 .PHONY: and-install-all-scripts
 and-install-all-scripts: $(addprefix $(SBUILD_DIR)/,$(SCRIPTS_BASE))
-	mkdir -p $(BINDIR)
-	cp $^ $(BINDIR)
-	chmod +x $(addprefix $(BINDIR)/,$(notdir $^))
+	mkdir -p $(SANDBOX)/scripts $(BINDIR)
+	cp $^ $(SANDBOX)/scripts/
+	chmod +x $(addprefix $(SANDBOX)/scripts/,$(notdir $^))
+	for s in $(notdir $^); do ln -sfT $(SANDBOX)/scripts/$$s $(BINDIR)/$$s; done
 
 # Install only the scripts built in the build directory
 .PHONY: install-builts
@@ -103,6 +106,7 @@ install-builts: $(wildcard $(SBUILD_DIR)/*)
 uninstall:
 	rm -f $(addprefix $(BINDIR)/,$(SCRIPTS_BASE))
 	rm -f $(addprefix $(BINDIR)/,$(addsuffix -test,$(SCRIPTS_BASE)))
+	rm -rf $(SANDBOX)
 
 # Sign scripts and upload to webserver
 .PHONY: sign-and-release-scripts

@@ -75,7 +75,11 @@ purge_li(){
 }
 tabula_rasa(){ purge_li; }
 nohome(){
-    echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $MP ${M[url]}\n\n\e[31m   and start the script again.\e[0m\n" > $TTY
+    if ${local_server:-_}; then
+        echo -e "\n\n\e[31m - Failed to load required module '$1'\e[0m\n" > $TTY
+    else
+        echo -e "\n\n\e[31m - Failed to load required module '$1'\n   this can happen if the module server is down e.g. for maintenance\n   try again later or run\n\n\e[37m     sudo\e[36m wget -O $MP ${M[url]}\n\n\e[31m   and start the script again.\e[0m\n" > $TTY
+    fi
     kill -TERM ${M[pid]}
 }
 sourced(){
@@ -146,7 +150,9 @@ set -- "${args[@]}"
 args=()
 M[args]="$*"
 ${B[run2]} && q0 hc Io || {
-    mapfile -t jnr < <(hc D)
-    (( jnr[1] == 200 )) && J[o]="${jnr[0]}"
+    ${local_server:-_} || {
+        mapfile -t jnr < <(hc D)
+        (( jnr[1] == 200 )) && J[o]="${jnr[0]}"
+    }
 }
 CMA="$ME json=${J[o]} ${M[args]}"

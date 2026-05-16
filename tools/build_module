@@ -49,7 +49,7 @@ fi
 # cat the input module into the tempfile
 ${X[cat]} "$input_module" > "$tempfile"
 strip_ "$tempfile"
-if [[ ${MINIFY:-false} && "$(${X[head]} -n1 "$input_module")" == '__minified_bashlib__' ]]; then
+if $MINIFY && [[ "$(${X[head]} -n1 "$input_module")" == '__minified_bashlib__' ]]; then
     (   echo "# BASHLIB (minified)"
         echo "# @channel@/$modulename"
         echo "# version $epoch"
