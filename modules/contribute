@@ -1,0 +1,154 @@
+__bashlib__
+__path_and_modulename__
+__version_and_datestring__
+#
+__copyright__
+#
+__license__
+#
+
+${CONTRIBUTE_BASHLIB:-_} && return
+CONTRIBUTE_BASHLIB=:
+
+# TODO 0 -->
+. <(lrequire binaries)
+. <(lrequire ansi)
+. <(lrequire line)
+# TODO 0 <--
+contribute_cover_costs(){
+    local -i max_cols
+    max_cols=${1:-}
+    echo "$(Yi; spf; format_string "These scripts were created out of a desire to help. I am neither an employee nor a contractor of any software company. I rely entirely on your support, so please don't forget to make a financial contribution to cover my costs." 3 $max_cols; N)"
+}
+
+contribute_open_issue(){
+    local -i max_cols
+    max_cols=${1:-}
+    echo "$(o 7; GRAY; format_string "Please open an issue at $(W)https://github.com/ernolf/ebtb/issues$(GRAY) and describe what you expected and where that expectation was not met." 7 $max_cols)"
+}
+
+contribute_invaluable_feedback(){
+    local -i max_cols
+    max_cols=${1:-}
+    echo "$(o 7; GRAY; format_string "Your feedback is invaluable and helps improve the project for everyone." 7 $max_cols)"
+}
+
+contribute_value(){
+    local -i max_cols
+    max_cols=${1:-}
+    echo "$(Yi; spf; format_string "If you've found value in this work, please consider supporting its continued development. Your contribution, whether through a donation or other means, helps keep this service available and evolving." 3 $max_cols; N)"
+}
+
+contribute(){
+    local -i max_cols=84
+    ${X[cat]} <<CONTRIBUTE
+
+$(line _ xGRAY a)
+
+$(o 23; Oul)This is how YOU can contribute$(N)
+
+$(Yi; spf; format_string "If your problem has $(box NOT) been resolved with this script:" 3 $max_cols)
+
+$(contribute_open_issue $max_cols)
+$(contribute_invaluable_feedback $max_cols)
+
+$(contribute_value $max_cols)
+
+$(B)   .;mmmmn;,$(o 19; O)you can
+$(B)   XMMMMMMMMW0c$(o 26; O)… buy me a coffee:
+$(B)  'MMMMMMMMMMMM$(lB);$(o 19; C)Paypal$(GRAY):
+$(B)  dMMMMMMMMMMMW$(lB)'d$(o 20; Y)@ernolf$(o 28; lG)https://paypal.me/ernolf$(o 53; GRAY)use $(GRAYul)Family & Friends$(GRAY) option
+$(B)  NMMMMMMMMMMX$(lB):0M;
+$(B) ,MMMNk$(lB)xxxxxdxWMN.$(o 26; O)… become a sponsor:$(GRAY)
+$(B) xMMM;$(lB)0MMMMMMMWx.
+$(B) WMMW$(lB).MMMX;,'.$(o 19; C)Github Sponsors$(GRAY):
+$(B):000o$(lB)oMMMc$(o 20; Y)@ernolf$(o 28; lG)https://github.com/sponsors/ernolf
+$(lB)     x00O.
+$(o 26; O)… transfer crypto:
+$(GRAY)      )
+$(GRAY)     ($(N) ($(o 19; C)Bitcoin$(GRAY):$(o 28; lG)bc1qwlcqc7zsak45vwqk0dt7hnxlrta7syzstgf7t8
+$(N)      ) )
+$(O)   ........$(o 19; C)Ethereum$(GRAY), $(C)BNB Smart Chain$(GRAY), $(C)Polygon$(GRAY):
+$(O)   |      |]$(o 28; lG)0x72b7901b3daa45a7266A77Aa3B3552aB686d0D0D
+$(O)   \\$(dY)°$(o 10; O)/
+$(O)    \`----'$(o 19; C)Solana$(GRAY):$(o 28; lG)E7e13hBB7rmhY2N1MqAY88TKobBktJA7rSpTZWAPec6Y$(N)
+
+$(Yi; spf; W)Don't want to spend money? you can
+$(o2; GRAY)… spread the word e.g. via a blog post or on social media
+$(o2; GRAY)… leave some love (a $(R)❤️$(GRAY), $(bYi)🙏$(GRAY), $(bYi)👍$(GRAY) or other emoji and/or interaction) on
+$(o4; W)$1
+$(o2; GRAY)… rating the project $(bYi)★★$(GRAY) on $(W)https://github.com/ernolf/ebtb
+$(o2; GRAY)… or in any way you see fit!
+
+$(o2; W)much love, peace and good luck!
+$(o2; W)yours truely,$(o 24; C)_  __
+$(o3; C)___ _ __ _ __   ___ | |/ _|
+$(o2; C)/ _ \ '__| '_ \ / _ \| | |_
+$(o; C)(  __/ |  | | | | (_) | |  _|
+$(o2; C)\___|_|  |_| |_|\___/|_|_|
+
+$(line _ xGRAY a)
+
+CONTRIBUTE
+
+    . <(lreq ebtb)
+    anykey
+    ebtb
+    exit0
+}
+# COMMENT -->
+
+   .'''''''.
+   XMMMMMMMMW0c
+  'MMMMMMMMMMMM;
+  dMMMMMMMMMMMW'd
+  NMMMMMMMMMMX:0M;
+ ,MMMNkxxxxxdxWMN.
+ xMMM;0MMMMMMMWx.
+ WMMW.MMMX;,'.
+.000ooMMMc
+     x00O.
+
+
+     ........
+   ,MMMMMMMMMMXOc
+   kMMMMMMMMMMMMMO
+   WMMMMMMMMMMMMMN
+  ;MMMMMMMMMMMMMM:dX
+  kMMMMMMMMMMMMX:dMM'
+  WMMMWkkkxxdoodNMMK
+ ;MMMM;xNNNWMMMMMMk
+ OMMMW.MMMMXkxdl;.
+ WMMMx:MMMM'
+ cccc.OMMMX
+      dxxx;
+
+
+
+
+⠀⠀⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣦⡄⠀⠀⠀⠀⠀
+⠀⠀⢰⣿⣿⠋⠉⠉⣉⣉⣉⣉⣉⣉⣻⣿⣿⣆⡀⠀⠀⠀
+⠀⠀⣸⣿⡟⠀⠀⣼⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⣷⣤⠀
+⠀⢠⣿⣿⠇⠀⠀⣿⣿⣿⣿⣿⣿⣿⣿⣿⣿⡏⠙⢿⣿⣷
+⠀⣸⣿⡿⠀⠀⢸⣿⣿⣿⣿⣿⣿⣿⣿⣿⡟⠁⠀⢸⣿⣿
+⠀⣿⣿⡇⠀⠀⣿⣿⣿⣿⣿⣿⣿⠿⠟⠋⠀⠀⠀⣸⣿⣿
+⢸⣿⣿⠁⠀⢰⣿⣿⠉⠉⠉⢀⣀⣀⣀⣀⣠⣤⣾⣿⡿⠃
+⣿⣿⡏⠀⠀⣾⣿⡟⠀⠀⢰⣿⣿⣿⣿⣿⣿⠿⠟⠋⠀⠀
+⣿⣿⣿⣿⣿⣿⣿⠃⠀⠀⣾⣿⡏⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠈⠉⠉⠉⣹⣿⣿⣀⣀⣸⣿⣿⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀
+⠀⠀⠀⠀⢻⣿⣿⣿⣿⣿⣿⡏
+
+
+WWWWNXXXXXXXXWWWWWWWW
+WWWk          .'oWWWW
+WWW,             'WWW
+WWN               NWW
+WWx              d:.N
+WW,            .d:  O
+WN     ,,,;;:cc:   .W
+Wx    x;          ,NW
+W'    X    .,;:lxXWWW
+N    ;d    OWWWWWWWWW
+NooooK'   .WWWWWWWWWW
+WWWWWW:;;;xWWWWWWWWWW
+WWWWWWWWWWWWWWWWWWWWW⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
