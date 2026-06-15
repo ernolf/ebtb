@@ -436,21 +436,51 @@ if [[ $VERBOSE == filtered ]]; then
         fi
     done < "$TMP_VERBOSE"
 elif [[ $VERBOSE == joblist ]]; then
-    # Build set of performed ids from TMP_VERBOSE
-    declare -A JOBID_PRESENT
+    # Parse the jobs that cron.php actually started from its own verbose output.
+    # cron.php prints one line per started job: "Starting job <class> (id: N, arguments: <json>)".
+    # This is the source of truth: jobs that get removed from oc_jobs during the run
+    # (e.g. background jobs of disabled apps, removed by JobList::removeById) are gone
+    # from "background-job:list" and must be recovered from here.
+    declare -A VERBOSE_CLASS VERBOSE_ARGS
+    declare -a VERBOSE_ORDER
+    verbose_re='^[[:space:]]*Starting job (.+) \(id: ([0-9]+), arguments: (.*)\)[[:space:]]*$'
     while IFS= read -r vline || [[ -n "$vline" ]]; do
-        # capture "id: N" where N is a number and make sure it's not followed by another digit
-        if [[ $vline =~ id:[[:space:]]*([0-9]+) ]]; then
-            JOBID_PRESENT[${BASH_REMATCH[1]}]=1
+        if [[ $vline =~ $verbose_re ]]; then
+            vid="${BASH_REMATCH[2]}"
+            VERBOSE_CLASS[$vid]="${BASH_REMATCH[1]}"
+            VERBOSE_ARGS[$vid]="${BASH_REMATCH[3]}"
+            VERBOSE_ORDER+=( "$vid" )
         fi
     done < "$TMP_VERBOSE"
-    # Now filter TMP_JOBLIST by membership in JOBID_PRESENT
+    # Emit the richer entries from background-job:list for the ids that ran,
+    # remembering which ids were already covered.
+    declare -A JOBLIST_EMITTED
     while IFS= read -r line || [[ -n "$line" ]]; do
         id="${line%% *}"
-        if [[ $id =~ ^[0-9]+$ && -n "${JOBID_PRESENT[$id]:-}" ]]; then
+        if [[ $id =~ ^[0-9]+$ && -n "${VERBOSE_CLASS[$id]:-}" ]]; then
             printf '%s\n' "$line" >> "$TMP_OUT"
+            JOBLIST_EMITTED[$id]=1
         fi
     done < "$TMP_JOBLIST"
+    # Recover jobs that ran but are no longer in background-job:list,
+    # reconstructed straight from cron.php's verbose output.
+    for vid in "${VERBOSE_ORDER[@]}"; do
+        [[ -n "${JOBLIST_EMITTED[$vid]:-}" ]] && continue
+        vclass="${VERBOSE_CLASS[$vid]}"
+        varg="${VERBOSE_ARGS[$vid]}"
+        if [[ -z "$varg" || "$varg" == "null" || "$varg" == "[]" ]]; then
+            printf '%s %s\n' "$vid" "$vclass" >> "$TMP_OUT"
+        elif ${JOB_ARGS_AS_JSON:-true}; then
+            printf '%s %s arg:%s\n' "$vid" "$vclass" "$varg" >> "$TMP_OUT"
+        else
+            varg_plain="$(printf '%s' "$varg" | jq -r 'to_entries | map("\(.key)=\(.value)") | join(" ")' 2>/dev/null)"
+            if [[ -n "$varg_plain" ]]; then
+                printf '%s %s argument(s): %s\n' "$vid" "$vclass" "$varg_plain" >> "$TMP_OUT"
+            else
+                printf '%s %s\n' "$vid" "$vclass" >> "$TMP_OUT"
+            fi
+        fi
+    done
 elif [[ $VERBOSE == verbose ]]; then
     cat "$TMP_VERBOSE" > "$TMP_OUT"
 fi
