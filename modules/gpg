@@ -39,8 +39,20 @@ DyUzoCq5SrGJ5LCoGjlUd5TmPUGCZR8gBl+S27URWXSf8ULmBAILcQudm0Eg+l6m
 wt/fw/zM12qd2q8K9JutMw5wDZAYsXen5qb6LljA0F9mhVvrEsrf1ll2X9XbZvXe
 wMVBD9xFEjIAVYCph4A1mkunkyBHVF4CwICxxehecRGrT73xyTVa0+7XDM9C+xWn
 Le6J7RWkwvTfGz3AByNLB1OY3fcpO3z0NNAW/S5fVFFoOHyxityOhDruMCU42Qr4
-YP2ebH/z
-=PJji
+YP2ebH/ziQJOBBMBCgA4AhsDBQsJCAcCBhUKCQgLAgQWAgMBAh4BAheAFiEEPuQ6
+hNK6Y1qU4QM7CxRROaFwcVwFAmj4xwcACgkQCxRROaFwcVzHTBAAj4ScqA8Hx9Q+
+YQaL+3IOyhuZTlmiqIdcrfmtP+vI92HPsM4D4T3ShkGYe71rLzZcRJSIBeZE9WuT
+I9vPnDM/lmy+LvDERwHakw+2Gj/F5aR8ZjDfnmElp3c03o+0/Cuz4i6Bsb03yB8v
+pgUEU17j7tS0WhrNRmWuSL8uO8AR1agFIpuJqDPyOTKgptuNMdNSg0h1CjK46mHA
+BEUsXVZiK8ZmLuvkKC/5qo+PrigHdSbT/KJi4NtLLun/2EKP5fm+pP5ioRD95Ri8
+t37KmdLwWK18KdpEU0d//bAGm1j9lBT1t4j2W/ezH9fe5u8peZE2Demre/NRV1/S
+Mp8XcEvqt3VLhD1E41qmNwGd0VJAYjZSBijjPBmUcbgo8a2NzDGrN/n6mvDKGl4K
+ARP5fEX6s7Nz/azMD+YX2yI7HiwRg3fEPRLwIELn80tMaxMcNkWc5c954Zt8sNVL
+zNG37ETlw8JSXurDxZ1AAXRRLfdZNPgO9RBCpNqKA5IwwInii3qcyCwMDZIxarzw
+eaISUcgHQmUieHrmeTNUqyw7NQsiqpZqhtTUK6y9e53UQVFwV8S3AGsuoJRw5JbQ
+dy9YsiArZx45N73DvtDL7ng+aH3alW1uBwikBcaMGbYRajp5NEkFma0gY6ner1dC
+wRM+n7jaoPjko0SHZ9NmHThed5kIkMc=
+=8A8b
 PUBLIC_KEY_ASC
 }
 
@@ -430,3 +442,10 @@ gpg_extract_() {
             ;;
     esac
 }
+
+# transitional (2026-07): the codesigning pubkey above was prolonged to never
+# expire. Sandbox keyrings still holding the expired copy never re-import by
+# themselves (integrity only imports a MISSING key), so merge the embedded key
+# once - validity 'e' in field 2 marks an expired key. No keyserver involved.
+# This block will be removed after a reasonable transition period.
+q2 ${X[gpg]} --list-keys --with-colons 3EE43A84D2BA635A94E1033B0B145139A170715C | ${X[grep]} -qs '^pub:e:' && q0 gpg_assemble_key_ import ernolf_pubkey
