@@ -35,17 +35,18 @@ declare flag bool
 declare -a flags bools args
 declare -A FLAG
 flags=(forceflag)
-bools=(help nopager force needforce supported unsupported nolts distrib_to_old distrib_to_new distrib_unknown)
+bools=(help nopager force needforce checksury supported unsupported nolts distrib_to_old distrib_to_new distrib_unknown)
 for flag in ${flags[@]}; do FLAG[$flag]=_; done; unset -v flag flags
 for bool in ${bools[@]}; do B[$bool]=_; done; unset -v bool bools
 FLAG[forceflag]=''
 shopt -s extglob
 for arg in "$@"; do
     case "$arg" in
-        --help|-h)        B[help]=: ;;
-        --force)          B[force]=: FLAG[forceflag]=' --force' ;;
-        --no?([_-])pager) B[nopager]=: ;;
-        *)                args+=("$arg")
+        --help|-h)          B[help]=: ;;
+        --force)            B[force]=: FLAG[forceflag]=' --force' ;;
+        --no?([_-])pager)   B[nopager]=: ;;
+        --check?([_-])sury) B[checksury]=: ;;
+        *)                  args+=("$arg")
     esac
 done
 shopt -u extglob
@@ -210,6 +211,7 @@ declare lang=$(echo "$LANG" | ${X[cut]} -d'_' -f1)
 declare OLD NEW SUGGESTION PKG PKGOLD PKGNEW SAPI DEFAULT_ANSWER FILE
 [[ -f "${F[php]:=${D[vt]}/php}" ]] && . "${F[php]}"
 
+${B[checksury]} && { need_sury_repo; exit 0; }
 ${B[supported]} && apt_need_update
 
 # $1=old;$2=new
